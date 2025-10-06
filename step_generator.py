@@ -87,69 +87,76 @@ def generate_lines_marking_steps(program):
         "Cut top edge: Close line cutter"
     ))
     
-    # Move to first line position (paper_offset + ACTUAL_height - top_padding) 
-    first_line_position = PAPER_OFFSET_Y + actual_paper_height - program.top_padding
-    steps.append(create_step(
-        'move_y',
-        {'position': first_line_position},
-        f"Move to first line position: {first_line_position}cm (paper + {actual_paper_height - program.top_padding}cm ACTUAL)"
-    ))
+    # CORRECTED REPEAT LOGIC: Process each repeated section individually
+    # Each section has its own margins and line spacing
+    print(f"📏 REPEAT PROCESSING: {program.repeat_lines} sections of {program.high}cm each")
+    print(f"   Each section: {program.number_of_lines} lines with {program.top_padding}cm top, {program.bottom_padding}cm bottom margins")
     
-    # Calculate line spacing across the ENTIRE repeated paper height
-    # Lines span the full actual height from top_padding to bottom_padding
-    last_line_position = PAPER_OFFSET_Y + program.bottom_padding
-    available_space = first_line_position - last_line_position  # Distance from first to last line
-    
-    # Calculate total lines to mark across ALL repeated sections
-    total_lines_to_mark = program.number_of_lines * program.repeat_lines
-    if total_lines_to_mark > 1:
-        line_spacing = available_space / (total_lines_to_mark - 1)
-    else:
-        line_spacing = 0
-    
-    print(f"📏 LINE SPACING CALCULATION:")
-    print(f"   Lines per section: {program.number_of_lines}")
-    print(f"   Repeated sections: {program.repeat_lines}")
-    print(f"   TOTAL LINES TO MARK: {total_lines_to_mark}")
-    print(f"   Line spacing: {line_spacing:.2f}cm")
-    
-    for line_num in range(total_lines_to_mark):
-        # Calculate which repeat section and line within section this is
-        section_num = line_num // program.number_of_lines + 1
-        line_in_section = line_num % program.number_of_lines + 1
-        line_description = f"Mark line {line_num + 1}/{total_lines_to_mark} (Section {section_num}, Line {line_in_section})"
+    # Process each repeated section from top to bottom
+    for section_num in range(program.repeat_lines):
+        section_start_y = PAPER_OFFSET_Y + (program.repeat_lines - section_num) * program.high  # Top of this section
+        section_end_y = PAPER_OFFSET_Y + (program.repeat_lines - section_num - 1) * program.high  # Bottom of this section
         
-        steps.append(create_step(
-            'wait_sensor',
-            {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for line {line_num + 1}'},
-            f"{line_description}: Wait for LEFT X sensor"
-        ))
+        print(f"🔄 SECTION {section_num + 1}: Y range {section_end_y:.1f} to {section_start_y:.1f}cm")
         
-        steps.append(create_step(
-            'tool_action',
-            {'tool': 'line_marker', 'action': 'down'},
-            f"{line_description}: Open line marker"
-        ))
+        # Calculate line positions within THIS section
+        first_line_y_section = section_start_y - program.top_padding
+        last_line_y_section = section_end_y + program.bottom_padding
+        available_space_section = first_line_y_section - last_line_y_section
         
-        steps.append(create_step(
-            'wait_sensor',
-            {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for line {line_num + 1}'},
-            f"{line_description}: Wait for RIGHT X sensor"
-        ))
+        if program.number_of_lines > 1:
+            line_spacing_section = available_space_section / (program.number_of_lines - 1)
+        else:
+            line_spacing_section = 0
         
-        steps.append(create_step(
-            'tool_action',
-            {'tool': 'line_marker', 'action': 'up'},
-            f"{line_description}: Close line marker"
-        ))
+        print(f"   Lines in section: {first_line_y_section:.1f} to {last_line_y_section:.1f}cm (spacing: {line_spacing_section:.2f}cm)")
         
-        # Move to next line position (except for last line)
-        if line_num < total_lines_to_mark - 1:
-            next_position = first_line_position - ((line_num + 1) * line_spacing)
+        # Move to first line of this section
+        if section_num == 0:  # Only move for first section (already positioned at top)
             steps.append(create_step(
                 'move_y',
-                {'position': next_position},
-                f"Move to next line position: {next_position:.1f}cm"
+                {'position': first_line_y_section},
+                f"Move to first line of section {section_num + 1}: {first_line_y_section}cm"
+            ))
+        
+        # Mark all lines in this section
+        for line_in_section in range(program.number_of_lines):
+            overall_line_num = section_num * program.number_of_lines + line_in_section + 1
+            line_y_position = first_line_y_section - (line_in_section * line_spacing_section)
+            
+            line_description = f"Mark line {overall_line_num}/{program.number_of_lines * program.repeat_lines} (Section {section_num + 1}, Line {line_in_section + 1})"
+            
+            # Move to this line position (unless it's the first line of first section)
+            if not (section_num == 0 and line_in_section == 0):
+                steps.append(create_step(
+                    'move_y',
+                    {'position': line_y_position},
+                    f"Move to line position: {line_y_position:.1f}cm"
+                ))
+            
+            # Mark this line
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for line {overall_line_num}'},
+                f"{line_description}: Wait for LEFT X sensor"
+            ))
+            
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'line_marker', 'action': 'down'},
+                f"{line_description}: Open line marker"
+            ))
+            
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for line {overall_line_num}'},
+                f"{line_description}: Wait for RIGHT X sensor"
+            ))
+            
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'line_marker', 'action': 'up'},
+                f"{line_description}: Close line marker"
             ))
     
     # Cut bottom edge: Move to bottom position (paper starting position)

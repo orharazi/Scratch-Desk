@@ -800,66 +800,74 @@ class CanvasManager:
         
         print(f"📏 DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm")
         
-        # Calculate line positions for Lines Pattern WITH REPEATS - match step generator logic
-        first_line_y = paper_y + actual_paper_height - program.top_padding
-        last_line_y = paper_y + program.bottom_padding  # Last line above bottom edge
-        # Total lines across ALL repeated sections
-        actual_lines_to_draw = program.number_of_lines * program.repeat_lines  
+        # CORRECTED REPEAT VISUALIZATION: Process each repeated section individually
+        # Each section has its own margins - match step generator logic exactly
+        print(f"🖼️ CANVAS REPEAT: {program.repeat_lines} sections of {program.high}cm each")
         
-        if actual_lines_to_draw > 1:
-            line_spacing = (first_line_y - last_line_y) / (actual_lines_to_draw - 1)
-        else:
-            line_spacing = 0
-        
-        for line_num in range(actual_lines_to_draw):
-            # Calculate which repeat section and line within section this is
-            section_num = line_num // program.number_of_lines + 1
-            line_in_section = line_num % program.number_of_lines + 1
-            line_display_num = line_num + 1  # Overall line number
+        # Process each repeated section from top to bottom
+        overall_line_num = 0
+        for section_num in range(program.repeat_lines):
+            section_start_y = paper_y + (program.repeat_lines - section_num) * program.high  # Top of this section
+            section_end_y = paper_y + (program.repeat_lines - section_num - 1) * program.high  # Bottom of this section
             
-            line_y_real = first_line_y - (line_num * line_spacing)
+            # Calculate line positions within THIS section (with section-specific margins)
+            first_line_y_section = section_start_y - program.top_padding
+            last_line_y_section = section_end_y + program.bottom_padding
+            available_space_section = first_line_y_section - last_line_y_section
             
-            # Convert to canvas coordinates - lines span ENTIRE repeated paper width
-            line_y_canvas = self.main_app.offset_y + (max_y_cm - line_y_real) * self.main_app.scale_y
-            line_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
-            line_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
+            if program.number_of_lines > 1:
+                line_spacing_section = available_space_section / (program.number_of_lines - 1)
+            else:
+                line_spacing_section = 0
             
-            # Dynamic color based on state
-            state = self.main_app.operation_states['lines'].get(line_display_num, 'pending')
-            if state == 'completed':
-                line_color = '#00AA00'  # Bright green for completed
-                dash_pattern = (10, 2)  # Solid-like for completed
-                width = 3
-            elif state == 'in_progress':
-                line_color = '#FF8800'  # Orange for in progress
-                dash_pattern = (8, 4)
-                width = 3
-            else:  # pending
-                line_color = '#FF4444'  # Red for pending
-                dash_pattern = (5, 5)
-                width = 2
+            print(f"   Canvas Section {section_num + 1}: lines from {first_line_y_section:.1f} to {last_line_y_section:.1f}cm")
             
-            # Draw line
-            line_id = self.main_app.canvas.create_line(
-                line_x1_canvas, line_y_canvas, line_x2_canvas, line_y_canvas,
-                fill=line_color, width=width, dash=dash_pattern, tags="work_lines"
-            )
-            
-            # Store line object for dynamic updates
-            self.main_app.work_line_objects[f'line_{line_display_num}'] = {
-                'id': line_id,
-                'type': 'line',
-                'color_pending': '#FF4444',
-                'color_progress': '#FF8800',
-                'color_completed': '#00AA00'
-            }
-            
-            # Add line number label with matching color
-            label_id = self.main_app.canvas.create_text(
-                line_x1_canvas - 25, line_y_canvas,
-                text=f"L{line_display_num}", font=('Arial', 9, 'bold'), fill=line_color, tags="work_lines"
-            )
-            self.main_app.work_line_objects[f'line_{line_display_num}']['label_id'] = label_id
+            # Draw all lines in this section
+            for line_in_section in range(program.number_of_lines):
+                overall_line_num += 1
+                line_y_real = first_line_y_section - (line_in_section * line_spacing_section)
+                
+                # Convert to canvas coordinates - lines span ENTIRE repeated paper width
+                line_y_canvas = self.main_app.offset_y + (max_y_cm - line_y_real) * self.main_app.scale_y
+                line_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
+                line_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
+                
+                # Dynamic color based on state
+                state = self.main_app.operation_states['lines'].get(overall_line_num, 'pending')
+                if state == 'completed':
+                    line_color = '#00AA00'  # Bright green for completed
+                    dash_pattern = (10, 2)  # Solid-like for completed
+                    width = 3
+                elif state == 'in_progress':
+                    line_color = '#FF8800'  # Orange for in progress
+                    dash_pattern = (8, 4)
+                    width = 3
+                else:  # pending
+                    line_color = '#FF4444'  # Red for pending
+                    dash_pattern = (5, 5)
+                    width = 2
+                
+                # Draw line
+                line_id = self.main_app.canvas.create_line(
+                    line_x1_canvas, line_y_canvas, line_x2_canvas, line_y_canvas,
+                    fill=line_color, width=width, dash=dash_pattern, tags="work_lines"
+                )
+                
+                # Store line object for dynamic updates
+                self.main_app.work_line_objects[f'line_{overall_line_num}'] = {
+                    'id': line_id,
+                    'type': 'line',
+                    'color_pending': '#FF4444',
+                    'color_progress': '#FF8800',
+                    'color_completed': '#00AA00'
+                }
+                
+                # Add line number label with matching color
+                label_id = self.main_app.canvas.create_text(
+                    line_x1_canvas - 25, line_y_canvas,
+                    text=f"L{overall_line_num}", font=('Arial', 9, 'bold'), fill=line_color, tags="work_lines"
+                )
+                self.main_app.work_line_objects[f'line_{overall_line_num}']['label_id'] = label_id
         
         # Draw vertical lines (Row Pattern) WITH REPEAT SUPPORT - Show ALL page marks across repeated sections
         first_page_start = paper_x + program.left_margin
