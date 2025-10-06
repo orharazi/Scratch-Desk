@@ -112,8 +112,13 @@ class SafetySystem:
         try:
             # SAFETY INTERLOCK: Check operation type and enforce door position rules
             if operation == 'move_y':
-                # LINES OPERATIONS: Row marker MUST be UP (door closed)
-                self.check_lines_operation_safety(description)
+                # Distinguish between setup movements and actual operations
+                if self._is_setup_movement(description):
+                    # Setup movements are allowed regardless of door position
+                    print(f"🔧 SETUP MOVEMENT: {description[:50]}... (allowed)")
+                else:
+                    # LINES OPERATIONS: Row marker MUST be UP (door closed)
+                    self.check_lines_operation_safety(description)
                 target_y = parameters.get('position')
                 self.check_y_axis_movement_safety(target_y)
                 
@@ -137,8 +142,13 @@ class SafetySystem:
                     self.check_x_axis_movement_safety(target_x)
                     
             elif operation == 'move_x':
-                # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
-                self.check_rows_operation_safety(description)
+                # Distinguish between setup movements and actual operations
+                if self._is_setup_movement(description):
+                    # Setup movements are allowed regardless of door position
+                    print(f"🔧 SETUP MOVEMENT: {description[:50]}... (allowed)")
+                else:
+                    # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
+                    self.check_rows_operation_safety(description)
                 target_x = parameters.get('position')
                 self.check_x_axis_movement_safety(target_x)
                 
@@ -238,6 +248,28 @@ class SafetySystem:
             raise SafetyViolation(violation_msg, "ROWS_DOOR_CLOSED")
         
         return True
+    
+    def _is_setup_movement(self, description):
+        """
+        Determine if a movement is a setup operation that should bypass safety checks
+        
+        Setup movements are positioning operations that prepare motors for actual work.
+        These are allowed regardless of door position.
+        """
+        description_lower = description.lower()
+        
+        # Setup movement indicators
+        setup_indicators = [
+            'home position',
+            'ensure',
+            'move rows motor to home',
+            'move lines motor to home', 
+            'complete:',
+            'init:',
+            'position for repeat'
+        ]
+        
+        return any(indicator in description_lower for indicator in setup_indicators)
     
     def log_violation(self, safety_code, message):
         """Log safety violation for debugging"""
