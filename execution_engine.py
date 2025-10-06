@@ -259,6 +259,9 @@ class ExecutionEngine:
                 step = self.steps[self.current_step_index]
                 print(f"🎬 EXECUTING STEP {self.current_step_index + 1}: {step['operation']} - {step['description']}")
                 
+                # Track current step description for safety monitoring
+                self.current_step_description = step.get('description', '')
+                
                 # Check for operation transition (lines to rows)
                 previous_operation = self.current_operation_type
                 self._update_current_operation_type(step)
@@ -566,6 +569,14 @@ class ExecutionEngine:
             while not self.safety_monitor_stop.is_set():
                 if self.is_running and not self.is_paused and self.current_operation_type:
                     
+                    # Skip safety monitoring during setup steps
+                    if hasattr(self, 'current_step_description'):
+                        from safety_system import safety_system
+                        if safety_system._is_setup_movement(self.current_step_description):
+                            print(f"🔧 Skipping safety monitor for setup step: {self.current_step_description[:50]}...")
+                            time.sleep(0.1)
+                            continue
+                    
                     # Check safety based on current operation type
                     try:
                         from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
@@ -576,8 +587,12 @@ class ExecutionEngine:
                         safety_violation = False
                         violation_message = ""
                         
+                        # DEBUG: Show current monitoring state (less frequent)
+                        # print(f"🛡️  Safety Monitor: Operation={self.current_operation_type}, Programmed={row_marker_programmed.upper()}, Physical={row_marker_actual.upper()}")
+                        
                         if self.current_operation_type == 'lines':
                             # LINES OPERATIONS: Row marker MUST be UP (door closed)
+                            # Only check during actual line operations, not setup steps
                             if row_marker_programmed == "down" or row_marker_actual == "down":
                                 safety_violation = True
                                 violation_message = (
@@ -589,6 +604,7 @@ class ExecutionEngine:
                         
                         elif self.current_operation_type == 'rows':
                             # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
+                            # Only check during actual rows operations, not setup steps
                             if row_marker_programmed == "up" or row_marker_actual == "up":
                                 safety_violation = True
                                 violation_message = (
