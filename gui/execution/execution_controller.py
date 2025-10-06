@@ -303,12 +303,24 @@ The system will remain stopped until you manually address this issue."""
         # Create new transition dialog window
         self.transition_dialog = tk.Toplevel(self.main_app.root)
         self.transition_dialog.title(f"Operation Transition: {from_op} → {to_op}")
-        self.transition_dialog.geometry("450x300")
+        self.transition_dialog.geometry("450x320")
         self.transition_dialog.resizable(False, False)
         
-        # Center the dialog
+        # Position dialog to the side so it doesn't block main window completely
+        # Get main window position
+        main_x = self.main_app.root.winfo_x()
+        main_y = self.main_app.root.winfo_y()
+        main_width = self.main_app.root.winfo_width()
+        
+        # Position dialog to the right of main window
+        dialog_x = main_x + main_width + 10
+        dialog_y = main_y + 100
+        
+        self.transition_dialog.geometry(f"450x320+{dialog_x}+{dialog_y}")
+        
+        # Make it non-modal so user can access main window
         self.transition_dialog.transient(self.main_app.root)
-        self.transition_dialog.grab_set()  # Make it modal but allow background monitoring
+        # Removed grab_set() to allow user to interact with main window controls
         
         # Main frame
         main_frame = tk.Frame(self.transition_dialog, padx=20, pady=20)
@@ -382,6 +394,17 @@ The system will remain stopped until you manually address this issue."""
             fg='blue'
         ).pack()
         
+        # Instructions for user
+        instructions_label = tk.Label(
+            main_frame,
+            text="💡 You can use the main window controls while this dialog is open.\nUse the 'Toggle Switch' button to set the row marker to DOWN position.",
+            font=('Arial', 9, 'bold'),
+            fg='blue',
+            wraplength=400,
+            justify=tk.CENTER
+        )
+        instructions_label.pack(pady=(5, 5))
+        
         # Auto-dismiss info
         auto_dismiss_label = tk.Label(
             main_frame,
@@ -391,7 +414,7 @@ The system will remain stopped until you manually address this issue."""
             wraplength=400,
             justify=tk.CENTER
         )
-        auto_dismiss_label.pack(pady=(10, 0))
+        auto_dismiss_label.pack(pady=(5, 0))
         
         print(f"📋 Transition dialog shown: {from_op} → {to_op}")
     
