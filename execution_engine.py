@@ -632,11 +632,9 @@ class ExecutionEngine:
                             print("🚨 REAL-TIME SAFETY VIOLATION DETECTED!")
                             print(violation_message)
                             
-                            # IMMEDIATE EMERGENCY STOP
-                            self.stop_event.set()
-                            self.safety_monitor_stop.set()
-                            self.is_running = False
-                            self.is_paused = False
+                            # PAUSE execution instead of stopping completely
+                            self.is_paused = True
+                            self.pause_event.clear()
                             
                             # Update status with emergency stop
                             self._update_status("emergency_stop", {
@@ -645,6 +643,8 @@ class ExecutionEngine:
                                 'monitor_type': 'real_time'
                             })
                             
+                            # Continue monitoring to detect when violation is resolved
+                            self._monitor_safety_recovery()
                             break
                     
                     except Exception as e:
@@ -657,6 +657,59 @@ class ExecutionEngine:
             print(f"Safety monitoring thread error: {e}")
         
         print("🛡️  Real-time safety monitoring stopped")
+    
+    def _monitor_safety_recovery(self):
+        """Monitor for safety violation recovery and auto-resume when fixed"""
+        import time
+        from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+        
+        print("🔄 Monitoring for safety violation recovery...")
+        
+        # Remember what the violation was
+        expected_operation = self.current_operation_type
+        
+        while self.is_running and self.is_paused:
+            # Check if violation has been resolved
+            try:
+                row_marker_programmed = get_row_marker_state()
+                row_marker_actual = get_row_marker_limit_switch()
+                
+                violation_resolved = False
+                
+                if expected_operation == 'lines':
+                    # LINES OPERATIONS: Row marker should be UP (door closed)
+                    if row_marker_programmed == "up" and row_marker_actual == "up":
+                        violation_resolved = True
+                        print("✅ LINES SAFETY VIOLATION RESOLVED: Row marker restored to UP")
+                        
+                elif expected_operation == 'rows':
+                    # ROWS OPERATIONS: Row marker should be DOWN (door open)
+                    if row_marker_programmed == "down" and row_marker_actual == "down":
+                        violation_resolved = True
+                        print("✅ ROWS SAFETY VIOLATION RESOLVED: Row marker restored to DOWN")
+                
+                if violation_resolved:
+                    # Auto-resume execution
+                    self.is_paused = False
+                    self.pause_event.set()
+                    
+                    # Update status to show recovery
+                    self._update_status("safety_recovered", {
+                        'message': f'{expected_operation.title()} operation safety violation resolved - resuming execution',
+                        'operation_type': expected_operation
+                    })
+                    
+                    print(f"▶️  AUTO-RESUMING {expected_operation.upper()} EXECUTION")
+                    return
+                
+                # Check every 500ms
+                time.sleep(0.5)
+                
+            except Exception as e:
+                print(f"Error in safety recovery monitoring: {e}")
+                break
+        
+        print("🔄 Safety recovery monitoring ended")
     
     def _handle_lines_to_rows_transition(self):
         """

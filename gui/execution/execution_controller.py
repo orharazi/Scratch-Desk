@@ -135,11 +135,55 @@ class ExecutionController:
                     
                 # Update GUI controls to emergency stop state
                 if hasattr(self.main_app, 'right_panel'):
-                    self.main_app.right_panel.run_btn.config(state='disabled', bg='darkred')
+                    # Set emergency stop button states
+                    self.main_app.right_panel.run_btn.config(state='normal', text='🔄 RETRY', bg='orange')
                     self.main_app.right_panel.pause_btn.config(state='disabled')
                     self.main_app.right_panel.stop_btn.config(state='disabled')
+                    
+                    # Show persistent error status in right panel
+                    error_message = f"⚠️  SAFETY VIOLATION: {safety_code}"
+                    if hasattr(self.main_app.right_panel, 'progress_label'):
+                        self.main_app.right_panel.progress_label.config(
+                            text=error_message, 
+                            fg='red'
+                        )
                 
                 self.main_app.operation_label.config(text="🚨 EMERGENCY STOP - Safety Violation", fg='red')
+            
+            elif status == 'safety_recovered':
+                # Safety violation resolved - auto-resuming
+                message = info.get('message', 'Safety violation resolved')
+                operation_type = info.get('operation_type', 'operation')
+                
+                # Update progress and status to show recovery
+                current_progress = self.main_app.progress['value']
+                self.main_app.progress_text.config(
+                    text=f"{current_progress:.1f}% - Safety resolved, resuming...", 
+                    fg='green'
+                )
+                
+                # Restore run button to normal state
+                if hasattr(self.main_app, 'right_panel'):
+                    self.main_app.right_panel.run_btn.config(
+                        state='disabled', 
+                        text='▶ RUN', 
+                        bg='darkgreen'
+                    )
+                    self.main_app.right_panel.pause_btn.config(state='normal')
+                    self.main_app.right_panel.stop_btn.config(state='normal')
+                    
+                    # Clear error status from right panel
+                    if hasattr(self.main_app.right_panel, 'progress_label'):
+                        self.main_app.right_panel.progress_label.config(
+                            text="✅ Safety violation resolved - Resuming", 
+                            fg='green'
+                        )
+                
+                # Update operation label
+                self.main_app.operation_label.config(
+                    text=f"✅ Safety resolved - {operation_type.title()} execution resuming", 
+                    fg='green'
+                )
             
             elif status == 'transition_alert':
                 # Show auto-dismissing transition alert
