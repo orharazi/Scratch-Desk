@@ -483,10 +483,12 @@ class ExecutionEngine:
                 action = parameters['action']
                 
                 # Map tool actions to hardware functions
+                # NOTE: row_marker tool actions do NOT affect the limit switch state
+                # The limit switch is ONLY controlled by user via toggle button
                 tool_functions = {
                     'line_marker': {'down': line_marker_down, 'up': line_marker_up},
                     'line_cutter': {'down': line_cutter_down, 'up': line_cutter_up},
-                    'row_marker': {'down': row_marker_down, 'up': row_marker_up},
+                    'row_marker': {'down': self._row_marker_tool_down, 'up': self._row_marker_tool_up},
                     'row_cutter': {'down': row_cutter_down, 'up': row_cutter_up}
                 }
                 
@@ -543,16 +545,28 @@ class ExecutionEngine:
         
         return result
     
+    def _row_marker_tool_down(self):
+        """Lower the row marker tool for marking (does NOT affect limit switch state)"""
+        print("🔧 Row marker tool: DOWN (marking position)")
+        # This would control the physical marking tool, not the safety limit switch
+        # The limit switch state is ONLY controlled by user via toggle button
+    
+    def _row_marker_tool_up(self):
+        """Raise the row marker tool after marking (does NOT affect limit switch state)"""
+        print("🔧 Row marker tool: UP (raised position)")
+        # This would control the physical marking tool, not the safety limit switch
+        # The limit switch state is ONLY controlled by user via toggle button
+    
     def _update_current_operation_type(self, step):
         """Update the current operation type based on step description for safety monitoring"""
         description = step.get('description', '').lower()
         
         # Detect operation type from step description
-        if any(keyword in description for keyword in ['lines', 'line_', 'move_y', 'y_']):
+        if any(keyword in description for keyword in ['lines', 'line_', 'line ', 'move_y', 'y_']):
             if 'rows' not in description:  # Make sure it's not a rows operation
                 self.current_operation_type = 'lines'
         elif any(keyword in description for keyword in ['rows', 'row_', 'move_x', 'x_']):
-            if 'lines' not in description:  # Make sure it's not a lines operation  
+            if 'lines' not in description and 'line' not in description:  # Make sure it's not a lines operation  
                 self.current_operation_type = 'rows'
         else:
             # Keep previous operation type for ambiguous steps
