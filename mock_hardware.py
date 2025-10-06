@@ -261,17 +261,23 @@ current_execution_engine = None
 
 # Sensor functions with manual triggering and timing control
 def wait_for_x_left_sensor():
-    """Wait for LEFT X sensor specifically. Ignores premature triggers."""
+    """Wait for LEFT X sensor specifically. Ignores premature triggers and safety pauses."""
     print("MOCK: wait_for_x_left_sensor()")
     print("Waiting for LEFT X sensor... (Use trigger_x_left_sensor())")
     print("In GUI mode, click 'Left Edge' button")
     
-    # Clear any existing triggers first (ignore premature triggers)
+    # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['x_left'].clear()
     
     # Wait specifically for left sensor
     while True:
         if sensor_events['x_left'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 X LEFT sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['x_left'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['x_left'].clear()
             sensor_results['x_sensor'] = 'left'
             print("X LEFT sensor triggered: LEFT edge detected")
@@ -282,17 +288,23 @@ def wait_for_x_left_sensor():
             return 'left'
 
 def wait_for_x_right_sensor():
-    """Wait for RIGHT X sensor specifically. Ignores premature triggers."""
+    """Wait for RIGHT X sensor specifically. Ignores premature triggers and safety pauses."""
     print("MOCK: wait_for_x_right_sensor()")
     print("Waiting for RIGHT X sensor... (Use trigger_x_right_sensor())")
     print("In GUI mode, click 'Right Edge' button")
     
-    # Clear any existing triggers first (ignore premature triggers)
+    # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['x_right'].clear()
     
     # Wait specifically for right sensor
     while True:
         if sensor_events['x_right'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 X RIGHT sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['x_right'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['x_right'].clear()
             sensor_results['x_sensor'] = 'right'
             print("X RIGHT sensor triggered: RIGHT edge detected")
@@ -303,17 +315,23 @@ def wait_for_x_right_sensor():
             return 'right'
 
 def wait_for_y_top_sensor():
-    """Wait for TOP Y sensor specifically. Ignores premature triggers."""
+    """Wait for TOP Y sensor specifically. Ignores premature triggers and safety pauses."""
     print("MOCK: wait_for_y_top_sensor()")
     print("Waiting for TOP Y sensor... (Use trigger_y_top_sensor())")
     print("In GUI mode, click 'Top Edge' button")
     
-    # Clear any existing triggers first (ignore premature triggers)
+    # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['y_top'].clear()
     
     # Wait specifically for top sensor
     while True:
         if sensor_events['y_top'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 Y TOP sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['y_top'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['y_top'].clear()
             sensor_results['y_sensor'] = 'top'
             print("Y TOP sensor triggered: TOP edge detected")
@@ -324,17 +342,23 @@ def wait_for_y_top_sensor():
             return 'top'
 
 def wait_for_y_bottom_sensor():
-    """Wait for BOTTOM Y sensor specifically. Ignores premature triggers."""
+    """Wait for BOTTOM Y sensor specifically. Ignores premature triggers and safety pauses."""
     print("MOCK: wait_for_y_bottom_sensor()")
     print("Waiting for BOTTOM Y sensor... (Use trigger_y_bottom_sensor())")
     print("In GUI mode, click 'Bottom Edge' button")
     
-    # Clear any existing triggers first (ignore premature triggers)
+    # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['y_bottom'].clear()
     
     # Wait specifically for bottom sensor
     while True:
         if sensor_events['y_bottom'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 Y BOTTOM sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['y_bottom'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['y_bottom'].clear()
             sensor_results['y_sensor'] = 'bottom'
             print("Y BOTTOM sensor triggered: BOTTOM edge detected")
@@ -346,50 +370,84 @@ def wait_for_y_bottom_sensor():
 
 # Legacy sensor functions for backward compatibility
 def wait_for_x_sensor():
-    """Wait for X sensor to be triggered manually. Returns 'left' or 'right'"""
+    """Wait for X sensor to be triggered manually. Returns 'left' or 'right'. Ignores triggers during safety pauses."""
     print("MOCK: wait_for_x_sensor()")
     print("Waiting for X sensor... (Use trigger_x_left_sensor() or trigger_x_right_sensor())")
     print("In GUI mode, click 'Left Edge' or 'Right Edge' buttons")
     
-    # Clear any existing triggers first (ignore premature triggers)
+    # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['x_left'].clear()
     sensor_events['x_right'].clear()
     
     # Wait for either left or right sensor
     while True:
         if sensor_events['x_left'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 X LEFT sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['x_left'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['x_left'].clear()
             sensor_results['x_sensor'] = 'left'
             print("X sensor triggered: LEFT edge detected")
             return 'left'
         elif sensor_events['x_right'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 X RIGHT sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['x_right'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['x_right'].clear()
             sensor_results['x_sensor'] = 'right'
             print("X sensor triggered: RIGHT edge detected")
             return 'right'
 
 def wait_for_y_sensor():
-    """Wait for Y sensor to be triggered manually. Returns 'top' or 'bottom'"""
+    """Wait for Y sensor to be triggered manually. Returns 'top' or 'bottom'. Ignores triggers during safety pauses."""
     print("MOCK: wait_for_y_sensor()")
     print("Waiting for Y sensor... (Use trigger_y_top_sensor() or trigger_y_bottom_sensor())")
     print("In GUI mode, click 'Top Edge' or 'Bottom Edge' buttons")
     
-    # Clear any existing triggers first (ignore premature triggers)
+    # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['y_top'].clear()
     sensor_events['y_bottom'].clear()
     
     # Wait for either top or bottom sensor
     while True:
         if sensor_events['y_top'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 Y TOP sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['y_top'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['y_top'].clear()
             sensor_results['y_sensor'] = 'top'
             print("Y sensor triggered: TOP edge detected")
             return 'top'
         elif sensor_events['y_bottom'].wait(timeout=0.1):
+            # Check if execution is paused due to safety violation - ignore triggers during pause
+            if current_execution_engine and current_execution_engine.is_paused:
+                print("🚫 Y BOTTOM sensor trigger ignored - execution paused due to safety violation")
+                sensor_events['y_bottom'].clear()  # Flush the trigger
+                continue  # Keep waiting
+            
             sensor_events['y_bottom'].clear()
             sensor_results['y_sensor'] = 'bottom'
             print("Y sensor triggered: BOTTOM edge detected")
             return 'bottom'
+
+# Sensor buffer management for safety system
+def flush_all_sensor_buffers():
+    """Clear all sensor event buffers - used when resuming from safety pauses"""
+    print("🧹 FLUSH: Clearing all sensor buffers (removing triggers from safety pause)")
+    for sensor_name, event in sensor_events.items():
+        if event.is_set():
+            print(f"    Flushing {sensor_name} sensor buffer")
+        event.clear()
+    print("✅ All sensor buffers cleared - ready for post-resume triggers")
 
 # Manual sensor triggers for testing
 def trigger_x_left_sensor():

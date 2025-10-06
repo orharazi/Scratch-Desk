@@ -76,6 +76,10 @@ class ExecutionEngine:
         self.step_results = []
         self.start_time = time.time()
         
+        # Pass execution engine reference to mock hardware for sensor waiting functions
+        from mock_hardware import set_execution_engine_reference
+        set_execution_engine_reference(self)
+        
         # Start execution thread
         self.execution_thread = threading.Thread(target=self._execution_loop, daemon=False)
         self.execution_thread.start()
@@ -106,6 +110,10 @@ class ExecutionEngine:
         if not self.is_running or not self.is_paused:
             print("Cannot resume - not running or not paused")
             return False
+        
+        # Flush all sensor buffers when manually resuming (in case paused due to safety)
+        from mock_hardware import flush_all_sensor_buffers
+        flush_all_sensor_buffers()
         
         self.is_paused = False
         self.pause_event.set()
@@ -663,6 +671,10 @@ class ExecutionEngine:
                                     print("✅ ROWS SAFETY VIOLATION RESOLVED: Row marker restored to DOWN")
                             
                             if violation_resolved:
+                                # Flush all sensor buffers to ignore triggers that happened during pause
+                                from mock_hardware import flush_all_sensor_buffers
+                                flush_all_sensor_buffers()
+                                
                                 # Auto-resume execution
                                 self.is_paused = False
                                 self.pause_event.set()

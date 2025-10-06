@@ -743,9 +743,11 @@ class CanvasManager:
         paper_bottom_left_x = PAPER_OFFSET_X
         paper_bottom_left_y = PAPER_OFFSET_Y
         
-        # Program size
-        paper_width = p.width
-        paper_height = p.high
+        # ACTUAL paper size (with repeats)
+        paper_width = p.width * p.repeat_rows
+        paper_height = p.high * p.repeat_lines
+        
+        print(f"🖼️ CANVAS UPDATE: Showing ACTUAL paper size {paper_width}×{paper_height}cm (repeats: {p.repeat_rows}×{p.repeat_lines})")
         
         # Convert to canvas coordinates
         max_y_cm = self.main_app.settings.get("simulation", {}).get("max_display_y", 80)
@@ -763,11 +765,19 @@ class CanvasManager:
                 outline='blue', width=3, fill='lightblue', stipple='gray50'
             )
         
-        # Add program label
+        # Add program label with repeat information
+        single_size = f"{p.width}×{p.high}cm"
+        repeats_info = f"{p.repeat_rows}×{p.repeat_lines}" if (p.repeat_rows > 1 or p.repeat_lines > 1) else ""
+        
+        if repeats_info:
+            label_text = f"{p.program_name}\nActual: {paper_width}×{paper_height}cm (Pattern: {single_size}, Repeats: {repeats_info})"
+        else:
+            label_text = f"{p.program_name}\n{paper_width}×{paper_height}cm"
+        
         self.main_app.canvas.create_text(
-            canvas_x1 + (canvas_x2 - canvas_x1) / 2, canvas_y1 - 15,
-            text=f"{p.program_name} ({paper_width}x{paper_height}cm)", 
-            font=('Arial', 10, 'bold'), fill='blue', tags="work_lines"
+            canvas_x1 + (canvas_x2 - canvas_x1) / 2, canvas_y1 - 25,
+            text=label_text, 
+            font=('Arial', 9, 'bold'), fill='darkblue', tags="work_lines", justify='center'
         )
         
         # Add line marking and cutting visualizations
@@ -776,7 +786,7 @@ class CanvasManager:
         # Legend is now drawn in center panel UI instead of on canvas
     
     def draw_work_lines(self, program, paper_x, paper_y, max_y_cm):
-        """Draw visualization of lines that will be marked and cut with dynamic colors"""
+        """Draw visualization of lines that will be marked and cut with REPEAT SUPPORT"""
         
         # Initialize operation states when program changes
         self.initialize_operation_states(program)
@@ -784,11 +794,17 @@ class CanvasManager:
         # Clear previous work line objects
         self.main_app.work_line_objects = {}
         
-        # Calculate line positions for Lines Pattern - match step generator logic
-        # Use exact number of lines user requested
-        first_line_y = paper_y + program.high - program.top_padding
+        # Calculate ACTUAL paper dimensions with repeats
+        actual_paper_width = program.width * program.repeat_rows
+        actual_paper_height = program.high * program.repeat_lines
+        
+        print(f"📏 DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm")
+        
+        # Calculate line positions for Lines Pattern WITH REPEATS - match step generator logic
+        first_line_y = paper_y + actual_paper_height - program.top_padding
         last_line_y = paper_y + program.bottom_padding  # Last line above bottom edge
-        actual_lines_to_draw = program.number_of_lines  
+        # Total lines across ALL repeated sections
+        actual_lines_to_draw = program.number_of_lines * program.repeat_lines  
         
         if actual_lines_to_draw > 1:
             line_spacing = (first_line_y - last_line_y) / (actual_lines_to_draw - 1)
@@ -796,13 +812,17 @@ class CanvasManager:
             line_spacing = 0
         
         for line_num in range(actual_lines_to_draw):
-            line_display_num = line_num + 1  # Display numbers starting from 1
+            # Calculate which repeat section and line within section this is
+            section_num = line_num // program.number_of_lines + 1
+            line_in_section = line_num % program.number_of_lines + 1
+            line_display_num = line_num + 1  # Overall line number
+            
             line_y_real = first_line_y - (line_num * line_spacing)
             
-            # Convert to canvas coordinates
+            # Convert to canvas coordinates - lines span ENTIRE repeated paper width
             line_y_canvas = self.main_app.offset_y + (max_y_cm - line_y_real) * self.main_app.scale_y
             line_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
-            line_x2_canvas = self.main_app.offset_x + (paper_x + program.width) * self.main_app.scale_x
+            line_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
             
             # Dynamic color based on state
             state = self.main_app.operation_states['lines'].get(line_display_num, 'pending')
@@ -841,22 +861,27 @@ class CanvasManager:
             )
             self.main_app.work_line_objects[f'line_{line_display_num}']['label_id'] = label_id
         
-        # Draw vertical lines (Row Pattern) - Show ALL page start and end marks
+        # Draw vertical lines (Row Pattern) WITH REPEAT SUPPORT - Show ALL page marks across repeated sections
         first_page_start = paper_x + program.left_margin
         
-        # Draw each page's start and end marks (like the step generator does)
+        # Calculate TOTAL pages across all repeated sections
+        total_pages = program.number_of_pages * program.repeat_rows
+        
+        print(f"📄 DRAWING PAGES: {total_pages} total pages ({program.number_of_pages} per section × {program.repeat_rows} sections)")
+        
+        # Draw each page's start and end marks (across entire repeated area)
         page_mark_id = 1  # For tracking state
         
-        for page_num in range(program.number_of_pages):
-            # Calculate page start position
+        for page_num in range(total_pages):
+            # Calculate page start position across ENTIRE repeated paper
             page_start_x = first_page_start + page_num * (program.page_width + program.buffer_between_pages)
             
             # Calculate page end position  
             page_end_x = page_start_x + program.page_width
             
-            # Draw page START mark
+            # Draw page START mark - spans ACTUAL paper height
             page_start_canvas = self.main_app.offset_x + page_start_x * self.main_app.scale_x
-            page_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + program.high)) * self.main_app.scale_y
+            page_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + actual_paper_height)) * self.main_app.scale_y
             page_y2_canvas = self.main_app.offset_y + (max_y_cm - paper_y) * self.main_app.scale_y
             
             # Individual row state tracking - each edge is independent
@@ -1012,7 +1037,14 @@ class CanvasManager:
                 }
     
     def initialize_operation_states(self, program):
-        """Initialize operation states for the current program"""
+        """Initialize operation states for the current program WITH REPEAT SUPPORT"""
+        # Calculate TOTAL elements across all repeated sections
+        total_lines = program.number_of_lines * program.repeat_lines
+        total_pages = program.number_of_pages * program.repeat_rows
+        total_rows = total_pages * 2  # 2 rows per page (right edge + left edge)
+        
+        print(f"🔄 INITIALIZING STATES: {total_lines} lines, {total_pages} pages, {total_rows} rows (with repeats)")
+        
         self.main_app.operation_states = {
             'lines': {},      # Track line marking states: {1: 'pending', 2: 'completed', ...}
             'cuts': {},       # Track cutting states: {'top'/'bottom'/'left'/'right': 'pending'/'completed'}
@@ -1020,21 +1052,20 @@ class CanvasManager:
             'rows': {}        # Track individual row states: {'row_1': 'pending', 'row_2': 'completed', ...}
         }
         
-        # Initialize all lines as pending (N lines = N internal markings)
-        for line_num in range(1, program.number_of_lines + 1):
+        # Initialize ALL lines across repeated sections as pending
+        for line_num in range(1, total_lines + 1):
             self.main_app.operation_states['lines'][line_num] = 'pending'
         
         # Initialize all cuts as pending
         for cut_name in ['top', 'bottom', 'left', 'right']:
             self.main_app.operation_states['cuts'][cut_name] = 'pending'
         
-        # Initialize all pages as pending (both start and end for each page)
-        for page_num in range(1, program.number_of_pages + 1):
+        # Initialize ALL pages across repeated sections as pending (both start and end for each page)
+        for page_num in range(1, total_pages + 1):
             self.main_app.operation_states['pages'][f'{page_num}_start'] = 'pending'
             self.main_app.operation_states['pages'][f'{page_num}_end'] = 'pending'
         
-        # Initialize all individual rows as pending (2 rows per page: right edge + left edge)
-        total_rows = program.number_of_pages * 2
+        # Initialize ALL individual rows across repeated sections as pending
         for row_num in range(1, total_rows + 1):
             self.main_app.operation_states['rows'][f'row_{row_num}'] = 'pending'
     

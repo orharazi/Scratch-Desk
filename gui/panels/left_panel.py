@@ -36,7 +36,7 @@ class LeftPanel:
         file_frame.pack(fill=tk.X, padx=10, pady=5)
         
         tk.Button(file_frame, text="Load CSV", command=self.load_csv_file,
-                 bg='darkgreen', fg='white', font=('Arial', 10, 'bold'),
+                 bg='darkgreen', fg='black', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, bd=2, activebackground='green', activeforeground='white').pack(fill=tk.X)
         
         self.current_file_label = tk.Label(file_frame, text="No file loaded", 
@@ -125,7 +125,7 @@ class LeftPanel:
                  relief=tk.RAISED, bd=2, activebackground='orange', activeforeground='black').pack(side=tk.LEFT, padx=(0,5))
         
         tk.Button(button_frame, text="Validate", command=self.validate_program,
-                 bg='royalblue', fg='white', font=('Arial', 9, 'bold'),
+                 bg='royalblue', fg='black', font=('Arial', 9, 'bold'),
                  relief=tk.RAISED, bd=2, activebackground='blue', activeforeground='white').pack(side=tk.LEFT)
     
     def create_validation_section(self):
@@ -140,6 +140,56 @@ class LeftPanel:
         self.validation_text = tk.Label(self.validation_frame, text="No program selected", 
                                        bg='lightgray', font=('Arial', 9))
         self.validation_text.pack(side=tk.LEFT, padx=(5,0))
+        
+        # Add paper size display section
+        self.create_paper_size_section()
+    
+    def create_paper_size_section(self):
+        """Create paper size calculation display section"""
+        # Paper size calculation frame
+        paper_size_frame = tk.Frame(self.parent_frame, bg='lightsteelblue', relief=tk.RIDGE, bd=2)
+        paper_size_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Title
+        tk.Label(paper_size_frame, text="📐 ACTUAL PAPER SIZE (With Repeats)", 
+                font=('Arial', 10, 'bold'), bg='lightsteelblue', fg='darkblue').pack(pady=5)
+        
+        # Pattern size section
+        pattern_frame = tk.Frame(paper_size_frame, bg='lightsteelblue')
+        pattern_frame.pack(fill=tk.X, padx=10)
+        
+        tk.Label(pattern_frame, text="Single Pattern:", font=('Arial', 9, 'bold'),
+                bg='lightsteelblue', fg='darkblue').grid(row=0, column=0, sticky="w")
+        
+        self.pattern_size_label = tk.Label(pattern_frame, text="0.0 × 0.0 cm", 
+                                         font=('Arial', 9), bg='lightsteelblue', fg='darkblue')
+        self.pattern_size_label.grid(row=0, column=1, sticky="w", padx=(5,0))
+        
+        # Repeats section
+        tk.Label(pattern_frame, text="Repeats:", font=('Arial', 9, 'bold'),
+                bg='lightsteelblue', fg='darkblue').grid(row=1, column=0, sticky="w")
+        
+        self.repeats_label = tk.Label(pattern_frame, text="1 rows × 1 lines", 
+                                    font=('Arial', 9), bg='lightsteelblue', fg='darkblue')
+        self.repeats_label.grid(row=1, column=1, sticky="w", padx=(5,0))
+        
+        # Actual size section (highlighted)
+        actual_frame = tk.Frame(paper_size_frame, bg='lightcyan', relief=tk.SUNKEN, bd=2)
+        actual_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(actual_frame, text="🎯 ACTUAL SIZE NEEDED:", font=('Arial', 10, 'bold'),
+                bg='lightcyan', fg='darkred').pack()
+        
+        self.actual_size_label = tk.Label(actual_frame, text="0.0 × 0.0 cm", 
+                                        font=('Arial', 12, 'bold'), bg='lightcyan', fg='darkred')
+        self.actual_size_label.pack(pady=2)
+        
+        # Fit status
+        self.fit_status_label = tk.Label(actual_frame, text="", 
+                                       font=('Arial', 8), bg='lightcyan')
+        self.fit_status_label.pack()
+        
+        pattern_frame.grid_columnconfigure(1, weight=1)
     
     def load_csv_file(self):
         """Load CSV file dialog"""
@@ -214,6 +264,7 @@ class LeftPanel:
                 self.program_fields[field_name].insert(0, value)
         
         self.validate_program()
+        self.update_paper_size_display()
     
     def validate_program(self):
         """Validate current program"""
@@ -236,6 +287,11 @@ class LeftPanel:
         # Auto-validate after field change
         if self.main_app.current_program:
             self.validate_program()
+            # Update paper size display if repeat fields changed
+            widget = event.widget if event else None
+            if widget in [self.program_fields.get('repeat_rows'), self.program_fields.get('repeat_lines'),
+                         self.program_fields.get('width'), self.program_fields.get('high')]:
+                self.update_paper_size_display_from_fields()
     
     def update_current_program(self):
         """Update current program with field values"""
@@ -272,3 +328,90 @@ class LeftPanel:
             messagebox.showerror("Error", f"Invalid value entered: {e}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update program: {e}")
+    
+    def update_paper_size_display(self):
+        """Update paper size display with current program data"""
+        if not self.main_app.current_program:
+            self.pattern_size_label.config(text="No program selected")
+            self.repeats_label.config(text="No program selected")
+            self.actual_size_label.config(text="No program selected")
+            self.fit_status_label.config(text="")
+            return
+        
+        p = self.main_app.current_program
+        
+        # Single pattern size
+        self.pattern_size_label.config(text=f"{p.width} × {p.high} cm")
+        
+        # Repeats
+        self.repeats_label.config(text=f"{p.repeat_rows} rows × {p.repeat_lines} lines")
+        
+        # Calculate actual size
+        actual_width = p.width * p.repeat_rows
+        actual_height = p.high * p.repeat_lines
+        
+        self.actual_size_label.config(text=f"{actual_width} × {actual_height} cm")
+        
+        # Check if it fits on desk (from program model constants)
+        from program_model import ScratchDeskProgram
+        max_width = ScratchDeskProgram.MAX_WIDTH_OF_DESK
+        max_height = ScratchDeskProgram.MAX_HEIGHT_OF_DESK
+        
+        fits_width = actual_width <= max_width
+        fits_height = actual_height <= max_height
+        fits_on_desk = fits_width and fits_height
+        
+        if fits_on_desk:
+            self.fit_status_label.config(text="✅ Fits on desk", fg='darkgreen')
+        else:
+            warnings = []
+            if not fits_width:
+                warnings.append(f"Width exceeds desk ({actual_width} > {max_width})")
+            if not fits_height:
+                warnings.append(f"Height exceeds desk ({actual_height} > {max_height})")
+            self.fit_status_label.config(text=f"⚠️ {'; '.join(warnings)}", fg='darkred')
+    
+    def update_paper_size_display_from_fields(self):
+        """Update paper size display from current field values (for real-time updates)"""
+        try:
+            # Get values directly from fields
+            width = float(self.program_fields['width'].get() or 0)
+            high = float(self.program_fields['high'].get() or 0)
+            repeat_rows = int(self.program_fields['repeat_rows'].get() or 1)
+            repeat_lines = int(self.program_fields['repeat_lines'].get() or 1)
+            
+            # Single pattern size
+            self.pattern_size_label.config(text=f"{width} × {high} cm")
+            
+            # Repeats
+            self.repeats_label.config(text=f"{repeat_rows} rows × {repeat_lines} lines")
+            
+            # Calculate actual size
+            actual_width = width * repeat_rows
+            actual_height = high * repeat_lines
+            
+            self.actual_size_label.config(text=f"{actual_width} × {actual_height} cm")
+            
+            # Check if it fits on desk
+            from program_model import ScratchDeskProgram
+            max_width = ScratchDeskProgram.MAX_WIDTH_OF_DESK
+            max_height = ScratchDeskProgram.MAX_HEIGHT_OF_DESK
+            
+            fits_width = actual_width <= max_width
+            fits_height = actual_height <= max_height
+            fits_on_desk = fits_width and fits_height
+            
+            if fits_on_desk:
+                self.fit_status_label.config(text="✅ Fits on desk", fg='darkgreen')
+            else:
+                warnings = []
+                if not fits_width:
+                    warnings.append(f"Width exceeds desk ({actual_width} > {max_width})")
+                if not fits_height:
+                    warnings.append(f"Height exceeds desk ({actual_height} > {max_height})")
+                self.fit_status_label.config(text=f"⚠️ {'; '.join(warnings)}", fg='darkred')
+                
+        except (ValueError, TypeError):
+            # Handle invalid field values gracefully
+            self.actual_size_label.config(text="Invalid values")
+            self.fit_status_label.config(text="⚠️ Check your input values", fg='orange')
