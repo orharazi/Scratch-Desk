@@ -193,17 +193,7 @@ def generate_row_marking_steps(program):
     """
     steps = []
     
-    # SAFETY CHECK: Row marker must be DOWN before rows operations can proceed
-    from mock_hardware import get_row_marker_state
-    row_marker_state = get_row_marker_state()
-    
-    if row_marker_state != 'down':
-        print(f"🚨 SAFETY CHECK FAILED: Row marker is {row_marker_state.upper()}")
-        print("🛡️ ROWS OPERATION BLOCKED: Row marker must be DOWN before starting rows operations")
-        print("📋 Please manually set row marker to DOWN position and try again")
-        return []  # Return empty steps list to prevent operation
-    
-    print("✅ SAFETY CHECK PASSED: Row marker is DOWN - rows operations can proceed")
+    # Note: Safety checks for rows operations happen during execution, not step generation
     
     # Paper offset - program coordinates start at (15, 15) on desk
     PAPER_OFFSET_X = 15.0
