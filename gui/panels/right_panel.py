@@ -653,12 +653,24 @@ class RightPanel:
     
     def toggle_limit_switch(self):
         """Toggle row marker limit switch (manual operator control)"""
-        from mock_hardware import toggle_row_marker_limit_switch
-        new_state = toggle_row_marker_limit_switch()
+        from mock_hardware import toggle_row_marker_limit_switch, row_marker_down, row_marker_up, get_row_marker_state
+        
+        # Toggle the physical limit switch
+        new_physical_state = toggle_row_marker_limit_switch()
+        
+        # Synchronize the programmed state to match the physical state
+        if new_physical_state == 'down':
+            row_marker_down()  # Set programmed state to DOWN
+        else:
+            row_marker_up()    # Set programmed state to UP
+        
+        # Verify synchronization
+        programmed_state = get_row_marker_state()
+        print(f"🔄 Row marker toggle: Physical={new_physical_state.upper()}, Programmed={programmed_state.upper()}")
         
         # Update the status label
-        status_text = f"Status: {new_state.upper()}"
-        status_color = 'darkgreen' if new_state == 'up' else 'darkred'
+        status_text = f"Status: {new_physical_state.upper()}"
+        status_color = 'darkgreen' if new_physical_state == 'up' else 'darkred'
         self.limit_switch_status_label.config(text=status_text, fg=status_color)
         
         # Force canvas position update to refresh tool indicators

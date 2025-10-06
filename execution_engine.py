@@ -676,6 +676,9 @@ class ExecutionEngine:
             row_marker_programmed = get_row_marker_state()
             row_marker_actual = get_row_marker_limit_switch()
             
+            # Debug output to verify monitoring is running
+            print(f"🔍 Monitoring: Programmed={row_marker_programmed.upper()}, Physical={row_marker_actual.upper()}")
+            
             if row_marker_programmed == "down" and row_marker_actual == "down":
                 print("✅ Row marker set to DOWN - auto-resuming execution")
                 
@@ -696,8 +699,8 @@ class ExecutionEngine:
                 'waiting_for': 'down'
             })
             
-            # Check every 200ms for responsive monitoring
-            time.sleep(0.2)
+            # Check every 500ms for responsive monitoring (increased from 200ms for less spam)
+            time.sleep(0.5)
         
         # Execution was stopped during transition
         print("⏹️  Execution stopped during lines→rows transition")
