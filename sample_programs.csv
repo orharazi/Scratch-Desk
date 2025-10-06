@@ -1,0 +1,6 @@
+program_number,program_name,high,number_of_lines,top_padding,bottom_padding,width,left_margin,right_margin,page_width,number_of_pages,buffer_between_pages,repeat_rows,repeat_lines
+1,Valid Small Program,10,5,2,1,48,5,5,8,4,2,1,1
+2,Valid Medium Program,12,4,3,2,33,3,3,6,4,1,1,2
+3,Valid Large Program,8,6,1,1,75,10,10,15,3,5,1,1
+4,Row Pattern Fail,10,5,2,2,48,5,5,8,4,2,1,1
+5,Real Sized (DO NOT MODIFY!),60,51,8.05,6.05,74,3,3,14,4,4,1,1

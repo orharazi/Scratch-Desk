@@ -1,0 +1,792 @@
+#!/usr/bin/env python3
+
+import threading
+import time
+from mock_hardware import *
+from safety_system import SafetyViolation, check_step_safety
+
+class ExecutionEngine:
+    """Lightweight execution engine optimized for Raspberry Pi with threading support"""
+    
+    def __init__(self):
+        # Simple state variables for minimal memory usage
+        self.steps = []
+        self.current_step_index = 0
+        self.is_running = False
+        self.is_paused = False
+        self.execution_thread = None
+        
+        # Threading events for control
+        self.pause_event = threading.Event()
+        self.stop_event = threading.Event()
+        self.safety_monitor_stop = threading.Event()
+        
+        # Progress tracking
+        self.step_results = []
+        self.start_time = None
+        self.end_time = None
+        
+        # Status callback (for GUI updates)
+        self.status_callback = None
+        
+        # Operation callback (for individual operation tracking)
+        self.operation_callback = None
+        
+        # Safety monitoring
+        self.safety_monitor_thread = None
+        self.current_operation_type = None  # 'lines' or 'rows'
+        
+        # Set pause event initially (not paused)
+        self.pause_event.set()
+    
+    def set_status_callback(self, callback):
+        """Set callback function for status updates"""
+        self.status_callback = callback
+    
+    def _update_status(self, status, step_info=None):
+        """Update status and call callback if set"""
+        if self.status_callback:
+            self.status_callback(status, step_info)
+    
+    def load_steps(self, steps):
+        """Load steps for execution - optimized for minimal memory usage"""
+        self.steps = steps
+        self.current_step_index = 0
+        self.step_results = []
+        self.start_time = None
+        self.end_time = None
+        print(f"Loaded {len(steps)} steps for execution")
+    
+    def start_execution(self):
+        """Start execution in a separate thread"""
+        if self.is_running:
+            print("Execution already running")
+            return False
+        
+        if not self.steps:
+            print("No steps loaded")
+            return False
+        
+        # Reset state
+        self.is_running = True
+        self.is_paused = False
+        self.stop_event.clear()
+        self.pause_event.set()
+        self.current_step_index = 0
+        self.step_results = []
+        self.start_time = time.time()
+        
+        # Start execution thread
+        self.execution_thread = threading.Thread(target=self._execution_loop, daemon=False)
+        self.execution_thread.start()
+        
+        # Start safety monitoring thread
+        self.safety_monitor_stop.clear()
+        self.safety_monitor_thread = threading.Thread(target=self._safety_monitor_loop, daemon=False)
+        self.safety_monitor_thread.start()
+        
+        print("Execution started with real-time safety monitoring")
+        self._update_status("started")
+        return True
+    
+    def pause_execution(self):
+        """Pause execution"""
+        if not self.is_running or self.is_paused:
+            print("Cannot pause - not running or already paused")
+            return False
+        
+        self.is_paused = True
+        self.pause_event.clear()
+        print("Execution paused")
+        self._update_status("paused")
+        return True
+    
+    def resume_execution(self):
+        """Resume execution"""
+        if not self.is_running or not self.is_paused:
+            print("Cannot resume - not running or not paused")
+            return False
+        
+        self.is_paused = False
+        self.pause_event.set()
+        print("Execution resumed")
+        self._update_status("resumed")
+        return True
+    
+    def stop_execution(self):
+        """Stop execution"""
+        if not self.is_running:
+            print("Execution not running")
+            return False
+        
+        self.stop_event.set()
+        self.pause_event.set()  # Ensure thread can proceed to check stop event
+        
+        # Stop safety monitoring
+        self.safety_monitor_stop.set()
+        
+        # Wait for threads to finish (with timeout)
+        if self.execution_thread and self.execution_thread.is_alive():
+            self.execution_thread.join(timeout=2.0)
+        if self.safety_monitor_thread and self.safety_monitor_thread.is_alive():
+            self.safety_monitor_thread.join(timeout=1.0)
+        
+        self.is_running = False
+        self.is_paused = False
+        print("Execution stopped - safety monitoring disabled")
+        self._update_status("stopped")
+        return True
+    
+    def reset_execution(self):
+        """Reset execution to beginning"""
+        if self.is_running:
+            print("Cannot reset while running - stop execution first")
+            return False
+        
+        self.current_step_index = 0
+        self.step_results = []
+        self.start_time = None
+        self.end_time = None
+        self.is_paused = False
+        print("Execution reset to beginning")
+        return True
+    
+    def step_forward(self):
+        """Move to next step (manual navigation)"""
+        if self.is_running and not self.is_paused:
+            print("Cannot navigate manually while execution is running")
+            return False
+        
+        if self.current_step_index < len(self.steps) - 1:
+            self.current_step_index += 1
+            print(f"Moved to step {self.current_step_index  }/{len(self.steps)}")
+            return True
+        else:
+            print("Already at last step")
+            return False
+    
+    def step_backward(self):
+        """Move to previous step (manual navigation)"""
+        if self.is_running and not self.is_paused:
+            print("Cannot navigate manually while execution is running")
+            return False
+        
+        if self.current_step_index > 0:
+            self.current_step_index -= 1
+            print(f"Moved to step {self.current_step_index  }/{len(self.steps)}")
+            return True
+        else:
+            print("Already at first step")
+            return False
+    
+    def go_to_step(self, step_index):
+        """Go to specific step (manual navigation)"""
+        if self.is_running and not self.is_paused:
+            print("Cannot navigate manually while execution is running")
+            return False
+        
+        if 0 <= step_index < len(self.steps):
+            self.current_step_index = step_index
+            print(f"Moved to step {self.current_step_index  }/{len(self.steps)}")
+            return True
+        else:
+            print(f"Invalid step index: {step_index}. Valid range: 0-{len(self.steps) - 1}")
+            return False
+    
+    def execute_current_step(self):
+        """Execute current step manually (for step-by-step operation)"""
+        if self.is_running:
+            print("Cannot execute manually while automatic execution is running")
+            return None
+        
+        if self.current_step_index >= len(self.steps):
+            print("No more steps to execute")
+            return None
+        
+        step = self.steps[self.current_step_index]
+        
+        # Safety check for manual execution too
+        try:
+            check_step_safety(step)
+        except SafetyViolation as e:
+            print(f"🚨 SAFETY VIOLATION: Cannot execute step manually!")
+            print(f"Step: {step.get('description', 'Unknown')}")
+            print(f"Safety issue: {e.message}")
+            
+            # Update status with safety error
+            self._update_status("safety_violation", {
+                'step': step,
+                'violation_message': e.message,
+                'safety_code': e.safety_code
+            })
+            
+            return {
+                'success': False,
+                'error': 'Safety violation',
+                'safety_violation': True,
+                'violation_message': e.message,
+                'safety_code': e.safety_code
+            }
+        
+        result = self._execute_step(step)
+        
+        # Store result
+        self.step_results.append({
+            'step_index': self.current_step_index,
+            'step': step,
+            'result': result,
+            'timestamp': time.time()
+        })
+        
+        print(f"Executed step {self.current_step_index  }/{len(self.steps)} manually")
+        return result
+    
+    def _execution_loop(self):
+        """Main execution loop - runs in separate thread"""
+        try:
+            while self.current_step_index < len(self.steps) and not self.stop_event.is_set():
+                # Check for pause
+                print(f"🔄 EXECUTION LOOP: Step {self.current_step_index + 1}/{len(self.steps)} - Checking pause state")
+                self.pause_event.wait()
+                print(f"    ▶️  Execution not paused - proceeding with step")
+                
+                # Check for stop after pause
+                if self.stop_event.is_set():
+                    print(f"    ⏹️  Stop event detected - breaking execution loop")
+                    break
+                
+                # Execute current step
+                step = self.steps[self.current_step_index]
+                print(f"🎬 EXECUTING STEP {self.current_step_index + 1}: {step['operation']} - {step['description']}")
+                
+                # Check for operation transition (lines to rows)
+                previous_operation = self.current_operation_type
+                self._update_current_operation_type(step)
+                
+                # Handle transition from lines to rows operations
+                if previous_operation == 'lines' and self.current_operation_type == 'rows':
+                    print("🔄 OPERATION TRANSITION: Lines → Rows detected")
+                    if not self._handle_lines_to_rows_transition():
+                        # Transition failed - stop execution
+                        break
+                
+                # Notify step execution started (for operation tracking)
+                self._update_status("step_executing", {
+                    'description': step.get('description', ''),
+                    'step_index': self.current_step_index,
+                    'total_steps': len(self.steps)
+                })
+                
+                step_result = self._execute_step(step)
+                
+                # Check if step execution resulted in safety violation
+                if step_result and step_result.get('safety_violation'):
+                    # Safety violation occurred - stop execution immediately
+                    print("🚨 EXECUTION EMERGENCY STOP: Safety violation detected!")
+                    print(f"   Violation: {step_result.get('violation_message', 'Unknown safety issue')}")
+                    
+                    # Emergency stop - set stop event immediately
+                    self.stop_event.set()
+                    self.is_running = False
+                    self.is_paused = False
+                    
+                    # Update status with emergency stop
+                    self._update_status("emergency_stop", {
+                        'violation_message': step_result.get('violation_message', ''),
+                        'safety_code': step_result.get('safety_code', ''),
+                        'step': step
+                    })
+                    
+                    break
+                
+                # Notify step execution completed (for immediate position updates)
+                self._update_status("step_completed", {
+                    'description': step.get('description', ''),
+                    'step_index': self.current_step_index,
+                    'total_steps': len(self.steps),
+                    'result': step_result
+                })
+                
+                # Store result
+                self.step_results.append({
+                    'step_index': self.current_step_index,
+                    'step': step,
+                    'result': step_result,
+                    'timestamp': time.time()
+                })
+                
+                # Force canvas position update after each step
+                if hasattr(self, 'canvas_manager') and self.canvas_manager:
+                    self.canvas_manager.update_position_display()
+                
+                # Update progress
+                progress = (self.current_step_index  ) / len(self.steps) * 100
+                self._update_status("executing", {
+                    'step_index': self.current_step_index,
+                    'total_steps': len(self.steps),
+                    'progress': progress,
+                    'step_description': step.get('description', ''),
+                    'result': step_result
+                })
+                
+                # Move to next step
+                old_index = self.current_step_index
+                self.current_step_index += 1
+                print(f"📈 STEP ADVANCE: {old_index + 1} → {self.current_step_index + 1}")
+                
+                # Check what the next step will be
+                if self.current_step_index < len(self.steps):
+                    next_step = self.steps[self.current_step_index]
+                    print(f"    Next step: {next_step['operation']} - {next_step['description']}")
+                    
+                    # If next step is move_y, it should execute immediately
+                    if next_step['operation'] == 'move_y':
+                        print(f"    ✅ Next step is move_y - should execute automatically without waiting")
+                else:
+                    print(f"    📋 All steps completed")
+                
+                # Small delay to prevent overwhelming the system
+                time.sleep(0.05)
+            
+            # Execution completed
+            self.end_time = time.time()
+            self.is_running = False
+            self.is_paused = False
+            
+            if self.stop_event.is_set():
+                print("Execution stopped by user")
+                self._update_status("stopped")
+            else:
+                print("Execution completed successfully")
+                self._update_status("completed")
+        
+        except Exception as e:
+            print(f"Execution error: {e}")
+            self.is_running = False
+            self.is_paused = False
+            self._update_status("error", {'error': str(e)})
+    
+    def _execute_step(self, step):
+        """Execute a single step with safety validation"""
+        operation = step['operation']
+        parameters = step.get('parameters', {})
+        description = step.get('description', '')
+        
+        print(f"Executing: {description}")
+        
+        # SAFETY CHECK: Validate step safety before execution
+        try:
+            check_step_safety(step)
+        except SafetyViolation as e:
+            print(f"🚨 SAFETY VIOLATION DETECTED!")
+            print(f"Step blocked: {description}")
+            print(f"Safety violation: {e.message}")
+            
+            # Don't call stop_execution() here as it causes thread join issues
+            # The execution loop will handle the safety violation result
+            
+            # Update status with safety error
+            self._update_status("safety_violation", {
+                'step': step,
+                'violation_message': e.message,
+                'safety_code': e.safety_code
+            })
+            
+            return {
+                'success': False, 
+                'error': 'Safety violation',
+                'safety_violation': True,
+                'violation_message': e.message,
+                'safety_code': e.safety_code
+            }
+        
+        try:
+            if operation == 'move_x':
+                target_x = parameters['position']
+                # Use instant movement (no animation)
+                move_x(target_x)
+                
+                # Update GUI position display if available
+                if hasattr(self, 'canvas_manager') and self.canvas_manager:
+                    self.canvas_manager.update_position_display()
+                
+                return {'success': True, 'position': target_x}
+            
+            elif operation == 'move_y':
+                target_y = parameters['position']
+                # Use instant movement (no animation)
+                move_y(target_y)
+                
+                # Update GUI position display if available
+                if hasattr(self, 'canvas_manager') and self.canvas_manager:
+                    self.canvas_manager.update_position_display()
+                
+                return {'success': True, 'position': target_y}
+            
+            elif operation == 'move_position':
+                # Move to position with offsets (for repeat patterns)
+                x_offset = parameters.get('x_offset', 0.0)
+                y_offset = parameters.get('y_offset', 0.0)
+                
+                # Calculate target position from current base position + offsets
+                current_x = get_current_x()
+                current_y = get_current_y()
+                target_x = current_x + x_offset
+                target_y = current_y + y_offset
+                
+                # Use instant movement (no animation)
+                move_x(target_x)
+                move_y(target_y)
+                
+                # Update GUI position display if available
+                if hasattr(self, 'canvas_manager') and self.canvas_manager:
+                    self.canvas_manager.update_position_display()
+                
+                return {'success': True, 'position': (target_x, target_y)}
+            
+            elif operation == 'wait_sensor':
+                sensor = parameters['sensor']
+                
+                # Wait for MANUAL sensor trigger - do not auto-trigger
+                print(f"⏳ Waiting for MANUAL {sensor} sensor trigger...")
+                
+                # Notify GUI of sensor wait (for visual feedback)
+                self._update_status("waiting_sensor", {'sensor': sensor})
+                
+                # Wait for manual sensor trigger
+                if sensor == 'x':
+                    result = wait_for_x_sensor()
+                elif sensor == 'y':
+                    result = wait_for_y_sensor()
+                elif sensor == 'x_left':
+                    result = wait_for_x_left_sensor()
+                elif sensor == 'x_right':
+                    result = wait_for_x_right_sensor()
+                elif sensor == 'y_top':
+                    result = wait_for_y_top_sensor()
+                elif sensor == 'y_bottom':
+                    result = wait_for_y_bottom_sensor()
+                else:
+                    return {'success': False, 'error': f'Unknown sensor: {sensor}'}
+                
+                # Update GUI position display if available
+                if hasattr(self, 'canvas_manager') and self.canvas_manager:
+                    self.canvas_manager.update_position_display()
+                
+                return {'success': True, 'sensor_result': result}
+            
+            elif operation == 'tool_action':
+                tool = parameters['tool']
+                action = parameters['action']
+                
+                # Map tool actions to hardware functions
+                tool_functions = {
+                    'line_marker': {'down': line_marker_down, 'up': line_marker_up},
+                    'line_cutter': {'down': line_cutter_down, 'up': line_cutter_up},
+                    'row_marker': {'down': row_marker_down, 'up': row_marker_up},
+                    'row_cutter': {'down': row_cutter_down, 'up': row_cutter_up}
+                }
+                
+                if tool in tool_functions and action in tool_functions[tool]:
+                    tool_functions[tool][action]()
+                    print(f"✅ Tool action completed: {tool} {action}")
+                    
+                    # Special handling for line marker close - should trigger automatic move to next line
+                    if tool == 'line_marker' and action == 'up':
+                        print(f"🎯 LINE MARKER CLOSED - next step should be automatic move to next line")
+                    
+                    return {'success': True, 'tool': tool, 'action': action}
+                else:
+                    return {'success': False, 'error': f'Unknown tool/action: {tool}/{action}'}
+            
+            elif operation == 'tool_positioning':
+                action = parameters['action']
+                
+                if action == 'lift_line_tools':
+                    lift_line_tools()
+                elif action == 'lower_line_tools':
+                    lower_line_tools()
+                elif action == 'move_line_tools_to_top':
+                    move_line_tools_to_top()
+                else:
+                    return {'success': False, 'error': f'Unknown positioning action: {action}'}
+                
+                return {'success': True, 'action': action}
+            
+            elif operation == 'program_start':
+                print(f"=== Starting Program {parameters['program_number']}: {parameters['program_name']} ===")
+                return {'success': True, 'program_info': parameters}
+            
+            elif operation == 'workflow_separator':
+                print(f"=== {description} ===")
+                return {'success': True}
+            
+            elif operation == 'program_complete':
+                print(f"=== Program Complete: {parameters['program_name']} ===")
+                return {'success': True, 'program_info': parameters}
+            
+            else:
+                result = {'success': False, 'error': f'Unknown operation: {operation}'}
+        
+        except Exception as e:
+            result = {'success': False, 'error': str(e)}
+        
+        # Call operation callback if set
+        if self.operation_callback:
+            try:
+                self.operation_callback(step, result)
+            except Exception as e:
+                print(f"Warning: Operation callback failed: {e}")
+        
+        return result
+    
+    def _update_current_operation_type(self, step):
+        """Update the current operation type based on step description for safety monitoring"""
+        description = step.get('description', '').lower()
+        
+        # Detect operation type from step description
+        if any(keyword in description for keyword in ['lines', 'line_', 'move_y', 'y_']):
+            if 'rows' not in description:  # Make sure it's not a rows operation
+                self.current_operation_type = 'lines'
+        elif any(keyword in description for keyword in ['rows', 'row_', 'move_x', 'x_']):
+            if 'lines' not in description:  # Make sure it's not a lines operation  
+                self.current_operation_type = 'rows'
+        else:
+            # Keep previous operation type for ambiguous steps
+            pass
+        
+        if self.current_operation_type:
+            print(f"🔒 SAFETY MONITOR: Current operation type = {self.current_operation_type.upper()}")
+    
+    def _safety_monitor_loop(self):
+        """Real-time safety monitoring loop - runs in separate thread"""
+        print("🛡️  Real-time safety monitoring started")
+        
+        try:
+            while not self.safety_monitor_stop.is_set():
+                if self.is_running and not self.is_paused and self.current_operation_type:
+                    
+                    # Check safety based on current operation type
+                    try:
+                        from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+                        
+                        row_marker_programmed = get_row_marker_state()
+                        row_marker_actual = get_row_marker_limit_switch()
+                        
+                        safety_violation = False
+                        violation_message = ""
+                        
+                        if self.current_operation_type == 'lines':
+                            # LINES OPERATIONS: Row marker MUST be UP (door closed)
+                            if row_marker_programmed == "down" or row_marker_actual == "down":
+                                safety_violation = True
+                                violation_message = (
+                                    f"🚨 LINES OPERATION EMERGENCY STOP!\n"
+                                    f"   Row marker changed to DOWN during lines operation\n"
+                                    f"   Programmed: {row_marker_programmed.upper()}, Actual: {row_marker_actual.upper()}\n"
+                                    f"   IMMEDIATE ACTION: Close the rows door (set marker UP)"
+                                )
+                        
+                        elif self.current_operation_type == 'rows':
+                            # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
+                            if row_marker_programmed == "up" or row_marker_actual == "up":
+                                safety_violation = True
+                                violation_message = (
+                                    f"🚨 ROWS OPERATION EMERGENCY STOP!\n"
+                                    f"   Row marker changed to UP during rows operation\n"
+                                    f"   Programmed: {row_marker_programmed.upper()}, Actual: {row_marker_actual.upper()}\n"
+                                    f"   IMMEDIATE ACTION: Open the rows door (set marker DOWN)"
+                                )
+                        
+                        if safety_violation:
+                            print("🚨 REAL-TIME SAFETY VIOLATION DETECTED!")
+                            print(violation_message)
+                            
+                            # IMMEDIATE EMERGENCY STOP
+                            self.stop_event.set()
+                            self.safety_monitor_stop.set()
+                            self.is_running = False
+                            self.is_paused = False
+                            
+                            # Update status with emergency stop
+                            self._update_status("emergency_stop", {
+                                'violation_message': violation_message,
+                                'safety_code': f"{self.current_operation_type.upper()}_DOOR_VIOLATION",
+                                'monitor_type': 'real_time'
+                            })
+                            
+                            break
+                    
+                    except Exception as e:
+                        print(f"⚠️  Safety monitor error: {e}")
+                
+                # Check every 100ms for real-time monitoring
+                time.sleep(0.1)
+        
+        except Exception as e:
+            print(f"Safety monitoring thread error: {e}")
+        
+        print("🛡️  Real-time safety monitoring stopped")
+    
+    def _handle_lines_to_rows_transition(self):
+        """
+        Handle transition from lines operations to rows operations
+        Show auto-dismissing alert that waits for row marker DOWN
+        """
+        from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+        
+        # Check if row marker is already DOWN
+        row_marker_programmed = get_row_marker_state()
+        row_marker_actual = get_row_marker_limit_switch()
+        
+        if row_marker_programmed == "down" and row_marker_actual == "down":
+            print("✅ Row marker already DOWN - proceeding with rows operations")
+            return True
+        
+        print("⏸️  TRANSITION PAUSE: Waiting for row marker to be set DOWN")
+        
+        # Pause execution temporarily
+        self.is_paused = True
+        self.pause_event.clear()
+        
+        # Show transitional alert through status callback
+        self._update_status("transition_alert", {
+            'from_operation': 'lines',
+            'to_operation': 'rows',
+            'message': 'Lines operations complete. Please set row marker to DOWN position to continue with rows operations.',
+            'current_programmed': row_marker_programmed,
+            'current_actual': row_marker_actual
+        })
+        
+        # Wait for row marker to be set DOWN with auto-monitoring
+        return self._wait_for_row_marker_down()
+    
+    def _wait_for_row_marker_down(self):
+        """
+        Wait for row marker to be set DOWN with real-time monitoring
+        Auto-dismiss alert and resume execution when condition is met
+        """
+        import time
+        from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+        
+        print("⏳ Monitoring row marker state - waiting for DOWN position...")
+        
+        while not self.stop_event.is_set():
+            # Check row marker state
+            row_marker_programmed = get_row_marker_state()
+            row_marker_actual = get_row_marker_limit_switch()
+            
+            if row_marker_programmed == "down" and row_marker_actual == "down":
+                print("✅ Row marker set to DOWN - auto-resuming execution")
+                
+                # Auto-dismiss alert and resume execution
+                self._update_status("transition_complete", {
+                    'message': 'Row marker set to DOWN - resuming rows operations'
+                })
+                
+                # Resume execution automatically
+                self.is_paused = False
+                self.pause_event.set()
+                return True
+            
+            # Update status with current state (for GUI updates)
+            self._update_status("transition_waiting", {
+                'current_programmed': row_marker_programmed,
+                'current_actual': row_marker_actual,
+                'waiting_for': 'down'
+            })
+            
+            # Check every 200ms for responsive monitoring
+            time.sleep(0.2)
+        
+        # Execution was stopped during transition
+        print("⏹️  Execution stopped during lines→rows transition")
+        return False
+    
+    def get_execution_status(self):
+        """Get current execution status"""
+        return {
+            'is_running': self.is_running,
+            'is_paused': self.is_paused,
+            'current_step': self.current_step_index,
+            'total_steps': len(self.steps),
+            'progress': (self.current_step_index / len(self.steps) * 100) if self.steps else 0,
+            'start_time': self.start_time,
+            'elapsed_time': time.time() - self.start_time if self.start_time else 0,
+            'steps_completed': len(self.step_results),
+            'current_step_description': self.steps[self.current_step_index]['description'] 
+                                      if self.current_step_index < len(self.steps) else None
+        }
+    
+    def get_step_results(self):
+        """Get results of completed steps"""
+        return self.step_results
+    
+    def get_execution_summary(self):
+        """Get execution summary"""
+        if not self.step_results:
+            return None
+        
+        successful_steps = sum(1 for result in self.step_results if result['result'].get('success', False))
+        failed_steps = len(self.step_results) - successful_steps
+        
+        total_time = self.end_time - self.start_time if self.end_time and self.start_time else 0
+        
+        return {
+            'total_steps': len(self.steps),
+            'completed_steps': len(self.step_results),
+            'successful_steps': successful_steps,
+            'failed_steps': failed_steps,
+            'execution_time': total_time,
+            'average_step_time': total_time / len(self.step_results) if self.step_results else 0
+        }
+
+# Convenience functions for simple usage
+def execute_steps_sync(steps, status_callback=None):
+    """Execute steps synchronously (blocking) - for simple scripts"""
+    engine = ExecutionEngine()
+    if status_callback:
+        engine.set_status_callback(status_callback)
+    
+    engine.load_steps(steps)
+    engine.start_execution()
+    
+    # Wait for completion
+    while engine.is_running:
+        time.sleep(0.1)
+    
+    return engine.get_execution_summary()
+
+def create_simple_engine():
+    """Create a simple execution engine for basic usage"""
+    return ExecutionEngine()
+
+if __name__ == "__main__":
+    # Test with simple steps
+    test_steps = [
+        {'operation': 'move_x', 'parameters': {'position': 25.0}, 'description': 'Move to X position 25cm'},
+        {'operation': 'move_y', 'parameters': {'position': 50.0}, 'description': 'Move to Y position 50cm'},
+        {'operation': 'tool_action', 'parameters': {'tool': 'line_marker', 'action': 'down'}, 'description': 'Lower line marker'},
+        {'operation': 'tool_action', 'parameters': {'tool': 'line_marker', 'action': 'up'}, 'description': 'Raise line marker'},
+    ]
+    
+    print("=== EXECUTION ENGINE TEST ===")
+    
+    def test_callback(status, info=None):
+        if status == "executing" and info:
+            progress = info.get('progress', 0)
+            description = info.get('step_description', '')
+            print(f"Progress: {progress:.1f}% - {description}")
+    
+    # Test synchronous execution
+    print("\nTesting synchronous execution:")
+    summary = execute_steps_sync(test_steps, test_callback)
+    
+    if summary:
+        print(f"\nExecution Summary:")
+        print(f"  Total steps: {summary['total_steps']}")
+        print(f"  Successful: {summary['successful_steps']}")
+        print(f"  Failed: {summary['failed_steps']}")
+        print(f"  Execution time: {summary['execution_time']:.2f}s")
+    
+    print("\n✅ Execution engine test complete!")
