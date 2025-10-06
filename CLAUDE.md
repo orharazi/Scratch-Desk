@@ -1,1 +1,2 @@
 - to run startup file: python3 index.py
+- after each changes on code, make add this to git (add, commit, push)
