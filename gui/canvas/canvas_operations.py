@@ -423,19 +423,29 @@ class CanvasOperations:
                 self.update_operation_state('lines', line_num, 'in_progress')
                 print(f"🔄 Line {line_num} marked as IN PROGRESS")
 
-        # Track row operations - match "Row X", "row X", "R X", "RTL Page X"
-        # Note: Rows are numbered by their drawing order, not RTL page numbers
-        row_match = re.search(r'(?:row|r)\s*(\d+)', step_desc, re.IGNORECASE)
-        if row_match:
-            row_num = int(row_match.group(1))
-            row_key = f'row_{row_num}'
-            # Detect state from keywords
-            if any(keyword in step_desc for keyword in ['complete', 'cut', 'close row cutter', 'finished', 'marked']):
-                self.update_operation_state('rows', row_key, 'completed')
-                print(f"✅ Row {row_num} marked as COMPLETED")
-            elif any(keyword in step_desc for keyword in ['cutting', 'marking', 'in progress', 'open row', 'mark row']):
-                self.update_operation_state('rows', row_key, 'in_progress')
-                print(f"🔄 Row {row_num} marked as IN PROGRESS")
+        # Track row operations - match "RTL Page X" with edge detection
+        # Rows are numbered by drawing order: (page-1)*2+1 for RIGHT, (page-1)*2+2 for LEFT
+        rtl_page_match = re.search(r'rtl page\s*(\d+)', step_desc, re.IGNORECASE)
+        if rtl_page_match:
+            rtl_page_num = int(rtl_page_match.group(1))
+
+            # Detect which edge (RIGHT or LEFT)
+            row_num = None
+            if 'right edge' in step_desc:
+                row_num = (rtl_page_num - 1) * 2 + 1
+            elif 'left edge' in step_desc:
+                row_num = (rtl_page_num - 1) * 2 + 2
+
+            if row_num is not None:
+                row_key = f'row_{row_num}'
+
+                # Detect state from keywords - mark in_progress on "Open", completed on "Close"
+                if any(keyword in step_desc for keyword in ['close row marker', 'close row cutter', 'finished']):
+                    self.update_operation_state('rows', row_key, 'completed')
+                    print(f"✅ Row {row_num} (RTL Page {rtl_page_num}) marked as COMPLETED")
+                elif any(keyword in step_desc for keyword in ['open row marker', 'open row cutter', 'wait top y sensor']):
+                    self.update_operation_state('rows', row_key, 'in_progress')
+                    print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}) marked as IN PROGRESS")
 
         # Track cut edge operations
         for cut_name in ['top', 'bottom', 'left', 'right']:

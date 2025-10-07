@@ -30,19 +30,19 @@
   },
   "operation_colors": {
     "lines": {
-      "pending": "#FF4444",
+      "pending": "#FF6600",
       "in_progress": "#FF8800",
       "completed": "#00AA00"
     },
     "rows": {
-      "pending": "#4444FF",
-      "in_progress": "#8800FF",
-      "completed": "#0088AA"
+      "pending": "#8800FF",
+      "in_progress": "#FF0088",
+      "completed": "#AA00AA"
     },
     "cuts": {
-      "pending": "#888888",
-      "in_progress": "#FF6600",
-      "completed": "#FF00FF"
+      "pending": "#8800FF",
+      "in_progress": "#FF0088",
+      "completed": "#AA00AA"
     }
   }
 }
