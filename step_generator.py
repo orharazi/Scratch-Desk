@@ -158,6 +158,42 @@ def generate_lines_marking_steps(program):
                 {'tool': 'line_marker', 'action': 'up'},
                 f"{line_description}: Close line marker"
             ))
+        
+        # ADD CUT BETWEEN SECTIONS (except after the last section)
+        if section_num < program.repeat_lines - 1:  # Not the last section
+            cut_position = section_end_y  # Cut at the bottom of current section (= top of next section)
+            
+            # Move to cut position between sections
+            steps.append(create_step(
+                'move_y',
+                {'position': cut_position},
+                f"Move to cut between sections {section_num + 1} and {section_num + 2}: {cut_position}cm"
+            ))
+            
+            # Perform cut between sections
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for cut between sections {section_num + 1}-{section_num + 2}'},
+                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for LEFT X sensor"
+            ))
+            
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'line_cutter', 'action': 'down'},
+                f"Cut between sections {section_num + 1} and {section_num + 2}: Open line cutter"
+            ))
+            
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for cut between sections {section_num + 1}-{section_num + 2}'},
+                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for RIGHT X sensor"
+            ))
+            
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'line_cutter', 'action': 'up'},
+                f"Cut between sections {section_num + 1} and {section_num + 2}: Close line cutter"
+            ))
     
     # Cut bottom edge: Move to bottom position (paper starting position)
     bottom_position = PAPER_OFFSET_Y
