@@ -27,5 +27,22 @@
   "validation": {
     "tolerance": 0.01,
     "strict_mode": false
+  },
+  "operation_colors": {
+    "lines": {
+      "pending": "#FF4444",
+      "in_progress": "#FF8800",
+      "completed": "#00AA00"
+    },
+    "rows": {
+      "pending": "#4444FF",
+      "in_progress": "#8800FF",
+      "completed": "#0088AA"
+    },
+    "cuts": {
+      "pending": "#888888",
+      "in_progress": "#FF6600",
+      "completed": "#FF00FF"
+    }
   }
 }
