@@ -166,7 +166,12 @@ class CanvasManager:
         # Check if we have access to the main app's root window
         if hasattr(self, 'main_app') and hasattr(self.main_app, 'root'):
             # Schedule the update on the main GUI thread to ensure thread safety
-            self.main_app.root.after_idle(self.canvas_position.update_position_display)
+            def do_update():
+                self.canvas_position.update_position_display()
+                # Force Tkinter to process the update immediately
+                self.main_app.root.update_idletasks()
+
+            self.main_app.root.after(0, do_update)
         else:
             # Fallback: call directly (might not be thread-safe)
             return self.canvas_position.update_position_display()
