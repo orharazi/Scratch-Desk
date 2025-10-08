@@ -51,22 +51,30 @@ class CanvasPosition:
         current_y = get_current_y()
         print(f"   Hardware position: X={current_x:.1f}, Y={current_y:.1f}")
 
-        # Check if position actually changed to avoid unnecessary updates
+        # Check if position OR mode changed to avoid unnecessary updates
+        mode_changed = False
+        if hasattr(self.canvas_manager, '_last_displayed_mode'):
+            last_mode = self.canvas_manager._last_displayed_mode
+            if last_mode != self.canvas_manager.motor_operation_mode:
+                mode_changed = True
+                print(f"   Mode changed: {last_mode} → {self.canvas_manager.motor_operation_mode}")
+
         if (hasattr(self.canvas_manager, '_last_displayed_hardware_x') and
             hasattr(self.canvas_manager, '_last_displayed_hardware_y')):
             last_x = self.canvas_manager._last_displayed_hardware_x
             last_y = self.canvas_manager._last_displayed_hardware_y
             print(f"   Last displayed: X={last_x:.1f}, Y={last_y:.1f}")
-            if (abs(current_x - last_x) < 0.01 and abs(current_y - last_y) < 0.01):
-                print(f"   ⚠️ No meaningful position change - skipping update")
-                return  # No meaningful position change
+            if (abs(current_x - last_x) < 0.01 and abs(current_y - last_y) < 0.01 and not mode_changed):
+                print(f"   ⚠️ No meaningful position/mode change - skipping update")
+                return  # No meaningful position or mode change
         else:
             print(f"   First position update (no previous position)")
         
-        # Update last displayed positions
+        # Update last displayed positions and mode
         self.canvas_manager._last_displayed_hardware_x = current_x
         self.canvas_manager._last_displayed_hardware_y = current_y
-        
+        self.canvas_manager._last_displayed_mode = self.canvas_manager.motor_operation_mode
+
         max_y_cm = self.main_app.settings.get("simulation", {}).get("max_display_y", 80)
         
         # Determine display positions based on operation mode
