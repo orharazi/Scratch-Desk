@@ -162,8 +162,14 @@ class CanvasManager:
         return self.canvas_position.move_tool_to_first_line()
     
     def update_position_display(self):
-        """Update position display with original logic"""
-        return self.canvas_position.update_position_display()
+        """Update position display - schedule on main GUI thread for thread safety"""
+        # Check if we have access to the main app's root window
+        if hasattr(self, 'main_app') and hasattr(self.main_app, 'root'):
+            # Schedule the update on the main GUI thread to ensure thread safety
+            self.main_app.root.after_idle(self.canvas_position.update_position_display)
+        else:
+            # Fallback: call directly (might not be thread-safe)
+            return self.canvas_position.update_position_display()
     
     def determine_operation_context(self, x, y):
         """Determine operation context"""
