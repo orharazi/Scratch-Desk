@@ -1,6 +1,19 @@
 import tkinter as tk
 import re
+import json
 from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
+
+# Load settings
+def load_settings():
+    try:
+        with open('settings.json', 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+settings = load_settings()
+visualization_settings = settings.get("visualization", {})
+ui_fonts = settings.get("ui_fonts", {})
 
 
 class CanvasOperations:
@@ -51,7 +64,7 @@ class CanvasOperations:
         else:
             self.canvas_objects['paper'] = self.main_app.canvas.create_rectangle(
                 canvas_x1, canvas_y1, canvas_x2, canvas_y2,
-                outline='blue', width=3, fill='lightblue', stipple='gray50'
+                outline='blue', width=visualization_settings.get("line_width_marks", 3), fill='lightblue', stipple='gray50'
             )
         
         # Add program label with repeat information
@@ -66,7 +79,7 @@ class CanvasOperations:
         self.main_app.canvas.create_text(
             canvas_x1 + (canvas_x2 - canvas_x1) / 2, canvas_y1 - 25,
             text=label_text, 
-            font=('Arial', 9, 'bold'), fill='darkblue', tags="work_lines", justify='center'
+            font=tuple(ui_fonts.get("normal", ["Arial", 9, "bold"])), fill='darkblue', tags="work_lines", justify='center'
         )
         
         # Add line marking and cutting visualizations
@@ -161,7 +174,7 @@ class CanvasOperations:
                 # Draw line - DASHED LINE
                 line_id = self.main_app.canvas.create_line(
                     line_x1_canvas, line_y_canvas, line_x2_canvas, line_y_canvas,
-                    fill=line_color, width=3, dash=dash_pattern, tags="work_lines"
+                    fill=line_color, width=visualization_settings.get("line_width_marks", 3), dash=dash_pattern, tags="work_lines"
                 )
                 
                 # Store line object for dynamic updates (using settings colors)
@@ -176,7 +189,7 @@ class CanvasOperations:
                 # Add line number label with matching color
                 label_id = self.main_app.canvas.create_text(
                     line_x1_canvas - 25, line_y_canvas,
-                    text=f"L{overall_line_num}", font=('Arial', 9, 'bold'), fill=line_color, tags="work_lines"
+                    text=f"L{overall_line_num}", font=tuple(ui_fonts.get("normal", ["Arial", 9, "bold"])), fill=line_color, tags="work_lines"
                 )
                 self.main_app.work_line_objects[f'line_{overall_line_num}']['label_id'] = label_id
         
@@ -226,13 +239,13 @@ class CanvasOperations:
             row_start_id = self.main_app.canvas.create_line(
                 page_start_canvas, page_y1_canvas,
                 page_start_canvas, page_y2_canvas,
-                fill=start_color, width=3, dash=start_dash, tags="work_lines"
+                fill=start_color, width=visualization_settings.get("line_width_marks", 3), dash=start_dash, tags="work_lines"
             )
             
             # Row label (R1, R3, R5, etc.)
             self.main_app.canvas.create_text(
                 page_start_canvas, page_y2_canvas + 15,
-                text=f"R{individual_row_num}", font=('Arial', 8, 'bold'), 
+                text=f"R{individual_row_num}", font=tuple(ui_fonts.get("label", ["Arial", 8, "bold"])), 
                 fill=start_color, tags="work_lines"
             )
             
@@ -260,13 +273,13 @@ class CanvasOperations:
             row_end_id = self.main_app.canvas.create_line(
                 page_end_canvas, page_y1_canvas,
                 page_end_canvas, page_y2_canvas,
-                fill=end_color, width=3, dash=end_dash, tags="work_lines"
+                fill=end_color, width=visualization_settings.get("line_width_marks", 3), dash=end_dash, tags="work_lines"
             )
             
             # Row label (R2, R4, R6, etc.)
             self.main_app.canvas.create_text(
                 page_end_canvas, page_y2_canvas + 15,
-                text=f"R{individual_row_num_left}", font=('Arial', 8, 'bold'), 
+                text=f"R{individual_row_num_left}", font=tuple(ui_fonts.get("label", ["Arial", 8, "bold"])), 
                 fill=end_color, tags="work_lines"
             )
             
@@ -317,13 +330,13 @@ class CanvasOperations:
 
                 cut_id = self.main_app.canvas.create_line(
                     cut_x1_canvas, cut_y_canvas, cut_x2_canvas, cut_y_canvas,
-                    fill=cut_color, width=4, tags="work_lines"
+                    fill=cut_color, width=visualization_settings.get("line_width_cuts", 4), tags="work_lines"
                 )
 
                 # Add cut label
                 self.main_app.canvas.create_text(
                     cut_x2_canvas + 10, cut_y_canvas,
-                    text=cut_labels[i], font=('Arial', 8, 'bold'), fill=cut_color, tags="work_lines"
+                    text=cut_labels[i], font=tuple(ui_fonts.get("label", ["Arial", 8, "bold"])), fill=cut_color, tags="work_lines"
                 )
 
             else:  # vertical
@@ -334,13 +347,13 @@ class CanvasOperations:
 
                 cut_id = self.main_app.canvas.create_line(
                     cut_x_canvas, cut_y1_canvas, cut_x_canvas, cut_y2_canvas,
-                    fill=cut_color, width=4, tags="work_lines"
+                    fill=cut_color, width=visualization_settings.get("line_width_cuts", 4), tags="work_lines"
                 )
                 
                 # Add cut label
                 self.main_app.canvas.create_text(
                     cut_x_canvas, cut_y1_canvas - 10,
-                    text=cut_labels[i], font=('Arial', 8, 'bold'), fill=cut_color, tags="work_lines"
+                    text=cut_labels[i], font=tuple(ui_fonts.get("label", ["Arial", 8, "bold"])), fill=cut_color, tags="work_lines"
                 )
             
             # Store cut objects for dynamic updates (using settings colors)
@@ -521,13 +534,13 @@ class CanvasOperations:
         # Legend title
         self.main_app.canvas.create_text(
             legend_x, legend_y - 20,
-            text="Operations Legend", font=('Arial', 12, 'bold'), fill='black'
+            text="Operations Legend", font=tuple(ui_fonts.get("title", ["Arial", 12, "bold"])), fill='black'
         )
 
         # Line operations (MARK)
         self.main_app.canvas.create_text(
             legend_x, legend_y + 10,
-            text="Lines (MARK):", font=('Arial', 10, 'bold'), fill='black', anchor='w'
+            text="Lines (MARK):", font=tuple(ui_fonts.get("heading", ["Arial", 10, "bold"])), fill='black', anchor='w'
         )
 
         # Line colors from settings
@@ -540,17 +553,17 @@ class CanvasOperations:
             y_pos = legend_y + 30 + i * 20
             self.main_app.canvas.create_line(
                 legend_x + 10, y_pos, legend_x + 30, y_pos,
-                fill=color, width=3, dash=(5, 5) if label == 'Ready' else ((8, 4) if label == 'Working' else (10, 2))
+                fill=color, width=visualization_settings.get("line_width_marks", 3), dash=tuple(visualization_settings.get("dash_pattern_pending", [5, 5])) if label == 'Ready' else (tuple(visualization_settings.get("dash_pattern_in_progress", [8, 4])) if label == 'Working' else tuple(visualization_settings.get("dash_pattern_completed", [10, 2])))
             )
             self.main_app.canvas.create_text(
                 legend_x + 35, y_pos,
-                text=label, font=('Arial', 9), fill='black', anchor='w'
+                text=label, font=tuple(ui_fonts.get("normal", ["Arial", 9])), fill='black', anchor='w'
             )
 
         # Row operations (CUT)
         self.main_app.canvas.create_text(
             legend_x, legend_y + 100,
-            text="Rows (CUT):", font=('Arial', 10, 'bold'), fill='black', anchor='w'
+            text="Rows (CUT):", font=tuple(ui_fonts.get("heading", ["Arial", 10, "bold"])), fill='black', anchor='w'
         )
 
         # Row colors from settings
@@ -563,11 +576,11 @@ class CanvasOperations:
             y_pos = legend_y + 120 + i * 20
             self.main_app.canvas.create_line(
                 legend_x + 10, y_pos, legend_x + 30, y_pos,
-                fill=color, width=3, dash=(5, 5) if label == 'Ready' else ((8, 4) if label == 'Working' else (10, 2))
+                fill=color, width=visualization_settings.get("line_width_marks", 3), dash=tuple(visualization_settings.get("dash_pattern_pending", [5, 5])) if label == 'Ready' else (tuple(visualization_settings.get("dash_pattern_in_progress", [8, 4])) if label == 'Working' else tuple(visualization_settings.get("dash_pattern_completed", [10, 2])))
             )
             self.main_app.canvas.create_text(
                 legend_x + 35, y_pos,
-                text=label, font=('Arial', 9), fill='black', anchor='w'
+                text=label, font=tuple(ui_fonts.get("normal", ["Arial", 9])), fill='black', anchor='w'
             )
     
     def test_color_changes(self):

@@ -1,6 +1,18 @@
 import tkinter as tk
 import re
+import json
 from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
+
+# Load settings
+def load_settings():
+    try:
+        with open('settings.json', 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+settings = load_settings()
+validation_settings = settings.get("validation", {})
 
 
 class CanvasPosition:
@@ -64,7 +76,8 @@ class CanvasPosition:
             last_x = self.canvas_manager._last_displayed_hardware_x
             last_y = self.canvas_manager._last_displayed_hardware_y
             print(f"   Last displayed: X={last_x:.1f}, Y={last_y:.1f}")
-            if (abs(current_x - last_x) < 0.01 and abs(current_y - last_y) < 0.01 and not mode_changed):
+            tolerance = validation_settings.get("tolerance", 0.01)
+            if (abs(current_x - last_x) < tolerance and abs(current_y - last_y) < tolerance and not mode_changed):
                 print(f"   ⚠️ No meaningful position/mode change - skipping update")
                 return  # No meaningful position or mode change
         else:

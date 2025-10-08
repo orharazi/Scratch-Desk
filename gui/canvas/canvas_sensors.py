@@ -1,6 +1,18 @@
 import tkinter as tk
 import re
+import json
 from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
+
+# Load settings
+def load_settings():
+    try:
+        with open('settings.json', 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+settings = load_settings()
+sensor_timeout_settings = settings.get("sensor_timeouts", {})
 
 
 class CanvasSensors:
@@ -98,7 +110,7 @@ class CanvasSensors:
         
         # Clear sensor override timer - extend for rows operations to keep pointer at sensor positions
         # During rows operations, extend timer to prevent pointer from returning to 0 too quickly
-        timeout_ms = 3000 if self.canvas_manager.motor_operation_mode == "rows" else 1000
+        timeout_ms = sensor_timeout_settings.get("sensor_override_timeout_rows", 3000) if self.canvas_manager.motor_operation_mode == "rows" else sensor_timeout_settings.get("sensor_override_timeout_lines", 1000)
         
         if self.canvas_manager.sensor_override_timer:
             self.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
@@ -306,7 +318,7 @@ class CanvasSensors:
             "cut first row", "cut last row", "mark row", "right to left"
         ]):
             # Extend sensor override time for rows operations  
-            timeout_ms = 3000  
+            timeout_ms = sensor_timeout_settings.get("sensor_override_timeout_rows", 3000)
             if self.canvas_manager.sensor_override_timer:
                 self.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
             self.canvas_manager.sensor_override_timer = self.main_app.root.after(timeout_ms, self.clear_sensor_override)

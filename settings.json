@@ -49,5 +49,52 @@
       "in_progress": "#FF0088",
       "completed": "#AA00AA"
     }
+  },
+  "timing": {
+    "motor_movement_delay_per_cm": 0.01,
+    "max_motor_movement_delay": 0.5,
+    "tool_action_delay": 0.1,
+    "sensor_poll_timeout": 0.1,
+    "row_marker_stable_delay": 0.2,
+    "safety_check_interval": 0.1,
+    "execution_loop_delay": 0.05,
+    "transition_monitor_interval": 0.5,
+    "thread_join_timeout_execution": 2.0,
+    "thread_join_timeout_safety": 1.0
+  },
+  "sensor_timeouts": {
+    "sensor_override_timeout_rows": 3000,
+    "sensor_override_timeout_lines": 1000,
+    "sensor_highlight_duration": 500
+  },
+  "visualization": {
+    "line_width_marks": 3,
+    "line_width_cuts": 4,
+    "dash_pattern_pending": [5, 5],
+    "dash_pattern_in_progress": [8, 4],
+    "dash_pattern_completed": [10, 2],
+    "sensor_indicator_size": 3,
+    "sensor_highlight_color": "#FF0000",
+    "sensor_highlight_outline": "#8B0000",
+    "sensor_highlight_width": 3,
+    "motor_line_color_x": "red",
+    "motor_line_color_y": "blue",
+    "motor_intersection_size": 4
+  },
+  "ui_fonts": {
+    "title": ["Arial", 12, "bold"],
+    "heading": ["Arial", 10, "bold"],
+    "normal": ["Arial", 9],
+    "label": ["Arial", 8, "bold"],
+    "dialog_title": ["Arial", 14, "bold"],
+    "dialog_message": ["Arial", 11],
+    "dialog_label": ["Arial", 10]
+  },
+  "ui_spacing": {
+    "frame_padding": 5,
+    "widget_padding": 3,
+    "dialog_padding": 20,
+    "button_padding_x": 10,
+    "button_padding_y": 5
   }
 }

@@ -31,6 +31,7 @@ def load_settings():
 # Load settings
 settings = load_settings()
 hardware_limits = settings.get("hardware_limits", {})
+timing_settings = settings.get("timing", {})
 
 # System constraints from settings
 MAX_X_POSITION = hardware_limits.get("max_x_position", 100.0)  # cm
@@ -110,7 +111,9 @@ def move_x(position):
         
         # Simulate movement delay (keep short for responsiveness)
         move_distance = abs(position - current_x_position)
-        delay = min(move_distance * 0.01, 0.5)  # Max 0.5 second delay
+        delay_per_cm = timing_settings.get("motor_movement_delay_per_cm", 0.01)
+        max_delay = timing_settings.get("max_motor_movement_delay", 0.5)
+        delay = min(move_distance * delay_per_cm, max_delay)
         time.sleep(delay)
         
         current_x_position = position
@@ -140,7 +143,9 @@ def move_y(position):
         
         # Simulate movement delay (keep short for responsiveness)
         move_distance = abs(position - current_y_position)
-        delay = min(move_distance * 0.01, 0.5)  # Max 0.5 second delay
+        delay_per_cm = timing_settings.get("motor_movement_delay_per_cm", 0.01)
+        max_delay = timing_settings.get("max_motor_movement_delay", 0.5)
+        delay = min(move_distance * delay_per_cm, max_delay)
         time.sleep(delay)
         
         current_y_position = position
@@ -165,7 +170,7 @@ def line_marker_down():
     print("MOCK: line_marker_down()")
     if line_marker_state != "down":
         print("Lowering line marker")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_marker_state = "down"
         print("Line marker down - ready to mark")
     else:
@@ -177,7 +182,7 @@ def line_marker_up():
     print("MOCK: line_marker_up()")
     if line_marker_state != "up":
         print("Raising line marker")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_marker_state = "up"
         print("Line marker up")
     else:
@@ -189,7 +194,7 @@ def line_cutter_down():
     print("MOCK: line_cutter_down()")
     if line_cutter_state != "down":
         print("Lowering line cutter")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_cutter_state = "down"
         print("Line cutter down - ready to cut")
     else:
@@ -201,7 +206,7 @@ def line_cutter_up():
     print("MOCK: line_cutter_up()")
     if line_cutter_state != "up":
         print("Raising line cutter")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_cutter_state = "up"
         print("Line cutter up")
     else:
@@ -214,7 +219,7 @@ def row_marker_down():
     print("MOCK: row_marker_down()")
     if row_marker_state != "down":
         print("Lowering row marker")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "down"
         print("Row marker down - ready to mark")
     else:
@@ -226,7 +231,7 @@ def row_marker_up():
     print("MOCK: row_marker_up()")
     if row_marker_state != "up":
         print("Raising row marker")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "up"
         print("Row marker up")
     else:
@@ -238,7 +243,7 @@ def row_cutter_down():
     print("MOCK: row_cutter_down()")
     if row_cutter_state != "down":
         print("Lowering row cutter")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_cutter_state = "down"
         print("Row cutter down - ready to cut")
     else:
@@ -250,7 +255,7 @@ def row_cutter_up():
     print("MOCK: row_cutter_up()")
     if row_cutter_state != "up":
         print("Raising row cutter")
-        time.sleep(0.1)
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_cutter_state = "up"
         print("Row cutter up")
     else:
@@ -271,7 +276,7 @@ def wait_for_x_left_sensor():
     
     # Wait specifically for left sensor
     while True:
-        if sensor_events['x_left'].wait(timeout=0.1):
+        if sensor_events['x_left'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 X LEFT sensor trigger ignored - execution paused due to safety violation")
@@ -298,7 +303,7 @@ def wait_for_x_right_sensor():
     
     # Wait specifically for right sensor
     while True:
-        if sensor_events['x_right'].wait(timeout=0.1):
+        if sensor_events['x_right'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 X RIGHT sensor trigger ignored - execution paused due to safety violation")
@@ -325,7 +330,7 @@ def wait_for_y_top_sensor():
     
     # Wait specifically for top sensor
     while True:
-        if sensor_events['y_top'].wait(timeout=0.1):
+        if sensor_events['y_top'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 Y TOP sensor trigger ignored - execution paused due to safety violation")
@@ -352,7 +357,7 @@ def wait_for_y_bottom_sensor():
     
     # Wait specifically for bottom sensor
     while True:
-        if sensor_events['y_bottom'].wait(timeout=0.1):
+        if sensor_events['y_bottom'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 Y BOTTOM sensor trigger ignored - execution paused due to safety violation")
@@ -381,7 +386,7 @@ def wait_for_x_sensor():
     
     # Wait for either left or right sensor
     while True:
-        if sensor_events['x_left'].wait(timeout=0.1):
+        if sensor_events['x_left'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 X LEFT sensor trigger ignored - execution paused due to safety violation")
@@ -392,7 +397,7 @@ def wait_for_x_sensor():
             sensor_results['x_sensor'] = 'left'
             print("X sensor triggered: LEFT edge detected")
             return 'left'
-        elif sensor_events['x_right'].wait(timeout=0.1):
+        elif sensor_events['x_right'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 X RIGHT sensor trigger ignored - execution paused due to safety violation")
@@ -416,7 +421,7 @@ def wait_for_y_sensor():
     
     # Wait for either top or bottom sensor
     while True:
-        if sensor_events['y_top'].wait(timeout=0.1):
+        if sensor_events['y_top'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 Y TOP sensor trigger ignored - execution paused due to safety violation")
@@ -427,7 +432,7 @@ def wait_for_y_sensor():
             sensor_results['y_sensor'] = 'top'
             print("Y sensor triggered: TOP edge detected")
             return 'top'
-        elif sensor_events['y_bottom'].wait(timeout=0.1):
+        elif sensor_events['y_bottom'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
                 print("🚫 Y BOTTOM sensor trigger ignored - execution paused due to safety violation")
@@ -483,7 +488,7 @@ def lift_line_tools():
         print("Lifting line tools off surface")
         line_marker_up()
         line_cutter_up()
-        time.sleep(0.2)
+        time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
         line_tools_height = "up"
         print("Line tools lifted")
     else:
@@ -495,7 +500,7 @@ def lower_line_tools():
     print("MOCK: lower_line_tools()")
     if line_tools_height != "down":
         print("Lowering line tools to surface")
-        time.sleep(0.2)
+        time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
         line_tools_height = "down"
         print("Line tools lowered to surface")
     else:

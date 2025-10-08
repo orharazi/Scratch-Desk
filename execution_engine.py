@@ -2,8 +2,21 @@
 
 import threading
 import time
+import json
 from mock_hardware import *
 from safety_system import SafetyViolation, check_step_safety
+
+# Load settings
+def load_settings():
+    """Load settings from settings.json"""
+    try:
+        with open('settings.json', 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+settings = load_settings()
+timing_settings = settings.get("timing", {})
 
 class ExecutionEngine:
     """Lightweight execution engine optimized for Raspberry Pi with threading support"""
@@ -136,9 +149,9 @@ class ExecutionEngine:
         
         # Wait for threads to finish (with timeout)
         if self.execution_thread and self.execution_thread.is_alive():
-            self.execution_thread.join(timeout=2.0)
+            self.execution_thread.join(timeout=timing_settings.get("thread_join_timeout_execution", 2.0))
         if self.safety_monitor_thread and self.safety_monitor_thread.is_alive():
-            self.safety_monitor_thread.join(timeout=1.0)
+            self.safety_monitor_thread.join(timeout=timing_settings.get("thread_join_timeout_safety", 1.0))
         
         self.is_running = False
         self.is_paused = False
@@ -385,7 +398,7 @@ class ExecutionEngine:
                     print(f"    📋 All steps completed")
                 
                 # Small delay to prevent overwhelming the system
-                time.sleep(0.05)
+                time.sleep(timing_settings.get("execution_loop_delay", 0.05))
             
             # Execution completed
             self.end_time = time.time()
@@ -663,7 +676,7 @@ class ExecutionEngine:
                     # Skip safety monitoring during transitions
                     if self.in_transition:
                         print("🔄 Skipping safety monitor during lines→rows transition...")
-                        time.sleep(0.5)
+                        time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
                         continue
                     
                     # Skip safety monitoring during setup steps
@@ -671,7 +684,7 @@ class ExecutionEngine:
                         from safety_system import safety_system
                         if safety_system._is_setup_movement(self.current_step_description):
                             print(f"🔧 Skipping safety monitor for setup step: {self.current_step_description[:50]}...")
-                            time.sleep(0.1)
+                            time.sleep(timing_settings.get("safety_check_interval", 0.1))
                             continue
                     
                     # Check safety based on current operation type
@@ -765,7 +778,7 @@ class ExecutionEngine:
                         print(f"⚠️  Safety monitor error: {e}")
                 
                 # Check every 100ms for real-time monitoring
-                time.sleep(0.1)
+                time.sleep(timing_settings.get("safety_check_interval", 0.1))
         
         except Exception as e:
             print(f"Safety monitoring thread error: {e}")
@@ -846,7 +859,7 @@ class ExecutionEngine:
                 print("✅ Row marker set to DOWN - verifying stable position...")
                 
                 # Wait a short time to ensure the position is stable
-                time.sleep(0.2)
+                time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
                 
                 # Double-check the position is still stable
                 row_marker_programmed_stable = get_row_marker_state()
@@ -924,7 +937,7 @@ class ExecutionEngine:
             })
             
             # Check every 500ms for responsive monitoring (increased from 200ms for less spam)
-            time.sleep(0.5)
+            time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
         
         # Execution was stopped during transition
         print("⏹️  Execution stopped during lines→rows transition")
