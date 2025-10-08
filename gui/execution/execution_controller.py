@@ -64,8 +64,15 @@ class ExecutionController:
                     # Track operation colors AFTER step completes (user has triggered sensor)
                     self.main_app.canvas_manager.track_operation_from_step(step_info)
 
-                    # Update for move operations and sensor operations that might change position
-                    if any(keyword in step_info.lower() for keyword in ['move', 'init', 'sensor', 'cut', 'mark']):
+                    # Force position update for move operations
+                    if 'move' in step_info.lower():
+                        print(f"🔄 MOVE COMPLETED - Forcing position update: {step_info}")
+                        self.main_app.canvas_manager.update_position_display()
+                        if hasattr(self.main_app.canvas_manager, 'canvas_position'):
+                            self.main_app.canvas_manager.canvas_position.update_position_display()
+                        print(f"✅ Position display updated after move completion")
+                    # Update for sensor operations that might change position
+                    elif any(keyword in step_info.lower() for keyword in ['init', 'sensor', 'cut', 'mark']):
                         self.main_app.canvas_manager.update_position_display()
                     
                     # Update tool status indicators for tool actions

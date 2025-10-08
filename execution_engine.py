@@ -859,9 +859,16 @@ class ExecutionEngine:
                     self.in_transition = False
                     print("🔄 TRANSITION: Resuming safety monitoring for rows operations")
 
+                    # Update operation type to rows BEFORE position update
+                    self.current_operation_type = 'rows'
+                    print("🔄 TRANSITION: Set operation type to 'rows'")
+
                     # Force clear sensor override and update position display
                     if hasattr(self, 'canvas_manager') and self.canvas_manager:
-                        print("🔄 TRANSITION: Clearing sensor override and forcing position update")
+                        print("🔄 TRANSITION: Setting canvas motor_operation_mode to 'rows'")
+                        self.canvas_manager.set_motor_operation_mode("rows")
+
+                        print("🔄 TRANSITION: Clearing sensor override")
                         self.canvas_manager.sensor_override_active = False
                         if hasattr(self.canvas_manager, 'sensor_override_timer') and self.canvas_manager.sensor_override_timer:
                             import tkinter as tk
@@ -869,8 +876,13 @@ class ExecutionEngine:
                             if hasattr(self.canvas_manager, 'main_app') and hasattr(self.canvas_manager.main_app, 'root'):
                                 self.canvas_manager.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
                                 self.canvas_manager.sensor_override_timer = None
+
+                        print("🔄 TRANSITION: Forcing position display update")
+                        # Force multiple updates to ensure canvas refreshes
                         self.canvas_manager.update_position_display()
-                        print("✅ Position display updated after transition")
+                        if hasattr(self.canvas_manager, 'canvas_position'):
+                            self.canvas_manager.canvas_position.update_position_display()
+                        print("✅ Position display updated after transition - motor should now show X position")
 
                     # Auto-dismiss alert and resume execution
                     self._update_status("transition_complete", {
