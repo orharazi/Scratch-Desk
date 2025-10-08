@@ -139,25 +139,19 @@ class CanvasOperations:
                 line_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
                 line_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
                 
-                # Dynamic color based on state (using settings)
+                # SOLID lines - only color changes based on state (using settings)
                 state = self.main_app.operation_states['lines'].get(overall_line_num, 'pending')
                 if state == 'completed':
                     line_color = lines_colors['completed']
-                    dash_pattern = (10, 2)  # Solid-like for completed
-                    width = 3
                 elif state == 'in_progress':
                     line_color = lines_colors['in_progress']
-                    dash_pattern = (8, 4)
-                    width = 3
                 else:  # pending
                     line_color = lines_colors['pending']
-                    dash_pattern = (5, 5)
-                    width = 2
-                
-                # Draw line
+
+                # Draw line - SOLID LINE
                 line_id = self.main_app.canvas.create_line(
                     line_x1_canvas, line_y_canvas, line_x2_canvas, line_y_canvas,
-                    fill=line_color, width=width, dash=dash_pattern, tags="work_lines"
+                    fill=line_color, width=3, tags="work_lines"
                 )
                 
                 # Store line object for dynamic updates (using settings colors)
@@ -207,24 +201,19 @@ class CanvasOperations:
             individual_row_num = program.number_of_pages * 2 - rtl_drawing_row_num + 1  # Convert to RTL numbering
             row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num}', 'pending')
 
+            # SOLID lines - only color changes based on state
             if row_state == 'completed':
                 start_color = rows_colors['completed']
-                start_dash = (8, 2)
-                start_width = 3
             elif row_state == 'in_progress':
                 start_color = rows_colors['in_progress']
-                start_dash = (6, 3)
-                start_width = 3
             else:  # pending
                 start_color = rows_colors['pending']
-                start_dash = (4, 4)
-                start_width = 2
-            
-            # Create individual row line (right edge)
+
+            # Create individual row line (right edge) - SOLID LINE
             row_start_id = self.main_app.canvas.create_line(
                 page_start_canvas, page_y1_canvas,
                 page_start_canvas, page_y2_canvas,
-                fill=start_color, width=start_width, dash=start_dash, tags="work_lines"
+                fill=start_color, width=3, tags="work_lines"
             )
             
             # Row label (R1, R3, R5, etc.)
@@ -243,24 +232,19 @@ class CanvasOperations:
             individual_row_num_left = program.number_of_pages * 2 - rtl_drawing_row_num_left + 1  # Convert to RTL numbering
             end_row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num_left}', 'pending')
 
+            # SOLID lines - only color changes based on state
             if end_row_state == 'completed':
                 end_color = rows_colors['completed']
-                end_dash = (8, 2)
-                end_width = 3
             elif end_row_state == 'in_progress':
                 end_color = rows_colors['in_progress']
-                end_dash = (6, 3)
-                end_width = 3
             else:  # pending
                 end_color = rows_colors['pending']
-                end_dash = (4, 4)
-                end_width = 2
-            
-            # Create individual row line (left edge)
+
+            # Create individual row line (left edge) - SOLID LINE
             row_end_id = self.main_app.canvas.create_line(
                 page_end_canvas, page_y1_canvas,
                 page_end_canvas, page_y2_canvas,
-                fill=end_color, width=end_width, dash=end_dash, tags="work_lines"
+                fill=end_color, width=3, tags="work_lines"
             )
             
             # Row label (R2, R4, R6, etc.)
@@ -301,45 +285,40 @@ class CanvasOperations:
             cut_name = cuts[i]
             state = self.main_app.operation_states['cuts'].get(cut_name, 'pending')
 
+            # SOLID lines - only color changes based on state
             if state == 'completed':
                 cut_color = cuts_colors['completed']
-                cut_dash = (12, 3)
-                cut_width = 4
             elif state == 'in_progress':
                 cut_color = cuts_colors['in_progress']
-                cut_dash = (8, 4)
-                cut_width = 3
             else:  # pending
                 cut_color = cuts_colors['pending']
-                cut_dash = (3, 6)
-                cut_width = 2
-            
+
             if orientation == 'horizontal':
-                # Horizontal cuts span the paper width
+                # Horizontal cuts span the paper width - SOLID LINE
                 cut_y_canvas = self.main_app.offset_y + (max_y_cm - cut_pos) * self.main_app.scale_y
                 cut_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
                 cut_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
-                
+
                 cut_id = self.main_app.canvas.create_line(
                     cut_x1_canvas, cut_y_canvas, cut_x2_canvas, cut_y_canvas,
-                    fill=cut_color, width=cut_width, dash=cut_dash, tags="work_lines"
+                    fill=cut_color, width=4, tags="work_lines"
                 )
-                
+
                 # Add cut label
                 self.main_app.canvas.create_text(
                     cut_x2_canvas + 10, cut_y_canvas,
                     text=cut_labels[i], font=('Arial', 8, 'bold'), fill=cut_color, tags="work_lines"
                 )
-                
+
             else:  # vertical
-                # Vertical cuts span the paper height
+                # Vertical cuts span the paper height - SOLID LINE
                 cut_x_canvas = self.main_app.offset_x + cut_pos * self.main_app.scale_x
                 cut_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + actual_paper_height)) * self.main_app.scale_y
                 cut_y2_canvas = self.main_app.offset_y + (max_y_cm - paper_y) * self.main_app.scale_y
-                
+
                 cut_id = self.main_app.canvas.create_line(
                     cut_x_canvas, cut_y1_canvas, cut_x_canvas, cut_y2_canvas,
-                    fill=cut_color, width=cut_width, dash=cut_dash, tags="work_lines"
+                    fill=cut_color, width=4, tags="work_lines"
                 )
                 
                 # Add cut label
