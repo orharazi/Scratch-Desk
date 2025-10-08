@@ -469,11 +469,11 @@ class CanvasOperations:
                 if row_num is not None:
                     row_key = f'row_{row_num}'
 
-                    # Change to in_progress ONLY when waiting for TOP Y sensor (user needs to trigger)
-                    if 'wait top y sensor' in step_desc or 'wait for top y sensor' in step_desc:
+                    # Change to in_progress when OPENING the row marker (marking starts)
+                    if 'open row marker' in step_desc:
                         self.update_operation_state('rows', row_key, 'in_progress')
                         print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}, visual page {visual_page_num}) → IN PROGRESS")
-                    # Change to completed ONLY when closing the row marker (not cutter)
+                    # Change to completed when closing the row marker (marking finishes)
                     elif 'close row marker' in step_desc:
                         self.update_operation_state('rows', row_key, 'completed')
                         print(f"✅ Row {row_num} (RTL Page {rtl_page_num}, visual page {visual_page_num}) → COMPLETED")
