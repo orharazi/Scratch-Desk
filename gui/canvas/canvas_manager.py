@@ -62,29 +62,32 @@ class CanvasManager:
         """Automatically detect operation mode from step description"""
         if not step_description:
             return
-        
+
         step_desc = step_description.lower()
-        
+
         # Lines operation keywords
         if any(keyword in step_desc for keyword in [
-            "lines operation", "line marking", "cut top edge", "cut bottom edge", 
+            "lines operation", "line marking", "cut top edge", "cut bottom edge",
             "mark line", "lines complete", "init: move y motor"
         ]):
             self.set_motor_operation_mode("lines")
-        
-        # Rows operation keywords  
+
+        # Rows operation keywords - INCLUDING any step with move_x or cut right/left edge
         elif any(keyword in step_desc for keyword in [
             "rows operation", "row marking", "cut first row", "cut last row",
             "mark row", "rows complete", "init: move x motor", "mark page",
-            "move to.*page", "rightmost page", "right to left"
+            "move to.*page", "rightmost page", "right to left",
+            "cut right", "cut left", "rtl page", "move x motor", "mark pages"
         ]):
             self.set_motor_operation_mode("rows")
-        
+
         # Idle/home operations
         elif any(keyword in step_desc for keyword in [
             "home position", "starting program", "program complete", "system ready"
         ]):
             self.set_motor_operation_mode("idle")
+
+        print(f"🔍 detect_operation_mode_from_step: '{step_desc[:50]}...' → mode = {self.motor_operation_mode}")
     
     # === SETUP METHODS ===
     def setup_canvas(self):
