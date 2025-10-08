@@ -185,6 +185,7 @@ class ScratchDeskGUI:
     def schedule_position_update(self):
         """Schedule regular position updates"""
         self.canvas_manager.update_position_display()
+        self.canvas_manager.update_canvas_work_status_display()
         self.root.after(500, self.schedule_position_update)  # Update every 500ms
     
     def on_execution_status(self, status, info=None):

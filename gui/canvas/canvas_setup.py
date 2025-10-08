@@ -1,5 +1,8 @@
 import tkinter as tk
-from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
+from mock_hardware import (
+    get_current_x, get_current_y, move_x, move_y, get_hardware_status,
+    get_line_marker_piston_state, get_row_marker_limit_switch
+)
 
 
 class CanvasSetup:
@@ -314,12 +317,206 @@ class CanvasSetup:
             anchor='w', tags="tool_status"
         )
         
-        # Add row marker limit switch status display (from original canvas manager)
-        self.canvas_objects['row_marker_limit_switch'] = self.main_app.canvas.create_text(
-            400, 35, text="Row Marker State: UP", fill='darkgreen', font=('Arial', 8, 'bold')
+        # Create comprehensive work operations status display on canvas
+        self.create_canvas_work_status_display()
+
+    def create_canvas_work_status_display(self):
+        """Create comprehensive work operations status display on canvas board area"""
+        # Get settings
+        operation_colors = self.main_app.settings.get("operation_colors", {})
+        mark_colors = operation_colors.get("mark", {
+            "pending": "#880808",
+            "in_progress": "#FF8800",
+            "completed": "#00AA00"
+        })
+        cut_colors = operation_colors.get("cuts", {
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
+        })
+
+        # Position status display in top-right corner of canvas
+        status_x = self.main_app.canvas_width - 280
+        status_y = 15
+
+        # Create background frame
+        bg_width = 270
+        bg_height = 180
+        self.canvas_objects['status_bg'] = self.main_app.canvas.create_rectangle(
+            status_x, status_y, status_x + bg_width, status_y + bg_height,
+            fill='#E8F4F8', outline='#2C5F7F', width=2
         )
-        
-        # Add line marker piston status display (from original canvas manager)  
-        self.canvas_objects['line_marker_piston'] = self.main_app.canvas.create_text(
-            150, 35, text="Line Marker State: DOWN", fill='red', font=('Arial', 8, 'bold')
+
+        # Title
+        title_y = status_y + 10
+        self.canvas_objects['status_title'] = self.main_app.canvas.create_text(
+            status_x + bg_width/2, title_y,
+            text="📋 WORK OPERATIONS STATUS", font=('Arial', 10, 'bold'),
+            fill='#2C5F7F'
         )
+
+        # Section 1: MARK Operations (Lines)
+        section1_y = title_y + 20
+        self.canvas_objects['mark_section_title'] = self.main_app.canvas.create_text(
+            status_x + 10, section1_y,
+            text="✏️ MARK (Lines)", font=('Arial', 9, 'bold'),
+            fill='#1A4D6B', anchor='w'
+        )
+
+        # Mark status indicators
+        indicator_y = section1_y + 15
+        self._create_status_line_indicator(
+            status_x + 15, indicator_y,
+            "Ready:", mark_colors['pending'], 'mark_ready'
+        )
+        self._create_status_line_indicator(
+            status_x + 95, indicator_y,
+            "Working:", mark_colors['in_progress'], 'mark_working'
+        )
+        self._create_status_line_indicator(
+            status_x + 185, indicator_y,
+            "Done:", mark_colors['completed'], 'mark_done'
+        )
+
+        # Line motor limit switch status
+        limit_y = indicator_y + 20
+        self.canvas_objects['line_motor_limit'] = self.main_app.canvas.create_text(
+            status_x + 15, limit_y,
+            text="Line Motor: DOWN", font=('Arial', 8, 'bold'),
+            fill='#666666', anchor='w'
+        )
+
+        # Section 2: CUT Operations (Rows)
+        section2_y = limit_y + 25
+        self.canvas_objects['cut_section_title'] = self.main_app.canvas.create_text(
+            status_x + 10, section2_y,
+            text="✂️ CUT (Rows)", font=('Arial', 9, 'bold'),
+            fill='#6B1A4D', anchor='w'
+        )
+
+        # Cut status indicators
+        cut_indicator_y = section2_y + 15
+        self._create_status_line_indicator(
+            status_x + 15, cut_indicator_y,
+            "Ready:", cut_colors['pending'], 'cut_ready'
+        )
+        self._create_status_line_indicator(
+            status_x + 95, cut_indicator_y,
+            "Working:", cut_colors['in_progress'], 'cut_working'
+        )
+        self._create_status_line_indicator(
+            status_x + 185, cut_indicator_y,
+            "Done:", cut_colors['completed'], 'cut_done'
+        )
+
+        # Row motor limit switch status
+        row_limit_y = cut_indicator_y + 20
+        self.canvas_objects['row_motor_limit'] = self.main_app.canvas.create_text(
+            status_x + 15, row_limit_y,
+            text="Row Marker: UP", font=('Arial', 8, 'bold'),
+            fill='#666666', anchor='w'
+        )
+
+        # Section 3: Real-time Operation States
+        section3_y = row_limit_y + 25
+        self.canvas_objects['realtime_section_title'] = self.main_app.canvas.create_text(
+            status_x + 10, section3_y,
+            text="⚡ REAL-TIME STATUS", font=('Arial', 9, 'bold'),
+            fill='#4D6B1A', anchor='w'
+        )
+
+        # Current operation display
+        current_op_y = section3_y + 15
+        self.canvas_objects['current_line_op'] = self.main_app.canvas.create_text(
+            status_x + 15, current_op_y,
+            text="Lines: Ready", font=('Arial', 8),
+            fill='#333333', anchor='w'
+        )
+
+        row_op_y = current_op_y + 15
+        self.canvas_objects['current_row_op'] = self.main_app.canvas.create_text(
+            status_x + 15, row_op_y,
+            text="Rows: Ready", font=('Arial', 8),
+            fill='#333333', anchor='w'
+        )
+
+    def _create_status_line_indicator(self, x, y, label, color, obj_key):
+        """Helper to create a status line with label and colored indicator"""
+        # Label text
+        self.canvas_objects[f'{obj_key}_label'] = self.main_app.canvas.create_text(
+            x, y,
+            text=label, font=('Arial', 7),
+            fill='#333333', anchor='w'
+        )
+
+        # Colored line indicator (20px long, 3px wide)
+        line_x = x + 35
+        self.canvas_objects[f'{obj_key}_line'] = self.main_app.canvas.create_line(
+            line_x, y, line_x + 20, y,
+            fill=color, width=3
+        )
+
+    def update_canvas_work_status_display(self):
+        """Update the canvas work status display with real-time hardware states"""
+        # Update Line Motor Piston State
+        line_piston_state = get_line_marker_piston_state()
+        if 'line_motor_limit' in self.canvas_objects:
+            if line_piston_state == "down":
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['line_motor_limit'],
+                    text="Line Motor: DOWN",
+                    fill='#00AA00'  # Green when down (ready to mark)
+                )
+            else:
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['line_motor_limit'],
+                    text="Line Motor: UP",
+                    fill='#666666'  # Gray when up
+                )
+
+        # Update Row Marker Limit Switch State
+        row_marker_state = get_row_marker_limit_switch()
+        if 'row_motor_limit' in self.canvas_objects:
+            if row_marker_state == "down":
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['row_motor_limit'],
+                    text="Row Marker: DOWN",
+                    fill='#00AA00'  # Green when down (marking)
+                )
+            else:
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['row_motor_limit'],
+                    text="Row Marker: UP",
+                    fill='#666666'  # Gray when up
+                )
+
+        # Update real-time operation states based on motor operation mode
+        motor_mode = self.canvas_manager.motor_operation_mode
+
+        if 'current_line_op' in self.canvas_objects:
+            if motor_mode == "lines":
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['current_line_op'],
+                    text="Lines: WORKING",
+                    fill='#FF8800'  # Orange for in progress
+                )
+            else:
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['current_line_op'],
+                    text="Lines: Ready",
+                    fill='#333333'
+                )
+
+        if 'current_row_op' in self.canvas_objects:
+            if motor_mode == "rows":
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['current_row_op'],
+                    text="Rows: WORKING",
+                    fill='#FF0088'  # Magenta for in progress
+                )
+            else:
+                self.main_app.canvas.itemconfig(
+                    self.canvas_objects['current_row_op'],
+                    text="Rows: Ready",
+                    fill='#333333'
+                )

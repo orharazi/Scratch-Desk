@@ -29,16 +29,6 @@
     "strict_mode": false
   },
   "operation_colors": {
-    "lines": {
-      "pending": "#880808",
-      "in_progress": "#FF8800",
-      "completed": "#00AA00"
-    },
-    "rows": {
-      "pending": "#880808",
-      "in_progress": "#FF8800",
-      "completed": "#00AA00"
-    },
     "mark": {
       "pending": "#880808",
       "in_progress": "#FF8800",
