@@ -87,22 +87,22 @@ class CanvasOperations:
         actual_paper_width = program.width * program.repeat_rows
         actual_paper_height = program.high * program.repeat_lines
 
-        # Load colors from settings
+        # Load colors from settings (fallback colors match WORK OPERATIONS STATUS)
         operation_colors = self.main_app.settings.get("operation_colors", {})
         lines_colors = operation_colors.get("lines", {
-            "pending": "#FF4444",
+            "pending": "#FF6600",
             "in_progress": "#FF8800",
             "completed": "#00AA00"
         })
         rows_colors = operation_colors.get("rows", {
-            "pending": "#4444FF",
-            "in_progress": "#8800FF",
-            "completed": "#0088AA"
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
         })
         cuts_colors = operation_colors.get("cuts", {
-            "pending": "#888888",
-            "in_progress": "#FF6600",
-            "completed": "#FF00FF"
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
         })
 
         print(f"📏 DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm")
