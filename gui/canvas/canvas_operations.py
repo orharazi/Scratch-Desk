@@ -484,29 +484,69 @@ class CanvasOperations:
                     self.main_app.canvas.itemconfig(obj_data['label_id'], fill=new_color)
     
     def draw_enhanced_legend(self):
-        """Draw enhanced legend on canvas (original functionality)"""
+        """Draw enhanced legend on canvas using colors from settings"""
         legend_x = self.main_app.canvas_width - 200
         legend_y = 100
-        
+
+        # Load colors from settings
+        operation_colors = self.main_app.settings.get("operation_colors", {})
+        lines_colors = operation_colors.get("lines", {
+            "pending": "#FF6600",
+            "in_progress": "#FF8800",
+            "completed": "#00AA00"
+        })
+        rows_colors = operation_colors.get("rows", {
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
+        })
+
         # Legend title
         self.main_app.canvas.create_text(
             legend_x, legend_y - 20,
             text="Operations Legend", font=('Arial', 12, 'bold'), fill='black'
         )
-        
-        # Line operations
+
+        # Line operations (MARK)
         self.main_app.canvas.create_text(
             legend_x, legend_y + 10,
-            text="Lines:", font=('Arial', 10, 'bold'), fill='black', anchor='w'
+            text="Lines (MARK):", font=('Arial', 10, 'bold'), fill='black', anchor='w'
         )
-        
-        # Line colors
-        colors = [('#FF4444', 'Pending'), ('#FF8800', 'In Progress'), ('#00AA00', 'Completed')]
-        for i, (color, label) in enumerate(colors):
+
+        # Line colors from settings
+        line_color_list = [
+            (lines_colors['pending'], 'Ready'),
+            (lines_colors['in_progress'], 'Working'),
+            (lines_colors['completed'], 'Done')
+        ]
+        for i, (color, label) in enumerate(line_color_list):
             y_pos = legend_y + 30 + i * 20
             self.main_app.canvas.create_line(
                 legend_x + 10, y_pos, legend_x + 30, y_pos,
-                fill=color, width=3
+                fill=color, width=3, dash=(5, 5) if label == 'Ready' else ((8, 4) if label == 'Working' else (10, 2))
+            )
+            self.main_app.canvas.create_text(
+                legend_x + 35, y_pos,
+                text=label, font=('Arial', 9), fill='black', anchor='w'
+            )
+
+        # Row operations (CUT)
+        self.main_app.canvas.create_text(
+            legend_x, legend_y + 100,
+            text="Rows (CUT):", font=('Arial', 10, 'bold'), fill='black', anchor='w'
+        )
+
+        # Row colors from settings
+        row_color_list = [
+            (rows_colors['pending'], 'Ready'),
+            (rows_colors['in_progress'], 'Working'),
+            (rows_colors['completed'], 'Done')
+        ]
+        for i, (color, label) in enumerate(row_color_list):
+            y_pos = legend_y + 120 + i * 20
+            self.main_app.canvas.create_line(
+                legend_x + 10, y_pos, legend_x + 30, y_pos,
+                fill=color, width=3, dash=(5, 5) if label == 'Ready' else ((8, 4) if label == 'Working' else (10, 2))
             )
             self.main_app.canvas.create_text(
                 legend_x + 35, y_pos,
