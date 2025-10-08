@@ -437,8 +437,9 @@ class CanvasOperations:
         # Track row operations - match "RTL Page X" with edge detection
         # Rows are numbered by drawing order: (page-1)*2+1 for RIGHT, (page-1)*2+2 for LEFT
         # ONLY change color on sensor/tool actions, NOT on move operations
+        # ONLY track row MARKING operations, not cutting operations
         rtl_page_match = re.search(r'rtl page\s*(\d+)', step_desc, re.IGNORECASE)
-        if rtl_page_match:
+        if rtl_page_match and 'row marker' in step_desc:  # Only for row marking, not cutting
             rtl_page_num = int(rtl_page_match.group(1))
 
             # Detect which edge (RIGHT or LEFT)
@@ -455,20 +456,23 @@ class CanvasOperations:
                 if 'wait top y sensor' in step_desc or 'wait for top y sensor' in step_desc:
                     self.update_operation_state('rows', row_key, 'in_progress')
                     print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}) → IN PROGRESS (waiting for TOP sensor)")
-                # Change to completed ONLY when closing the marker/cutter
-                elif 'close row marker' in step_desc or 'close row cutter' in step_desc:
+                # Change to completed ONLY when closing the row marker (not cutter)
+                elif 'close row marker' in step_desc:
                     self.update_operation_state('rows', row_key, 'completed')
-                    print(f"✅ Row {row_num} (RTL Page {rtl_page_num}) → COMPLETED (marker/cutter closed)")
+                    print(f"✅ Row {row_num} (RTL Page {rtl_page_num}) → COMPLETED (marker closed)")
 
-        # Track cut edge operations
-        for cut_name in ['top', 'bottom', 'left', 'right']:
-            if cut_name in step_desc and 'edge' in step_desc:
-                if any(keyword in step_desc for keyword in ['complete', 'close', 'finished']):
-                    self.update_operation_state('cuts', cut_name, 'completed')
-                    print(f"✅ {cut_name.title()} cut marked as COMPLETED")
-                elif any(keyword in step_desc for keyword in ['cutting', 'open']):
-                    self.update_operation_state('cuts', cut_name, 'in_progress')
-                    print(f"🔄 {cut_name.title()} cut marked as IN PROGRESS")
+        # Track cut edge operations - ONLY for "Cut X paper edge" steps, not row marking
+        # Exclude steps that contain "row marker" to avoid false matches
+        if 'row marker' not in step_desc:
+            for cut_name in ['top', 'bottom', 'left', 'right']:
+                # Only match if it says "Cut X paper edge" or similar cutting operation
+                if f'cut {cut_name}' in step_desc and 'paper edge' in step_desc:
+                    if any(keyword in step_desc for keyword in ['complete', 'close', 'finished']):
+                        self.update_operation_state('cuts', cut_name, 'completed')
+                        print(f"✅ {cut_name.title()} cut marked as COMPLETED")
+                    elif any(keyword in step_desc for keyword in ['cutting', 'open']):
+                        self.update_operation_state('cuts', cut_name, 'in_progress')
+                        print(f"🔄 {cut_name.title()} cut marked as IN PROGRESS")
     
     def refresh_work_lines_colors(self):
         """Refresh colors of work lines based on current operation states"""
