@@ -20,6 +20,7 @@ class ExecutionEngine:
         self.pause_event = threading.Event()
         self.stop_event = threading.Event()
         self.safety_monitor_stop = threading.Event()
+        self.in_transition = False  # Flag to pause safety monitoring during transitions
         
         # Progress tracking
         self.step_results = []
@@ -270,16 +271,43 @@ class ExecutionEngine:
                 # Track current step description for safety monitoring
                 self.current_step_description = step.get('description', '')
                 
-                # Check for operation transition (lines to rows)
+                # Detect transition but don't update operation type to 'rows' yet
+                temp_operation_type = self._detect_operation_type_from_step(step)
                 previous_operation = self.current_operation_type
-                self._update_current_operation_type(step)
                 
-                # Handle transition from lines to rows operations
-                if previous_operation == 'lines' and self.current_operation_type == 'rows':
+                print(f"🔍 TRANSITION CHECK: previous='{previous_operation}', detected='{temp_operation_type}'")
+                
+                # Handle transition from lines to rows operations IMMEDIATELY  
+                if previous_operation == 'lines' and temp_operation_type == 'rows':
                     print("🔄 OPERATION TRANSITION: Lines → Rows detected")
-                    if not self._handle_lines_to_rows_transition():
-                        # Transition failed - stop execution
+                    print(f"🔄 TRANSITION STEP: {step.get('description', '')}")
+                    print(f"🔄 STEP OPERATION: {step.get('operation', '')}")
+                    print(f"🔄 PREVIOUS OP: {previous_operation}, DETECTED OP: {temp_operation_type}")
+                    
+                    # CRITICAL: Set transition flag BEFORE any safety checks can run
+                    self.in_transition = True
+                    print("🔒 TRANSITION FLAG SET IMMEDIATELY - ALL SAFETY CHECKS BYPASSED")
+                    
+                    try:
+                        transition_result = self._handle_lines_to_rows_transition()
+                        print(f"🔄 TRANSITION RESULT: {transition_result}")
+                        if not transition_result:
+                            # Transition failed - stop execution
+                            print("❌ TRANSITION FAILED - Breaking execution loop")
+                            self.in_transition = False  # Clear flag on failure
+                            break
+                    except Exception as e:
+                        print(f"❌ TRANSITION EXCEPTION: {e}")
+                        self.in_transition = False  # Clear flag on exception
                         break
+                    # After successful transition, update operation type to 'rows' and continue
+                    self.current_operation_type = 'rows'
+                    print("✅ TRANSITION COMPLETED - Operation type updated to ROWS - Continuing with triggering step")
+                
+                # Update operation type for non-transition steps  
+                if not (previous_operation == 'lines' and temp_operation_type == 'rows'):
+                    # Normal operation type update (no transition)
+                    self._update_current_operation_type(step)
                 
                 # Notify step execution started (for operation tracking)
                 self._update_status("step_executing", {
@@ -385,31 +413,34 @@ class ExecutionEngine:
         
         print(f"Executing: {description}")
         
-        # SAFETY CHECK: Validate step safety before execution
-        try:
-            check_step_safety(step)
-        except SafetyViolation as e:
-            print(f"🚨 SAFETY VIOLATION DETECTED!")
-            print(f"Step blocked: {description}")
-            print(f"Safety violation: {e.message}")
-            
-            # Don't call stop_execution() here as it causes thread join issues
-            # The execution loop will handle the safety violation result
-            
-            # Update status with safety error
-            self._update_status("safety_violation", {
-                'step': step,
-                'violation_message': e.message,
-                'safety_code': e.safety_code
-            })
-            
-            return {
-                'success': False, 
-                'error': 'Safety violation',
-                'safety_violation': True,
-                'violation_message': e.message,
-                'safety_code': e.safety_code
-            }
+        # SAFETY CHECK: Validate step safety before execution (skip during transitions)
+        if not self.in_transition:
+            try:
+                check_step_safety(step)
+            except SafetyViolation as e:
+                print(f"🚨 SAFETY VIOLATION DETECTED!")
+                print(f"Step blocked: {description}")
+                print(f"Safety violation: {e.message}")
+                
+                # Don't call stop_execution() here as it causes thread join issues
+                # The execution loop will handle the safety violation result
+                
+                # Update status with safety error
+                self._update_status("safety_violation", {
+                    'step': step,
+                    'violation_message': e.message,
+                    'safety_code': e.safety_code
+                })
+                
+                return {
+                    'success': False, 
+                    'error': 'Safety violation',
+                    'safety_violation': True,
+                    'violation_message': e.message,
+                    'safety_code': e.safety_code
+                }
+        else:
+            print(f"🔄 TRANSITION: Skipping safety check for step during transition: {description[:50]}...")
         
         try:
             if operation == 'move_x':
@@ -565,23 +596,60 @@ class ExecutionEngine:
         # This would control the physical marking tool, not the safety limit switch
         # The limit switch state is ONLY controlled by user via toggle button
     
-    def _update_current_operation_type(self, step):
+    def _update_current_operation_type(self, step, allow_rows_transition=True):
         """Update the current operation type based on step description for safety monitoring"""
         description = step.get('description', '').lower()
+        operation = step.get('operation', '').lower()
         
-        # Detect operation type from step description
-        if any(keyword in description for keyword in ['lines', 'line_', 'line ', 'move_y', 'y_']):
+        # Store previous operation type for transition detection
+        previous_operation = self.current_operation_type
+        
+        # Detect operation type from both operation field and description
+        if (operation in ['move_y'] or 
+            any(keyword in description for keyword in ['lines', 'line_', 'line ', 'move_y', 'y_'])):
             if 'rows' not in description:  # Make sure it's not a rows operation
                 self.current_operation_type = 'lines'
-        elif any(keyword in description for keyword in ['rows', 'row_', 'move_x', 'x_']):
+        elif (operation in ['move_x'] or
+              any(keyword in description for keyword in ['rows', 'row_', 'move_x', 'x_'])):
             if 'lines' not in description and 'line' not in description:  # Make sure it's not a lines operation  
-                self.current_operation_type = 'rows'
+                # Only update to 'rows' if transition is allowed (after dialog completion)
+                if allow_rows_transition:
+                    self.current_operation_type = 'rows'
+                # If transition not allowed, keep previous operation type for now
         else:
             # Keep previous operation type for ambiguous steps
             pass
         
         if self.current_operation_type:
             print(f"🔒 SAFETY MONITOR: Current operation type = {self.current_operation_type.upper()}")
+        
+        # Return previous operation for transition detection
+        return previous_operation
+    
+    def _detect_operation_type_from_step(self, step):
+        """Detect operation type from step without updating current_operation_type"""
+        description = step.get('description', '').lower()
+        operation = step.get('operation', '').lower()
+        
+        print(f"🔍 TRANSITION DETECTION: operation='{operation}', description='{description[:50]}...'")
+        
+        # Check both operation field and description for lines operations
+        if (operation in ['move_y'] or 
+            any(keyword in description for keyword in ['lines', 'line_', 'line ', 'move_y', 'y_'])):
+            if 'rows' not in description:
+                print(f"   → Detected as LINES operation")
+                return 'lines'
+                
+        # Check both operation field and description for rows operations  
+        elif (operation in ['move_x'] or
+              any(keyword in description for keyword in ['rows', 'row_', 'move_x', 'x_'])):
+            if 'lines' not in description and 'line' not in description:
+                print(f"   → Detected as ROWS operation")
+                return 'rows'
+        
+        # Return current operation type if step type is ambiguous
+        print(f"   → Ambiguous step, keeping current: {self.current_operation_type}")
+        return self.current_operation_type
     
     def _safety_monitor_loop(self):
         """Real-time safety monitoring loop - runs in separate thread"""
@@ -591,6 +659,12 @@ class ExecutionEngine:
             while not self.safety_monitor_stop.is_set():
                 # Monitor safety during execution (running + not paused) OR during safety recovery (paused due to violation)
                 if self.is_running and self.current_operation_type:
+                    
+                    # Skip safety monitoring during transitions
+                    if self.in_transition:
+                        print("🔄 Skipping safety monitor during lines→rows transition...")
+                        time.sleep(0.5)
+                        continue
                     
                     # Skip safety monitoring during setup steps
                     if hasattr(self, 'current_step_description'):
@@ -703,33 +777,52 @@ class ExecutionEngine:
         Handle transition from lines operations to rows operations
         Show auto-dismissing alert that waits for row marker DOWN
         """
-        from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
-        
-        # Check if row marker is already DOWN
-        row_marker_programmed = get_row_marker_state()
-        row_marker_actual = get_row_marker_limit_switch()
-        
-        if row_marker_programmed == "down" and row_marker_actual == "down":
-            print("✅ Row marker already DOWN - proceeding with rows operations")
-            return True
-        
-        print("⏸️  TRANSITION PAUSE: Waiting for row marker to be set DOWN")
-        
-        # Pause execution temporarily
-        self.is_paused = True
-        self.pause_event.clear()
-        
-        # Show transitional alert through status callback
-        self._update_status("transition_alert", {
-            'from_operation': 'lines',
-            'to_operation': 'rows',
-            'message': 'Lines operations complete. Please set row marker to DOWN position to continue with rows operations.',
-            'current_programmed': row_marker_programmed,
-            'current_actual': row_marker_actual
-        })
-        
-        # Wait for row marker to be set DOWN with auto-monitoring
-        return self._wait_for_row_marker_down()
+        try:
+            print("🔄 TRANSITION: Starting _handle_lines_to_rows_transition")
+            from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+            
+            # Transition flag is already set in main execution loop
+            print("🔄 TRANSITION: Safety monitoring already paused by transition flag")
+            
+            # Check if row marker is already DOWN
+            row_marker_programmed = get_row_marker_state()
+            row_marker_actual = get_row_marker_limit_switch()
+            print(f"🔄 TRANSITION: Current row marker - Programmed: {row_marker_programmed}, Actual: {row_marker_actual}")
+            
+            if row_marker_programmed == "down" and row_marker_actual == "down":
+                print("✅ Row marker already DOWN - proceeding with rows operations")
+                self.in_transition = False  # Clear transition flag
+                return True
+            
+            print("⏸️  TRANSITION PAUSE: Waiting for row marker to be set DOWN")
+            print("🔄 TRANSITION: Setting execution to paused state")
+            
+            # Pause execution temporarily
+            self.is_paused = True
+            self.pause_event.clear()
+            
+            print("🔄 TRANSITION: Calling _update_status with transition_alert")
+            # Show transitional alert through status callback
+            self._update_status("transition_alert", {
+                'from_operation': 'lines',
+                'to_operation': 'rows',
+                'message': 'Lines operations complete. Please set row marker to DOWN position to continue with rows operations.',
+                'current_programmed': row_marker_programmed,
+                'current_actual': row_marker_actual
+            })
+            
+            print("🔄 TRANSITION: Calling _wait_for_row_marker_down")
+            # Wait for row marker to be set DOWN with auto-monitoring
+            result = self._wait_for_row_marker_down()
+            print(f"🔄 TRANSITION: _wait_for_row_marker_down returned: {result}")
+            return result
+            
+        except Exception as e:
+            print(f"❌ TRANSITION EXCEPTION in _handle_lines_to_rows_transition: {e}")
+            import traceback
+            traceback.print_exc()
+            self.in_transition = False  # Clear flag on error
+            return False
     
     def _wait_for_row_marker_down(self):
         """
@@ -746,21 +839,51 @@ class ExecutionEngine:
             row_marker_programmed = get_row_marker_state()
             row_marker_actual = get_row_marker_limit_switch()
             
-            # Debug output to verify monitoring is running
-            print(f"🔍 Monitoring: Programmed={row_marker_programmed.upper()}, Physical={row_marker_actual.upper()}")
+            # Debug output to verify monitoring is running (less frequent)
+            # print(f"🔍 Monitoring: Programmed={row_marker_programmed.upper()}, Physical={row_marker_actual.upper()}")
             
             if row_marker_programmed == "down" and row_marker_actual == "down":
-                print("✅ Row marker set to DOWN - auto-resuming execution")
+                print("✅ Row marker set to DOWN - verifying stable position...")
                 
-                # Auto-dismiss alert and resume execution
-                self._update_status("transition_complete", {
-                    'message': 'Row marker set to DOWN - resuming rows operations'
-                })
+                # Wait a short time to ensure the position is stable
+                time.sleep(0.2)
                 
-                # Resume execution automatically
-                self.is_paused = False
-                self.pause_event.set()
-                return True
+                # Double-check the position is still stable
+                row_marker_programmed_stable = get_row_marker_state()
+                row_marker_actual_stable = get_row_marker_limit_switch()
+                
+                if row_marker_programmed_stable == "down" and row_marker_actual_stable == "down":
+                    print("✅ Row marker position stable - auto-resuming execution")
+
+                    # Clear transition flag to resume safety monitoring
+                    self.in_transition = False
+                    print("🔄 TRANSITION: Resuming safety monitoring for rows operations")
+
+                    # Force clear sensor override and update position display
+                    if hasattr(self, 'canvas_manager') and self.canvas_manager:
+                        print("🔄 TRANSITION: Clearing sensor override and forcing position update")
+                        self.canvas_manager.sensor_override_active = False
+                        if hasattr(self.canvas_manager, 'sensor_override_timer') and self.canvas_manager.sensor_override_timer:
+                            import tkinter as tk
+                            # Safe way to get root without circular import
+                            if hasattr(self.canvas_manager, 'main_app') and hasattr(self.canvas_manager.main_app, 'root'):
+                                self.canvas_manager.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
+                                self.canvas_manager.sensor_override_timer = None
+                        self.canvas_manager.update_position_display()
+                        print("✅ Position display updated after transition")
+
+                    # Auto-dismiss alert and resume execution
+                    self._update_status("transition_complete", {
+                        'message': 'Row marker set to DOWN - resuming rows operations'
+                    })
+
+                    # Resume execution automatically
+                    self.is_paused = False
+                    self.pause_event.set()
+                    return True
+                else:
+                    print("⚠️  Row marker position unstable - continuing to wait...")
+                    continue
             
             # Update status with current state (for GUI updates)
             self._update_status("transition_waiting", {
@@ -774,6 +897,7 @@ class ExecutionEngine:
         
         # Execution was stopped during transition
         print("⏹️  Execution stopped during lines→rows transition")
+        self.in_transition = False  # Clear transition flag
         return False
     
     def get_execution_status(self):
