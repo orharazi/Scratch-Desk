@@ -453,11 +453,18 @@ class CanvasOperations:
                 visual_page_num = total_pages - rtl_page_num
 
                 # Calculate row number based on visual page position
+                # NOTE: Canvas drawing code has edges labeled backwards!
+                # Drawing code: page_start (low X) is drawn first, page_end (high X) is drawn second
+                # But page_start corresponds to odd row numbers (1,3,5,7...)
+                # And page_end corresponds to even row numbers (2,4,6,8...)
+                # In RTL execution: RIGHT edge (high X) is marked first, LEFT edge (low X) is marked second
                 row_num = None
                 if 'right edge' in step_desc:
-                    row_num = visual_page_num * 2 + 1
-                elif 'left edge' in step_desc:
+                    # RIGHT edge = high X = page_end = EVEN row numbers
                     row_num = visual_page_num * 2 + 2
+                elif 'left edge' in step_desc:
+                    # LEFT edge = low X = page_start = ODD row numbers
+                    row_num = visual_page_num * 2 + 1
 
                 if row_num is not None:
                     row_key = f'row_{row_num}'
