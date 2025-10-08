@@ -37,12 +37,16 @@ class ExecutionController:
                     # Detect motor operation mode from step description
                     self.main_app.canvas_manager.detect_operation_mode_from_step(step_info)
 
-                    # Smart sensor override clearing for move operations
+                    # Force immediate position update for all move operations
                     if 'move' in step_info.lower():
+                        print(f"🔄 MOVE DETECTED - Forcing position update: {step_info}")
                         # Only clear sensor override if we're moving on the same axis as the sensor
                         if hasattr(self.main_app.canvas_manager, 'sensor_override_active') and self.main_app.canvas_manager.sensor_override_active:
                             self.main_app.canvas_manager.smart_sensor_override_clear(step_info)
+                        # Force multiple position updates to ensure canvas refreshes
                         self.main_app.canvas_manager.update_position_display()
+                        self.main_app.canvas_manager.canvas_position.update_position_display()
+                        print(f"✅ Position display updated for move operation")
 
             elif status == 'step_completed':
                 # Force position update after each step completion for all position-related operations
