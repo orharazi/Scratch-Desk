@@ -863,6 +863,27 @@ class ExecutionEngine:
                     self.current_operation_type = 'rows'
                     print("🔄 TRANSITION: Set operation type to 'rows'")
 
+                    # CRITICAL: Find and execute the first move_x step immediately to position motor
+                    # This ensures the visual shows the motor at the correct position before resuming
+                    from mock_hardware import move_x, get_current_x
+                    print(f"🔄 TRANSITION: Looking for first move_x step after current position {self.current_step_index}")
+
+                    # Find the first move_x step after the current position
+                    first_move_x_step = None
+                    for idx in range(self.current_step_index, min(self.current_step_index + 5, len(self.steps))):
+                        step = self.steps[idx]
+                        if step.get('operation') == 'move_x':
+                            first_move_x_step = step
+                            print(f"   Found move_x step at index {idx}: {step.get('description')}")
+                            break
+
+                    # Execute the move_x immediately to position the motor
+                    if first_move_x_step:
+                        target_x = first_move_x_step.get('parameters', {}).get('position', 0)
+                        print(f"🔄 TRANSITION: Immediately moving X motor to {target_x}cm")
+                        move_x(target_x)
+                        print(f"✅ TRANSITION: X motor now at {get_current_x()}cm")
+
                     # Force clear sensor override and update position display
                     if hasattr(self, 'canvas_manager') and self.canvas_manager:
                         print("🔄 TRANSITION: Setting canvas motor_operation_mode to 'rows'")
@@ -877,12 +898,10 @@ class ExecutionEngine:
                                 self.canvas_manager.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
                                 self.canvas_manager.sensor_override_timer = None
 
-                        print("🔄 TRANSITION: Forcing position display update")
-                        # Force multiple updates to ensure canvas refreshes
+                        print("🔄 TRANSITION: Forcing position display update with new X position")
+                        # Force multiple updates to ensure canvas refreshes with new position
                         self.canvas_manager.update_position_display()
-                        if hasattr(self.canvas_manager, 'canvas_position'):
-                            self.canvas_manager.canvas_position.update_position_display()
-                        print("✅ Position display updated after transition - motor should now show X position")
+                        print("✅ Position display updated after transition - X motor should show at target position")
 
                     # Auto-dismiss alert and resume execution
                     self._update_status("transition_complete", {
