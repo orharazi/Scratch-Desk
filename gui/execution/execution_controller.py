@@ -40,9 +40,14 @@ class ExecutionController:
                     # Force immediate position update for all move operations
                     if 'move' in step_info.lower():
                         print(f"🔄 MOVE DETECTED - Forcing position update: {step_info}")
-                        # Only clear sensor override if we're moving on the same axis as the sensor
+                        # ALWAYS clear sensor override when starting a move operation
                         if hasattr(self.main_app.canvas_manager, 'sensor_override_active') and self.main_app.canvas_manager.sensor_override_active:
-                            self.main_app.canvas_manager.smart_sensor_override_clear(step_info)
+                            print(f"🔓 Clearing sensor override before move")
+                            self.main_app.canvas_manager.sensor_override_active = False
+                            # Cancel any pending sensor override timer
+                            if hasattr(self.main_app.canvas_manager, 'sensor_override_timer') and self.main_app.canvas_manager.sensor_override_timer:
+                                self.main_app.root.after_cancel(self.main_app.canvas_manager.sensor_override_timer)
+                                self.main_app.canvas_manager.sensor_override_timer = None
                         # Force multiple position updates to ensure canvas refreshes
                         self.main_app.canvas_manager.update_position_display()
                         self.main_app.canvas_manager.canvas_position.update_position_display()
