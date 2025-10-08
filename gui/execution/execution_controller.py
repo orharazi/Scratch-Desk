@@ -31,28 +31,30 @@ class ExecutionController:
             if status == 'step_executing':
                 step_info = info.get('description', 'Executing step...') if info else 'Executing step...'
                 self.main_app.operation_label.config(text=step_info, fg='green')
-                
-                # Track operation from step description for color updates
+
+                # Detect motor operation mode but DON'T track colors yet (wait for completion)
                 if hasattr(self.main_app, 'canvas_manager') and info:
                     # Detect motor operation mode from step description
                     self.main_app.canvas_manager.detect_operation_mode_from_step(step_info)
-                    
-                    self.main_app.canvas_manager.track_operation_from_step(step_info)
+
                     # Smart sensor override clearing for move operations
                     if 'move' in step_info.lower():
                         # Only clear sensor override if we're moving on the same axis as the sensor
                         if hasattr(self.main_app.canvas_manager, 'sensor_override_active') and self.main_app.canvas_manager.sensor_override_active:
                             self.main_app.canvas_manager.smart_sensor_override_clear(step_info)
                         self.main_app.canvas_manager.update_position_display()
-                        
+
             elif status == 'step_completed':
                 # Force position update after each step completion for all position-related operations
                 if hasattr(self.main_app, 'canvas_manager') and info:
                     step_info = info.get('description', '')
-                    
+
                     # Detect motor operation mode from completed step
                     self.main_app.canvas_manager.detect_operation_mode_from_step(step_info)
-                    
+
+                    # Track operation colors AFTER step completes (user has triggered sensor)
+                    self.main_app.canvas_manager.track_operation_from_step(step_info)
+
                     # Update for move operations and sensor operations that might change position
                     if any(keyword in step_info.lower() for keyword in ['move', 'init', 'sensor', 'cut', 'mark']):
                         self.main_app.canvas_manager.update_position_display()
@@ -191,6 +193,9 @@ class ExecutionController:
                 to_op = info.get('to_operation', '').title()
                 message = info.get('message', '')
                 
+                print(f"🔔 TRANSITION ALERT: {from_op} → {to_op}")
+                print(f"🔔 TRANSITION MESSAGE: {message}")
+                
                 # Show non-blocking transition dialog
                 self.show_transition_dialog(from_op, to_op, message)
                 
@@ -221,12 +226,14 @@ class ExecutionController:
                 # Auto-dismiss the transition dialog
                 if hasattr(self, 'transition_dialog') and self.transition_dialog:
                     try:
+                        print("🔄 TRANSITION: Auto-closing transition dialog")
                         self.transition_dialog.destroy()
                         self.transition_dialog = None
-                    except:
-                        pass  # Dialog may already be closed
+                        print("✅ TRANSITION: Dialog closed successfully")
+                    except Exception as e:
+                        print(f"⚠️  Error closing transition dialog: {e}")
                 
-                # Update GUI status
+                # Update GUI status to show rows operations starting
                 self.main_app.operation_label.config(
                     text="▶️  Rows operations starting...", 
                     fg='blue'
@@ -237,6 +244,8 @@ class ExecutionController:
                 self.main_app.progress_text.config(
                     text=f"{current_progress:.1f}% - Continuing execution"
                 )
+                
+                print("✅ TRANSITION COMPLETE: GUI updated for rows operations")
             
             elif status == 'stopped' or status == 'error':
                 # Keep current progress but update text
@@ -281,18 +290,23 @@ class ExecutionController:
             # Create detailed alert message
             alert_title = f"🚨 SAFETY VIOLATION - {safety_code}"
             
-            alert_message = f"""CRITICAL SAFETY VIOLATION DETECTED!
+            # Determine the required action based on the safety code
+            if "ROWS" in safety_code or "rows" in violation_message.lower():
+                required_action = "Open the rows door (set row marker DOWN) to continue rows operations."
+                error_code = "ROWS_DOOR_CLOSED"
+            elif "LINES" in safety_code or "lines" in violation_message.lower():
+                required_action = "Close the rows door (set row marker UP) to continue lines operations."  
+                error_code = "LINES_DOOR_OPEN"
+            else:
+                required_action = "Check the row marker position and resolve the safety condition."
+                error_code = safety_code
+            
+            alert_message = f"""🚨 SAFETY VIOLATION - {error_code}
 
-Execution has been stopped immediately for safety reasons.
-
-Blocked Step: {step_description}
-
-Safety Issue:
 {violation_message}
 
 REQUIRED ACTION:
-Please resolve the safety condition before continuing execution.
-Check the row marker position and ensure it is raised (UP) before attempting Y-axis movements.
+{required_action}
 
 The system will remain stopped until you manually address this issue."""
 
