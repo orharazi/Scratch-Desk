@@ -204,19 +204,22 @@ class CanvasOperations:
             individual_row_num = program.number_of_pages * 2 - rtl_drawing_row_num + 1  # Convert to RTL numbering
             row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num}', 'pending')
 
-            # SOLID lines - only color changes based on state
+            # Rows with color AND dash pattern changes based on state
             if row_state == 'completed':
                 start_color = rows_colors['completed']
+                start_dash = (10, 2)  # Almost solid
             elif row_state == 'in_progress':
                 start_color = rows_colors['in_progress']
+                start_dash = (8, 4)  # Medium dash
             else:  # pending
                 start_color = rows_colors['pending']
+                start_dash = (5, 5)  # Dashed
 
-            # Create individual row line (right edge) - SOLID LINE
+            # Create individual row line (right edge) with dash pattern
             row_start_id = self.main_app.canvas.create_line(
                 page_start_canvas, page_y1_canvas,
                 page_start_canvas, page_y2_canvas,
-                fill=start_color, width=3, tags="work_lines"
+                fill=start_color, width=3, dash=start_dash, tags="work_lines"
             )
             
             # Row label (R1, R3, R5, etc.)
@@ -235,19 +238,22 @@ class CanvasOperations:
             individual_row_num_left = program.number_of_pages * 2 - rtl_drawing_row_num_left + 1  # Convert to RTL numbering
             end_row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num_left}', 'pending')
 
-            # SOLID lines - only color changes based on state
+            # Rows with color AND dash pattern changes based on state
             if end_row_state == 'completed':
                 end_color = rows_colors['completed']
+                end_dash = (10, 2)  # Almost solid
             elif end_row_state == 'in_progress':
                 end_color = rows_colors['in_progress']
+                end_dash = (8, 4)  # Medium dash
             else:  # pending
                 end_color = rows_colors['pending']
+                end_dash = (5, 5)  # Dashed
 
-            # Create individual row line (left edge) - SOLID LINE
+            # Create individual row line (left edge) with dash pattern
             row_end_id = self.main_app.canvas.create_line(
                 page_end_canvas, page_y1_canvas,
                 page_end_canvas, page_y2_canvas,
-                fill=end_color, width=3, tags="work_lines"
+                fill=end_color, width=3, dash=end_dash, tags="work_lines"
             )
             
             # Row label (R2, R4, R6, etc.)
