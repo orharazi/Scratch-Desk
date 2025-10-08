@@ -435,44 +435,55 @@ class CanvasOperations:
                 print(f"✅ Line {line_num} → COMPLETED (marker closed)")
 
         # Track row operations - match "RTL Page X" with edge detection
-        # Rows are numbered by drawing order: (page-1)*2+1 for RIGHT, (page-1)*2+2 for LEFT
+        # RTL pages are processed right-to-left, but rows are drawn left-to-right
+        # Need to convert: RTL Page 1 (rightmost) = visual page N-1 = highest row numbers
         # ONLY change color on sensor/tool actions, NOT on move operations
         # ONLY track row MARKING operations, not cutting operations
         rtl_page_match = re.search(r'rtl page\s*(\d+)', step_desc, re.IGNORECASE)
         if rtl_page_match and 'row marker' in step_desc:  # Only for row marking, not cutting
             rtl_page_num = int(rtl_page_match.group(1))
 
-            # Detect which edge (RIGHT or LEFT)
-            row_num = None
-            if 'right edge' in step_desc:
-                row_num = (rtl_page_num - 1) * 2 + 1
-            elif 'left edge' in step_desc:
-                row_num = (rtl_page_num - 1) * 2 + 2
+            # Calculate total pages to convert RTL numbering to visual position
+            if hasattr(self.main_app, 'current_program') and self.main_app.current_program:
+                program = self.main_app.current_program
+                total_pages = program.number_of_pages * program.repeat_rows
 
-            if row_num is not None:
-                row_key = f'row_{row_num}'
+                # Convert RTL page number to visual page position (left-to-right)
+                # RTL Page 1 (rightmost) → visual page (total_pages - 1)
+                visual_page_num = total_pages - rtl_page_num
 
-                # Change to in_progress ONLY when waiting for TOP Y sensor (user needs to trigger)
-                if 'wait top y sensor' in step_desc or 'wait for top y sensor' in step_desc:
-                    self.update_operation_state('rows', row_key, 'in_progress')
-                    print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}) → IN PROGRESS (waiting for TOP sensor)")
-                # Change to completed ONLY when closing the row marker (not cutter)
-                elif 'close row marker' in step_desc:
-                    self.update_operation_state('rows', row_key, 'completed')
-                    print(f"✅ Row {row_num} (RTL Page {rtl_page_num}) → COMPLETED (marker closed)")
+                # Calculate row number based on visual page position
+                row_num = None
+                if 'right edge' in step_desc:
+                    row_num = visual_page_num * 2 + 1
+                elif 'left edge' in step_desc:
+                    row_num = visual_page_num * 2 + 2
 
-        # Track cut edge operations - ONLY for "Cut X paper edge" steps, not row marking
-        # Exclude steps that contain "row marker" to avoid false matches
-        if 'row marker' not in step_desc:
+                if row_num is not None:
+                    row_key = f'row_{row_num}'
+
+                    # Change to in_progress ONLY when waiting for TOP Y sensor (user needs to trigger)
+                    if 'wait top y sensor' in step_desc or 'wait for top y sensor' in step_desc:
+                        self.update_operation_state('rows', row_key, 'in_progress')
+                        print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}, visual page {visual_page_num}) → IN PROGRESS")
+                    # Change to completed ONLY when closing the row marker (not cutter)
+                    elif 'close row marker' in step_desc:
+                        self.update_operation_state('rows', row_key, 'completed')
+                        print(f"✅ Row {row_num} (RTL Page {rtl_page_num}, visual page {visual_page_num}) → COMPLETED")
+
+        # Track cut edge operations - ONLY for actual cutting operations
+        # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
+        # This excludes "row marker (RIGHT edge)" because it doesn't have "cut right"
+        if 'row marker' not in step_desc:  # Extra safety: exclude row marking steps
             for cut_name in ['top', 'bottom', 'left', 'right']:
-                # Only match if it says "Cut X paper edge" or similar cutting operation
-                if f'cut {cut_name}' in step_desc and 'paper edge' in step_desc:
+                # Match "cut X edge" pattern (works for both "cut top edge" and "cut right paper edge")
+                if f'cut {cut_name}' in step_desc and 'edge' in step_desc:
                     if any(keyword in step_desc for keyword in ['complete', 'close', 'finished']):
                         self.update_operation_state('cuts', cut_name, 'completed')
-                        print(f"✅ {cut_name.title()} cut marked as COMPLETED")
+                        print(f"✅ {cut_name.title()} cut edge → COMPLETED")
                     elif any(keyword in step_desc for keyword in ['cutting', 'open']):
                         self.update_operation_state('cuts', cut_name, 'in_progress')
-                        print(f"🔄 {cut_name.title()} cut marked as IN PROGRESS")
+                        print(f"🔄 {cut_name.title()} cut edge → IN PROGRESS")
     
     def refresh_work_lines_colors(self):
         """Refresh colors of work lines based on current operation states"""
