@@ -111,9 +111,13 @@ class CanvasPosition:
         
         # Update X motor line
         if 'x_motor_line' in self.canvas_objects:
+            print(f"   📍 Updating X motor line: display_x={display_x:.1f}cm, canvas_x={display_x_canvas:.1f}px")
             self.main_app.canvas.coords(self.canvas_objects['x_motor_line'],
                                        display_x_canvas, workspace_top,
                                        display_x_canvas, workspace_bottom)
+            print(f"   ✅ X motor line coords updated")
+        else:
+            print(f"   ⚠️ x_motor_line not found in canvas_objects!")
         
         # Update Y motor line
         if 'y_motor_line' in self.canvas_objects:
