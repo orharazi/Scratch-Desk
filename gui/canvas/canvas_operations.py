@@ -89,12 +89,17 @@ class CanvasOperations:
 
         # Load colors from settings (fallback colors match WORK OPERATIONS STATUS)
         operation_colors = self.main_app.settings.get("operation_colors", {})
-        lines_colors = operation_colors.get("lines", {
-            "pending": "#FF6600",
-            "in_progress": "#FF8800",
-            "completed": "#00AA00"
-        })
-        rows_colors = operation_colors.get("rows", {
+        # mark_colors = operation_colors.get("lines", {
+        #     "pending": "#FF6600",
+        #     "in_progress": "#FF8800",
+        #     "completed": "#00AA00"
+        # })
+        # rows_colors = operation_colors.get("rows", {
+        #     "pending": "#8800FF",
+        #     "in_progress": "#FF0088",
+        #     "completed": "#AA00AA"
+        # })
+        mark_colors = operation_colors.get("mark", {
             "pending": "#8800FF",
             "in_progress": "#FF0088",
             "completed": "#AA00AA"
@@ -106,8 +111,7 @@ class CanvasOperations:
         })
 
         print(f"📏 DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm")
-        print(f"🎨 Lines colors: {lines_colors}")
-        print(f"🎨 Rows colors: {rows_colors}")
+        print(f"🎨 Mark colors: {mark_colors}")
         print(f"🎨 Cuts colors: {cuts_colors}")
         
         # CORRECTED REPEAT VISUALIZATION: Process each repeated section individually
@@ -145,13 +149,13 @@ class CanvasOperations:
                 # DASHED lines - color changes based on state (using settings)
                 state = self.main_app.operation_states['lines'].get(overall_line_num, 'pending')
                 if state == 'completed':
-                    line_color = lines_colors['completed']
+                    line_color = mark_colors['completed']
                     dash_pattern = (10, 2)  # Almost solid
                 elif state == 'in_progress':
-                    line_color = lines_colors['in_progress']
+                    line_color = mark_colors['in_progress']
                     dash_pattern = (8, 4)  # Medium dash
                 else:  # pending
-                    line_color = lines_colors['pending']
+                    line_color = mark_colors['pending']
                     dash_pattern = (5, 5)  # Dashed
 
                 # Draw line - DASHED LINE
@@ -164,9 +168,9 @@ class CanvasOperations:
                 self.main_app.work_line_objects[f'line_{overall_line_num}'] = {
                     'id': line_id,
                     'type': 'line',
-                    'color_pending': lines_colors['pending'],
-                    'color_in_progress': lines_colors['in_progress'],
-                    'color_completed': lines_colors['completed']
+                    'color_pending': mark_colors['pending'],
+                    'color_in_progress': mark_colors['in_progress'],
+                    'color_completed': mark_colors['completed']
                 }
                 
                 # Add line number label with matching color
@@ -209,13 +213,13 @@ class CanvasOperations:
 
             # Rows with color AND dash pattern changes based on state
             if row_state == 'completed':
-                start_color = rows_colors['completed']
+                start_color = mark_colors['completed']
                 start_dash = (10, 2)  # Almost solid
             elif row_state == 'in_progress':
-                start_color = rows_colors['in_progress']
+                start_color = mark_colors['in_progress']
                 start_dash = (8, 4)  # Medium dash
             else:  # pending
-                start_color = rows_colors['pending']
+                start_color = mark_colors['pending']
                 start_dash = (5, 5)  # Dashed
 
             # Create individual row line (right edge) with dash pattern
@@ -243,13 +247,13 @@ class CanvasOperations:
 
             # Rows with color AND dash pattern changes based on state
             if end_row_state == 'completed':
-                end_color = rows_colors['completed']
+                end_color = mark_colors['completed']
                 end_dash = (10, 2)  # Almost solid
             elif end_row_state == 'in_progress':
-                end_color = rows_colors['in_progress']
+                end_color = mark_colors['in_progress']
                 end_dash = (8, 4)  # Medium dash
             else:  # pending
-                end_color = rows_colors['pending']
+                end_color = mark_colors['pending']
                 end_dash = (5, 5)  # Dashed
 
             # Create individual row line (left edge) with dash pattern
@@ -270,17 +274,17 @@ class CanvasOperations:
             self.main_app.work_line_objects[f'row_{rtl_drawing_row_num}'] = {
                 'id': row_start_id,
                 'type': 'row',
-                'color_pending': rows_colors['pending'],
-                'color_in_progress': rows_colors['in_progress'],
-                'color_completed': rows_colors['completed']
+                'color_pending': mark_colors['pending'],
+                'color_in_progress': mark_colors['in_progress'],
+                'color_completed': mark_colors['completed']
             }
 
             self.main_app.work_line_objects[f'row_{rtl_drawing_row_num_left}'] = {
                 'id': row_end_id,
                 'type': 'row',
-                'color_pending': rows_colors['pending'],
-                'color_in_progress': rows_colors['in_progress'],
-                'color_completed': rows_colors['completed']
+                'color_pending': mark_colors['pending'],
+                'color_in_progress': mark_colors['in_progress'],
+                'color_completed': mark_colors['completed']
             }
         
         # Draw cut edges - horizontal cuts (top and bottom)
@@ -402,20 +406,24 @@ class CanvasOperations:
 
         step_desc = step_description.lower()
 
-        # Track line operations - match "Line X", "line X", "L X"
-        line_match = re.search(r'(?:line|l)\s*(\d+)', step_desc, re.IGNORECASE)
+        # Track line operations - match "Mark line X" pattern in step descriptions
+        # ONLY change color on sensor/tool actions, NOT on move operations
+        line_match = re.search(r'mark line\s*(\d+)', step_desc, re.IGNORECASE)
         if line_match:
             line_num = int(line_match.group(1))
-            # Detect state from keywords
-            if any(keyword in step_desc for keyword in ['complete', 'marked', 'close line marker', 'finished']):
-                self.update_operation_state('lines', line_num, 'completed')
-                print(f"✅ Line {line_num} marked as COMPLETED")
-            elif any(keyword in step_desc for keyword in ['marking', 'in progress', 'open line marker', 'mark line']):
+
+            # Change to in_progress ONLY when waiting for LEFT sensor (user needs to trigger)
+            if 'wait for left x sensor' in step_desc or 'wait left x sensor' in step_desc:
                 self.update_operation_state('lines', line_num, 'in_progress')
-                print(f"🔄 Line {line_num} marked as IN PROGRESS")
+                print(f"🔄 Line {line_num} → IN PROGRESS (waiting for LEFT sensor)")
+            # Change to completed ONLY when closing the marker
+            elif 'close line marker' in step_desc:
+                self.update_operation_state('lines', line_num, 'completed')
+                print(f"✅ Line {line_num} → COMPLETED (marker closed)")
 
         # Track row operations - match "RTL Page X" with edge detection
         # Rows are numbered by drawing order: (page-1)*2+1 for RIGHT, (page-1)*2+2 for LEFT
+        # ONLY change color on sensor/tool actions, NOT on move operations
         rtl_page_match = re.search(r'rtl page\s*(\d+)', step_desc, re.IGNORECASE)
         if rtl_page_match:
             rtl_page_num = int(rtl_page_match.group(1))
@@ -430,13 +438,14 @@ class CanvasOperations:
             if row_num is not None:
                 row_key = f'row_{row_num}'
 
-                # Detect state from keywords - mark in_progress on "Open", completed on "Close"
-                if any(keyword in step_desc for keyword in ['close row marker', 'close row cutter', 'finished']):
-                    self.update_operation_state('rows', row_key, 'completed')
-                    print(f"✅ Row {row_num} (RTL Page {rtl_page_num}) marked as COMPLETED")
-                elif any(keyword in step_desc for keyword in ['open row marker', 'open row cutter', 'wait top y sensor']):
+                # Change to in_progress ONLY when waiting for TOP Y sensor (user needs to trigger)
+                if 'wait top y sensor' in step_desc or 'wait for top y sensor' in step_desc:
                     self.update_operation_state('rows', row_key, 'in_progress')
-                    print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}) marked as IN PROGRESS")
+                    print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}) → IN PROGRESS (waiting for TOP sensor)")
+                # Change to completed ONLY when closing the marker/cutter
+                elif 'close row marker' in step_desc or 'close row cutter' in step_desc:
+                    self.update_operation_state('rows', row_key, 'completed')
+                    print(f"✅ Row {row_num} (RTL Page {rtl_page_num}) → COMPLETED (marker/cutter closed)")
 
         # Track cut edge operations
         for cut_name in ['top', 'bottom', 'left', 'right']:
@@ -493,12 +502,17 @@ class CanvasOperations:
 
         # Load colors from settings
         operation_colors = self.main_app.settings.get("operation_colors", {})
-        lines_colors = operation_colors.get("lines", {
-            "pending": "#FF6600",
-            "in_progress": "#FF8800",
-            "completed": "#00AA00"
-        })
-        rows_colors = operation_colors.get("rows", {
+        # mark_colors = operation_colors.get("lines", {
+        #     "pending": "#FF6600",
+        #     "in_progress": "#FF8800",
+        #     "completed": "#00AA00"
+        # })
+        # rows_colors = operation_colors.get("rows", {
+        #     "pending": "#8800FF",
+        #     "in_progress": "#FF0088",
+        #     "completed": "#AA00AA"
+        # })
+        mark_colors = operation_colors.get("mark", {
             "pending": "#8800FF",
             "in_progress": "#FF0088",
             "completed": "#AA00AA"
@@ -518,9 +532,9 @@ class CanvasOperations:
 
         # Line colors from settings
         line_color_list = [
-            (lines_colors['pending'], 'Ready'),
-            (lines_colors['in_progress'], 'Working'),
-            (lines_colors['completed'], 'Done')
+            (mark_colors['pending'], 'Ready'),
+            (mark_colors['in_progress'], 'Working'),
+            (mark_colors['completed'], 'Done')
         ]
         for i, (color, label) in enumerate(line_color_list):
             y_pos = legend_y + 30 + i * 20
@@ -541,9 +555,9 @@ class CanvasOperations:
 
         # Row colors from settings
         row_color_list = [
-            (rows_colors['pending'], 'Ready'),
-            (rows_colors['in_progress'], 'Working'),
-            (rows_colors['completed'], 'Done')
+            (mark_colors['pending'], 'Ready'),
+            (mark_colors['in_progress'], 'Working'),
+            (mark_colors['completed'], 'Done')
         ]
         for i, (color, label) in enumerate(row_color_list):
             y_pos = legend_y + 120 + i * 20
