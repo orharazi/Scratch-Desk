@@ -51,14 +51,14 @@
     }
   },
   "timing": {
-    "motor_movement_delay_per_cm": 0.01,
-    "max_motor_movement_delay": 0.5,
-    "tool_action_delay": 0.1,
-    "sensor_poll_timeout": 0.1,
-    "row_marker_stable_delay": 0.2,
-    "safety_check_interval": 0.1,
-    "execution_loop_delay": 0.05,
-    "transition_monitor_interval": 0.5,
+    "motor_movement_delay_per_cm": 0.002,
+    "max_motor_movement_delay": 0.1,
+    "tool_action_delay": 0.02,
+    "sensor_poll_timeout": 0.01,
+    "row_marker_stable_delay": 0.05,
+    "safety_check_interval": 0.02,
+    "execution_loop_delay": 0.01,
+    "transition_monitor_interval": 0.1,
     "thread_join_timeout_execution": 2.0,
     "thread_join_timeout_safety": 1.0
   },
