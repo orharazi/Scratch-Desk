@@ -139,19 +139,22 @@ class CanvasOperations:
                 line_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
                 line_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
                 
-                # SOLID lines - only color changes based on state (using settings)
+                # DASHED lines - color changes based on state (using settings)
                 state = self.main_app.operation_states['lines'].get(overall_line_num, 'pending')
                 if state == 'completed':
                     line_color = lines_colors['completed']
+                    dash_pattern = (10, 2)  # Almost solid
                 elif state == 'in_progress':
                     line_color = lines_colors['in_progress']
+                    dash_pattern = (8, 4)  # Medium dash
                 else:  # pending
                     line_color = lines_colors['pending']
+                    dash_pattern = (5, 5)  # Dashed
 
-                # Draw line - SOLID LINE
+                # Draw line - DASHED LINE
                 line_id = self.main_app.canvas.create_line(
                     line_x1_canvas, line_y_canvas, line_x2_canvas, line_y_canvas,
-                    fill=line_color, width=3, tags="work_lines"
+                    fill=line_color, width=3, dash=dash_pattern, tags="work_lines"
                 )
                 
                 # Store line object for dynamic updates (using settings colors)
