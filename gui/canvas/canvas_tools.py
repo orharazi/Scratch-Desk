@@ -1,20 +1,25 @@
 import tkinter as tk
+import re
 from mock_hardware import get_hardware_status
 
 
 class CanvasTools:
     """Handles tool status visualization and updates"""
     
-    def __init__(self, main_app):
+    def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
+        self.canvas_manager = canvas_manager
         self.canvas_objects = main_app.canvas_objects
     
     def update_tool_status_from_step(self, step_description):
-        """Update tool status indicators based on step execution"""
+        """Update tool status indicators based on step description with original logic"""
         if not step_description:
             return
-        
+            
         step_desc = step_description.lower()
+        
+        # Parse tool action steps and update canvas indicators
+        # Pattern: "Tool action: Open/Close [tool_name]"
         
         # Line marker tool actions
         if 'line marker' in step_desc:
@@ -82,8 +87,15 @@ class CanvasTools:
         
         print(f"Tool status updated from step: {step_description}")
     
+    def update_tool_status(self, tool_name, status, color):
+        """Update specific tool status indicator"""
+        tool_key = f"{tool_name}_status"
+        if tool_key in self.canvas_objects:
+            self.main_app.canvas.itemconfig(self.canvas_objects[tool_key], fill=color)
+            print(f"🔧 {tool_name.upper()} {status.upper()}: {color}")
+    
     def ensure_all_tools_up(self):
-        """Ensure all tool indicators show UP state during motor movements"""
+        """Ensure all tool indicators show UP state during motor movements with original logic"""
         # Set all tool indicators to UP state for safety during movement
         if 'line_marker' in self.canvas_objects:
             self.main_app.canvas.itemconfig(self.canvas_objects['line_marker'], 
@@ -100,50 +112,27 @@ class CanvasTools:
         if 'row_cutter' in self.canvas_objects:
             self.main_app.canvas.itemconfig(self.canvas_objects['row_cutter'], 
                                            text="Row Cutter: UP", fill='green')
+        
+        print("🔧 ALL TOOLS UP: Safety position")
     
     def refresh_tool_status_display(self):
-        """Refresh tool status display from hardware"""
-        # Get current hardware status
-        status = get_hardware_status()
-        
-        # Update line marker status
-        marker_status = "DOWN" if status['line_marker'] == 'down' else "UP"
-        marker_color = "red" if status['line_marker'] == 'down' else "green"
-        if 'line_marker' in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects['line_marker'],
-                                           text=f"Line Marker: {marker_status}", fill=marker_color)
-        
-        # Update line marker piston status
-        piston_status = "UP" if status['line_marker_piston'] == 'up' else "DOWN"
-        piston_color = "blue" if status['line_marker_piston'] == 'up' else "red"
-        if 'line_marker_piston' in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects['line_marker_piston'],
-                                           text=f"Line Marker State: {piston_status}", fill=piston_color)
-        
-        # Update line cutter status
-        cutter_status = "DOWN" if status['line_cutter'] == 'down' else "UP"
-        cutter_color = "red" if status['line_cutter'] == 'down' else "green"
-        if 'line_cutter' in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects['line_cutter'],
-                                           text=f"Line Cutter: {cutter_status}", fill=cutter_color)
-        
-        # Update row marker status
-        marker_status = "DOWN" if status['row_marker'] == 'down' else "UP"
-        marker_color = "red" if status['row_marker'] == 'down' else "green"
-        if 'row_marker' in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects['row_marker'],
-                                           text=f"Row Marker: {marker_status}", fill=marker_color)
-        
-        # Update row marker limit switch status
-        limit_status = "DOWN" if status['row_marker_limit_switch'] == 'down' else "UP"
-        limit_color = "darkred" if status['row_marker_limit_switch'] == 'down' else "darkgreen"
-        if 'row_marker_limit_switch' in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects['row_marker_limit_switch'],
-                                           text=f"Row Marker State: {limit_status}", fill=limit_color)
-        
-        # Update row cutter status
-        cutter_status = "DOWN" if status['row_cutter'] == 'down' else "UP"
-        cutter_color = "red" if status['row_cutter'] == 'down' else "green"
-        if 'row_cutter' in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects['row_cutter'],
-                                           text=f"Row Cutter: {cutter_status}", fill=cutter_color)
+        """Refresh tool status display from hardware status"""
+        try:
+            status = get_hardware_status()
+            
+            # Update line marker status
+            if hasattr(status, 'line_marker_down') and status.line_marker_down:
+                self.update_tool_status("line_marker", "down", "green")
+            else:
+                self.update_tool_status("line_marker", "up", "gray")
+            
+            # Update cutter status  
+            if hasattr(status, 'cutter_down') and status.cutter_down:
+                self.update_tool_status("cutter", "down", "red")
+            else:
+                self.update_tool_status("cutter", "up", "gray")
+                
+        except Exception as e:
+            print(f"Error refreshing tool status: {e}")
+            # Default to safe state
+            self.ensure_all_tools_up()

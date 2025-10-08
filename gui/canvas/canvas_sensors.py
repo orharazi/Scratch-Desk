@@ -1,197 +1,166 @@
 import tkinter as tk
-from mock_hardware import get_current_x, get_current_y
+import re
+from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
 
 
 class CanvasSensors:
-    """Handles sensor visualization, triggers, and position management"""
+    """Handles sensor visualization, triggers, and position tracking"""
     
-    def __init__(self, main_app):
+    def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
+        self.canvas_manager = canvas_manager
         self.canvas_objects = main_app.canvas_objects
-        
-        # Sensor trigger state tracking
-        self.sensor_override_active = False  # True when sensor position should be maintained
-        self.sensor_override_timer = None    # Timer to clear sensor override
-        self.sensor_position_x = 0.0         # Store sensor triggered X position
-        self.sensor_position_y = 0.0         # Store sensor triggered Y position
-    
-    def create_sensor_indicators(self, sim_settings):
-        """Create sensor indicators on the canvas"""
-        max_x_cm = sim_settings.get("max_display_x", 100)
-        max_y_cm = sim_settings.get("max_display_y", 80)
-        
-        # Sensor positions (in cm)
-        x_left_pos = 20  # Left X sensor
-        x_right_pos = 80  # Right X sensor
-        y_top_pos = 60   # Top Y sensor  
-        y_bottom_pos = 20  # Bottom Y sensor
-        
-        # Convert to canvas coordinates
-        x_left_canvas = self.main_app.offset_x + x_left_pos * self.main_app.scale_x
-        x_right_canvas = self.main_app.offset_x + x_right_pos * self.main_app.scale_x
-        y_top_canvas = self.main_app.offset_y + (max_y_cm - y_top_pos) * self.main_app.scale_y
-        y_bottom_canvas = self.main_app.offset_y + (max_y_cm - y_bottom_pos) * self.main_app.scale_y
-        
-        # X sensors (vertical lines)
-        self.canvas_objects['x_left_sensor'] = self.main_app.canvas.create_line(
-            x_left_canvas, self.main_app.offset_y,
-            x_left_canvas, self.main_app.canvas_height - self.main_app.offset_y,
-            fill='orange', width=4, dash=(3, 3), tags="sensors"
-        )
-        
-        self.canvas_objects['x_right_sensor'] = self.main_app.canvas.create_line(
-            x_right_canvas, self.main_app.offset_y,
-            x_right_canvas, self.main_app.canvas_height - self.main_app.offset_y,
-            fill='orange', width=4, dash=(3, 3), tags="sensors"
-        )
-        
-        # Y sensors (horizontal lines)
-        self.canvas_objects['y_top_sensor'] = self.main_app.canvas.create_line(
-            self.main_app.offset_x, y_top_canvas,
-            self.main_app.canvas_width - self.main_app.offset_x, y_top_canvas,
-            fill='cyan', width=4, dash=(3, 3), tags="sensors"
-        )
-        
-        self.canvas_objects['y_bottom_sensor'] = self.main_app.canvas.create_line(
-            self.main_app.offset_x, y_bottom_canvas,
-            self.main_app.canvas_width - self.main_app.offset_x, y_bottom_canvas,
-            fill='cyan', width=4, dash=(3, 3), tags="sensors"
-        )
-        
-        # Sensor labels
-        self.main_app.canvas.create_text(x_left_canvas - 15, self.main_app.offset_y + 20, 
-                                        text="X LEFT", font=('Arial', 8, 'bold'), 
-                                        fill='orange', tags="sensors")
-        
-        self.main_app.canvas.create_text(x_right_canvas + 15, self.main_app.offset_y + 20, 
-                                        text="X RIGHT", font=('Arial', 8, 'bold'), 
-                                        fill='orange', tags="sensors")
-        
-        self.main_app.canvas.create_text(self.main_app.offset_x + 30, y_top_canvas - 10, 
-                                        text="Y TOP", font=('Arial', 8, 'bold'), 
-                                        fill='cyan', tags="sensors")
-        
-        self.main_app.canvas.create_text(self.main_app.offset_x + 30, y_bottom_canvas + 15, 
-                                        text="Y BOTTOM", font=('Arial', 8, 'bold'), 
-                                        fill='cyan', tags="sensors")
     
     def trigger_sensor_visualization(self, sensor_type):
-        """Trigger sensor visualization with enhanced position tracking"""
-        print(f"🎯 SENSOR TRIGGER: {sensor_type}")
+        """Highlight sensor trigger and move pointer to sensor position with independent motor display"""
+        if not hasattr(self.main_app, 'current_program') or not self.main_app.current_program:
+            return
         
-        # Get current hardware positions
+        # Clear any existing sensor override first to prevent conflicts
+        if self.canvas_manager.sensor_override_active:
+            print(f"🔄 CLEARING previous sensor override for new sensor: {sensor_type}")
+            self.clear_sensor_override()
+        
+        program = self.main_app.current_program
+        
+        # Calculate sensor positions from settings
+        hardware_limits = self.main_app.settings.get("hardware_limits", {})
+        PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
+        PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
+        
+        # Store current hardware positions
+        current_x = get_current_x()
+        current_y = get_current_y()
+        
+        print(f"🎯 SENSOR TRIGGER: {sensor_type}")
         current_hardware_x = get_current_x()
         current_hardware_y = get_current_y()
         
-        # CRITICAL: Store the CURRENT position when sensor is triggered
-        # This preserves the exact position at the moment of sensor activation
-        if sensor_type in ['x_left', 'x_right']:
-            # X sensor triggered - store current Y position but update X to sensor position
-            self.sensor_position_y = current_hardware_y  # PRESERVE current Y position
-            if sensor_type == 'x_left':
-                self.sensor_position_x = 20.0  # X LEFT sensor position
-            else:  # x_right
-                self.sensor_position_x = 80.0  # X RIGHT sensor position
+        if sensor_type == 'x_left':
+            sensor_x = PAPER_OFFSET_X  # Left edge at paper offset (15.0)
+            self.canvas_manager.sensor_position_x = sensor_x
+            self.canvas_manager.sensor_position_y = current_y  # PRESERVE current Y position
+            print(f"🔴 X_LEFT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (left paper edge)")
+            # Highlight left sensor
+            if 'x_left_sensor' in self.canvas_objects:
+                self.main_app.canvas.itemconfig(self.canvas_objects['x_left_sensor'], 
+                                               fill='red', outline='darkred', width=3)
+            # Move pointer to left edge
+            self.animate_pointer_to_sensor('x', sensor_x)
+            
+        elif sensor_type == 'x_right':
+            sensor_x = PAPER_OFFSET_X + program.width  # Right edge at paper offset + width
+            self.canvas_manager.sensor_position_x = sensor_x
+            self.canvas_manager.sensor_position_y = current_y  # PRESERVE current Y position
+            print(f"🔴 X_RIGHT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (right paper edge, width={program.width})")
+            # Highlight right sensor  
+            if 'x_right_sensor' in self.canvas_objects:
+                self.main_app.canvas.itemconfig(self.canvas_objects['x_right_sensor'],
+                                               fill='red', outline='darkred', width=3)
+            # Move pointer to right edge
+            self.animate_pointer_to_sensor('x', sensor_x)
+            
+        elif sensor_type == 'y_top':
+            # Y_TOP sensor always triggers at the actual sensor position on paper
+            sensor_y = PAPER_OFFSET_Y + program.high  # Top edge of paper
+            self.canvas_manager.sensor_position_x = current_x
+            self.canvas_manager.sensor_position_y = sensor_y
+            print(f"🔵 Y_TOP SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})")
+            
+            # Highlight top sensor
+            if 'y_top_sensor' in self.canvas_objects:
+                self.main_app.canvas.itemconfig(self.canvas_objects['y_top_sensor'],
+                                               fill='red', outline='darkred', width=3)
+            # Move pointer to actual sensor position
+            self.animate_pointer_to_sensor('y', sensor_y)
+            
+        elif sensor_type == 'y_bottom':
+            # Y_BOTTOM sensor always triggers at the actual sensor position on paper
+            sensor_y = PAPER_OFFSET_Y  # Bottom edge of paper
+            self.canvas_manager.sensor_position_x = current_x
+            self.canvas_manager.sensor_position_y = sensor_y
+            print(f"🔵 Y_BOTTOM SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})")
+                
+            # Highlight bottom sensor
+            if 'y_bottom_sensor' in self.canvas_objects:
+                self.main_app.canvas.itemconfig(self.canvas_objects['y_bottom_sensor'],
+                                               fill='red', outline='darkred', width=3)
+            # Move pointer to actual sensor position
+            self.animate_pointer_to_sensor('y', sensor_y)
         
-        elif sensor_type in ['y_top', 'y_bottom']:
-            # Y sensor triggered - store current X position but update Y to sensor position  
-            self.sensor_position_x = current_hardware_x  # PRESERVE current X position
-            if sensor_type == 'y_top':
-                self.sensor_position_y = 60.0  # Y TOP sensor position
-            else:  # y_bottom
-                self.sensor_position_y = 20.0  # Y BOTTOM sensor position
+        # Set sensor override to prevent position updates from moving pointer
+        self.canvas_manager.sensor_override_active = True
+        print(f"🔒 SENSOR OVERRIDE ACTIVATED: Pointer locked at ({self.canvas_manager.sensor_position_x:.1f}, {self.canvas_manager.sensor_position_y:.1f})")
         
-        print(f"📍 SENSOR POSITION SET: ({self.sensor_position_x:.1f}, {self.sensor_position_y:.1f})")
-        print(f"🏭 HARDWARE POSITION: ({current_hardware_x:.1f}, {current_hardware_y:.1f})")
+        # Initialize hardware position tracking for move detection
+        self.canvas_manager._last_displayed_hardware_x = get_current_x()
+        self.canvas_manager._last_displayed_hardware_y = get_current_y()
         
-        # Activate sensor override mode
-        self.sensor_override_active = True
+        # Clear sensor override timer - extend for rows operations to keep pointer at sensor positions
+        # During rows operations, extend timer to prevent pointer from returning to 0 too quickly
+        timeout_ms = 3000 if self.canvas_manager.motor_operation_mode == "rows" else 1000
         
-        # Visual feedback
-        self.highlight_triggered_sensor(sensor_type)
+        if self.canvas_manager.sensor_override_timer:
+            self.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
+        self.canvas_manager.sensor_override_timer = self.main_app.root.after(timeout_ms, self.clear_sensor_override)
         
-        # Update display to show sensor position
-        self.update_sensor_position_display()
-        
-        # Clear sensor highlight after delay
-        if self.sensor_override_timer:
-            self.main_app.root.after_cancel(self.sensor_override_timer)
-        self.sensor_override_timer = self.main_app.root.after(1000, self.reset_sensor_highlights)
-    
-    def highlight_triggered_sensor(self, sensor_type):
-        """Highlight the triggered sensor"""
-        sensor_colors = {
-            'x_left': 'red',
-            'x_right': 'red',
-            'y_top': 'blue', 
-            'y_bottom': 'blue'
-        }
-        
-        color = sensor_colors.get(sensor_type, 'yellow')
-        sensor_key = f'{sensor_type}_sensor'
-        
-        if sensor_key in self.canvas_objects:
-            self.main_app.canvas.itemconfig(self.canvas_objects[sensor_key], 
-                                           fill=color, width=6)
+        # Reset sensor highlight after 500ms (reduce delay)
+        self.main_app.root.after(500, lambda: self.reset_sensor_highlights())
     
     def animate_pointer_to_sensor(self, axis, position):
-        """Animate pointer moving to sensor position with enhanced tracking"""
+        """Move pointer to sensor position while displaying motor lines according to operation mode"""
         max_y_cm = self.main_app.settings.get("simulation", {}).get("max_display_y", 80)
         
-        # Calculate target canvas coordinates
+        # Get current hardware position for the other axis
+        current_x = get_current_x()
+        current_y = get_current_y()
+        
         if axis == 'x':
-            target_x_canvas = self.main_app.offset_x + position * self.main_app.scale_x
-            target_y_canvas = self.main_app.offset_y + (max_y_cm - get_current_y()) * self.main_app.scale_y
-        else:  # y axis
-            target_x_canvas = self.main_app.offset_x + get_current_x() * self.main_app.scale_x
-            target_y_canvas = self.main_app.offset_y + (max_y_cm - position) * self.main_app.scale_y
+            # X sensor triggered - pointer moves to (sensor_x, current_y)
+            pointer_x = position
+            pointer_y = current_y
+            
+        elif axis == 'y':
+            # Y sensor triggered - pointer moves to (current_x, sensor_y)
+            pointer_x = current_x
+            # During rows operations, Y position should be the sensor position (which is 0.0 in rows mode)
+            pointer_y = position
         
-        # Get current pointer position
-        if 'motor_intersection' in self.canvas_objects:
-            coords = self.main_app.canvas.coords(self.canvas_objects['motor_intersection'])
-            current_x_canvas = (coords[0] + coords[2]) / 2
-            current_y_canvas = (coords[1] + coords[3]) / 2
-            
-            # Animate to sensor position
-            steps = 10
-            dx = (target_x_canvas - current_x_canvas) / steps
-            dy = (target_y_canvas - current_y_canvas) / steps
-            
-            def animate_step(step):
-                if step < steps:
-                    new_x = current_x_canvas + dx * step
-                    new_y = current_y_canvas + dy * step
-                    
-                    # Update intersection point
-                    self.main_app.canvas.coords(self.canvas_objects['motor_intersection'],
-                                               new_x - 4, new_y - 4, new_x + 4, new_y + 4)
-                    
-                    # Continue animation
-                    self.main_app.root.after(30, lambda: animate_step(step + 1))
-                else:
-                    # Animation complete - final position
-                    self.main_app.canvas.coords(self.canvas_objects['motor_intersection'],
-                                               target_x_canvas - 4, target_y_canvas - 4,
-                                               target_x_canvas + 4, target_y_canvas + 4)
-            
-            animate_step(0)
-    
-    def update_sensor_position_display(self):
-        """Update position display with sensor-triggered coordinates"""
-        if not self.sensor_override_active:
-            return
-            
-        # Show sensor position instead of hardware position
-        max_y_cm = self.main_app.settings.get("simulation", {}).get("max_display_y", 80)
+        # POINTER always shows actual sensor position
+        pointer_x_canvas = self.main_app.offset_x + pointer_x * self.main_app.scale_x
+        pointer_y_canvas = self.main_app.offset_y + (max_y_cm - pointer_y) * self.main_app.scale_y
         
-        # Update position label
-        if hasattr(self.main_app, 'position_label'):
-            self.main_app.position_label.config(
-                text=f"Position: X={self.sensor_position_x:.1f}, Y={self.sensor_position_y:.1f} (SENSOR)")
+        # MOTOR LINES display based on operation mode (independent motor behavior)
+        if self.canvas_manager.motor_operation_mode == "lines":
+            # During lines: X motor line at 0, Y motor line at actual position
+            motor_line_x = 0.0
+            motor_line_y = pointer_y
+            x_label_text = "X=0.0cm (HOLD)"
+            x_label_color = "gray"
+            y_label_text = f"Y={pointer_y:.1f}cm (SENSOR)" if axis == 'y' else f"Y={pointer_y:.1f}cm (ACTIVE)"
+            y_label_color = "blue"
+            
+        elif self.canvas_manager.motor_operation_mode == "rows":
+            # During rows: Y motor line at 0, X motor line at actual position
+            motor_line_x = pointer_x
+            motor_line_y = 0.0
+            x_label_text = f"X={pointer_x:.1f}cm (SENSOR)" if axis == 'x' else f"X={pointer_x:.1f}cm (ACTIVE)"
+            x_label_color = "red"
+            y_label_text = "Y=0.0cm (HOLD)"
+            y_label_color = "gray"
+            
+        else:
+            # Idle mode: motor lines show actual positions
+            motor_line_x = pointer_x
+            motor_line_y = pointer_y
+            x_label_text = f"X={pointer_x:.1f}cm" + (" (SENSOR)" if axis == 'x' else "")
+            x_label_color = "red"
+            y_label_text = f"Y={pointer_y:.1f}cm" + (" (SENSOR)" if axis == 'y' else "")
+            y_label_color = "blue"
         
-        # Update visual indicators using sensor position
-        sensor_x_canvas = self.main_app.offset_x + self.sensor_position_x * self.main_app.scale_x
-        sensor_y_canvas = self.main_app.offset_y + (max_y_cm - self.sensor_position_y) * self.main_app.scale_y
+        # Convert motor line positions to canvas coordinates
+        motor_x_canvas = self.main_app.offset_x + motor_line_x * self.main_app.scale_x
+        motor_y_canvas = self.main_app.offset_y + (max_y_cm - motor_line_y) * self.main_app.scale_y
         
         # Get workspace boundaries
         workspace_left = self.main_app.offset_x
@@ -199,66 +168,173 @@ class CanvasSensors:
         workspace_top = self.main_app.offset_y
         workspace_bottom = self.main_app.canvas_height - self.main_app.offset_y
         
-        # Update motor lines to show sensor position
+        # Update X motor line
         if 'x_motor_line' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['x_motor_line'],
-                                       sensor_x_canvas, workspace_top,
-                                       sensor_x_canvas, workspace_bottom)
+                                       motor_x_canvas, workspace_top,
+                                       motor_x_canvas, workspace_bottom)
         
+        # Update Y motor line
         if 'y_motor_line' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['y_motor_line'],
-                                       workspace_left, sensor_y_canvas,
-                                       workspace_right, sensor_y_canvas)
+                                       workspace_left, motor_y_canvas,
+                                       workspace_right, motor_y_canvas)
         
+        # Update intersection point (pointer) - ALWAYS at actual sensor position
         if 'motor_intersection' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['motor_intersection'],
-                                       sensor_x_canvas - 4, sensor_y_canvas - 4,
-                                       sensor_x_canvas + 4, sensor_y_canvas + 4)
+                                       pointer_x_canvas - 4, pointer_y_canvas - 4,
+                                       pointer_x_canvas + 4, pointer_y_canvas + 4)
         
         # Update motor labels
         if 'x_motor_label' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['x_motor_label'],
-                                       sensor_x_canvas + 15, workspace_top + 15)
+                                       motor_x_canvas + 15, workspace_top + 15)
             self.main_app.canvas.itemconfig(self.canvas_objects['x_motor_label'],
-                                           text=f"X={self.sensor_position_x:.1f}cm (SENSOR)", fill='red')
+                                           text=x_label_text, fill=x_label_color)
         
         if 'y_motor_label' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['y_motor_label'],
-                                       workspace_left + 50, sensor_y_canvas - 15)
+                                       workspace_left + 15, motor_y_canvas - 15)
             self.main_app.canvas.itemconfig(self.canvas_objects['y_motor_label'],
-                                           text=f"Y={self.sensor_position_y:.1f}cm (SENSOR)", fill='blue')
+                                           text=y_label_text, fill=y_label_color)
+    
+    def update_sensor_position_display(self):
+        """Update display while maintaining sensor trigger position"""
+        max_y_cm = self.main_app.settings.get("simulation", {}).get("max_display_y", 80)
+        
+        # Use stored sensor position for pointer
+        pointer_x = self.canvas_manager.sensor_position_x
+        pointer_y = self.canvas_manager.sensor_position_y
+        
+        print(f"🎯 POINTER DISPLAY: sensor override active, showing pointer at ({pointer_x:.1f}, {pointer_y:.1f})")
+        
+        # Motor lines display based on operation mode (independent motor behavior)
+        if self.canvas_manager.motor_operation_mode == "lines":
+            # During lines: X motor line at 0, Y motor line follows sensor Y position
+            motor_line_x = 0.0
+            motor_line_y = pointer_y
+            x_label_text = "X=0.0cm (HOLD)"
+            x_label_color = "gray"
+            y_label_text = f"Y={pointer_y:.1f}cm (SENSOR)"
+            y_label_color = "blue"
+            
+        elif self.canvas_manager.motor_operation_mode == "rows":
+            # During rows: Y motor line at 0, X motor line follows sensor X position
+            motor_line_x = pointer_x
+            motor_line_y = 0.0
+            x_label_text = f"X={pointer_x:.1f}cm (SENSOR)"
+            x_label_color = "red"
+            y_label_text = "Y=0.0cm (HOLD)"
+            y_label_color = "gray"
+            
+        else:
+            # Idle mode: motor lines show sensor positions
+            motor_line_x = pointer_x
+            motor_line_y = pointer_y
+            x_label_text = f"X={pointer_x:.1f}cm (SENSOR)"
+            x_label_color = "red"
+            y_label_text = f"Y={pointer_y:.1f}cm (SENSOR)"
+            y_label_color = "blue"
+        
+        # Convert to canvas coordinates
+        pointer_x_canvas = self.main_app.offset_x + pointer_x * self.main_app.scale_x
+        pointer_y_canvas = self.main_app.offset_y + (max_y_cm - pointer_y) * self.main_app.scale_y
+        motor_x_canvas = self.main_app.offset_x + motor_line_x * self.main_app.scale_x
+        motor_y_canvas = self.main_app.offset_y + (max_y_cm - motor_line_y) * self.main_app.scale_y
+        
+        # Get workspace boundaries
+        workspace_left = self.main_app.offset_x
+        workspace_right = self.main_app.canvas_width - self.main_app.offset_x
+        workspace_top = self.main_app.offset_y
+        workspace_bottom = self.main_app.canvas_height - self.main_app.offset_y
+        
+        # Update X motor line
+        if 'x_motor_line' in self.canvas_objects:
+            self.main_app.canvas.coords(self.canvas_objects['x_motor_line'],
+                                       motor_x_canvas, workspace_top,
+                                       motor_x_canvas, workspace_bottom)
+        
+        # Update Y motor line
+        if 'y_motor_line' in self.canvas_objects:
+            self.main_app.canvas.coords(self.canvas_objects['y_motor_line'],
+                                       workspace_left, motor_y_canvas,
+                                       workspace_right, motor_y_canvas)
+        
+        # Update intersection point (pointer) - ALWAYS at sensor position
+        if 'motor_intersection' in self.canvas_objects:
+            self.main_app.canvas.coords(self.canvas_objects['motor_intersection'],
+                                       pointer_x_canvas - 4, pointer_y_canvas - 4,
+                                       pointer_x_canvas + 4, pointer_y_canvas + 4)
+        
+        # Update motor labels
+        if 'x_motor_label' in self.canvas_objects:
+            self.main_app.canvas.coords(self.canvas_objects['x_motor_label'],
+                                       motor_x_canvas + 15, workspace_top + 15)
+            self.main_app.canvas.itemconfig(self.canvas_objects['x_motor_label'],
+                                           text=x_label_text, fill=x_label_color)
+        
+        if 'y_motor_label' in self.canvas_objects:
+            self.main_app.canvas.coords(self.canvas_objects['y_motor_label'],
+                                       workspace_left + 15, motor_y_canvas - 15)
+            self.main_app.canvas.itemconfig(self.canvas_objects['y_motor_label'],
+                                           text=y_label_text, fill=y_label_color)
     
     def clear_sensor_override(self):
-        """Clear sensor override and return to hardware position tracking"""
-        print("🔓 CLEARING SENSOR OVERRIDE - returning to hardware position")
-        self.sensor_override_active = False
-        if self.sensor_override_timer:
-            self.main_app.root.after_cancel(self.sensor_override_timer)
-            self.sensor_override_timer = None
+        """Clear sensor override and resume normal position tracking"""
+        self.canvas_manager.sensor_override_active = False
+        print("🔓 SENSOR OVERRIDE CLEARED: Position tracking resumed")
+        
+        # Cancel any pending timer
+        if self.canvas_manager.sensor_override_timer:
+            self.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
+            self.canvas_manager.sensor_override_timer = None
+        
+        # Reset sensor highlights immediately
+        self.reset_sensor_highlights()
     
     def smart_sensor_override_clear(self, step_description):
-        """Intelligently clear sensor override based on step context"""
-        if not self.sensor_override_active:
+        """Intelligently clear sensor override based on operation context"""
+        if not self.canvas_manager.sensor_override_active:
+            return
+            
+        step_desc = step_description.lower() if step_description else ""
+        
+        # Don't clear during rows operations that depend on sensor positioning
+        if any(keyword in step_desc for keyword in [
+            "move to rightmost page", "move to page", "rows operation", "row marking",
+            "cut first row", "cut last row", "mark row", "right to left"
+        ]):
+            # Extend sensor override time for rows operations  
+            timeout_ms = 3000  
+            if self.canvas_manager.sensor_override_timer:
+                self.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
+            self.canvas_manager.sensor_override_timer = self.main_app.root.after(timeout_ms, self.clear_sensor_override)
+            print(f"🔒 SENSOR OVERRIDE EXTENDED for rows operation: {step_description}")
             return
         
-        step_desc = step_description.lower()
-        
-        # Clear sensor override when starting to move away from sensor
-        if 'move' in step_desc:
-            print(f"🔄 MOVE DETECTED during sensor override: {step_description}")
-            # Clear sensor override to allow hardware position tracking
+        # Clear immediately for lines operations or other non-sensor dependent operations
+        if any(keyword in step_desc for keyword in [
+            "lines operation", "line marking", "cut top edge", "cut bottom edge", 
+            "mark line", "lines complete", "home position"
+        ]):
             self.clear_sensor_override()
+            print(f"🔓 SENSOR OVERRIDE CLEARED for operation: {step_description}")
     
     def reset_sensor_highlights(self):
-        """Reset sensor indicators to normal colors"""
-        # Reset X sensors to orange
-        for sensor in ['x_left_sensor', 'x_right_sensor']:
-            if sensor in self.canvas_objects:
-                self.main_app.canvas.itemconfig(self.canvas_objects[sensor], 
-                                               fill='orange', width=4)
+        """Reset all sensor indicators to default colors"""
+        # Reset X sensor colors
+        if 'x_left_sensor' in self.canvas_objects:
+            self.main_app.canvas.itemconfig(self.canvas_objects['x_left_sensor'],
+                                           fill='orange', outline='darkorange', width=2)
+        if 'x_right_sensor' in self.canvas_objects:
+            self.main_app.canvas.itemconfig(self.canvas_objects['x_right_sensor'],
+                                           fill='orange', outline='darkorange', width=2)
         
-        # Reset Y sensors to cyan
-        for sensor in ['y_top_sensor', 'y_bottom_sensor']:
-            if sensor in self.canvas_objects:
-                self.main_app.canvas.itemconfig(self.canvas_objects[sensor], 
-                                               fill='cyan', width=4)
+        # Reset Y sensor colors
+        if 'y_bottom_sensor' in self.canvas_objects:
+            self.main_app.canvas.itemconfig(self.canvas_objects['y_bottom_sensor'],
+                                           fill='green', outline='darkgreen', width=2)
+        if 'y_top_sensor' in self.canvas_objects:
+            self.main_app.canvas.itemconfig(self.canvas_objects['y_top_sensor'],
+                                           fill='green', outline='darkgreen', width=2)

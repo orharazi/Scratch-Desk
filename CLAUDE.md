@@ -1,2 +1,4 @@
 - to run startup file: python3 index.py
 - after each changes on code, make add this to git (add, commit, push)
+- Do not use hard-coded values, everytime use the settings.json for values configuration.
+- when modified setting.json make sure not to make value duplication and that every value is for different purpose

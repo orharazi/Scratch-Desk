@@ -87,6 +87,18 @@ class CenterPanel:
         # MARK Operations Column
         mark_frame = tk.Frame(ops_row, bg='lightblue')
         mark_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        operation_colors = self.main_app.settings.get("operation_colors", {})
+        mark_colors = operation_colors.get("mark", {
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
+        })
+        cut_colors = operation_colors.get("cuts", {
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
+        })
         
         tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 9, 'bold'), 
                 bg='lightblue', fg='darkblue').pack()
@@ -96,7 +108,7 @@ class CenterPanel:
         
         # Create colored indicators for mark operations
         self.create_status_indicators(self.mark_status_frame, [
-            ("Ready", '#FF6600'), ("Working", '#FF8800'), ("Done", '#00AA00')
+            ("Ready", mark_colors['pending']), ("Working", mark_colors['in_progress']), ("Done", mark_colors['completed'])
         ])
         
         # CUT Operations Column  
@@ -111,7 +123,7 @@ class CenterPanel:
         
         # Create colored indicators for cut operations
         self.create_status_indicators(self.cut_status_frame, [
-            ("Ready", '#8800FF'), ("Working", '#FF0088'), ("Done", '#AA00AA')
+            ("Ready", cut_colors['pending']), ("Working", cut_colors['in_progress']), ("Done", cut_colors['completed'])
         ])
     
     def create_status_indicators(self, parent, status_list):

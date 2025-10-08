@@ -1,4 +1,5 @@
 import tkinter as tk
+import re
 from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
 
 from .canvas_setup import CanvasSetup
@@ -9,18 +10,30 @@ from .canvas_tools import CanvasTools
 
 
 class CanvasManager:
-    """Main canvas manager that coordinates all canvas modules"""
+    """Main canvas manager that coordinates all canvas modules with original functionality"""
     
     def __init__(self, main_app):
         self.main_app = main_app
+        # Use main app's canvas_objects for consistency
+        self.canvas_objects = main_app.canvas_objects
         
-        # Store references to modules in main app first for cross-module access
-        # Initialize all canvas modules
-        self.canvas_sensors = CanvasSensors(main_app)
-        self.canvas_setup = CanvasSetup(main_app)
-        self.canvas_operations = CanvasOperations(main_app)
-        self.canvas_position = CanvasPosition(main_app)
-        self.canvas_tools = CanvasTools(main_app)
+        # Motor operation state tracking for independent visualization
+        self.motor_operation_mode = "idle"  # "idle", "lines", "rows"
+        self.lines_motor_position = 0.0  # Y position for lines operations
+        self.rows_motor_position = 0.0   # X position for rows operations
+        
+        # Sensor trigger state tracking
+        self.sensor_override_active = False  # True when sensor position should be maintained
+        self.sensor_override_timer = None    # Timer to clear sensor override
+        self.sensor_position_x = 0.0         # Store sensor triggered X position
+        self.sensor_position_y = 0.0         # Store sensor triggered Y position
+        
+        # Initialize all canvas modules with shared state
+        self.canvas_sensors = CanvasSensors(main_app, self)
+        self.canvas_setup = CanvasSetup(main_app, self)
+        self.canvas_operations = CanvasOperations(main_app, self)
+        self.canvas_position = CanvasPosition(main_app, self)
+        self.canvas_tools = CanvasTools(main_app, self)
         
         # Store references to modules in main app for easy access
         main_app.canvas_setup = self.canvas_setup
@@ -29,6 +42,50 @@ class CanvasManager:
         main_app.canvas_position = self.canvas_position
         main_app.canvas_tools = self.canvas_tools
     
+    def set_motor_operation_mode(self, mode):
+        """Set the motor operation mode for proper visualization"""
+        if mode in ["idle", "lines", "rows"]:
+            self.motor_operation_mode = mode
+            print(f"Motor visualization mode: {mode}")
+        else:
+            print(f"Invalid motor mode: {mode}")
+    
+    def update_lines_motor_position(self, y_position):
+        """Update lines motor position (Y-axis) during lines operations"""
+        self.lines_motor_position = y_position
+    
+    def update_rows_motor_position(self, x_position):
+        """Update rows motor position (X-axis) during rows operations"""
+        self.rows_motor_position = x_position
+    
+    def detect_operation_mode_from_step(self, step_description):
+        """Automatically detect operation mode from step description"""
+        if not step_description:
+            return
+        
+        step_desc = step_description.lower()
+        
+        # Lines operation keywords
+        if any(keyword in step_desc for keyword in [
+            "lines operation", "line marking", "cut top edge", "cut bottom edge", 
+            "mark line", "lines complete", "init: move y motor"
+        ]):
+            self.set_motor_operation_mode("lines")
+        
+        # Rows operation keywords  
+        elif any(keyword in step_desc for keyword in [
+            "rows operation", "row marking", "cut first row", "cut last row",
+            "mark row", "rows complete", "init: move x motor", "mark page",
+            "move to.*page", "rightmost page", "right to left"
+        ]):
+            self.set_motor_operation_mode("rows")
+        
+        # Idle/home operations
+        elif any(keyword in step_desc for keyword in [
+            "home position", "starting program", "program complete", "system ready"
+        ]):
+            self.set_motor_operation_mode("idle")
+    
     # === SETUP METHODS ===
     def setup_canvas(self):
         """Set up the canvas with all visual elements"""
@@ -36,7 +93,7 @@ class CanvasManager:
     
     # === SENSOR METHODS ===
     def trigger_sensor_visualization(self, sensor_type):
-        """Trigger sensor visualization"""
+        """Trigger sensor visualization with original logic"""
         return self.canvas_sensors.trigger_sensor_visualization(sensor_type)
     
     def animate_pointer_to_sensor(self, axis, position):
@@ -54,6 +111,10 @@ class CanvasManager:
     def reset_sensor_highlights(self):
         """Reset sensor highlights"""
         return self.canvas_sensors.reset_sensor_highlights()
+    
+    def update_sensor_position_display(self):
+        """Update display while maintaining sensor trigger position"""
+        return self.canvas_sensors.update_sensor_position_display()
     
     # === OPERATION METHODS ===
     def update_canvas_paper_area(self):
@@ -93,28 +154,12 @@ class CanvasManager:
         return self.canvas_operations.add_debug_keybindings()
     
     # === POSITION METHODS ===
-    def set_motor_operation_mode(self, mode):
-        """Set motor operation mode"""
-        return self.canvas_position.set_motor_operation_mode(mode)
-    
-    def update_lines_motor_position(self, y_position):
-        """Update lines motor position"""
-        return self.canvas_position.update_lines_motor_position(y_position)
-    
-    def update_rows_motor_position(self, x_position):
-        """Update rows motor position"""
-        return self.canvas_position.update_rows_motor_position(x_position)
-    
-    def detect_operation_mode_from_step(self, step_description):
-        """Detect operation mode from step"""
-        return self.canvas_position.detect_operation_mode_from_step(step_description)
-    
     def move_tool_to_first_line(self):
         """Move tool to first line"""
         return self.canvas_position.move_tool_to_first_line()
     
     def update_position_display(self):
-        """Update position display"""
+        """Update position display with original logic"""
         return self.canvas_position.update_position_display()
     
     def determine_operation_context(self, x, y):
@@ -133,24 +178,3 @@ class CanvasManager:
     def refresh_tool_status_display(self):
         """Refresh tool status display"""
         return self.canvas_tools.refresh_tool_status_display()
-    
-    # === PROPERTIES FOR BACKWARDS COMPATIBILITY ===
-    @property
-    def motor_operation_mode(self):
-        """Get motor operation mode"""
-        return self.canvas_position.motor_operation_mode
-    
-    @property
-    def sensor_override_active(self):
-        """Get sensor override active status"""
-        return self.canvas_sensors.sensor_override_active
-    
-    @property
-    def sensor_position_x(self):
-        """Get sensor position X"""
-        return self.canvas_sensors.sensor_position_x
-    
-    @property
-    def sensor_position_y(self):
-        """Get sensor position Y"""
-        return self.canvas_sensors.sensor_position_y
