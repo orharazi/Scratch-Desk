@@ -106,6 +106,9 @@ class CanvasOperations:
         })
 
         print(f"📏 DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm")
+        print(f"🎨 Lines colors: {lines_colors}")
+        print(f"🎨 Rows colors: {rows_colors}")
+        print(f"🎨 Cuts colors: {cuts_colors}")
         
         # CORRECTED REPEAT VISUALIZATION: Process each repeated section individually
         # Each section has its own margins - match step generator logic exactly
