@@ -63,6 +63,22 @@ sensor_results = {
     'y_sensor': None
 }
 
+# Sensor trigger states (for live monitoring)
+sensor_trigger_states = {
+    'x_left': False,
+    'x_right': False,
+    'y_top': False,
+    'y_bottom': False
+}
+
+# Sensor trigger timers (for auto-reset after display)
+sensor_trigger_timers = {
+    'x_left': 0,
+    'x_right': 0,
+    'y_top': 0,
+    'y_bottom': 0
+}
+
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
@@ -457,26 +473,38 @@ def flush_all_sensor_buffers():
 # Manual sensor triggers for testing
 def trigger_x_left_sensor():
     """Manually trigger left X sensor"""
+    global sensor_trigger_states, sensor_trigger_timers
     print("MOCK: trigger_x_left_sensor()")
     sensor_events['x_left'].set()
+    sensor_trigger_states['x_left'] = True
+    sensor_trigger_timers['x_left'] = time.time()
     print("Manual trigger: X LEFT sensor activated")
 
 def trigger_x_right_sensor():
     """Manually trigger right X sensor"""
+    global sensor_trigger_states, sensor_trigger_timers
     print("MOCK: trigger_x_right_sensor()")
     sensor_events['x_right'].set()
+    sensor_trigger_states['x_right'] = True
+    sensor_trigger_timers['x_right'] = time.time()
     print("Manual trigger: X RIGHT sensor activated")
 
 def trigger_y_top_sensor():
     """Manually trigger top Y sensor"""
+    global sensor_trigger_states, sensor_trigger_timers
     print("MOCK: trigger_y_top_sensor()")
     sensor_events['y_top'].set()
+    sensor_trigger_states['y_top'] = True
+    sensor_trigger_timers['y_top'] = time.time()
     print("Manual trigger: Y TOP sensor activated")
 
 def trigger_y_bottom_sensor():
     """Manually trigger bottom Y sensor"""
+    global sensor_trigger_states, sensor_trigger_timers
     print("MOCK: trigger_y_bottom_sensor()")
     sensor_events['y_bottom'].set()
+    sensor_trigger_states['y_bottom'] = True
+    sensor_trigger_timers['y_bottom'] = time.time()
     print("Manual trigger: Y BOTTOM sensor activated")
 
 # Tool positioning functions
@@ -681,10 +709,24 @@ def set_row_marker_limit_switch(state):
     if state in ["up", "down"]:
         row_marker_limit_switch = state
         print(f"Row marker limit switch manually set to: {state.upper()}")
-        return True
-    else:
-        print(f"Invalid limit switch state: {state}. Must be 'up' or 'down'")
-        return False
+
+def get_sensor_trigger_states():
+    """Get current sensor trigger states with auto-reset after 1 second"""
+    global sensor_trigger_states, sensor_trigger_timers
+    current_time = time.time()
+
+    # Auto-reset sensors that have been triggered for more than 1 second
+    for sensor_name in sensor_trigger_states:
+        if sensor_trigger_states[sensor_name] and (current_time - sensor_trigger_timers[sensor_name] > 1.0):
+            sensor_trigger_states[sensor_name] = False
+
+    return sensor_trigger_states.copy()
+
+def reset_sensor_trigger_state(sensor_name):
+    """Manually reset a specific sensor trigger state"""
+    global sensor_trigger_states
+    if sensor_name in sensor_trigger_states:
+        sensor_trigger_states[sensor_name] = False
 
 def toggle_row_marker_limit_switch():
     """Toggle row marker limit switch state (for manual operator control)"""

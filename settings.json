@@ -15,10 +15,10 @@
     "auto_load_csv": "sample_programs.csv"
   },
   "simulation": {
-    "scale_x": 8.0,
-    "scale_y": 8.0,
-    "offset_x": 80,
-    "offset_y": 80,
+    "scale_x": 6.5,
+    "scale_y": 6.5,
+    "offset_x": 60,
+    "offset_y": 60,
     "show_grid": true,
     "grid_spacing": 20,
     "max_display_x": 120,

@@ -3,7 +3,7 @@ from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
     get_line_marker_piston_state, get_row_marker_limit_switch,
     get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
-    get_line_tools_height
+    get_line_tools_height, get_sensor_trigger_states
 )
 
 
@@ -148,11 +148,24 @@ class HardwareStatusPanel:
             self._update_status_display('row_cutter', row_cutter,
                                        '#E74C3C' if row_cutter == 'OPEN' else '#95A5A6')
 
-            # Update sensors (for now showing as READY - can be enhanced with actual trigger states)
-            self._update_status_display('x_left_sensor', 'READY', '#F39C12')
-            self._update_status_display('x_right_sensor', 'READY', '#F39C12')
-            self._update_status_display('y_top_sensor', 'READY', '#27AE60')
-            self._update_status_display('y_bottom_sensor', 'READY', '#27AE60')
+            # Update sensors with live trigger detection
+            sensor_triggers = get_sensor_trigger_states()
+
+            # X sensors - show TRIGGERED in bright color when active
+            self._update_status_display('x_left_sensor',
+                                       'TRIGGERED!' if sensor_triggers['x_left'] else 'READY',
+                                       '#FF3300' if sensor_triggers['x_left'] else '#F39C12')
+            self._update_status_display('x_right_sensor',
+                                       'TRIGGERED!' if sensor_triggers['x_right'] else 'READY',
+                                       '#FF3300' if sensor_triggers['x_right'] else '#F39C12')
+
+            # Y sensors - show TRIGGERED in bright color when active
+            self._update_status_display('y_top_sensor',
+                                       'TRIGGERED!' if sensor_triggers['y_top'] else 'READY',
+                                       '#00FF00' if sensor_triggers['y_top'] else '#27AE60')
+            self._update_status_display('y_bottom_sensor',
+                                       'TRIGGERED!' if sensor_triggers['y_bottom'] else 'READY',
+                                       '#00FF00' if sensor_triggers['y_bottom'] else '#27AE60')
 
             # Update system status
             if hasattr(self.main_app, 'canvas_manager'):
