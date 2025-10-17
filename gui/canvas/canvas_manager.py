@@ -93,10 +93,6 @@ class CanvasManager:
     def setup_canvas(self):
         """Set up the canvas with all visual elements"""
         return self.canvas_setup.setup_canvas()
-
-    def update_canvas_work_status_display(self):
-        """Update canvas work status display with real-time hardware states"""
-        return self.canvas_setup.update_canvas_work_status_display()
     
     # === SENSOR METHODS ===
     def trigger_sensor_visualization(self, sensor_type):

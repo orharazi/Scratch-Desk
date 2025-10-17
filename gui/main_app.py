@@ -19,8 +19,9 @@ from mock_hardware import (
 
 # Import GUI components
 from gui.panels.left_panel import LeftPanel
-from gui.panels.center_panel import CenterPanel  
+from gui.panels.center_panel import CenterPanel
 from gui.panels.right_panel import RightPanel
+from gui.panels.hardware_status_panel import HardwareStatusPanel
 from gui.canvas.canvas_manager import CanvasManager
 from gui.execution.execution_controller import ExecutionController
 
@@ -163,29 +164,31 @@ class ScratchDeskGUI:
         self.left_frame = tk.Frame(self.root, bg='lightgray')
         self.center_frame = tk.Frame(self.root, bg='white')
         self.right_frame = tk.Frame(self.root, bg='lightblue')
-        
-        # Configure responsive column weights
-        self.root.grid_rowconfigure(0, weight=1)
+        self.bottom_frame = tk.Frame(self.root, bg='#2C3E50')  # Bottom frame for hardware status
+
+        # Configure responsive column and row weights
+        self.root.grid_rowconfigure(0, weight=4)  # Top row (main panels) gets more space
+        self.root.grid_rowconfigure(1, weight=1, minsize=150)  # Bottom row (hardware status) fixed height
         self.root.grid_columnconfigure(0, minsize=280, weight=1)  # Left: min 280px, 20% weight
         self.root.grid_columnconfigure(1, weight=4)              # Center: 60% weight
         self.root.grid_columnconfigure(2, minsize=300, weight=1) # Right: min 300px, 20% weight
-        
+
         # Grid frames for responsive layout
-        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=5)
-        self.center_frame.grid(row=0, column=1, sticky="nsew", padx=3, pady=5)
-        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=(3,5), pady=5)
+        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=(5,3))
+        self.center_frame.grid(row=0, column=1, sticky="nsew", padx=3, pady=(5,3))
+        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=(3,5), pady=(5,3))
+        self.bottom_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=5, pady=(3,5))
     
     def create_panels(self):
         """Create and initialize all GUI panels"""
         self.left_panel = LeftPanel(self, self.left_frame)
-        self.center_panel = CenterPanel(self, self.center_frame)  
+        self.center_panel = CenterPanel(self, self.center_frame)
         self.right_panel = RightPanel(self, self.right_frame)
-        # No bottom panel - progress bar and work operations drawn on canvas
+        self.hardware_status_panel = HardwareStatusPanel(self, self.bottom_frame)
     
     def schedule_position_update(self):
         """Schedule regular position updates"""
         self.canvas_manager.update_position_display()
-        self.canvas_manager.update_canvas_work_status_display()
         self.root.after(500, self.schedule_position_update)  # Update every 500ms
     
     def on_execution_status(self, status, info=None):
