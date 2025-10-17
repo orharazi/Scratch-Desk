@@ -19,17 +19,13 @@ class CanvasSetup:
         sim_settings = self.main_app.settings.get("simulation", {})
         gui_settings = self.main_app.settings.get("gui_settings", {})
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
-        
-        # Canvas dimensions from settings (use actual dimensions for calculations)
-        self.main_app.canvas_width = getattr(self.main_app, 'actual_canvas_width', gui_settings.get("canvas_width", 600))
-        self.main_app.canvas_height = getattr(self.main_app, 'actual_canvas_height', gui_settings.get("canvas_height", 400))
-        
-        # Coordinate conversion from settings
-        self.main_app.scale_x = sim_settings.get("scale_x", 5.0)  # pixels per cm
-        self.main_app.scale_y = sim_settings.get("scale_y", 3.5)  # pixels per cm
-        self.main_app.offset_x = sim_settings.get("offset_x", 50)  # Left margin
-        self.main_app.offset_y = sim_settings.get("offset_y", 50)  # Top margin
-        self.main_app.grid_spacing = sim_settings.get("grid_spacing", 20)
+
+        # DON'T override main_app settings - they were already loaded correctly
+        # Just use the values that are already set in main_app
+        # Canvas dimensions should use actual_canvas_width/height if available
+        if not hasattr(self.main_app, 'canvas_width') or self.main_app.canvas_width == 600:
+            self.main_app.canvas_width = getattr(self.main_app, 'actual_canvas_width', gui_settings.get("canvas_width", 600))
+            self.main_app.canvas_height = getattr(self.main_app, 'actual_canvas_height', gui_settings.get("canvas_height", 400))
         
         # Clear canvas first and reset canvas objects references
         self.main_app.canvas.delete("all")

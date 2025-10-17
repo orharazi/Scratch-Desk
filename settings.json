@@ -22,7 +22,8 @@
     "show_grid": true,
     "grid_spacing": 20,
     "max_display_x": 120,
-    "max_display_y": 80
+    "max_display_y": 80,
+    "_comment": "Zoom: scale_x/y controls zoom (higher=more zoomed in, lower=more zoomed out). offset_x/y are margins. Total height needed: offset_y + (max_display_y * scale_y)"
   },
   "validation": {
     "tolerance": 0.01,
