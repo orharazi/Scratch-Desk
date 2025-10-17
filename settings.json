@@ -86,5 +86,28 @@
     "dialog_padding": 20,
     "button_padding_x": 10,
     "button_padding_y": 5
+  },
+  "hardware_monitor": {
+    "background_color": "#2C3E50",
+    "section_bg_color": "#34495E",
+    "text_color": "#ECF0F1",
+    "label_color": "#BDC3C7",
+    "separator_color": "#7F8C8D",
+    "panel_height": 120,
+    "update_interval_ms": 200,
+    "status_colors": {
+      "motor_x": "#E74C3C",
+      "motor_y": "#3498DB",
+      "line_tools": "#3498DB",
+      "row_tools": "#E74C3C",
+      "sensors_x": "#F39C12",
+      "sensors_y": "#27AE60",
+      "system": "#8E44AD",
+      "active": "#27AE60",
+      "inactive": "#95A5A6",
+      "critical": "#E74C3C",
+      "sensor_triggered_x": "#FF3300",
+      "sensor_triggered_y": "#00FF00"
+    }
   }
 }

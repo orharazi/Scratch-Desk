@@ -65,19 +65,24 @@ class ScratchDeskGUI:
         
         # Canvas and drawing objects
         self.work_line_objects = {}  # Store line objects for dynamic updates
-        self.canvas_objects = {}  # Store canvas objects for efficient updates  
+        self.canvas_objects = {}  # Store canvas objects for efficient updates
         self.canvas = None
-        self.offset_x = 50
-        self.offset_y = 50
-        self.scale_x = 8
-        self.scale_y = 8
-        
+
+        # Load canvas settings from settings.json (will be used by canvas_setup)
+        sim_settings = self.settings.get("simulation", {})
+        gui_settings = self.settings.get("gui_settings", {})
+
+        self.offset_x = sim_settings.get("offset_x", 50)
+        self.offset_y = sim_settings.get("offset_y", 50)
+        self.scale_x = sim_settings.get("scale_x", 8)
+        self.scale_y = sim_settings.get("scale_y", 8)
+        self.grid_spacing = sim_settings.get("grid_spacing", 20)
+
         # Canvas dimensions (will be set by center panel)
-        self.canvas_width = 600
-        self.canvas_height = 400
-        self.actual_canvas_width = 600
-        self.actual_canvas_height = 400
-        self.grid_spacing = 20
+        self.canvas_width = gui_settings.get("canvas_width", 600)
+        self.canvas_height = gui_settings.get("canvas_height", 400)
+        self.actual_canvas_width = gui_settings.get("canvas_width", 600)
+        self.actual_canvas_height = gui_settings.get("canvas_height", 400)
         
         # Position tracking
         self.position_update_scheduled = False
