@@ -298,9 +298,13 @@ class RightPanel:
                                       bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'))
         self.progress_label.pack(pady=1)
         
-        # Manual Sensor Triggers - Compact
-        sensor_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        sensor_frame.pack(fill=tk.X, padx=10, pady=3)
+        # Manual Controls Container (Sensors + Row Marker in horizontal layout)
+        manual_controls_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
+        manual_controls_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        # Manual Sensor Triggers - Left side
+        sensor_frame = tk.Frame(manual_controls_frame, bg='lightblue')
+        sensor_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,5))
 
         tk.Label(sensor_frame, text="Manual Sensors:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
@@ -312,12 +316,12 @@ class RightPanel:
         tk.Label(x_frame, text="X:", bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold')).pack(side=tk.LEFT)
 
         self.x_left_btn = tk.Button(x_frame, text="Left", bg='darkorange', fg='black',
-                                   command=self.trigger_x_left, width=7, font=('Arial', 8),
+                                   command=self.trigger_x_left, width=6, font=('Arial', 8),
                                    relief=tk.RAISED, bd=1, activebackground='orange', activeforeground='black')
         self.x_left_btn.pack(side=tk.LEFT, padx=1)
 
         self.x_right_btn = tk.Button(x_frame, text="Right", bg='darkorange', fg='black',
-                                    command=self.trigger_x_right, width=7, font=('Arial', 8),
+                                    command=self.trigger_x_right, width=6, font=('Arial', 8),
                                     relief=tk.RAISED, bd=1, activebackground='orange', activeforeground='black')
         self.x_right_btn.pack(side=tk.LEFT, padx=1)
 
@@ -328,34 +332,31 @@ class RightPanel:
         tk.Label(y_frame, text="Y:", bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold')).pack(side=tk.LEFT)
 
         self.y_top_btn = tk.Button(y_frame, text="Top", bg='mediumpurple', fg='black',
-                                  command=self.trigger_y_top, width=7, font=('Arial', 8),
+                                  command=self.trigger_y_top, width=6, font=('Arial', 8),
                                   relief=tk.RAISED, bd=1, activebackground='purple', activeforeground='white')
         self.y_top_btn.pack(side=tk.LEFT, padx=1)
 
         self.y_bottom_btn = tk.Button(y_frame, text="Bottom", bg='mediumpurple', fg='black',
-                                     command=self.trigger_y_bottom, width=7, font=('Arial', 8),
+                                     command=self.trigger_y_bottom, width=6, font=('Arial', 8),
                                      relief=tk.RAISED, bd=1, activebackground='purple', activeforeground='white')
         self.y_bottom_btn.pack(side=tk.LEFT, padx=1)
 
-        # Manual Row Marker Limit Switch Control - Compact
-        limit_switch_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        limit_switch_frame.pack(fill=tk.X, padx=10, pady=3)
+        # Manual Row Marker Limit Switch Control - Right side
+        limit_switch_frame = tk.Frame(manual_controls_frame, bg='lightblue')
+        limit_switch_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        tk.Label(limit_switch_frame, text="Row Marker Limit:", font=('Arial', 9, 'bold'),
+        tk.Label(limit_switch_frame, text="Row Marker:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
 
-        switch_controls = tk.Frame(limit_switch_frame, bg='lightblue')
-        switch_controls.pack(pady=1)
-
-        self.limit_switch_status_label = tk.Label(switch_controls, text="Status: UP",
+        self.limit_switch_status_label = tk.Label(limit_switch_frame, text="Status: UP",
                                                  bg='lightblue', fg='darkgreen', font=('Arial', 8))
-        self.limit_switch_status_label.pack(side=tk.LEFT, padx=(0, 5))
+        self.limit_switch_status_label.pack(pady=1)
 
-        self.toggle_limit_switch_btn = tk.Button(switch_controls, text="Toggle",
+        self.toggle_limit_switch_btn = tk.Button(limit_switch_frame, text="Toggle",
                                                command=self.toggle_limit_switch,
                                                bg='darkslategray', fg='white', font=('Arial', 8),
                                                relief=tk.RAISED, bd=1, activebackground='slategray', activeforeground='white')
-        self.toggle_limit_switch_btn.pack(side=tk.LEFT, padx=1)
+        self.toggle_limit_switch_btn.pack(pady=1)
         
         # Store references in main app for other components
         self.main_app.step_info_label = self.step_info_label
