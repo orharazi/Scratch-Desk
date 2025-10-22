@@ -98,13 +98,23 @@ class CanvasSetup:
                     )
     
     def draw_axis_labels(self):
-        """Draw axis labels"""
+        """Draw axis labels - positioned outside workspace area"""
+        # Get actual workspace dimensions
+        sim_settings = self.main_app.settings.get("simulation", {})
+        max_x_cm = sim_settings.get("max_display_x", 120)
+        max_y_cm = sim_settings.get("max_display_y", 80)
+        workspace_height = max_y_cm * self.main_app.scale_y
+
+        # X axis label below workspace
+        x_label_y = self.main_app.offset_y + workspace_height + 25
         self.main_app.canvas.create_text(
-            self.main_app.canvas_width // 2, self.main_app.canvas_height - 10, 
+            self.main_app.canvas_width // 2, x_label_y,
             text="X Axis (cm)", font=('Arial', 10, 'bold'), fill='darkblue'
         )
+
+        # Y axis label on left side
         self.main_app.canvas.create_text(
-            10, self.main_app.canvas_height // 2, 
+            10, self.main_app.canvas_height // 2,
             text="Y Axis (cm)", font=('Arial', 10, 'bold'), fill='darkblue', angle=90
         )
     
