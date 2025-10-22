@@ -19,37 +19,18 @@ class CenterPanel:
         # Work Operations Status Box (moved above canvas for visibility)
         self.create_work_operations_status()
 
-        # Create scrollable canvas frame
+        # Create canvas frame - no scrollbars, show full desk
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
-        
-        # Canvas for desk simulation - use settings dimensions but make scrollable
-        canvas_width = self.main_app.settings.get("gui_settings", {}).get("canvas_width", 600)
-        canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 400)
-        
-        # Limit canvas size to fit in window
-        max_canvas_width = 900  # Leave room for panels
-        max_canvas_height = 600  # Leave room for bottom controls
-        
-        display_width = min(canvas_width, max_canvas_width)
-        display_height = min(canvas_height, max_canvas_height)
-        
-        # Create canvas with scrollbars if needed
-        self.main_app.canvas = tk.Canvas(canvas_container, width=display_width, height=display_height, 
-                               bg='white', relief=tk.SUNKEN, bd=1,
-                               scrollregion=(0, 0, canvas_width, canvas_height))
-        
-        # Add scrollbars if canvas is larger than display
-        if canvas_width > max_canvas_width:
-            h_scrollbar = tk.Scrollbar(canvas_container, orient=tk.HORIZONTAL, command=self.main_app.canvas.xview)
-            h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-            self.main_app.canvas.config(xscrollcommand=h_scrollbar.set)
-        
-        if canvas_height > max_canvas_height:
-            v_scrollbar = tk.Scrollbar(canvas_container, orient=tk.VERTICAL, command=self.main_app.canvas.yview)
-            v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            self.main_app.canvas.config(yscrollcommand=v_scrollbar.set)
-        
+
+        # Canvas for desk simulation - use settings dimensions to fit entire desk
+        canvas_width = self.main_app.settings.get("gui_settings", {}).get("canvas_width", 900)
+        canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 620)
+
+        # Create canvas without scrollbars - sized to show complete workspace
+        self.main_app.canvas = tk.Canvas(canvas_container, width=canvas_width, height=canvas_height,
+                               bg='white', relief=tk.SUNKEN, bd=2)
+
         self.main_app.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Store actual canvas dimensions for calculations
