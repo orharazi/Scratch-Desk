@@ -10,7 +10,7 @@
   },
   "gui_settings": {
     "canvas_width": 900,
-    "canvas_height": 620,
+    "canvas_height": 640,
     "update_interval_ms": 500,
     "auto_load_csv": "sample_programs.csv"
   },
@@ -23,7 +23,7 @@
     "grid_spacing": 20,
     "max_display_x": 120,
     "max_display_y": 80,
-    "_comment": "Zoom: scale_x/y controls zoom (higher=more zoomed in, lower=more zoomed out). offset_x/y are margins. Total canvas size: offset + (max_display * scale). Canvas: 900x620 = 50 + (120*6.8) + 50 = 916 width, 50 + (80*6.8) + 50 = 644 height"
+    "_comment": "Zoom: scale_x/y controls zoom (higher=more zoomed in, lower=more zoomed out). offset_x/y are margins. Total canvas size: offset + (max_display * scale). Canvas: 900x640 fits complete desk (120x80cm) with scale 6.8"
   },
   "validation": {
     "tolerance": 0.01,
