@@ -31,7 +31,7 @@ class CenterPanel:
         self.main_app.canvas = tk.Canvas(canvas_container, width=canvas_width, height=canvas_height,
                                bg='white', relief=tk.SUNKEN, bd=2)
 
-        self.main_app.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.main_app.canvas.pack()
         
         # Store actual canvas dimensions for calculations
         self.main_app.actual_canvas_width = canvas_width
