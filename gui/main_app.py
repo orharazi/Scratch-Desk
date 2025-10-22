@@ -79,10 +79,10 @@ class ScratchDeskGUI:
         self.grid_spacing = sim_settings.get("grid_spacing", 20)
 
         # Canvas dimensions (will be set by center panel)
-        self.canvas_width = gui_settings.get("canvas_width", 600)
-        self.canvas_height = gui_settings.get("canvas_height", 400)
-        self.actual_canvas_width = gui_settings.get("canvas_width", 600)
-        self.actual_canvas_height = gui_settings.get("canvas_height", 400)
+        self.canvas_width = gui_settings.get("canvas_width", 900)
+        self.canvas_height = gui_settings.get("canvas_height", 700)
+        self.actual_canvas_width = gui_settings.get("canvas_width", 900)
+        self.actual_canvas_height = gui_settings.get("canvas_height", 700)
         
         # Position tracking
         self.position_update_scheduled = False
@@ -127,8 +127,8 @@ class ScratchDeskGUI:
             return {
                 "gui_settings": {
                     "auto_load_csv": "sample_programs.csv",
-                    "canvas_width": 600,
-                    "canvas_height": 400
+                    "canvas_width": 900,
+                    "canvas_height": 700
                 },
                 "simulation": {
                     "scale_x": 5.0, 

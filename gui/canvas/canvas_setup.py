@@ -24,8 +24,8 @@ class CanvasSetup:
         # Just use the values that are already set in main_app
         # Canvas dimensions should use actual_canvas_width/height if available
         if not hasattr(self.main_app, 'canvas_width') or self.main_app.canvas_width == 600:
-            self.main_app.canvas_width = getattr(self.main_app, 'actual_canvas_width', gui_settings.get("canvas_width", 600))
-            self.main_app.canvas_height = getattr(self.main_app, 'actual_canvas_height', gui_settings.get("canvas_height", 400))
+            self.main_app.canvas_width = getattr(self.main_app, 'actual_canvas_width', gui_settings.get("canvas_width", 900))
+            self.main_app.canvas_height = getattr(self.main_app, 'actual_canvas_height', gui_settings.get("canvas_height", 700))
         
         # Clear canvas first and reset canvas objects references
         self.main_app.canvas.delete("all")
