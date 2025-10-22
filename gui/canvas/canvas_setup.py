@@ -296,40 +296,7 @@ class CanvasSetup:
         )
     
     def draw_tool_status_indicators(self):
-        """Draw tool status indicators"""
-        # Tool indicators (line marker, cutter tools)
-        status_x = self.main_app.canvas_width - 120
-        status_y = 20
-        
-        # Line marker tool status
-        self.canvas_objects['line_marker_status'] = self.main_app.canvas.create_rectangle(
-            status_x, status_y, status_x + 15, status_y + 15,
-            fill='gray', outline='black', width=1, tags="tool_status"
-        )
-        self.canvas_objects['line_marker_label'] = self.main_app.canvas.create_text(
-            status_x + 20, status_y + 7,
-            text="Line Marker", fill='black', font=('Arial', 8, 'bold'),
-            anchor='w', tags="tool_status"
-        )
-        
-        # Cutter tool status
-        cutter_y = status_y + 25
-        self.canvas_objects['cutter_status'] = self.main_app.canvas.create_rectangle(
-            status_x, cutter_y, status_x + 15, cutter_y + 15,
-            fill='gray', outline='black', width=1, tags="tool_status"
-        )
-        self.canvas_objects['cutter_label'] = self.main_app.canvas.create_text(
-            status_x + 20, cutter_y + 7,
-            text="Cutter", fill='black', font=('Arial', 8, 'bold'),
-            anchor='w', tags="tool_status"
-        )
-        
-        # Add row marker limit switch status display (from original canvas manager)
-        self.canvas_objects['row_marker_limit_switch'] = self.main_app.canvas.create_text(
-            400, 35, text="Row Marker State: UP", fill='darkgreen', font=('Arial', 8, 'bold')
-        )
-
-        # Add line marker piston status display (from original canvas manager)
-        self.canvas_objects['line_marker_piston'] = self.main_app.canvas.create_text(
-            150, 35, text="Line Marker State: DOWN", fill='red', font=('Arial', 8, 'bold')
-        )
+        """Draw tool status indicators - removed, now in hardware status monitor"""
+        # All tool status indicators have been moved to the hardware status monitor panel
+        # This keeps the canvas clean and focused on the work visualization
+        pass
