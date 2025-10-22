@@ -31,10 +31,16 @@ class CanvasSetup:
         self.main_app.canvas.delete("all")
         self.canvas_objects.clear()  # Clear canvas object references since they were deleted
         
-        # Draw workspace boundary
+        # Draw workspace boundary - use max display dimensions from settings
+        max_x_cm = sim_settings.get("max_display_x", 120)
+        max_y_cm = sim_settings.get("max_display_y", 80)
+
+        workspace_width = max_x_cm * self.main_app.scale_x
+        workspace_height = max_y_cm * self.main_app.scale_y
+
         workspace_rect = self.main_app.canvas.create_rectangle(
             self.main_app.offset_x, self.main_app.offset_y,
-            self.main_app.canvas_width - self.main_app.offset_x, self.main_app.canvas_height - self.main_app.offset_y,
+            self.main_app.offset_x + workspace_width, self.main_app.offset_y + workspace_height,
             outline='black', width=2, fill='lightgray', stipple='gray12'
         )
         
@@ -153,12 +159,14 @@ class CanvasSetup:
         # Calculate canvas coordinates for motor positions
         motor_x_canvas = self.main_app.offset_x + current_x * self.main_app.scale_x
         motor_y_canvas = self.main_app.offset_y + (max_y_cm - current_y) * self.main_app.scale_y
-        
-        # Get workspace boundaries
+
+        # Get workspace boundaries - use calculated dimensions from settings
+        workspace_width = max_x_cm * self.main_app.scale_x
+        workspace_height = max_y_cm * self.main_app.scale_y
         workspace_left = self.main_app.offset_x
-        workspace_right = self.main_app.canvas_width - self.main_app.offset_x
+        workspace_right = self.main_app.offset_x + workspace_width
         workspace_top = self.main_app.offset_y
-        workspace_bottom = self.main_app.canvas_height - self.main_app.offset_y
+        workspace_bottom = self.main_app.offset_y + workspace_height
         
         # X Motor Line (Vertical line representing X motor position)
         # This line shows where the X motor/carriage is positioned
@@ -231,12 +239,15 @@ class CanvasSetup:
         right_x_canvas = self.main_app.offset_x + right_sensor_x * self.main_app.scale_x
         bottom_y_canvas = self.main_app.offset_y + (max_y_cm - bottom_sensor_y) * self.main_app.scale_y
         top_y_canvas = self.main_app.offset_y + (max_y_cm - top_sensor_y) * self.main_app.scale_y
-        
-        # Get workspace boundaries
+
+        # Get workspace boundaries - use calculated dimensions from settings
+        max_x_cm = sim_settings.get("max_display_x", 120)
+        workspace_width = max_x_cm * self.main_app.scale_x
+        workspace_height = max_y_cm * self.main_app.scale_y
         workspace_top = self.main_app.offset_y
-        workspace_bottom = self.main_app.canvas_height - self.main_app.offset_y
+        workspace_bottom = self.main_app.offset_y + workspace_height
         workspace_left = self.main_app.offset_x
-        workspace_right = self.main_app.canvas_width - self.main_app.offset_x
+        workspace_right = self.main_app.offset_x + workspace_width
         
         # X-axis sensors (on vertical motor line, but at sensor X positions)
         # Left sensor indicator - small circle on the left edge position
