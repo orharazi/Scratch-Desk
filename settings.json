@@ -10,7 +10,7 @@
   },
   "gui_settings": {
     "canvas_width": 900,
-    "canvas_height": 670,
+    "canvas_height": 700,
     "update_interval_ms": 500,
     "auto_load_csv": "sample_programs.csv"
   },

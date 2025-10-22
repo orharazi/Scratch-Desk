@@ -25,7 +25,7 @@ class CenterPanel:
 
         # Canvas for desk simulation - use settings dimensions to fit entire desk
         canvas_width = self.main_app.settings.get("gui_settings", {}).get("canvas_width", 900)
-        canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 670)
+        canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 700)
 
         # Create canvas without scrollbars - sized to show complete workspace
         self.main_app.canvas = tk.Canvas(canvas_container, width=canvas_width, height=canvas_height,
