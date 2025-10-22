@@ -14,51 +14,51 @@ class LeftPanel:
     
     def create_widgets(self):
         """Create all widgets for the left panel"""
-        # Title
-        tk.Label(self.parent_frame, text="PROGRAM CONTROL", font=('Arial', 12, 'bold'), 
-                bg='lightgray').pack(pady=5)
-        
+        # Title - Compact
+        tk.Label(self.parent_frame, text="PROGRAM CONTROL", font=('Arial', 11, 'bold'),
+                bg='lightgray').pack(pady=3)
+
         # File Menu
         self.create_file_section()
-        
+
         # Program Selection
         self.create_program_selection()
-        
+
         # Input Fields
         self.create_input_fields()
-        
+
         # Validation Status
         self.create_validation_section()
     
     def create_file_section(self):
         """Create file loading section"""
         file_frame = tk.Frame(self.parent_frame, bg='lightgray')
-        file_frame.pack(fill=tk.X, padx=10, pady=5)
-        
+        file_frame.pack(fill=tk.X, padx=10, pady=3)
+
         tk.Button(file_frame, text="Load CSV", command=self.load_csv_file,
-                 bg='darkgreen', fg='black', font=('Arial', 10, 'bold'),
+                 bg='darkgreen', fg='white', font=('Arial', 9, 'bold'),
                  relief=tk.RAISED, bd=2, activebackground='green', activeforeground='white').pack(fill=tk.X)
-        
-        self.current_file_label = tk.Label(file_frame, text="No file loaded", 
-                                          wraplength=200, bg='lightgray')
-        self.current_file_label.pack(pady=(5,0))
-    
+
+        self.current_file_label = tk.Label(file_frame, text="No file loaded",
+                                          wraplength=200, bg='lightgray', font=('Arial', 8))
+        self.current_file_label.pack(pady=(3,0))
+
     def create_program_selection(self):
         """Create program selection dropdown"""
-        tk.Label(self.parent_frame, text="Program Selection:", font=('Arial', 10, 'bold'),
-                bg='lightgray').pack(pady=(10,5))
-        
+        tk.Label(self.parent_frame, text="Program Selection:", font=('Arial', 9, 'bold'),
+                bg='lightgray').pack(pady=(5,2))
+
         self.program_var = tk.StringVar()
-        self.program_combo = ttk.Combobox(self.parent_frame, textvariable=self.program_var, 
-                                         state='readonly', width=25)
-        self.program_combo.pack(padx=10, pady=5)
+        self.program_combo = ttk.Combobox(self.parent_frame, textvariable=self.program_var,
+                                         state='readonly', width=25, font=('Arial', 9))
+        self.program_combo.pack(padx=10, pady=3)
         self.program_combo.bind('<<ComboboxSelected>>', self.on_program_selected)
     
     def create_input_fields(self):
         """Create scrollable input fields section"""
         # Create scrollable frame for input fields
         canvas_frame = tk.Frame(self.parent_frame, bg='lightgray')
-        canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=3)
         
         # Create canvas with scrollbar
         self.input_canvas = tk.Canvas(canvas_frame, bg='lightgray', highlightthickness=0)

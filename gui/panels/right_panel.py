@@ -150,47 +150,47 @@ class RightPanel:
         self.create_scrollable_frame()
         
         # Title with responsive font
-        self.title_label = tk.Label(self.scrollable_frame, text="CONTROLS & STATUS", font=self.title_font, 
+        self.title_label = tk.Label(self.scrollable_frame, text="CONTROLS & STATUS", font=self.title_font,
                 bg='lightblue')
-        self.title_label.pack(pady=5)
-        
+        self.title_label.pack(pady=3)
+
         # Generate Steps Button with responsive font and sizing
         self.gen_steps_btn = tk.Button(self.scrollable_frame, text="Generate Steps", command=self.generate_steps,
-                 bg='yellow', fg='darkblue', font=self.button_font, height=2)
-        self.gen_steps_btn.pack(fill=tk.X, padx=10, pady=5)
+                 bg='yellow', fg='darkblue', font=self.button_font, height=1)
+        self.gen_steps_btn.pack(fill=tk.X, padx=10, pady=3)
         
         # Step Navigation with responsive frame
         nav_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        nav_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        tk.Label(nav_frame, text="Step Navigation:", font=('Arial', 10, 'bold'), 
+        nav_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        tk.Label(nav_frame, text="Step Navigation:", font=('Arial', 9, 'bold'),
                 bg='lightblue').pack()
-        
+
         nav_buttons = tk.Frame(nav_frame, bg='lightblue')
-        nav_buttons.pack(fill=tk.X, pady=5)
-        
+        nav_buttons.pack(fill=tk.X, pady=2)
+
         self.prev_btn = tk.Button(nav_buttons, text="◄ Prev", command=self.prev_step,
-                                 state=tk.DISABLED, width=8)
+                                 state=tk.DISABLED, width=8, font=('Arial', 8))
         self.prev_btn.pack(side=tk.LEFT)
-        
+
         self.next_btn = tk.Button(nav_buttons, text="Next ►", command=self.next_step,
-                                 state=tk.DISABLED, width=8)
+                                 state=tk.DISABLED, width=8, font=('Arial', 8))
         self.next_btn.pack(side=tk.RIGHT)
-        
-        self.step_info_label = tk.Label(nav_frame, text="No steps loaded", 
-                                       bg='lightblue', font=self.text_font, wraplength=250)
-        self.step_info_label.pack(pady=5)
+
+        self.step_info_label = tk.Label(nav_frame, text="No steps loaded",
+                                       bg='lightblue', font=('Arial', 8), wraplength=250)
+        self.step_info_label.pack(pady=2)
         
         # Step Details - Improved visibility and layout
         details_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        details_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
-        tk.Label(details_frame, text="Steps Queue:", font=self.label_font, 
+        details_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=2)
+
+        tk.Label(details_frame, text="Steps Queue:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
-        
+
         # Create tabbed view for current step vs all steps
         notebook = ttk.Notebook(details_frame)
-        notebook.pack(fill=tk.BOTH, expand=True, pady=5)
+        notebook.pack(fill=tk.BOTH, expand=True, pady=2)
         
         # Current Step Tab
         current_tab = tk.Frame(notebook, bg='white')
@@ -205,23 +205,23 @@ class RightPanel:
                                           wraplength=250)
         self.current_step_label.pack(pady=5)
         
-        self.step_details = tk.Text(current_tab, height=6, width=25, font=('Arial', 9), 
+        self.step_details = tk.Text(current_tab, height=4, width=25, font=('Arial', 8),
                                    wrap=tk.WORD, bg='white', fg='black', relief=tk.SUNKEN, bd=2)
         step_scroll = tk.Scrollbar(current_tab, orient=tk.VERTICAL)
         step_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.step_details.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0), pady=5)
+        self.step_details.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0), pady=2)
         self.step_details.config(yscrollcommand=step_scroll.set)
         step_scroll.config(command=self.step_details.yview)
-        
+
         # All Steps Tab
         all_steps_tab = tk.Frame(notebook, bg='white')
         notebook.add(all_steps_tab, text='All Steps')
-        
+
         # Steps queue listbox with better visibility
         queue_frame = tk.Frame(all_steps_tab, bg='white')
-        queue_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 8), height=15,
+        queue_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
+
+        self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 7), height=12,
                                        bg='white', fg='black', selectbackground='lightblue',
                                        selectforeground='darkblue', relief=tk.SUNKEN, bd=2)
         queue_scroll = tk.Scrollbar(queue_frame, orient=tk.VERTICAL)
@@ -236,126 +236,126 @@ class RightPanel:
         # Store notebook reference
         self.step_notebook = notebook
         
-        # Status Panel
+        # Status Panel - Compact
         status_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        status_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        tk.Label(status_frame, text="System Status:", font=('Arial', 10, 'bold'), 
+        status_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        tk.Label(status_frame, text="System Status:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
-        
+
         # Current Position with better visibility
-        self.position_label = tk.Label(status_frame, text="Position: X=0.0, Y=0.0", 
-                                      bg='lightblue', fg='darkblue', font=('Arial', 9))
+        self.position_label = tk.Label(status_frame, text="Position: X=0.0, Y=0.0",
+                                      bg='lightblue', fg='darkblue', font=('Arial', 8))
         self.position_label.pack(anchor=tk.W)
-        
+
         # Sensor Status with better visibility
-        self.sensor_label = tk.Label(status_frame, text="Sensor: Ready", 
-                                    bg='lightblue', fg='darkgreen', font=('Arial', 9))
+        self.sensor_label = tk.Label(status_frame, text="Sensor: Ready",
+                                    bg='lightblue', fg='darkgreen', font=('Arial', 8))
         self.sensor_label.pack(anchor=tk.W)
-        
+
         # System State with better visibility
-        self.state_label = tk.Label(status_frame, text="State: Idle", 
-                                   bg='lightblue', fg='darkred', font=('Arial', 9))
+        self.state_label = tk.Label(status_frame, text="State: Idle",
+                                   bg='lightblue', fg='darkred', font=('Arial', 8))
         self.state_label.pack(anchor=tk.W)
-        
+
         # Execution Controls (moved from bottom panel)
         exec_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        exec_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        tk.Label(exec_frame, text="Execution:", font=('Arial', 10, 'bold'), 
+        exec_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        tk.Label(exec_frame, text="Execution:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
         
-        # Execution buttons in 2x2 grid
+        # Execution buttons in 2x2 grid - Compact
         button_grid = tk.Frame(exec_frame, bg='lightblue')
-        button_grid.pack(pady=5)
-        
+        button_grid.pack(pady=2)
+
         self.run_btn = tk.Button(button_grid, text="▶ RUN", command=self.run_execution,
-                                bg='darkgreen', fg='white', font=('Arial', 10, 'bold'), 
-                                width=10, height=1, state=tk.DISABLED, relief=tk.RAISED, bd=3,
+                                bg='darkgreen', fg='white', font=('Arial', 8, 'bold'),
+                                width=9, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                 activebackground='green', activeforeground='white')
-        self.run_btn.grid(row=0, column=0, padx=2, pady=2)
-        
+        self.run_btn.grid(row=0, column=0, padx=1, pady=1)
+
         self.pause_btn = tk.Button(button_grid, text="⏸ PAUSE", command=self.pause_execution,
-                                  bg='darkorange', fg='black', font=('Arial', 10, 'bold'), 
-                                  width=10, height=1, state=tk.DISABLED, relief=tk.RAISED, bd=3,
+                                  bg='darkorange', fg='black', font=('Arial', 8, 'bold'),
+                                  width=9, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                   activebackground='orange', activeforeground='black')
-        self.pause_btn.grid(row=0, column=1, padx=2, pady=2)
-        
+        self.pause_btn.grid(row=0, column=1, padx=1, pady=1)
+
         self.stop_btn = tk.Button(button_grid, text="⏹ STOP", command=self.stop_execution,
-                                 bg='darkred', fg='black', font=('Arial', 10, 'bold'), 
-                                 width=10, height=1, state=tk.DISABLED, relief=tk.RAISED, bd=3,
+                                 bg='darkred', fg='black', font=('Arial', 8, 'bold'),
+                                 width=9, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                  activebackground='red', activeforeground='white')
-        self.stop_btn.grid(row=1, column=0, padx=2, pady=2)
-        
+        self.stop_btn.grid(row=1, column=0, padx=1, pady=1)
+
         self.reset_btn = tk.Button(button_grid, text="🔄 RESET", command=self.reset_execution,
-                                  bg='royalblue', fg='black', font=('Arial', 10, 'bold'), 
-                                  width=10, height=1, relief=tk.RAISED, bd=3,
+                                  bg='royalblue', fg='black', font=('Arial', 8, 'bold'),
+                                  width=9, relief=tk.RAISED, bd=2,
                                   activebackground='blue', activeforeground='white')
-        self.reset_btn.grid(row=1, column=1, padx=2, pady=2)
-        
+        self.reset_btn.grid(row=1, column=1, padx=1, pady=1)
+
         # Progress indicator (compact) with better visibility
-        self.progress_label = tk.Label(exec_frame, text="Ready", 
-                                      bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold'))
-        self.progress_label.pack(pady=2)
+        self.progress_label = tk.Label(exec_frame, text="Ready",
+                                      bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'))
+        self.progress_label.pack(pady=1)
         
-        # Manual Sensor Triggers (moved from center panel)
+        # Manual Sensor Triggers - Compact
         sensor_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        sensor_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        tk.Label(sensor_frame, text="Manual Sensors:", font=('Arial', 10, 'bold'), 
+        sensor_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        tk.Label(sensor_frame, text="Manual Sensors:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
-        
+
         # X sensors in compact layout
         x_frame = tk.Frame(sensor_frame, bg='lightblue')
-        x_frame.pack(fill=tk.X, pady=3)
-        
-        tk.Label(x_frame, text="X:", bg='lightblue', fg='darkblue', font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
-        
-        self.x_left_btn = tk.Button(x_frame, text="Left Edge", bg='darkorange', fg='black',
-                                   command=self.trigger_x_left, width=8, font=('Arial', 9, 'bold'),
-                                   relief=tk.RAISED, bd=2, activebackground='orange', activeforeground='black')
-        self.x_left_btn.pack(side=tk.LEFT, padx=2)
-        
-        self.x_right_btn = tk.Button(x_frame, text="Right Edge", bg='darkorange', fg='black',
-                                    command=self.trigger_x_right, width=8, font=('Arial', 9, 'bold'),
-                                    relief=tk.RAISED, bd=2, activebackground='orange', activeforeground='black')
-        self.x_right_btn.pack(side=tk.LEFT, padx=2)
-        
+        x_frame.pack(fill=tk.X, pady=1)
+
+        tk.Label(x_frame, text="X:", bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold')).pack(side=tk.LEFT)
+
+        self.x_left_btn = tk.Button(x_frame, text="Left", bg='darkorange', fg='black',
+                                   command=self.trigger_x_left, width=7, font=('Arial', 8),
+                                   relief=tk.RAISED, bd=1, activebackground='orange', activeforeground='black')
+        self.x_left_btn.pack(side=tk.LEFT, padx=1)
+
+        self.x_right_btn = tk.Button(x_frame, text="Right", bg='darkorange', fg='black',
+                                    command=self.trigger_x_right, width=7, font=('Arial', 8),
+                                    relief=tk.RAISED, bd=1, activebackground='orange', activeforeground='black')
+        self.x_right_btn.pack(side=tk.LEFT, padx=1)
+
         # Y sensors in compact layout
         y_frame = tk.Frame(sensor_frame, bg='lightblue')
-        y_frame.pack(fill=tk.X, pady=3)
-        
-        tk.Label(y_frame, text="Y:", bg='lightblue', fg='darkblue', font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
-        
-        self.y_top_btn = tk.Button(y_frame, text="Top Edge", bg='mediumpurple', fg='black',
-                                  command=self.trigger_y_top, width=8, font=('Arial', 9, 'bold'),
-                                  relief=tk.RAISED, bd=2, activebackground='purple', activeforeground='white')
-        self.y_top_btn.pack(side=tk.LEFT, padx=2)
-        
-        self.y_bottom_btn = tk.Button(y_frame, text="Bottom Edge", bg='mediumpurple', fg='black',
-                                     command=self.trigger_y_bottom, width=8, font=('Arial', 9, 'bold'),
-                                     relief=tk.RAISED, bd=2, activebackground='purple', activeforeground='white')
-        self.y_bottom_btn.pack(side=tk.LEFT, padx=2)
-        
-        # Manual Row Marker Limit Switch Control
+        y_frame.pack(fill=tk.X, pady=1)
+
+        tk.Label(y_frame, text="Y:", bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold')).pack(side=tk.LEFT)
+
+        self.y_top_btn = tk.Button(y_frame, text="Top", bg='mediumpurple', fg='black',
+                                  command=self.trigger_y_top, width=7, font=('Arial', 8),
+                                  relief=tk.RAISED, bd=1, activebackground='purple', activeforeground='white')
+        self.y_top_btn.pack(side=tk.LEFT, padx=1)
+
+        self.y_bottom_btn = tk.Button(y_frame, text="Bottom", bg='mediumpurple', fg='black',
+                                     command=self.trigger_y_bottom, width=7, font=('Arial', 8),
+                                     relief=tk.RAISED, bd=1, activebackground='purple', activeforeground='white')
+        self.y_bottom_btn.pack(side=tk.LEFT, padx=1)
+
+        # Manual Row Marker Limit Switch Control - Compact
         limit_switch_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        limit_switch_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        tk.Label(limit_switch_frame, text="Row Marker Limit Switch (Manual):", font=('Arial', 10, 'bold'), 
+        limit_switch_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        tk.Label(limit_switch_frame, text="Row Marker Limit:", font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
-        
+
         switch_controls = tk.Frame(limit_switch_frame, bg='lightblue')
-        switch_controls.pack(pady=5)
-        
-        self.limit_switch_status_label = tk.Label(switch_controls, text="Status: UP", 
-                                                 bg='lightblue', fg='darkgreen', font=('Arial', 9, 'bold'))
-        self.limit_switch_status_label.pack(side=tk.LEFT, padx=(0, 10))
-        
-        self.toggle_limit_switch_btn = tk.Button(switch_controls, text="Toggle Switch", 
+        switch_controls.pack(pady=1)
+
+        self.limit_switch_status_label = tk.Label(switch_controls, text="Status: UP",
+                                                 bg='lightblue', fg='darkgreen', font=('Arial', 8))
+        self.limit_switch_status_label.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.toggle_limit_switch_btn = tk.Button(switch_controls, text="Toggle",
                                                command=self.toggle_limit_switch,
-                                               bg='darkslategray', fg='black', font=('Arial', 9, 'bold'),
-                                               relief=tk.RAISED, bd=2, activebackground='slategray', activeforeground='white')
-        self.toggle_limit_switch_btn.pack(side=tk.LEFT, padx=2)
+                                               bg='darkslategray', fg='white', font=('Arial', 8),
+                                               relief=tk.RAISED, bd=1, activebackground='slategray', activeforeground='white')
+        self.toggle_limit_switch_btn.pack(side=tk.LEFT, padx=1)
         
         # Store references in main app for other components
         self.main_app.step_info_label = self.step_info_label
