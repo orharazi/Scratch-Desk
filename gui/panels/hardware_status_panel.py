@@ -99,13 +99,16 @@ class HardwareStatusPanel:
         self._create_status_item(sensors_frame, "Y Bottom Sensor", "y_bottom_sensor",
                                 self.colors.get("sensors_y", "#27AE60"))
 
-        # Column 5: SYSTEM STATUS
-        system_frame = self._create_section_frame(columns_frame, "⚡ SYSTEM")
+        # Column 5: SYSTEM STATUS & PROGRESS
+        system_frame = self._create_section_frame(columns_frame, "⚡ SYSTEM & PROGRESS")
         system_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=3)
         self._create_status_item(system_frame, "Operation Mode", "operation_mode",
                                 self.colors.get("system", "#8E44AD"))
         self._create_status_item(system_frame, "Safety Status", "safety_status",
                                 self.colors.get("active", "#27AE60"))
+
+        # Add progress bar section
+        self._create_progress_section(system_frame)
 
     def _create_section_frame(self, parent, title):
         """Create a section frame with title"""
@@ -147,6 +150,35 @@ class HardwareStatusPanel:
 
         # Store reference
         self.status_labels[status_key] = (status_label, status_frame, color)
+
+    def _create_progress_section(self, parent):
+        """Create progress bar section"""
+        from tkinter import ttk
+
+        label_font = tuple(self.ui_fonts.get("label", ["Arial", 8, "bold"]))
+        normal_font = tuple(self.ui_fonts.get("normal", ["Arial", 8]))
+
+        progress_container = tk.Frame(parent, bg=self.section_bg)
+        progress_container.pack(fill=tk.X, padx=5, pady=5)
+
+        # Label
+        tk.Label(progress_container, text="Execution Progress:",
+                font=label_font, bg=self.section_bg, fg=self.label_color,
+                anchor='w').pack(fill=tk.X)
+
+        # Progress bar
+        progress_bar = ttk.Progressbar(progress_container, mode='determinate')
+        progress_bar.pack(fill=tk.X, pady=2)
+
+        # Progress text
+        progress_text = tk.Label(progress_container, text="0% Complete",
+                                font=normal_font, bg=self.section_bg, fg=self.text_color,
+                                anchor='center')
+        progress_text.pack(fill=tk.X)
+
+        # Store references in main app
+        self.main_app.progress = progress_bar
+        self.main_app.progress_text = progress_text
 
     def update_hardware_status(self):
         """Update all hardware status displays"""

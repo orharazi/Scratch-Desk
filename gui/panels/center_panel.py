@@ -15,7 +15,10 @@ class CenterPanel:
         """Create the canvas and related widgets"""
         # Title
         tk.Label(self.parent_frame, text="DESK SIMULATION", font=('Arial', 12, 'bold')).pack(pady=5)
-        
+
+        # Work Operations Status Box (moved above canvas for visibility)
+        self.create_work_operations_status()
+
         # Create scrollable canvas frame
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
@@ -55,18 +58,12 @@ class CenterPanel:
         
         # Initialize canvas elements
         self.main_app.canvas_manager.setup_canvas()
-        
-        # Work Operations Status Box (above System Ready)
-        self.create_work_operations_status()
-        
-        # Current Operation Display
-        self.operation_label = tk.Label(self.parent_frame, text="System Ready", 
+
+        # Current Operation Display (below canvas)
+        self.operation_label = tk.Label(self.parent_frame, text="System Ready",
                                        font=('Arial', 11, 'bold'), fg='blue')
         self.operation_label.pack(pady=5)
-        
-        # Progress Bar (under System Ready)
-        self.create_progress_section()
-        
+
         # Store references in main app for other components
         self.main_app.operation_label = self.operation_label
     
@@ -131,31 +128,12 @@ class CenterPanel:
         for status_text, color in status_list:
             indicator_frame = tk.Frame(parent, bg='lightblue')
             indicator_frame.pack(side=tk.LEFT, padx=3)
-            
+
             # Colored line indicator
             canvas = tk.Canvas(indicator_frame, width=15, height=8, bg='lightblue', highlightthickness=0)
             canvas.pack()
             canvas.create_line(2, 4, 13, 4, fill=color, width=3)
-            
+
             # Status text
-            tk.Label(indicator_frame, text=status_text, font=('Arial', 7), 
+            tk.Label(indicator_frame, text=status_text, font=('Arial', 7),
                     bg='lightblue', fg=color).pack()
-    
-    def create_progress_section(self):
-        """Create progress bar section under System Ready"""
-        # Progress frame
-        progress_frame = tk.Frame(self.parent_frame, bg='white')
-        progress_frame.pack(fill=tk.X, padx=20, pady=5)
-        
-        # Progress bar
-        self.progress = ttk.Progressbar(progress_frame, mode='determinate')
-        self.progress.pack(fill=tk.X)
-        
-        # Progress text
-        self.progress_text = tk.Label(progress_frame, text="0% Complete", 
-                                     font=('Arial', 9), fg='darkblue', bg='white')
-        self.progress_text.pack(pady=2)
-        
-        # Store references in main app
-        self.main_app.progress = self.progress
-        self.main_app.progress_text = self.progress_text
