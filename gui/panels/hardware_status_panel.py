@@ -141,15 +141,15 @@ class HardwareStatusPanel:
         container = tk.Frame(parent, bg=self.section_bg)
         container.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
 
-        # Configure 70/30 width split
-        container.columnconfigure(0, weight=7)  # Label gets 70%
-        container.columnconfigure(1, weight=3)  # Status gets 30%
+        # Configure 70/30 width split with minimum size for label
+        container.columnconfigure(0, weight=7, minsize=100)  # Label gets 70% with min width
+        container.columnconfigure(1, weight=3, minsize=50)   # Status gets 30% with min width
 
-        # Label (left side - 70%)
+        # Label (left side - 70%) with fixed width for alignment
         label = tk.Label(container, text=label_text + ":", font=label_font,
                         bg=self.section_bg, fg=self.label_color,
-                        anchor='w')
-        label.grid(row=0, column=0, sticky="ew", padx=(2, 1))
+                        anchor='w', width=18)  # Fixed width ensures vertical alignment
+        label.grid(row=0, column=0, sticky="w", padx=(2, 1))
 
         # Status frame with color indicator (right side - 30%)
         status_frame = tk.Frame(container, bg=self.switch_off_color, relief=tk.SUNKEN, bd=1)
