@@ -155,10 +155,10 @@ class HardwareStatusPanel:
         status_frame = tk.Frame(container, bg=self.switch_off_color, relief=tk.SUNKEN, bd=1)
         status_frame.grid(row=0, column=1, sticky="ew", padx=(0, 2))
 
-        # Status text
+        # Status text with fixed width to prevent resizing
         status_label = tk.Label(status_frame, text="---", font=value_font,
                                bg=self.switch_off_color, fg='white',
-                               anchor='center')
+                               anchor='center', width=10)  # Fixed width prevents resize
         status_label.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
 
         # Store references
