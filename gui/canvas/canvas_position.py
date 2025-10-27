@@ -58,6 +58,11 @@ class CanvasPosition:
             print(f"   ⚠️ Sensor override active - using sensor display logic instead")
             return self.canvas_manager.canvas_sensors.update_sensor_position_display()
 
+        # Get motor colors from settings
+        viz_settings = self.main_app.settings.get("visualization", {})
+        motor_color_x = viz_settings.get("motor_line_color_x", "red")
+        motor_color_y = viz_settings.get("motor_line_color_y", "#27AE60")
+
         # Get current hardware positions
         current_x = get_current_x()
         current_y = get_current_y()
@@ -98,25 +103,25 @@ class CanvasPosition:
             x_label_text = "X=0.0cm (HOLD)"
             x_label_color = "gray"
             y_label_text = f"Y={current_y:.1f}cm"
-            y_label_color = "blue"
-            
+            y_label_color = motor_color_y
+
         elif self.canvas_manager.motor_operation_mode == "rows":
-            # During rows operations: Y motor at 0, X motor shows actual position  
+            # During rows operations: Y motor at 0, X motor shows actual position
             display_x = current_x
             display_y = 0.0
             x_label_text = f"X={current_x:.1f}cm"
-            x_label_color = "red"
+            x_label_color = motor_color_x
             y_label_text = "Y=0.0cm (HOLD)"
             y_label_color = "gray"
-            
+
         else:
             # Idle mode: Both motors show actual positions
             display_x = current_x
             display_y = current_y
             x_label_text = f"X={current_x:.1f}cm"
-            x_label_color = "red"
+            x_label_color = motor_color_x
             y_label_text = f"Y={current_y:.1f}cm"
-            y_label_color = "blue"
+            y_label_color = motor_color_y
         
         # Convert to canvas coordinates
         display_x_canvas = self.main_app.offset_x + display_x * self.main_app.scale_x
