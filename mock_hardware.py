@@ -85,7 +85,7 @@ limit_switch_states = {
     'y_bottom': False,   # Bottom Y-axis limit switch
     'x_right': False,    # Right X-axis limit switch
     'x_left': False,     # Left X-axis limit switch
-    'rows': False        # Rows limit switch
+    'rows': True         # Rows limit switch - default DOWN
 }
 
 def reset_hardware():
@@ -709,8 +709,10 @@ def get_line_tools_height():
     return line_tools_height
 
 def get_row_marker_limit_switch():
-    """Get current row marker limit switch state"""
-    return row_marker_limit_switch
+    """Get current row marker limit switch state - reads from limit_switch_states['rows']"""
+    # Map boolean limit switch state to "up"/"down" string
+    # True (checked/ON) = DOWN, False (unchecked/OFF) = UP
+    return "down" if limit_switch_states.get('rows', False) else "up"
 
 def set_row_marker_limit_switch(state):
     """Manually set row marker limit switch state (operator control)"""

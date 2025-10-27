@@ -123,8 +123,6 @@ class HardwareStatusPanel:
         row_offset = row + 1
         self._create_operation_mode_item(grid_frame, 3, row_offset, heading_font, label_font, tiny_font)
         row_offset += 3
-        self._create_blocker_status_item(grid_frame, 3, row_offset, label_font, tiny_font)
-        row_offset += 2
         self._create_progress_section(grid_frame, 3, row_offset, label_font, tiny_font)
 
     def _create_section_header(self, parent, col, row, text, font):
@@ -354,9 +352,6 @@ class HardwareStatusPanel:
 
             # Update operation mode
             self._update_operation_mode()
-
-            # Update blocker/safety status
-            self._update_blocker_status()
 
         except Exception as e:
             print(f"Error updating hardware status: {e}")
