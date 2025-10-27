@@ -39,8 +39,9 @@ class CenterPanel:
         # Flag to prevent resize loop
         self._resize_scheduled = False
 
-        # Initial canvas setup will happen after window is rendered
-        self.main_app.root.after(100, self._initial_canvas_setup)
+        # Initial canvas setup will happen after window is fully rendered
+        # Need longer delay to ensure hardware status panel is laid out
+        self.main_app.root.after(300, self._initial_canvas_setup)
 
         # Current Operation Display (below canvas)
         self.operation_label = tk.Label(self.parent_frame, text="System Ready",
