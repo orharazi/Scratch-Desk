@@ -178,44 +178,39 @@ class CanvasSetup:
         workspace_top = self.main_app.offset_y
         workspace_bottom = self.main_app.offset_y + workspace_height
         
-        # Get motor colors from settings
-        viz_settings = self.main_app.settings.get("visualization", {})
-        motor_color_x = viz_settings.get("motor_line_color_x", "red")
-        motor_color_y = viz_settings.get("motor_line_color_y", "#27AE60")
-
         # X Motor Line (Vertical line representing X motor position)
         # This line shows where the X motor/carriage is positioned
         self.canvas_objects['x_motor_line'] = self.main_app.canvas.create_line(
             motor_x_canvas, workspace_top,           # Top of workspace
             motor_x_canvas, workspace_bottom,        # Bottom of workspace
-            fill=motor_color_x, width=3, tags="motor_lines"
+            fill='red', width=3, tags="motor_lines"
         )
-
-        # Y Motor Line (Horizontal line representing Y motor position)
+        
+        # Y Motor Line (Horizontal line representing Y motor position)  
         # This line shows where the Y motor/carriage is positioned
         self.canvas_objects['y_motor_line'] = self.main_app.canvas.create_line(
             workspace_left, motor_y_canvas,          # Left of workspace
             workspace_right, motor_y_canvas,         # Right of workspace
-            fill=motor_color_y, width=3, tags="motor_lines"
+            fill='blue', width=3, tags="motor_lines"
         )
-
+        
         # Add intersection point to show current tool position clearly
         self.canvas_objects['motor_intersection'] = self.main_app.canvas.create_oval(
             motor_x_canvas - 4, motor_y_canvas - 4,
             motor_x_canvas + 4, motor_y_canvas + 4,
             fill='purple', outline='purple4', width=2, tags="motor_lines"
         )
-
+        
         # Add labels for the motor lines
         self.canvas_objects['x_motor_label'] = self.main_app.canvas.create_text(
             motor_x_canvas + 15, workspace_top + 15,
-            text=f"X={current_x:.1f}cm", fill=motor_color_x, font=('Arial', 8, 'bold'),
+            text=f"X={current_x:.1f}cm", fill='red', font=('Arial', 8, 'bold'),
             anchor='nw', tags="motor_lines"
         )
-
+        
         self.canvas_objects['y_motor_label'] = self.main_app.canvas.create_text(
             workspace_left + 15, motor_y_canvas - 15,
-            text=f"Y={current_y:.1f}cm", fill=motor_color_y, font=('Arial', 8, 'bold'),
+            text=f"Y={current_y:.1f}cm", fill='blue', font=('Arial', 8, 'bold'),
             anchor='sw', tags="motor_lines"
         )
         

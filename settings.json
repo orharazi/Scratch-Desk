@@ -69,7 +69,7 @@
     "sensor_highlight_outline": "#8B0000",
     "sensor_highlight_width": 3,
     "motor_line_color_x": "red",
-    "motor_line_color_y": "#27AE60",
+    "motor_line_color_y": "blue",
     "motor_intersection_size": 4
   },
   "ui_fonts": {

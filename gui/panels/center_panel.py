@@ -19,24 +19,23 @@ class CenterPanel:
         # Work Operations Status Box (moved above canvas for visibility)
         self.create_work_operations_status()
 
-        # Create canvas frame - will expand to fill available space
+        # Create canvas frame - no scrollbars, show full desk
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
 
-        # Canvas for desk simulation - use settings dimensions as defaults
+        # Canvas for desk simulation - use settings dimensions to fit entire desk
         canvas_width = self.main_app.settings.get("gui_settings", {}).get("canvas_width", 900)
         canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 700)
 
-        # Create canvas that fills available space
-        self.main_app.canvas = tk.Canvas(canvas_container, bg='white', relief=tk.SUNKEN, bd=2)
-        self.main_app.canvas.pack(fill=tk.BOTH, expand=True)
+        # Create canvas without scrollbars - sized to show complete workspace
+        self.main_app.canvas = tk.Canvas(canvas_container, width=canvas_width, height=canvas_height,
+                               bg='white', relief=tk.SUNKEN, bd=2)
 
-        # Store actual canvas dimensions - will be updated after window is sized
+        self.main_app.canvas.pack()
+        
+        # Store actual canvas dimensions for calculations
         self.main_app.actual_canvas_width = canvas_width
         self.main_app.actual_canvas_height = canvas_height
-
-        # Bind canvas resize event to update dimensions and redraw
-        self.main_app.canvas.bind('<Configure>', self.on_canvas_resize)
         
         # Initialize canvas elements
         self.main_app.canvas_manager.setup_canvas()
@@ -119,61 +118,3 @@ class CenterPanel:
             # Status text
             tk.Label(indicator_frame, text=status_text, font=('Arial', 7),
                     bg='lightblue', fg=color).pack()
-
-    def on_canvas_resize(self, event):
-        """Handle canvas resize - update dimensions and scaling"""
-        if not hasattr(self, '_resize_pending') or not self._resize_pending:
-            self._resize_pending = True
-            # Debounce rapid resize events
-            self.main_app.root.after(200, self._handle_canvas_resize, event.width, event.height)
-
-    def _handle_canvas_resize(self, width, height):
-        """Actually handle the canvas resize after debounce"""
-        self._resize_pending = False
-
-        # Update canvas dimensions
-        old_width = self.main_app.actual_canvas_width
-        old_height = self.main_app.actual_canvas_height
-
-        self.main_app.actual_canvas_width = width
-        self.main_app.actual_canvas_height = height
-        self.main_app.canvas_width = width
-        self.main_app.canvas_height = height
-
-        # Only redraw if size changed significantly (more than 10 pixels)
-        if abs(width - old_width) > 10 or abs(height - old_height) > 10:
-            # Recalculate scale factors to fit workspace in available space
-            sim_settings = self.main_app.settings.get("simulation", {})
-            max_x_cm = sim_settings.get("max_display_x", 120)
-            max_y_cm = sim_settings.get("max_display_y", 80)
-
-            # Calculate scale factors to fit workspace with margins
-            margin_x = 100  # Leave 50px on each side
-            margin_y = 100  # Leave 50px top and bottom
-
-            available_width = width - margin_x
-            available_height = height - margin_y
-
-            # Calculate scale to fit both dimensions
-            scale_x = available_width / max_x_cm
-            scale_y = available_height / max_y_cm
-
-            # Use the smaller scale to ensure both dimensions fit
-            scale = min(scale_x, scale_y)
-
-            # Update scale factors
-            self.main_app.scale_x = max(3.0, scale)  # Minimum scale of 3.0
-            self.main_app.scale_y = max(3.0, scale)
-
-            # Update offsets to center the workspace
-            workspace_width = max_x_cm * self.main_app.scale_x
-            workspace_height = max_y_cm * self.main_app.scale_y
-            self.main_app.offset_x = (width - workspace_width) / 2
-            self.main_app.offset_y = (height - workspace_height) / 2
-
-            # Redraw canvas
-            self.main_app.canvas_manager.setup_canvas()
-
-            # Update work lines if program is loaded
-            if self.main_app.current_program:
-                self.main_app.canvas_manager.update_work_lines_display(self.main_app.current_program)
