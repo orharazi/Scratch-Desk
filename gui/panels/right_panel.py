@@ -298,65 +298,107 @@ class RightPanel:
                                       bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'))
         self.progress_label.pack(pady=1)
         
-        # Manual Controls Container (Sensors + Row Marker in horizontal layout)
-        manual_controls_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
-        manual_controls_frame.pack(fill=tk.X, padx=10, pady=3)
+        # TEST CONTROLS SECTION - Comprehensive hardware testing
+        test_controls_frame = tk.Frame(self.scrollable_frame, relief=tk.RIDGE, bd=2, bg='#E8F4F8')
+        test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # Manual Sensor Triggers - Left side
-        sensor_frame = tk.Frame(manual_controls_frame, bg='lightblue')
-        sensor_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,5))
+        # Title
+        tk.Label(test_controls_frame, text="🧪 TEST CONTROLS", font=('Arial', 10, 'bold'),
+                bg='#E8F4F8', fg='darkblue').pack(pady=(3, 2))
 
-        tk.Label(sensor_frame, text="Manual Sensors:", font=('Arial', 9, 'bold'),
-                bg='lightblue', fg='darkblue').pack()
+        # Grid container for organized controls
+        grid_container = tk.Frame(test_controls_frame, bg='#E8F4F8')
+        grid_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=3)
 
-        # X sensors in compact layout
-        x_frame = tk.Frame(sensor_frame, bg='lightblue')
-        x_frame.pack(fill=tk.X, pady=1)
+        # Configure 2 columns
+        grid_container.columnconfigure(0, weight=1)
+        grid_container.columnconfigure(1, weight=1)
 
-        tk.Label(x_frame, text="X:", bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold')).pack(side=tk.LEFT)
+        row = 0
 
-        self.x_left_btn = tk.Button(x_frame, text="Left", bg='darkorange', fg='black',
-                                   command=self.trigger_x_left, width=6, font=('Arial', 8),
-                                   relief=tk.RAISED, bd=1, activebackground='orange', activeforeground='black')
+        # EDGE SENSORS Section
+        tk.Label(grid_container, text="Edge Sensors", font=('Arial', 8, 'bold'),
+                bg='#E8F4F8', fg='darkblue').grid(row=row, column=0, sticky="w", padx=5, pady=(2, 1))
+        row += 1
+
+        # X Sensors (Rows)
+        x_sensor_frame = tk.Frame(grid_container, bg='#E8F4F8')
+        x_sensor_frame.grid(row=row, column=0, sticky="ew", padx=5, pady=1)
+        tk.Label(x_sensor_frame, text="X:", bg='#E8F4F8', fg='darkblue',
+                font=('Arial', 7, 'bold'), width=3).pack(side=tk.LEFT)
+        self.x_left_btn = tk.Button(x_sensor_frame, text="Left", bg='darkorange', fg='black',
+                                   command=self.trigger_x_left, width=5, font=('Arial', 7),
+                                   relief=tk.RAISED, bd=1)
         self.x_left_btn.pack(side=tk.LEFT, padx=1)
-
-        self.x_right_btn = tk.Button(x_frame, text="Right", bg='darkorange', fg='black',
-                                    command=self.trigger_x_right, width=6, font=('Arial', 8),
-                                    relief=tk.RAISED, bd=1, activebackground='orange', activeforeground='black')
+        self.x_right_btn = tk.Button(x_sensor_frame, text="Right", bg='darkorange', fg='black',
+                                    command=self.trigger_x_right, width=5, font=('Arial', 7),
+                                    relief=tk.RAISED, bd=1)
         self.x_right_btn.pack(side=tk.LEFT, padx=1)
 
-        # Y sensors in compact layout
-        y_frame = tk.Frame(sensor_frame, bg='lightblue')
-        y_frame.pack(fill=tk.X, pady=1)
-
-        tk.Label(y_frame, text="Y:", bg='lightblue', fg='darkblue', font=('Arial', 8, 'bold')).pack(side=tk.LEFT)
-
-        self.y_top_btn = tk.Button(y_frame, text="Top", bg='mediumpurple', fg='black',
-                                  command=self.trigger_y_top, width=6, font=('Arial', 8),
-                                  relief=tk.RAISED, bd=1, activebackground='purple', activeforeground='white')
+        # Y Sensors (Lines)
+        row += 1
+        y_sensor_frame = tk.Frame(grid_container, bg='#E8F4F8')
+        y_sensor_frame.grid(row=row, column=0, sticky="ew", padx=5, pady=1)
+        tk.Label(y_sensor_frame, text="Y:", bg='#E8F4F8', fg='darkblue',
+                font=('Arial', 7, 'bold'), width=3).pack(side=tk.LEFT)
+        self.y_top_btn = tk.Button(y_sensor_frame, text="Top", bg='mediumpurple', fg='black',
+                                  command=self.trigger_y_top, width=5, font=('Arial', 7),
+                                  relief=tk.RAISED, bd=1)
         self.y_top_btn.pack(side=tk.LEFT, padx=1)
-
-        self.y_bottom_btn = tk.Button(y_frame, text="Bottom", bg='mediumpurple', fg='black',
-                                     command=self.trigger_y_bottom, width=6, font=('Arial', 8),
-                                     relief=tk.RAISED, bd=1, activebackground='purple', activeforeground='white')
+        self.y_bottom_btn = tk.Button(y_sensor_frame, text="Bot", bg='mediumpurple', fg='black',
+                                     command=self.trigger_y_bottom, width=5, font=('Arial', 7),
+                                     relief=tk.RAISED, bd=1)
         self.y_bottom_btn.pack(side=tk.LEFT, padx=1)
 
-        # Manual Row Marker Limit Switch Control - Right side
-        limit_switch_frame = tk.Frame(manual_controls_frame, bg='lightblue')
-        limit_switch_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # LIMIT SWITCHES Section
+        row = 0
+        tk.Label(grid_container, text="Limit Switches", font=('Arial', 8, 'bold'),
+                bg='#E8F4F8', fg='darkblue').grid(row=row, column=1, sticky="w", padx=5, pady=(2, 1))
+        row += 1
 
-        tk.Label(limit_switch_frame, text="Row Marker:", font=('Arial', 9, 'bold'),
-                bg='lightblue', fg='darkblue').pack()
+        # Top/Bottom Limit Switches
+        top_ls_frame = tk.Frame(grid_container, bg='#E8F4F8')
+        top_ls_frame.grid(row=row, column=1, sticky="ew", padx=5, pady=1)
+        tk.Label(top_ls_frame, text="Top:", bg='#E8F4F8', fg='darkblue',
+                font=('Arial', 7, 'bold'), width=4).pack(side=tk.LEFT)
+        self.top_ls_label = tk.Label(top_ls_frame, text="OFF", bg='#7F8C8D', fg='white',
+                                     font=('Arial', 6, 'bold'), width=4, relief=tk.SUNKEN, bd=1)
+        self.top_ls_label.pack(side=tk.LEFT, padx=1)
 
-        self.limit_switch_status_label = tk.Label(limit_switch_frame, text="Status: UP",
-                                                 bg='lightblue', fg='darkgreen', font=('Arial', 8))
-        self.limit_switch_status_label.pack(pady=1)
+        row += 1
+        bot_ls_frame = tk.Frame(grid_container, bg='#E8F4F8')
+        bot_ls_frame.grid(row=row, column=1, sticky="ew", padx=5, pady=1)
+        tk.Label(bot_ls_frame, text="Bot:", bg='#E8F4F8', fg='darkblue',
+                font=('Arial', 7, 'bold'), width=4).pack(side=tk.LEFT)
+        self.bot_ls_label = tk.Label(bot_ls_frame, text="OFF", bg='#7F8C8D', fg='white',
+                                     font=('Arial', 6, 'bold'), width=4, relief=tk.SUNKEN, bd=1)
+        self.bot_ls_label.pack(side=tk.LEFT, padx=1)
 
-        self.toggle_limit_switch_btn = tk.Button(limit_switch_frame, text="Toggle",
+        # ROW MARKER Section (below limit switches)
+        row += 1
+        tk.Label(grid_container, text="Row Marker", font=('Arial', 8, 'bold'),
+                bg='#E8F4F8', fg='darkblue').grid(row=row, column=1, sticky="w", padx=5, pady=(5, 1))
+        row += 1
+
+        row_marker_frame = tk.Frame(grid_container, bg='#E8F4F8')
+        row_marker_frame.grid(row=row, column=1, sticky="ew", padx=5, pady=1)
+
+        self.limit_switch_status_label = tk.Label(row_marker_frame, text="UP",
+                                                 bg='#95A5A6', fg='white', font=('Arial', 7, 'bold'),
+                                                 width=6, relief=tk.SUNKEN, bd=1)
+        self.limit_switch_status_label.pack(side=tk.LEFT, padx=(0, 2))
+
+        self.toggle_limit_switch_btn = tk.Button(row_marker_frame, text="Toggle",
                                                command=self.toggle_limit_switch,
-                                               bg='darkslategray', fg='white', font=('Arial', 8),
-                                               relief=tk.RAISED, bd=1, activebackground='slategray', activeforeground='white')
-        self.toggle_limit_switch_btn.pack(pady=1)
+                                               bg='darkslategray', fg='white', font=('Arial', 7),
+                                               width=6, relief=tk.RAISED, bd=1)
+        self.toggle_limit_switch_btn.pack(side=tk.LEFT)
+
+        # Status indicator at bottom
+        row += 1
+        self.sensor_status_label = tk.Label(grid_container, text="Ready", fg='darkgreen',
+                                           bg='#E8F4F8', font=('Arial', 7, 'bold'))
+        self.sensor_status_label.grid(row=row, column=0, columnspan=2, pady=(3, 2))
         
         # Store references in main app for other components
         self.main_app.step_info_label = self.step_info_label
@@ -615,39 +657,65 @@ class RightPanel:
     def trigger_x_left(self):
         """Trigger X left sensor"""
         trigger_x_left_sensor()
-        self.sensor_label.config(text="Sensor: X-Left Triggered", fg='red')
-        self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
-        
+        # Update both old sensor_label and new sensor_status_label
+        if hasattr(self, 'sensor_label'):
+            self.sensor_label.config(text="Sensor: X-Left Triggered", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+        if hasattr(self, 'sensor_status_label'):
+            self.sensor_status_label.config(text="X-Left TRIG", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_status_label.config(text="Ready", fg='darkgreen'))
+
         # Animate sensor trigger visualization
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.trigger_sensor_visualization('x_left')
-    
+
     def trigger_x_right(self):
         """Trigger X right sensor"""
         trigger_x_right_sensor()
-        self.sensor_label.config(text="Sensor: X-Right Triggered", fg='red')
-        self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
-        
+        # Update both old sensor_label and new sensor_status_label
+        if hasattr(self, 'sensor_label'):
+            self.sensor_label.config(text="Sensor: X-Right Triggered", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+        if hasattr(self, 'sensor_status_label'):
+            self.sensor_status_label.config(text="X-Right TRIG", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_status_label.config(text="Ready", fg='darkgreen'))
+
         # Animate sensor trigger visualization
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.trigger_sensor_visualization('x_right')
-    
+
     def trigger_y_top(self):
         """Trigger Y top sensor"""
         trigger_y_top_sensor()
-        self.sensor_label.config(text="Sensor: Y-Top Triggered", fg='red')
-        self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
-        
+        # Update both old sensor_label and new sensor_status_label
+        if hasattr(self, 'sensor_label'):
+            self.sensor_label.config(text="Sensor: Y-Top Triggered", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+        if hasattr(self, 'sensor_status_label'):
+            self.sensor_status_label.config(text="Y-Top TRIG", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_status_label.config(text="Ready", fg='darkgreen'))
+        if hasattr(self, 'top_ls_label'):
+            self.top_ls_label.config(text="ON", bg='#F39C12')  # Orange
+            self.main_app.root.after(1000, lambda: self.top_ls_label.config(text="OFF", bg='#7F8C8D'))  # Gray
+
         # Animate sensor trigger visualization
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.trigger_sensor_visualization('y_top')
-    
+
     def trigger_y_bottom(self):
         """Trigger Y bottom sensor"""
         trigger_y_bottom_sensor()
-        self.sensor_label.config(text="Sensor: Y-Bottom Triggered", fg='red')
-        self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
-        
+        # Update both old sensor_label and new sensor_status_label
+        if hasattr(self, 'sensor_label'):
+            self.sensor_label.config(text="Sensor: Y-Bottom Triggered", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+        if hasattr(self, 'sensor_status_label'):
+            self.sensor_status_label.config(text="Y-Bot TRIG", fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_status_label.config(text="Ready", fg='darkgreen'))
+        if hasattr(self, 'bot_ls_label'):
+            self.bot_ls_label.config(text="ON", bg='#F39C12')  # Orange
+            self.main_app.root.after(1000, lambda: self.bot_ls_label.config(text="OFF", bg='#7F8C8D'))  # Gray
+
         # Animate sensor trigger visualization
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.trigger_sensor_visualization('y_bottom')
@@ -655,25 +723,25 @@ class RightPanel:
     def toggle_limit_switch(self):
         """Toggle row marker limit switch (manual operator control)"""
         from mock_hardware import toggle_row_marker_limit_switch, row_marker_down, row_marker_up, get_row_marker_state
-        
+
         # Toggle the physical limit switch
         new_physical_state = toggle_row_marker_limit_switch()
-        
+
         # Synchronize the programmed state to match the physical state
         if new_physical_state == 'down':
             row_marker_down()  # Set programmed state to DOWN
         else:
             row_marker_up()    # Set programmed state to UP
-        
+
         # Verify synchronization
         programmed_state = get_row_marker_state()
         print(f"🔄 Row marker toggle: Physical={new_physical_state.upper()}, Programmed={programmed_state.upper()}")
-        
-        # Update the status label
-        status_text = f"Status: {new_physical_state.upper()}"
-        status_color = 'darkgreen' if new_physical_state == 'up' else 'darkred'
-        self.limit_switch_status_label.config(text=status_text, fg=status_color)
-        
+
+        # Update the status label with color coding
+        status_text = new_physical_state.upper()
+        bg_color = '#27AE60' if new_physical_state == 'down' else '#95A5A6'  # Green if down, gray if up
+        self.limit_switch_status_label.config(text=status_text, bg=bg_color)
+
         # Force canvas position update to refresh tool indicators
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()

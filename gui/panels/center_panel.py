@@ -67,7 +67,7 @@ class CenterPanel:
 
                 # If we have good dimensions, initialize now
                 # Lower threshold to accommodate various screen sizes
-                if width > 1 and height > 400:
+                if width > 1 and height > 200:
                     print("   ✅ Good dimensions - initializing canvas")
                     self._canvas_initialized = True
                     self._update_canvas_scaling(width, height)
@@ -166,7 +166,7 @@ class CenterPanel:
 
         # Ignore tiny or bad dimensions
         # Lower threshold to accommodate various screen sizes
-        if event.width <= 1 or event.height <= 1 or event.height < 400:
+        if event.width <= 1 or event.height <= 1 or event.height < 200:
             return
 
         # Handle initial canvas setup (first time we get good dimensions)
