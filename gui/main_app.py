@@ -187,6 +187,7 @@ class ScratchDeskGUI:
     def create_panels(self):
         """Create and initialize all GUI panels"""
         self.left_panel = LeftPanel(self, self.left_frame)
+        # Create center panel - store reference immediately for canvas setup checks
         self.center_panel = CenterPanel(self, self.center_frame)
         self.right_panel = RightPanel(self, self.right_frame)
         self.hardware_status_panel = HardwareStatusPanel(self, self.bottom_frame)

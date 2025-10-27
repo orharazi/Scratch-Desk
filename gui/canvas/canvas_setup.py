@@ -15,6 +15,12 @@ class CanvasSetup:
     
     def setup_canvas(self):
         """Setup canvas elements for desk simulation using settings"""
+        # Check if canvas is ready (center_panel has initialized it)
+        if hasattr(self.main_app, 'center_panel') and hasattr(self.main_app.center_panel, '_canvas_initialized'):
+            if not self.main_app.center_panel._canvas_initialized:
+                print("⚠️ setup_canvas() called before canvas initialization - skipping")
+                return
+
         # Get settings or use defaults
         sim_settings = self.main_app.settings.get("simulation", {})
         gui_settings = self.main_app.settings.get("gui_settings", {})
@@ -26,7 +32,7 @@ class CanvasSetup:
         if not hasattr(self.main_app, 'canvas_width') or self.main_app.canvas_width == 600:
             self.main_app.canvas_width = getattr(self.main_app, 'actual_canvas_width', gui_settings.get("canvas_width", 900))
             self.main_app.canvas_height = getattr(self.main_app, 'actual_canvas_height', gui_settings.get("canvas_height", 700))
-        
+
         # Clear canvas first and reset canvas objects references
         self.main_app.canvas.delete("all")
         self.canvas_objects.clear()  # Clear canvas object references since they were deleted

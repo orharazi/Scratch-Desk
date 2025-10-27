@@ -28,7 +28,15 @@ class CanvasOperations:
         """Update canvas to show current program's paper area and work lines with original logic"""
         if not self.main_app.current_program:
             return
-        
+
+        # Check if canvas is ready (center_panel has initialized it)
+        if hasattr(self.main_app, 'center_panel') and hasattr(self.main_app.center_panel, '_canvas_initialized'):
+            if not self.main_app.center_panel._canvas_initialized:
+                print("⚠️ update_canvas_paper_area() called before canvas initialization - will retry after init")
+                # Schedule retry after canvas is initialized
+                self.main_app.root.after(100, self.update_canvas_paper_area)
+                return
+
         # Add debug keybindings when we have a program loaded
         self.add_debug_keybindings()
         

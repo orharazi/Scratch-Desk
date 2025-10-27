@@ -33,15 +33,18 @@ class CenterPanel:
         self.main_app.actual_canvas_width = canvas_width
         self.main_app.actual_canvas_height = canvas_height
 
+        # Flag to prevent canvas setup until we calculate proper scaling
+        self._canvas_initialized = False
+
         # Bind resize event to update canvas when window size changes
         self.main_app.canvas.bind('<Configure>', self._on_canvas_resize)
 
         # Flag to prevent resize loop
         self._resize_scheduled = False
 
-        # Initial canvas setup will happen after window is fully rendered
-        # Need longer delay to ensure hardware status panel is laid out
-        self.main_app.root.after(300, self._initial_canvas_setup)
+        # DON'T schedule initial setup - let the Configure event handle it
+        # The Configure event fires immediately when canvas is packed
+        print("⏰ Waiting for Configure event to trigger initial setup...")
 
         # Current Operation Display (below canvas)
         self.operation_label = tk.Label(self.parent_frame, text="System Ready",
@@ -124,17 +127,42 @@ class CenterPanel:
 
     def _initial_canvas_setup(self):
         """Initial canvas setup after window is rendered"""
+        print("🎨 _initial_canvas_setup() called")
+        # Mark that we're initializing to prevent other setup calls
+        self._canvas_initialized = True
+
         # Get actual canvas size after window layout
         self.main_app.canvas.update_idletasks()
         width = self.main_app.canvas.winfo_width()
         height = self.main_app.canvas.winfo_height()
+        print(f"   Canvas dimensions: {width}x{height}")
 
         if width > 1 and height > 1:  # Valid dimensions
+            print(f"   Valid dimensions - calling _update_canvas_scaling")
             self._update_canvas_scaling(width, height)
+            print(f"   Now calling canvas_manager.setup_canvas()")
             self.main_app.canvas_manager.setup_canvas()
+            print(f"   ✅ Initial canvas setup complete")
+        else:
+            print(f"   ⚠️ Invalid dimensions ({width}x{height}) - retrying in 200ms")
+            # Retry after another delay if dimensions aren't ready yet
+            self._canvas_initialized = False
+            self.main_app.root.after(200, self._initial_canvas_setup)
 
     def _on_canvas_resize(self, event):
         """Handle canvas resize events"""
+        # If this is the first time (initial setup), do it immediately without debounce
+        if not self._canvas_initialized:
+            print(f"🎨 Initial Configure event: {event.width}x{event.height}")
+            if event.width > 1 and event.height > 1:
+                self._canvas_initialized = True
+                self._update_canvas_scaling(event.width, event.height)
+                print(f"   Now calling canvas_manager.setup_canvas()")
+                self.main_app.canvas_manager.setup_canvas()
+                print(f"   ✅ Initial canvas setup complete")
+            return
+
+        # For subsequent resizes, use debounce
         if self._resize_scheduled:
             return
 
