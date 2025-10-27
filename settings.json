@@ -12,7 +12,12 @@
     "canvas_width": 900,
     "canvas_height": 700,
     "update_interval_ms": 500,
-    "auto_load_csv": "sample_programs.csv"
+    "auto_load_csv": "sample_programs.csv",
+    "canvas_margin_left": 60,
+    "canvas_margin_right": 30,
+    "canvas_margin_top": 40,
+    "canvas_margin_bottom": 50,
+    "canvas_min_scale": 3.5
   },
   "simulation": {
     "scale_x": 6.8,

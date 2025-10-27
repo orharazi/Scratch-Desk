@@ -170,17 +170,19 @@ class CenterPanel:
         self.main_app.canvas_width = width
         self.main_app.canvas_height = height
 
-        # Get workspace dimensions from settings
+        # Get workspace dimensions and margins from settings
         sim_settings = self.main_app.settings.get("simulation", {})
+        gui_settings = self.main_app.settings.get("gui_settings", {})
+
         max_x_cm = sim_settings.get("max_display_x", 120)
         max_y_cm = sim_settings.get("max_display_y", 80)
 
-        # Calculate margins (reserve space for labels and borders)
-        # Reduced margins for better space utilization
-        margin_left = 60   # Space for Y axis labels
-        margin_right = 30  # Small right margin
-        margin_top = 40    # Space for X axis labels
-        margin_bottom = 50 # Space for X axis labels at bottom
+        # Get margins from settings
+        margin_left = gui_settings.get("canvas_margin_left", 60)
+        margin_right = gui_settings.get("canvas_margin_right", 30)
+        margin_top = gui_settings.get("canvas_margin_top", 40)
+        margin_bottom = gui_settings.get("canvas_margin_bottom", 50)
+        min_scale = gui_settings.get("canvas_min_scale", 3.5)
 
         # Calculate available space
         available_width = max(width - margin_left - margin_right, 200)
@@ -193,7 +195,7 @@ class CenterPanel:
         # Use same scale for both axes to maintain aspect ratio
         # Choose the smaller scale to ensure everything fits
         scale = min(scale_x, scale_y)
-        scale = max(scale, 3.5)  # Increased minimum scale for better visibility
+        scale = max(scale, min_scale)
 
         # Update scale factors in main app
         self.main_app.scale_x = scale
@@ -203,11 +205,11 @@ class CenterPanel:
         workspace_width = max_x_cm * scale
         workspace_height = max_y_cm * scale
 
-        # Position workspace with asymmetric margins
+        # Position workspace with margins - aligned to top-left
         self.main_app.offset_x = margin_left
         self.main_app.offset_y = margin_top
 
-        # If there's extra space, center it
+        # If workspace doesn't fill available space, center it
         extra_width = available_width - workspace_width
         extra_height = available_height - workspace_height
 
@@ -215,3 +217,12 @@ class CenterPanel:
             self.main_app.offset_x += extra_width / 2
         if extra_height > 0:
             self.main_app.offset_y += extra_height / 2
+
+        print(f"📐 CANVAS SCALING: width={width}, height={height}")
+        print(f"   Margins: L={margin_left}, R={margin_right}, T={margin_top}, B={margin_bottom}")
+        print(f"   Available: {available_width}x{available_height}")
+        print(f"   Workspace: {max_x_cm}x{max_y_cm}cm")
+        print(f"   Scale: {scale:.2f} (min={min_scale})")
+        print(f"   Workspace pixels: {workspace_width:.1f}x{workspace_height:.1f}")
+        print(f"   Offsets: X={self.main_app.offset_x:.1f}, Y={self.main_app.offset_y:.1f}")
+        print(f"   Workspace bottom Y: {self.main_app.offset_y + workspace_height:.1f} (canvas height={height})")
