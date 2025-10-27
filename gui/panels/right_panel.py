@@ -6,7 +6,8 @@ from mock_hardware import (
     trigger_y_top_sensor, trigger_y_bottom_sensor,
     toggle_limit_switch, get_limit_switch_state,
     line_marker_down, line_marker_up, line_cutter_down, line_cutter_up,
-    row_marker_down, row_marker_up, row_cutter_down, row_cutter_up
+    row_marker_down, row_marker_up, row_cutter_down, row_cutter_up,
+    lift_line_tools, lower_line_tools
 )
 
 
@@ -357,11 +358,11 @@ class RightPanel:
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
         self.y_top_ls_var = tk.BooleanVar()
         tk.Checkbutton(y_ls_frame, text="Top", variable=self.y_top_ls_var,
-                      command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF',
+                      command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
         self.y_bottom_ls_var = tk.BooleanVar()
         tk.Checkbutton(y_ls_frame, text="Bottom", variable=self.y_bottom_ls_var,
-                      command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF',
+                      command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
 
         # X-Axis Limit Switches
@@ -371,11 +372,11 @@ class RightPanel:
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
         self.x_right_ls_var = tk.BooleanVar()
         tk.Checkbutton(x_ls_frame, text="Right", variable=self.x_right_ls_var,
-                      command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF',
+                      command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
         self.x_left_ls_var = tk.BooleanVar()
         tk.Checkbutton(x_ls_frame, text="Left", variable=self.x_left_ls_var,
-                      command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF',
+                      command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
 
         # Rows Limit Switch
@@ -385,7 +386,7 @@ class RightPanel:
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
         self.rows_ls_var = tk.BooleanVar()
         tk.Checkbutton(rows_ls_frame, text="Rows LS", variable=self.rows_ls_var,
-                      command=lambda: self.toggle_ls('rows'), bg='#F0F8FF',
+                      command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
 
         # Separator
@@ -398,41 +399,52 @@ class RightPanel:
         tk.Label(pistons_frame, text="🔧 Pistons (Toggle)", font=('Arial', 9, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 4))
 
-        # Lines Pistons (Marker and Cutter)
-        lines_piston_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
-        lines_piston_frame.pack(fill=tk.X, pady=2)
-        tk.Label(lines_piston_frame, text="Lines:", bg='#F0F8FF', fg='#003366',
+        # Lines Pistons (Marker, Cutter, Motor)
+        lines_marker_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        lines_marker_frame.pack(fill=tk.X, pady=2)
+        tk.Label(lines_marker_frame, text="Lines Marker:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(lines_piston_frame, text="Marker ▼", bg='#3498DB', fg='black',
-                 command=line_marker_down, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
-        tk.Button(lines_piston_frame, text="Marker ▲", bg='#95A5A6', fg='black',
-                 command=line_marker_up, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
-        tk.Button(lines_piston_frame, text="Cutter ▼", bg='#3498DB', fg='black',
-                 command=line_cutter_down, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
-        tk.Button(lines_piston_frame, text="Cutter ▲", bg='#95A5A6', fg='black',
-                 command=line_cutter_up, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        self.lines_marker_var = tk.BooleanVar()
+        tk.Checkbutton(lines_marker_frame, text="DOWN (Checked=DOWN)", variable=self.lines_marker_var,
+                      command=self.toggle_line_marker, bg='#F0F8FF', fg='black',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+
+        lines_cutter_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        lines_cutter_frame.pack(fill=tk.X, pady=2)
+        tk.Label(lines_cutter_frame, text="Lines Cutter:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        self.lines_cutter_var = tk.BooleanVar()
+        tk.Checkbutton(lines_cutter_frame, text="DOWN (Checked=DOWN)", variable=self.lines_cutter_var,
+                      command=self.toggle_line_cutter, bg='#F0F8FF', fg='black',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+
+        lines_motor_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        lines_motor_frame.pack(fill=tk.X, pady=2)
+        tk.Label(lines_motor_frame, text="Lines Motor:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        self.lines_motor_var = tk.BooleanVar()
+        tk.Checkbutton(lines_motor_frame, text="DOWN (Checked=DOWN)", variable=self.lines_motor_var,
+                      command=self.toggle_line_motor, bg='#F0F8FF', fg='black',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
 
         # Rows Pistons (Marker and Cutter)
-        rows_piston_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
-        rows_piston_frame.pack(fill=tk.X, pady=2)
-        tk.Label(rows_piston_frame, text="Rows:", bg='#F0F8FF', fg='#003366',
+        rows_marker_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        rows_marker_frame.pack(fill=tk.X, pady=2)
+        tk.Label(rows_marker_frame, text="Rows Marker:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(rows_piston_frame, text="Marker ▼", bg='#E74C3C', fg='black',
-                 command=row_marker_down, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
-        tk.Button(rows_piston_frame, text="Marker ▲", bg='#95A5A6', fg='black',
-                 command=row_marker_up, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
-        tk.Button(rows_piston_frame, text="Cutter ▼", bg='#E74C3C', fg='black',
-                 command=row_cutter_down, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
-        tk.Button(rows_piston_frame, text="Cutter ▲", bg='#95A5A6', fg='black',
-                 command=row_cutter_up, width=9, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        self.rows_marker_var = tk.BooleanVar()
+        tk.Checkbutton(rows_marker_frame, text="DOWN (Checked=DOWN)", variable=self.rows_marker_var,
+                      command=self.toggle_row_marker, bg='#F0F8FF', fg='black',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+
+        rows_cutter_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        rows_cutter_frame.pack(fill=tk.X, pady=2)
+        tk.Label(rows_cutter_frame, text="Rows Cutter:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        self.rows_cutter_var = tk.BooleanVar()
+        tk.Checkbutton(rows_cutter_frame, text="DOWN (Checked=DOWN)", variable=self.rows_cutter_var,
+                      command=self.toggle_row_cutter, bg='#F0F8FF', fg='black',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
 
         # Store references in main app for other components
         self.main_app.step_info_label = self.step_info_label
@@ -742,5 +754,50 @@ class RightPanel:
         print(f"Limit switch {switch_name} toggled: {'ON' if state else 'OFF'}")
 
         # Force canvas position update to refresh indicators
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
+    def toggle_line_marker(self):
+        """Toggle line marker piston"""
+        if self.lines_marker_var.get():
+            line_marker_down()
+        else:
+            line_marker_up()
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
+    def toggle_line_cutter(self):
+        """Toggle line cutter piston"""
+        if self.lines_cutter_var.get():
+            line_cutter_down()
+        else:
+            line_cutter_up()
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
+    def toggle_line_motor(self):
+        """Toggle line motor height"""
+        if self.lines_motor_var.get():
+            lower_line_tools()
+        else:
+            lift_line_tools()
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
+    def toggle_row_marker(self):
+        """Toggle row marker piston"""
+        if self.rows_marker_var.get():
+            row_marker_down()
+        else:
+            row_marker_up()
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
+    def toggle_row_cutter(self):
+        """Toggle row cutter piston"""
+        if self.rows_cutter_var.get():
+            row_cutter_down()
+        else:
+            row_cutter_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
