@@ -42,9 +42,26 @@ class CenterPanel:
         # Flag to prevent resize loop
         self._resize_scheduled = False
 
-        # DON'T schedule initial setup - let the Configure event handle it
-        # The Configure event fires immediately when canvas is packed
-        print("⏰ Waiting for Configure event to trigger initial setup...")
+        # Force initial setup after window is displayed
+        # Use update_idletasks to ensure layout is complete, then schedule setup
+        print("⏰ Scheduling forced initial canvas setup...")
+        def force_initial_setup():
+            self.main_app.canvas.update_idletasks()
+            width = self.main_app.canvas.winfo_width()
+            height = self.main_app.canvas.winfo_height()
+            print(f"🎨 FORCED initial setup: canvas dimensions {width}x{height}")
+            if width > 1 and height > 1:
+                self._canvas_initialized = True
+                self._update_canvas_scaling(width, height)
+                print(f"   Calling canvas_manager.setup_canvas()")
+                self.main_app.canvas_manager.setup_canvas()
+                print(f"   ✅ Forced initial canvas setup complete")
+            else:
+                print(f"   ⚠️ Invalid dimensions, retrying in 100ms...")
+                self.main_app.root.after(100, force_initial_setup)
+
+        # Schedule after a short delay to ensure window layout is complete
+        self.main_app.root.after(200, force_initial_setup)
 
         # Current Operation Display (below canvas)
         self.operation_label = tk.Label(self.parent_frame, text="System Ready",
