@@ -88,8 +88,8 @@ class HardwareStatusPanel:
         # Sensors subsection
         self._create_subsection_header(grid_frame, 1, row_offset, "Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "Right Edge", "lines_sensor_right_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "Left Edge", "lines_sensor_left_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, "Top Edge", "lines_sensor_top_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, "Bottom Edge", "lines_sensor_bottom_edge", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 2, "Marker Sensor", "lines_sensor_marker_piston", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 3, "Cutter Sensor", "lines_sensor_cutter", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 4, "Motor Sensor", "lines_sensor_motor", label_font, tiny_font)
@@ -107,8 +107,8 @@ class HardwareStatusPanel:
         # Sensors subsection
         self._create_subsection_header(grid_frame, 2, row_offset, "Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, "Top Edge", "rows_sensor_top_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "Bottom Edge", "rows_sensor_bottom_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, "Right Edge", "rows_sensor_right_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, "Left Edge", "rows_sensor_left_edge", label_font, tiny_font)
         self._create_grid_item(grid_frame, 2, row_offset + 2, "Marker Sensor", "rows_sensor_marker_piston", label_font, tiny_font)
         self._create_grid_item(grid_frame, 2, row_offset + 3, "Cutter Sensor", "rows_sensor_cutter", label_font, tiny_font)
         # Pistons subsection
@@ -265,10 +265,10 @@ class HardwareStatusPanel:
 
             # LINES SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red
-            self._update_widget('lines_sensor_right_edge',
+            self._update_widget('lines_sensor_top_edge',
                                'TRIGGERED' if sensor_triggers['y_top'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['y_top'] else self.sensor_ready_color)
-            self._update_widget('lines_sensor_left_edge',
+            self._update_widget('lines_sensor_bottom_edge',
                                'TRIGGERED' if sensor_triggers['y_bottom'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['y_bottom'] else self.sensor_ready_color)
 
@@ -302,10 +302,10 @@ class HardwareStatusPanel:
 
             # ROWS SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red
-            self._update_widget('rows_sensor_top_edge',
+            self._update_widget('rows_sensor_right_edge',
                                'TRIGGERED' if sensor_triggers['x_right'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['x_right'] else self.sensor_ready_color)
-            self._update_widget('rows_sensor_bottom_edge',
+            self._update_widget('rows_sensor_left_edge',
                                'TRIGGERED' if sensor_triggers['x_left'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['x_left'] else self.sensor_ready_color)
 
