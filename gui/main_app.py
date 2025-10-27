@@ -72,17 +72,20 @@ class ScratchDeskGUI:
         sim_settings = self.settings.get("simulation", {})
         gui_settings = self.settings.get("gui_settings", {})
 
-        self.offset_x = sim_settings.get("offset_x", 50)
-        self.offset_y = sim_settings.get("offset_y", 50)
-        self.scale_x = sim_settings.get("scale_x", 8)
-        self.scale_y = sim_settings.get("scale_y", 8)
+        # Scale and offset will be calculated dynamically by center_panel based on actual canvas size
+        # Initialize with placeholder values - will be overwritten by responsive scaling
+        self.offset_x = 50
+        self.offset_y = 50
+        self.scale_x = 5.0
+        self.scale_y = 5.0
         self.grid_spacing = sim_settings.get("grid_spacing", 20)
 
-        # Canvas dimensions (will be set by center panel)
-        self.canvas_width = gui_settings.get("canvas_width", 900)
-        self.canvas_height = gui_settings.get("canvas_height", 700)
-        self.actual_canvas_width = gui_settings.get("canvas_width", 900)
-        self.actual_canvas_height = gui_settings.get("canvas_height", 700)
+        # Canvas dimensions will be set by center panel based on actual window size
+        # Initialize with placeholder values - will be overwritten immediately
+        self.canvas_width = 900
+        self.canvas_height = 700
+        self.actual_canvas_width = 900
+        self.actual_canvas_height = 700
         
         # Position tracking
         self.position_update_scheduled = False
@@ -127,17 +130,16 @@ class ScratchDeskGUI:
             return {
                 "gui_settings": {
                     "auto_load_csv": "sample_programs.csv",
-                    "canvas_width": 900,
-                    "canvas_height": 700
+                    "canvas_margin_left": 60,
+                    "canvas_margin_right": 30,
+                    "canvas_margin_top": 40,
+                    "canvas_margin_bottom": 50,
+                    "canvas_min_scale": 3.5
                 },
                 "simulation": {
-                    "scale_x": 5.0, 
-                    "scale_y": 3.5, 
-                    "offset_x": 50, 
-                    "offset_y": 50,
                     "grid_spacing": 20,
                     "show_grid": True,
-                    "max_display_x": 100,
+                    "max_display_x": 120,
                     "max_display_y": 80
                 }
             }

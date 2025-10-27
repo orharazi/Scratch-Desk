@@ -27,11 +27,10 @@ class CenterPanel:
         self.main_app.canvas = tk.Canvas(canvas_container, bg='white', relief=tk.SUNKEN, bd=2)
         self.main_app.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Initialize dimensions - will be updated after window renders
-        canvas_width = self.main_app.settings.get("gui_settings", {}).get("canvas_width", 900)
-        canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 700)
-        self.main_app.actual_canvas_width = canvas_width
-        self.main_app.actual_canvas_height = canvas_height
+        # Initialize dimensions - will be updated immediately by responsive scaling
+        # Don't use settings.json values - calculate based on actual window size
+        self.main_app.actual_canvas_width = 900  # Placeholder, will be overwritten
+        self.main_app.actual_canvas_height = 700  # Placeholder, will be overwritten
 
         # Flag to prevent canvas setup until we calculate proper scaling
         self._canvas_initialized = False
