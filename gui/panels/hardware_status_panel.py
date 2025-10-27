@@ -72,14 +72,14 @@ class HardwareStatusPanel:
 
         # MOTORS Section
         self._create_section_header(grid_frame, 0, row, "🎯 MOTORS", heading_font)
-        row += 1
-        self._create_grid_item(grid_frame, 0, row, "X Pos", "x_position", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row + 1, "Y Pos", "y_position", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row + 2, "Top LS", "top_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row + 3, "Bot LS", "bottom_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row + 4, "Right LS", "right_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row + 5, "Left LS", "left_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row + 6, "Rows LS", "rows_limit_switch", label_font, tiny_font)
+        row_offset = row + 1
+        self._create_grid_item(grid_frame, 0, row_offset, "X Position", "x_position", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 1, "Y Position", "y_position", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 2, "Top Limit Switch", "top_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 3, "Bottom Limit Switch", "bottom_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 4, "Right Limit Switch", "right_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 5, "Left Limit Switch", "left_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 6, "Rows Limit Switch", "rows_limit_switch", label_font, tiny_font)
 
         # LINES Section
         self._create_section_header(grid_frame, 1, row, "✏️ LINES", heading_font)
@@ -87,9 +87,9 @@ class HardwareStatusPanel:
         # Sensors subsection
         self._create_subsection_header(grid_frame, 1, row_offset, "Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "R Edge", "lines_sensor_right_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "L Edge", "lines_sensor_left_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, "Mkr Sen", "lines_sensor_marker_piston", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, "Right Edge", "lines_sensor_right_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, "Left Edge", "lines_sensor_left_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, "Marker Sensor", "lines_sensor_marker_piston", label_font, tiny_font)
         # Pistons subsection
         row_offset += 3
         self._create_subsection_header(grid_frame, 1, row_offset, "Pistons", tiny_font)
@@ -99,14 +99,14 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 1, row_offset + 2, "Motor", "lines_piston_motor", label_font, tiny_font)
 
         # ROWS Section
-        row_offset = row + 1
         self._create_section_header(grid_frame, 2, row, "✂️ ROWS", heading_font)
+        row_offset = row + 1
         # Sensors subsection
         self._create_subsection_header(grid_frame, 2, row_offset, "Sensors", tiny_font)
         row_offset += 1
         self._create_grid_item(grid_frame, 2, row_offset, "Top Edge", "rows_sensor_top_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "Bot Edge", "rows_sensor_bottom_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 2, "Mkr Sen", "rows_sensor_marker_piston", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, "Bottom Edge", "rows_sensor_bottom_edge", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 2, "Marker Sensor", "rows_sensor_marker_piston", label_font, tiny_font)
         # Pistons subsection
         row_offset += 3
         self._create_subsection_header(grid_frame, 2, row_offset, "Pistons", tiny_font)
@@ -141,10 +141,10 @@ class HardwareStatusPanel:
         container = tk.Frame(parent, bg=self.section_bg)
         container.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
 
-        # Label (left side, small)
+        # Label (left side) - no fixed width, natural sizing
         label = tk.Label(container, text=label_text + ":", font=label_font,
                         bg=self.section_bg, fg=self.label_color,
-                        anchor='w', width=8)
+                        anchor='w')
         label.pack(side=tk.LEFT, padx=(2, 1))
 
         # Status frame with color indicator (right side)
