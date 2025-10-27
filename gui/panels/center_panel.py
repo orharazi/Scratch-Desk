@@ -176,12 +176,15 @@ class CenterPanel:
         max_y_cm = sim_settings.get("max_display_y", 80)
 
         # Calculate margins (reserve space for labels and borders)
-        margin_x = 100  # 50px on each side for labels
-        margin_y = 100  # 50px top and bottom for labels
+        # Reduced margins for better space utilization
+        margin_left = 60   # Space for Y axis labels
+        margin_right = 30  # Small right margin
+        margin_top = 40    # Space for X axis labels
+        margin_bottom = 50 # Space for X axis labels at bottom
 
         # Calculate available space
-        available_width = max(width - margin_x, 100)
-        available_height = max(height - margin_y, 100)
+        available_width = max(width - margin_left - margin_right, 200)
+        available_height = max(height - margin_top - margin_bottom, 200)
 
         # Calculate scale factors to fit entire workspace
         scale_x = available_width / max_x_cm
@@ -190,7 +193,7 @@ class CenterPanel:
         # Use same scale for both axes to maintain aspect ratio
         # Choose the smaller scale to ensure everything fits
         scale = min(scale_x, scale_y)
-        scale = max(scale, 2.0)  # Minimum scale for readability
+        scale = max(scale, 3.5)  # Increased minimum scale for better visibility
 
         # Update scale factors in main app
         self.main_app.scale_x = scale
@@ -200,10 +203,15 @@ class CenterPanel:
         workspace_width = max_x_cm * scale
         workspace_height = max_y_cm * scale
 
-        # Center the workspace in available canvas
-        self.main_app.offset_x = (width - workspace_width) / 2
-        self.main_app.offset_y = (height - workspace_height) / 2
+        # Position workspace with asymmetric margins
+        self.main_app.offset_x = margin_left
+        self.main_app.offset_y = margin_top
 
-        # Ensure minimum offset for labels
-        self.main_app.offset_x = max(self.main_app.offset_x, 50)
-        self.main_app.offset_y = max(self.main_app.offset_y, 50)
+        # If there's extra space, center it
+        extra_width = available_width - workspace_width
+        extra_height = available_height - workspace_height
+
+        if extra_width > 0:
+            self.main_app.offset_x += extra_width / 2
+        if extra_height > 0:
+            self.main_app.offset_y += extra_height / 2
