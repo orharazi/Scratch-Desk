@@ -85,7 +85,7 @@ limit_switch_states = {
     'y_bottom': False,   # Bottom Y-axis limit switch
     'x_right': False,    # Right X-axis limit switch
     'x_left': False,     # Left X-axis limit switch
-    'rows': True         # Rows limit switch - default DOWN
+    'rows': False        # Rows limit switch - default UP
 }
 
 def reset_hardware():

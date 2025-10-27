@@ -357,12 +357,12 @@ class RightPanel:
                       command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
 
-        # Rows Limit Switch (default DOWN)
+        # Rows Limit Switch (default UP)
         rows_ls_frame = tk.Frame(limit_switches_frame, bg='#F0F8FF')
         rows_ls_frame.pack(fill=tk.X, pady=2)
         tk.Label(rows_ls_frame, text="Rows Marker:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
-        self.rows_ls_var = tk.BooleanVar(value=True)  # Default checked (DOWN)
+        self.rows_ls_var = tk.BooleanVar(value=False)  # Default unchecked (UP)
         tk.Checkbutton(rows_ls_frame, text="Rows LS", variable=self.rows_ls_var,
                       command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
