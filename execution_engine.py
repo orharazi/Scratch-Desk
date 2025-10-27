@@ -370,9 +370,14 @@ class ExecutionEngine:
                 # Force canvas position update after each step
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
                     self.canvas_manager.update_position_display()
-                
-                # Update progress
-                progress = (self.current_step_index  ) / len(self.steps) * 100
+
+                # Move to next step FIRST, then update status with completed step index
+                completed_step_index = self.current_step_index
+                self.current_step_index += 1
+                print(f"📈 STEP ADVANCE: {completed_step_index + 1} → {self.current_step_index + 1}")
+
+                # Update progress - use current index which now points to next step
+                progress = (self.current_step_index) / len(self.steps) * 100
                 self._update_status("executing", {
                     'step_index': self.current_step_index,
                     'total_steps': len(self.steps),
@@ -380,11 +385,6 @@ class ExecutionEngine:
                     'step_description': step.get('description', ''),
                     'result': step_result
                 })
-                
-                # Move to next step
-                old_index = self.current_step_index
-                self.current_step_index += 1
-                print(f"📈 STEP ADVANCE: {old_index + 1} → {self.current_step_index + 1}")
                 
                 # Check what the next step will be
                 if self.current_step_index < len(self.steps):
