@@ -19,26 +19,28 @@ class CenterPanel:
         # Work Operations Status Box (moved above canvas for visibility)
         self.create_work_operations_status()
 
-        # Create canvas frame - no scrollbars, show full desk
+        # Create canvas frame - expands to fill available space
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
 
-        # Canvas for desk simulation - use settings dimensions to fit entire desk
+        # Create responsive canvas that fills available space
+        self.main_app.canvas = tk.Canvas(canvas_container, bg='white', relief=tk.SUNKEN, bd=2)
+        self.main_app.canvas.pack(fill=tk.BOTH, expand=True)
+
+        # Initialize dimensions - will be updated after window renders
         canvas_width = self.main_app.settings.get("gui_settings", {}).get("canvas_width", 900)
         canvas_height = self.main_app.settings.get("gui_settings", {}).get("canvas_height", 700)
-
-        # Create canvas without scrollbars - sized to show complete workspace
-        self.main_app.canvas = tk.Canvas(canvas_container, width=canvas_width, height=canvas_height,
-                               bg='white', relief=tk.SUNKEN, bd=2)
-
-        self.main_app.canvas.pack()
-        
-        # Store actual canvas dimensions for calculations
         self.main_app.actual_canvas_width = canvas_width
         self.main_app.actual_canvas_height = canvas_height
-        
-        # Initialize canvas elements
-        self.main_app.canvas_manager.setup_canvas()
+
+        # Bind resize event to update canvas when window size changes
+        self.main_app.canvas.bind('<Configure>', self._on_canvas_resize)
+
+        # Flag to prevent resize loop
+        self._resize_scheduled = False
+
+        # Initial canvas setup will happen after window is rendered
+        self.main_app.root.after(100, self._initial_canvas_setup)
 
         # Current Operation Display (below canvas)
         self.operation_label = tk.Label(self.parent_frame, text="System Ready",
@@ -118,3 +120,90 @@ class CenterPanel:
             # Status text
             tk.Label(indicator_frame, text=status_text, font=('Arial', 7),
                     bg='lightblue', fg=color).pack()
+
+    def _initial_canvas_setup(self):
+        """Initial canvas setup after window is rendered"""
+        # Get actual canvas size after window layout
+        self.main_app.canvas.update_idletasks()
+        width = self.main_app.canvas.winfo_width()
+        height = self.main_app.canvas.winfo_height()
+
+        if width > 1 and height > 1:  # Valid dimensions
+            self._update_canvas_scaling(width, height)
+            self.main_app.canvas_manager.setup_canvas()
+
+    def _on_canvas_resize(self, event):
+        """Handle canvas resize events"""
+        if self._resize_scheduled:
+            return
+
+        # Schedule resize handling with debounce
+        self._resize_scheduled = True
+        self.main_app.root.after(150, lambda: self._handle_resize(event.width, event.height))
+
+    def _handle_resize(self, width, height):
+        """Actually handle canvas resize after debounce"""
+        self._resize_scheduled = False
+
+        # Ignore tiny dimensions during initialization
+        if width <= 1 or height <= 1:
+            return
+
+        # Check if size actually changed significantly
+        if (abs(width - self.main_app.actual_canvas_width) < 5 and
+            abs(height - self.main_app.actual_canvas_height) < 5):
+            return  # No significant change
+
+        # Update canvas scaling and redraw
+        self._update_canvas_scaling(width, height)
+        self.main_app.canvas_manager.setup_canvas()
+
+        # Update work lines if program is loaded
+        if hasattr(self.main_app, 'current_program') and self.main_app.current_program:
+            self.main_app.canvas_manager.update_canvas_paper_area()
+
+    def _update_canvas_scaling(self, width, height):
+        """Update canvas dimensions and calculate scale factors to fit entire desk"""
+        # Update canvas dimensions
+        self.main_app.actual_canvas_width = width
+        self.main_app.actual_canvas_height = height
+        self.main_app.canvas_width = width
+        self.main_app.canvas_height = height
+
+        # Get workspace dimensions from settings
+        sim_settings = self.main_app.settings.get("simulation", {})
+        max_x_cm = sim_settings.get("max_display_x", 120)
+        max_y_cm = sim_settings.get("max_display_y", 80)
+
+        # Calculate margins (reserve space for labels and borders)
+        margin_x = 100  # 50px on each side for labels
+        margin_y = 100  # 50px top and bottom for labels
+
+        # Calculate available space
+        available_width = max(width - margin_x, 100)
+        available_height = max(height - margin_y, 100)
+
+        # Calculate scale factors to fit entire workspace
+        scale_x = available_width / max_x_cm
+        scale_y = available_height / max_y_cm
+
+        # Use same scale for both axes to maintain aspect ratio
+        # Choose the smaller scale to ensure everything fits
+        scale = min(scale_x, scale_y)
+        scale = max(scale, 2.0)  # Minimum scale for readability
+
+        # Update scale factors in main app
+        self.main_app.scale_x = scale
+        self.main_app.scale_y = scale
+
+        # Calculate actual workspace size with this scale
+        workspace_width = max_x_cm * scale
+        workspace_height = max_y_cm * scale
+
+        # Center the workspace in available canvas
+        self.main_app.offset_x = (width - workspace_width) / 2
+        self.main_app.offset_y = (height - workspace_height) / 2
+
+        # Ensure minimum offset for labels
+        self.main_app.offset_x = max(self.main_app.offset_x, 50)
+        self.main_app.offset_y = max(self.main_app.offset_y, 50)
