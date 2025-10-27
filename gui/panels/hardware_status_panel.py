@@ -123,6 +123,8 @@ class HardwareStatusPanel:
         row_offset = row + 1
         self._create_operation_mode_item(grid_frame, 3, row_offset, heading_font, label_font, tiny_font)
         row_offset += 3
+        self._create_blocker_status_item(grid_frame, 3, row_offset, label_font, tiny_font)
+        row_offset += 2
         self._create_progress_section(grid_frame, 3, row_offset, label_font, tiny_font)
 
     def _create_section_header(self, parent, col, row, text, font):
@@ -200,6 +202,28 @@ class HardwareStatusPanel:
         self.status_widgets['operation_explanation'] = {
             'label': explanation_label,
             'frame': None
+        }
+
+    def _create_blocker_status_item(self, parent, col, row, label_font, value_font):
+        """Create blocker/warning status display"""
+        # Blocker label
+        tk.Label(parent, text="Safety:", font=label_font,
+                bg=self.section_bg, fg=self.label_color,
+                anchor='w').grid(row=row, column=col, sticky="ew", padx=2)
+
+        # Status frame
+        status_frame = tk.Frame(parent, bg='#27AE60', relief=tk.SUNKEN, bd=1)
+        status_frame.grid(row=row + 1, column=col, sticky="ew", padx=1, pady=1)
+
+        status_label = tk.Label(status_frame, text="OK", font=value_font,
+                               bg='#27AE60', fg='white', anchor='center',
+                               wraplength=120)
+        status_label.pack(fill=tk.BOTH, expand=True, pady=2, padx=2)
+
+        # Store references
+        self.status_widgets['blocker_status'] = {
+            'label': status_label,
+            'frame': status_frame
         }
 
     def _create_progress_section(self, parent, col, row, label_font, value_font):
@@ -331,6 +355,9 @@ class HardwareStatusPanel:
             # Update operation mode
             self._update_operation_mode()
 
+            # Update blocker/safety status
+            self._update_blocker_status()
+
         except Exception as e:
             print(f"Error updating hardware status: {e}")
 
@@ -382,6 +409,34 @@ class HardwareStatusPanel:
         self._update_widget('operation_mode', status, color)
         if 'operation_explanation' in self.status_widgets:
             self.status_widgets['operation_explanation']['label'].config(text=explanation)
+
+    def _update_blocker_status(self):
+        """Update blocker/safety status display"""
+        blocker_message = "OK"
+        blocker_color = '#27AE60'  # Green
+
+        # Check if execution engine is running
+        if hasattr(self.main_app, 'execution_engine') and self.main_app.execution_engine.is_running:
+            # Get current operation mode
+            if hasattr(self.main_app, 'canvas_manager'):
+                mode = self.main_app.canvas_manager.motor_operation_mode.upper()
+
+                # Get row marker state
+                row_marker_state = get_row_marker_state().upper()
+
+                # Safety check: row marker position must match operation type
+                if mode == 'LINES':
+                    # During LINES operation, row marker MUST be DOWN
+                    if row_marker_state != 'DOWN':
+                        blocker_message = "⚠️ Row marker must be DOWN for Lines operation"
+                        blocker_color = '#E67E22'  # Orange warning
+                elif mode == 'ROWS':
+                    # During ROWS operation, row marker MUST be UP
+                    if row_marker_state != 'UP':
+                        blocker_message = "⚠️ Row marker must be UP for Rows operation"
+                        blocker_color = '#E67E22'  # Orange warning
+
+        self._update_widget('blocker_status', blocker_message, blocker_color)
 
     def _update_widget(self, key, text, color):
         """Update widget text and color"""
