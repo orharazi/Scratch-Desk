@@ -4,7 +4,7 @@ from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
     get_line_marker_piston_state, get_row_marker_limit_switch,
     get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
-    get_line_tools_height, get_sensor_trigger_states
+    get_line_tools_height, get_sensor_trigger_states, get_limit_switch_state
 )
 
 
@@ -234,25 +234,30 @@ class HardwareStatusPanel:
 
             # Limit switches - color coded: OFF=gray, ON=orange
             # Y-axis (Lines) - Top/Bottom
+            y_top_ls = get_limit_switch_state('y_top')
             self._update_widget('top_limit_switch',
-                               'ON' if sensor_triggers['y_top'] else 'OFF',
-                               self.switch_on_color if sensor_triggers['y_top'] else self.switch_off_color)
+                               'ON' if y_top_ls else 'OFF',
+                               self.switch_on_color if y_top_ls else self.switch_off_color)
+            y_bottom_ls = get_limit_switch_state('y_bottom')
             self._update_widget('bottom_limit_switch',
-                               'ON' if sensor_triggers['y_bottom'] else 'OFF',
-                               self.switch_on_color if sensor_triggers['y_bottom'] else self.switch_off_color)
+                               'ON' if y_bottom_ls else 'OFF',
+                               self.switch_on_color if y_bottom_ls else self.switch_off_color)
 
             # X-axis (Rows) - Right/Left
+            x_right_ls = get_limit_switch_state('x_right')
             self._update_widget('right_limit_switch',
-                               'ON' if sensor_triggers['x_right'] else 'OFF',
-                               self.switch_on_color if sensor_triggers['x_right'] else self.switch_off_color)
+                               'ON' if x_right_ls else 'OFF',
+                               self.switch_on_color if x_right_ls else self.switch_off_color)
+            x_left_ls = get_limit_switch_state('x_left')
             self._update_widget('left_limit_switch',
-                               'ON' if sensor_triggers['x_left'] else 'OFF',
-                               self.switch_on_color if sensor_triggers['x_left'] else self.switch_off_color)
+                               'ON' if x_left_ls else 'OFF',
+                               self.switch_on_color if x_left_ls else self.switch_off_color)
 
             # Rows limit switch
-            row_limit = get_row_marker_limit_switch().upper()
-            self._update_widget('rows_limit_switch', row_limit,
-                               self.switch_on_color if row_limit == 'DOWN' else self.switch_off_color)
+            rows_ls = get_limit_switch_state('rows')
+            self._update_widget('rows_limit_switch',
+                               'ON' if rows_ls else 'OFF',
+                               self.switch_on_color if rows_ls else self.switch_off_color)
 
             # LINES SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red

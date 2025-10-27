@@ -79,6 +79,15 @@ sensor_trigger_timers = {
     'y_bottom': 0
 }
 
+# Limit switch states (simulated hardware limit switches)
+limit_switch_states = {
+    'y_top': False,      # Top Y-axis limit switch
+    'y_bottom': False,   # Bottom Y-axis limit switch
+    'x_right': False,    # Right X-axis limit switch
+    'x_left': False,     # Left X-axis limit switch
+    'rows': False        # Rows limit switch
+}
+
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
@@ -735,3 +744,25 @@ def toggle_row_marker_limit_switch():
     row_marker_limit_switch = new_state
     print(f"Row marker limit switch toggled to: {new_state.upper()}")
     return new_state
+
+# Limit switch control functions
+def toggle_limit_switch(switch_name):
+    """Toggle a limit switch state"""
+    global limit_switch_states
+    if switch_name in limit_switch_states:
+        limit_switch_states[switch_name] = not limit_switch_states[switch_name]
+        state = "ON" if limit_switch_states[switch_name] else "OFF"
+        print(f"Limit switch {switch_name} toggled to: {state}")
+        return limit_switch_states[switch_name]
+    return False
+
+def get_limit_switch_state(switch_name):
+    """Get a limit switch state"""
+    return limit_switch_states.get(switch_name, False)
+
+def set_limit_switch_state(switch_name, state):
+    """Set a limit switch state"""
+    global limit_switch_states
+    if switch_name in limit_switch_states:
+        limit_switch_states[switch_name] = state
+        print(f"Limit switch {switch_name} set to: {'ON' if state else 'OFF'}")

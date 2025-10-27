@@ -2,8 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from step_generator import generate_complete_program_steps, get_step_count_summary
 from mock_hardware import (
-    trigger_x_left_sensor, trigger_x_right_sensor, 
-    trigger_y_top_sensor, trigger_y_bottom_sensor
+    trigger_x_left_sensor, trigger_x_right_sensor,
+    trigger_y_top_sensor, trigger_y_bottom_sensor,
+    toggle_limit_switch, get_limit_switch_state
 )
 
 
@@ -298,63 +299,92 @@ class RightPanel:
                                       bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'))
         self.progress_label.pack(pady=1)
         
-        # TEST CONTROLS SECTION - Only controls, no status displays
-        test_controls_frame = tk.Frame(self.scrollable_frame, relief=tk.RIDGE, bd=2, bg='#E8F4F8')
+        # TEST CONTROLS SECTION - Hardware testing controls
+        test_controls_frame = tk.Frame(self.scrollable_frame, relief=tk.RIDGE, bd=2, bg='#F0F8FF')
         test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Title
         tk.Label(test_controls_frame, text="🧪 TEST CONTROLS", font=('Arial', 10, 'bold'),
-                bg='#E8F4F8', fg='darkblue').pack(pady=(3, 5))
+                bg='#F0F8FF', fg='#003366').pack(pady=(5, 8))
 
         # EDGE SENSORS Section
-        sensors_frame = tk.Frame(test_controls_frame, bg='#E8F4F8')
-        sensors_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
+        sensors_frame = tk.Frame(test_controls_frame, bg='#F0F8FF')
+        sensors_frame.pack(fill=tk.X, padx=10, pady=(0, 8))
 
-        tk.Label(sensors_frame, text="Edge Sensors (Trigger)", font=('Arial', 9, 'bold'),
-                bg='#E8F4F8', fg='darkblue').pack(anchor='w', pady=(0, 3))
+        tk.Label(sensors_frame, text="📡 Edge Sensors (Trigger)", font=('Arial', 9, 'bold'),
+                bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 4))
 
         # X Sensors (Rows) - Left and Right
-        x_frame = tk.Frame(sensors_frame, bg='#E8F4F8')
+        x_frame = tk.Frame(sensors_frame, bg='#F0F8FF')
         x_frame.pack(fill=tk.X, pady=2)
-        tk.Label(x_frame, text="X-Axis (Rows):", bg='#E8F4F8', fg='darkblue',
-                font=('Arial', 8), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(x_frame, text="◄ Left", bg='darkorange', fg='white',
+        tk.Label(x_frame, text="X-Axis (Rows):", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        tk.Button(x_frame, text="◄ Left", bg='#FF6600', fg='white',
                  command=self.trigger_x_left, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=2)
-        tk.Button(x_frame, text="Right ►", bg='darkorange', fg='white',
+                 relief=tk.RAISED, bd=2, activebackground='#FF8833').pack(side=tk.LEFT, padx=2)
+        tk.Button(x_frame, text="Right ►", bg='#FF6600', fg='white',
                  command=self.trigger_x_right, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=2)
+                 relief=tk.RAISED, bd=2, activebackground='#FF8833').pack(side=tk.LEFT, padx=2)
 
         # Y Sensors (Lines) - Top and Bottom
-        y_frame = tk.Frame(sensors_frame, bg='#E8F4F8')
+        y_frame = tk.Frame(sensors_frame, bg='#F0F8FF')
         y_frame.pack(fill=tk.X, pady=2)
-        tk.Label(y_frame, text="Y-Axis (Lines):", bg='#E8F4F8', fg='darkblue',
-                font=('Arial', 8), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(y_frame, text="▲ Top", bg='mediumpurple', fg='white',
+        tk.Label(y_frame, text="Y-Axis (Lines):", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        tk.Button(y_frame, text="▲ Top", bg='#8800FF', fg='white',
                  command=self.trigger_y_top, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=2)
-        tk.Button(y_frame, text="Bottom ▼", bg='mediumpurple', fg='white',
+                 relief=tk.RAISED, bd=2, activebackground='#9922FF').pack(side=tk.LEFT, padx=2)
+        tk.Button(y_frame, text="Bottom ▼", bg='#8800FF', fg='white',
                  command=self.trigger_y_bottom, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=2)
+                 relief=tk.RAISED, bd=2, activebackground='#9922FF').pack(side=tk.LEFT, padx=2)
 
         # Separator
-        tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=10, pady=5)
+        tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=10, pady=8)
 
-        # ROW MARKER LIMIT SWITCH Section
-        limit_switch_frame = tk.Frame(test_controls_frame, bg='#E8F4F8')
-        limit_switch_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
+        # LIMIT SWITCHES Section
+        limit_switches_frame = tk.Frame(test_controls_frame, bg='#F0F8FF')
+        limit_switches_frame.pack(fill=tk.X, padx=10, pady=(0, 8))
 
-        tk.Label(limit_switch_frame, text="Row Marker Limit Switch", font=('Arial', 9, 'bold'),
-                bg='#E8F4F8', fg='darkblue').pack(anchor='w', pady=(0, 3))
+        tk.Label(limit_switches_frame, text="🔌 Limit Switches (Toggle)", font=('Arial', 9, 'bold'),
+                bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 4))
 
-        # Toggle control
-        toggle_frame = tk.Frame(limit_switch_frame, bg='#E8F4F8')
-        toggle_frame.pack(fill=tk.X, pady=2)
-        tk.Label(toggle_frame, text="Position:", bg='#E8F4F8', fg='darkblue',
-                font=('Arial', 8), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(toggle_frame, text="⇅ Toggle UP/DOWN", bg='darkslategray', fg='white',
-                 command=self.toggle_limit_switch, width=18, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=2)
+        # Y-Axis Limit Switches
+        y_ls_frame = tk.Frame(limit_switches_frame, bg='#F0F8FF')
+        y_ls_frame.pack(fill=tk.X, pady=2)
+        tk.Label(y_ls_frame, text="Y-Axis:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        self.y_top_ls_var = tk.BooleanVar()
+        tk.Checkbutton(y_ls_frame, text="Top", variable=self.y_top_ls_var,
+                      command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+        self.y_bottom_ls_var = tk.BooleanVar()
+        tk.Checkbutton(y_ls_frame, text="Bottom", variable=self.y_bottom_ls_var,
+                      command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+
+        # X-Axis Limit Switches
+        x_ls_frame = tk.Frame(limit_switches_frame, bg='#F0F8FF')
+        x_ls_frame.pack(fill=tk.X, pady=2)
+        tk.Label(x_ls_frame, text="X-Axis:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        self.x_right_ls_var = tk.BooleanVar()
+        tk.Checkbutton(x_ls_frame, text="Right", variable=self.x_right_ls_var,
+                      command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+        self.x_left_ls_var = tk.BooleanVar()
+        tk.Checkbutton(x_ls_frame, text="Left", variable=self.x_left_ls_var,
+                      command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
+
+        # Rows Limit Switch
+        rows_ls_frame = tk.Frame(limit_switches_frame, bg='#F0F8FF')
+        rows_ls_frame.pack(fill=tk.X, pady=2)
+        tk.Label(rows_ls_frame, text="Rows Marker:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        self.rows_ls_var = tk.BooleanVar()
+        tk.Checkbutton(rows_ls_frame, text="Rows LS", variable=self.rows_ls_var,
+                      command=lambda: self.toggle_ls('rows'), bg='#F0F8FF',
+                      font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
         
         # Store references in main app for other components
         self.main_app.step_info_label = self.step_info_label
@@ -658,23 +688,11 @@ class RightPanel:
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.trigger_sensor_visualization('y_bottom')
     
-    def toggle_limit_switch(self):
-        """Toggle row marker limit switch (manual operator control)"""
-        from mock_hardware import toggle_row_marker_limit_switch, row_marker_down, row_marker_up, get_row_marker_state
+    def toggle_ls(self, switch_name):
+        """Toggle a limit switch"""
+        state = toggle_limit_switch(switch_name)
+        print(f"Limit switch {switch_name} toggled: {'ON' if state else 'OFF'}")
 
-        # Toggle the physical limit switch
-        new_physical_state = toggle_row_marker_limit_switch()
-
-        # Synchronize the programmed state to match the physical state
-        if new_physical_state == 'down':
-            row_marker_down()  # Set programmed state to DOWN
-        else:
-            row_marker_up()    # Set programmed state to UP
-
-        # Verify synchronization
-        programmed_state = get_row_marker_state()
-        print(f"🔄 Row marker toggle: Physical={new_physical_state.upper()}, Programmed={programmed_state.upper()}")
-
-        # Force canvas position update to refresh tool indicators
+        # Force canvas position update to refresh indicators
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()

@@ -193,6 +193,10 @@ class ScratchDeskGUI:
         self.center_panel = CenterPanel(self, self.center_frame)
         self.right_panel = RightPanel(self, self.right_frame)
         self.hardware_status_panel = HardwareStatusPanel(self, self.bottom_frame)
+
+        # NOW finalize canvas setup after all panels are created and laid out
+        print("📦 All panels created, calling finalize_canvas_setup()")
+        self.center_panel.finalize_canvas_setup()
     
     def schedule_position_update(self):
         """Schedule regular position updates"""
