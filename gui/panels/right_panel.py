@@ -4,7 +4,9 @@ from step_generator import generate_complete_program_steps, get_step_count_summa
 from mock_hardware import (
     trigger_x_left_sensor, trigger_x_right_sensor,
     trigger_y_top_sensor, trigger_y_bottom_sensor,
-    toggle_limit_switch, get_limit_switch_state
+    toggle_limit_switch, get_limit_switch_state,
+    line_marker_down, line_marker_up, line_cutter_down, line_cutter_up,
+    row_marker_down, row_marker_up, row_cutter_down, row_cutter_up
 )
 
 
@@ -319,24 +321,24 @@ class RightPanel:
         x_frame.pack(fill=tk.X, pady=2)
         tk.Label(x_frame, text="X-Axis (Rows):", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(x_frame, text="◄ Left", bg='#FF6600', fg='white',
+        tk.Button(x_frame, text="◄ Left", bg='#FF6600', fg='black',
                  command=self.trigger_x_left, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2, activebackground='#FF8833').pack(side=tk.LEFT, padx=2)
-        tk.Button(x_frame, text="Right ►", bg='#FF6600', fg='white',
+                 relief=tk.RAISED, bd=2, activebackground='#FF8833', activeforeground='black').pack(side=tk.LEFT, padx=2)
+        tk.Button(x_frame, text="Right ►", bg='#FF6600', fg='black',
                  command=self.trigger_x_right, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2, activebackground='#FF8833').pack(side=tk.LEFT, padx=2)
+                 relief=tk.RAISED, bd=2, activebackground='#FF8833', activeforeground='black').pack(side=tk.LEFT, padx=2)
 
         # Y Sensors (Lines) - Top and Bottom
         y_frame = tk.Frame(sensors_frame, bg='#F0F8FF')
         y_frame.pack(fill=tk.X, pady=2)
         tk.Label(y_frame, text="Y-Axis (Lines):", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
-        tk.Button(y_frame, text="▲ Top", bg='#8800FF', fg='white',
+        tk.Button(y_frame, text="▲ Top", bg='#8800FF', fg='black',
                  command=self.trigger_y_top, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2, activebackground='#9922FF').pack(side=tk.LEFT, padx=2)
-        tk.Button(y_frame, text="Bottom ▼", bg='#8800FF', fg='white',
+                 relief=tk.RAISED, bd=2, activebackground='#9922FF', activeforeground='black').pack(side=tk.LEFT, padx=2)
+        tk.Button(y_frame, text="Bottom ▼", bg='#8800FF', fg='black',
                  command=self.trigger_y_bottom, width=8, font=('Arial', 8, 'bold'),
-                 relief=tk.RAISED, bd=2, activebackground='#9922FF').pack(side=tk.LEFT, padx=2)
+                 relief=tk.RAISED, bd=2, activebackground='#9922FF', activeforeground='black').pack(side=tk.LEFT, padx=2)
 
         # Separator
         tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=10, pady=8)
@@ -385,7 +387,53 @@ class RightPanel:
         tk.Checkbutton(rows_ls_frame, text="Rows LS", variable=self.rows_ls_var,
                       command=lambda: self.toggle_ls('rows'), bg='#F0F8FF',
                       font=('Arial', 8), selectcolor='#27AE60').pack(side=tk.LEFT, padx=5)
-        
+
+        # Separator
+        tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=10, pady=8)
+
+        # PISTONS Section
+        pistons_frame = tk.Frame(test_controls_frame, bg='#F0F8FF')
+        pistons_frame.pack(fill=tk.X, padx=10, pady=(0, 8))
+
+        tk.Label(pistons_frame, text="🔧 Pistons (Toggle)", font=('Arial', 9, 'bold'),
+                bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 4))
+
+        # Lines Pistons (Marker and Cutter)
+        lines_piston_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        lines_piston_frame.pack(fill=tk.X, pady=2)
+        tk.Label(lines_piston_frame, text="Lines:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        tk.Button(lines_piston_frame, text="Marker ▼", bg='#3498DB', fg='black',
+                 command=line_marker_down, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        tk.Button(lines_piston_frame, text="Marker ▲", bg='#95A5A6', fg='black',
+                 command=line_marker_up, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        tk.Button(lines_piston_frame, text="Cutter ▼", bg='#3498DB', fg='black',
+                 command=line_cutter_down, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        tk.Button(lines_piston_frame, text="Cutter ▲", bg='#95A5A6', fg='black',
+                 command=line_cutter_up, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+
+        # Rows Pistons (Marker and Cutter)
+        rows_piston_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
+        rows_piston_frame.pack(fill=tk.X, pady=2)
+        tk.Label(rows_piston_frame, text="Rows:", bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=15, anchor='w').pack(side=tk.LEFT)
+        tk.Button(rows_piston_frame, text="Marker ▼", bg='#E74C3C', fg='black',
+                 command=row_marker_down, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        tk.Button(rows_piston_frame, text="Marker ▲", bg='#95A5A6', fg='black',
+                 command=row_marker_up, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        tk.Button(rows_piston_frame, text="Cutter ▼", bg='#E74C3C', fg='black',
+                 command=row_cutter_down, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+        tk.Button(rows_piston_frame, text="Cutter ▲", bg='#95A5A6', fg='black',
+                 command=row_cutter_up, width=9, font=('Arial', 7, 'bold'),
+                 relief=tk.RAISED, bd=2).pack(side=tk.LEFT, padx=1)
+
         # Store references in main app for other components
         self.main_app.step_info_label = self.step_info_label
         self.main_app.current_step_label = self.current_step_label
