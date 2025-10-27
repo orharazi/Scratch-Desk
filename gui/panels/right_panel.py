@@ -200,16 +200,16 @@ class RightPanel:
         current_tab = tk.Frame(notebook, bg='white')
         notebook.add(current_tab, text='Current')
         
-        # Current step info with better formatting
+        # Current step info with better formatting - more compact
         current_info_frame = tk.Frame(current_tab, bg='lightgray', relief=tk.RAISED, bd=2)
-        current_info_frame.pack(fill=tk.X, padx=5, pady=5)
-        
-        self.current_step_label = tk.Label(current_info_frame, text="No step selected", 
-                                          font=('Arial', 9, 'bold'), bg='lightgray', fg='darkblue',
-                                          wraplength=250)
-        self.current_step_label.pack(pady=5)
-        
-        self.step_details = tk.Text(current_tab, height=4, width=25, font=('Arial', 8),
+        current_info_frame.pack(fill=tk.X, padx=5, pady=3)
+
+        self.current_step_label = tk.Label(current_info_frame, text="No step selected",
+                                          font=('Arial', 8, 'bold'), bg='lightgray', fg='darkblue',
+                                          wraplength=200)
+        self.current_step_label.pack(pady=3)
+
+        self.step_details = tk.Text(current_tab, height=3, width=25, font=('Arial', 7),
                                    wrap=tk.WORD, bg='white', fg='black', relief=tk.SUNKEN, bd=2)
         step_scroll = tk.Scrollbar(current_tab, orient=tk.VERTICAL)
         step_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -221,11 +221,11 @@ class RightPanel:
         all_steps_tab = tk.Frame(notebook, bg='white')
         notebook.add(all_steps_tab, text='All Steps')
 
-        # Steps queue listbox with better visibility
+        # Steps queue listbox with better visibility - more compact
         queue_frame = tk.Frame(all_steps_tab, bg='white')
         queue_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
-        self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 7), height=12,
+        self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 6), height=8,
                                        bg='white', fg='black', selectbackground='lightblue',
                                        selectforeground='darkblue', relief=tk.SUNKEN, bd=2)
         queue_scroll = tk.Scrollbar(queue_frame, orient=tk.VERTICAL)
@@ -535,12 +535,12 @@ class RightPanel:
             current_step = self.main_app.steps[current_index]
             self.current_step_label.config(text=f"Step {current_index + 1}/{len(self.main_app.steps)}: {current_step['operation']}")
             
-            # Update step details
-            details_text = f"Operation: {current_step['operation']}\\n"
-            details_text += f"Description: {current_step['description']}\\n"
+            # Update step details - fix newline parsing
+            details_text = f"Operation: {current_step['operation']}\n"
+            details_text += f"Description: {current_step['description']}\n"
             if current_step.get('parameters'):
                 details_text += f"Parameters: {current_step['parameters']}"
-            
+
             self.step_details.config(state=tk.NORMAL)
             self.step_details.delete(1.0, tk.END)
             self.step_details.insert(1.0, details_text)
@@ -558,17 +558,17 @@ class RightPanel:
             step_index = selection[0]
             if 0 <= step_index < len(self.main_app.steps):
                 step = self.main_app.steps[step_index]
-                
-                # Show step details in the text widget
-                details_text = f"Step {step_index + 1}/{len(self.main_app.steps)}\\n\\n"
-                details_text += f"Operation: {step['operation']}\\n\\n"
-                details_text += f"Description: {step['description']}\\n\\n"
-                
+
+                # Show step details in the text widget - fix newline parsing
+                details_text = f"Step {step_index + 1}/{len(self.main_app.steps)}\n\n"
+                details_text += f"Operation: {step['operation']}\n\n"
+                details_text += f"Description: {step['description']}\n\n"
+
                 if step.get('parameters'):
-                    details_text += f"Parameters:\\n"
+                    details_text += f"Parameters:\n"
                     for key, value in step['parameters'].items():
-                        details_text += f"  {key}: {value}\\n"
-                
+                        details_text += f"  {key}: {value}\n"
+
                 self.step_details.config(state=tk.NORMAL)
                 self.step_details.delete(1.0, tk.END)
                 self.step_details.insert(1.0, details_text)
