@@ -136,20 +136,24 @@ class HardwareStatusPanel:
         label.grid(row=row, column=col, sticky="ew", padx=2, pady=(2, 0))
 
     def _create_grid_item(self, parent, col, row, label_text, status_key, label_font, value_font):
-        """Create compact grid item with label and colored status"""
+        """Create compact grid item with label and colored status (70/30 split)"""
         # Container frame
         container = tk.Frame(parent, bg=self.section_bg)
         container.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
 
-        # Label (left side) - no fixed width, natural sizing
+        # Configure 70/30 width split
+        container.columnconfigure(0, weight=7)  # Label gets 70%
+        container.columnconfigure(1, weight=3)  # Status gets 30%
+
+        # Label (left side - 70%)
         label = tk.Label(container, text=label_text + ":", font=label_font,
                         bg=self.section_bg, fg=self.label_color,
                         anchor='w')
-        label.pack(side=tk.LEFT, padx=(2, 1))
+        label.grid(row=0, column=0, sticky="ew", padx=(2, 1))
 
-        # Status frame with color indicator (right side)
+        # Status frame with color indicator (right side - 30%)
         status_frame = tk.Frame(container, bg=self.switch_off_color, relief=tk.SUNKEN, bd=1)
-        status_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 2))
+        status_frame.grid(row=0, column=1, sticky="ew", padx=(0, 2))
 
         # Status text
         status_label = tk.Label(status_frame, text="---", font=value_font,
@@ -253,16 +257,16 @@ class HardwareStatusPanel:
             # LINES SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red
             self._update_widget('lines_sensor_right_edge',
-                               'TRIG' if sensor_triggers['y_top'] else 'RDY',
+                               'TRIGGERED' if sensor_triggers['y_top'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['y_top'] else self.sensor_ready_color)
             self._update_widget('lines_sensor_left_edge',
-                               'TRIG' if sensor_triggers['y_bottom'] else 'RDY',
+                               'TRIGGERED' if sensor_triggers['y_bottom'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['y_bottom'] else self.sensor_ready_color)
 
             # Marker sensor (detect piston position)
             line_piston = get_line_marker_piston_state().upper()
             self._update_widget('lines_sensor_marker_piston',
-                               'TRIG' if line_piston == 'DOWN' else 'RDY',
+                               'TRIGGERED' if line_piston == 'DOWN' else 'READY',
                                self.sensor_triggered_color if line_piston == 'DOWN' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
@@ -280,16 +284,16 @@ class HardwareStatusPanel:
             # ROWS SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red
             self._update_widget('rows_sensor_top_edge',
-                               'TRIG' if sensor_triggers['x_right'] else 'RDY',
+                               'TRIGGERED' if sensor_triggers['x_right'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['x_right'] else self.sensor_ready_color)
             self._update_widget('rows_sensor_bottom_edge',
-                               'TRIG' if sensor_triggers['x_left'] else 'RDY',
+                               'TRIGGERED' if sensor_triggers['x_left'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['x_left'] else self.sensor_ready_color)
 
             # Marker sensor
             row_marker = hw_status['row_marker'].upper()
             self._update_widget('rows_sensor_marker_piston',
-                               'TRIG' if row_marker == 'OPEN' else 'RDY',
+                               'TRIGGERED' if row_marker == 'OPEN' else 'READY',
                                self.sensor_triggered_color if row_marker == 'OPEN' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
