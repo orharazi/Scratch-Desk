@@ -308,13 +308,13 @@ class CanvasOperations:
                 'color_completed': mark_colors['completed']
             }
         
-        # Draw cut edges - horizontal cuts (top and bottom)
+        # Draw cut edges - horizontal cuts (top and bottom) using ACTUAL dimensions with repeats
         cuts = ['top', 'bottom', 'left', 'right']
         cut_positions = [
-            (paper_y + program.high, 'horizontal'),  # top edge of paper
-            (paper_y, 'horizontal'),                 # bottom edge of paper  
-            (paper_x, 'vertical'),                   # left edge of paper
-            (paper_x + program.width, 'vertical')    # right edge of paper
+            (paper_y + actual_paper_height, 'horizontal'),  # top edge of ACTUAL paper (with repeats)
+            (paper_y, 'horizontal'),                        # bottom edge of paper
+            (paper_x, 'vertical'),                          # left edge of paper
+            (paper_x + actual_paper_width, 'vertical')      # right edge of ACTUAL paper (with repeats)
         ]
         cut_labels = ['TOP CUT', 'BOTTOM CUT', 'LEFT CUT', 'RIGHT CUT']
         
