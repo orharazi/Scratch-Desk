@@ -218,9 +218,13 @@ class CanvasOperations:
             # Each section starts at paper_x + (section_index * section_width)
             section_start_x = paper_x + (section_index * program.width)
 
-            # Within each section, pages follow the same layout as a single section
-            # First page starts at section_start + left_margin
-            page_start_x = section_start_x + program.left_margin + page_in_section * (program.page_width + program.buffer_between_pages)
+            # Pages within section are positioned RIGHT-TO-LEFT (to match step generator)
+            # Rightmost page = page 0 in RTL order
+            physical_page_in_section = program.number_of_pages - 1 - page_in_section
+
+            # Calculate page position within this section (respecting margins)
+            # First page (rightmost) starts at section_start + left_margin
+            page_start_x = section_start_x + program.left_margin + physical_page_in_section * (program.page_width + program.buffer_between_pages)
 
             # Calculate page end position
             page_end_x = page_start_x + program.page_width
