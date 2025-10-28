@@ -317,130 +317,134 @@ def generate_row_marking_steps(program):
         "Cut RIGHT paper edge: Close row cutter"
     ))
     
-    # STEP 2: Mark pages across ALL repeated sections (RIGHT-TO-LEFT)
-    # Calculate total pages across all repeated sections
-    total_pages = program.number_of_pages * program.repeat_rows
-    
-    print(f"📄 PAGE MARKING CALCULATION:")
+    # STEP 2: Mark pages BY SECTION (RIGHT-TO-LEFT), cutting between sections as we go
+    # Process each repeated section individually
+    print(f"📄 PAGE MARKING BY SECTION:")
     print(f"   Pages per section: {program.number_of_pages}")
     print(f"   Repeated sections: {program.repeat_rows}")
-    print(f"   TOTAL PAGES TO MARK: {total_pages}")
-    
-    for page_index in range(total_pages):
-        # Calculate which repeat section and page within section this is
-        section_num = page_index // program.number_of_pages + 1
-        page_in_section = page_index % program.number_of_pages + 1
-        
-        # RIGHT-TO-LEFT page numbering: rightmost = Page 1, ascending order
-        rtl_page_number = page_index + 1
-        
-        # Physical page position (rightmost page first) across ACTUAL paper width
-        physical_page_index = total_pages - 1 - page_index  
-        page_left_edge = PAPER_OFFSET_X + program.left_margin + (physical_page_index * (program.page_width + program.buffer_between_pages))
-        page_right_edge = page_left_edge + program.page_width
-        
-        page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, Page {page_in_section})"
-        
-        # Move to this page's RIGHT edge first (starting point for each page)
-        steps.append(create_step(
-            'move_x',
-            {'position': page_right_edge},
-            f"Move to {page_description} RIGHT edge: {page_right_edge}cm"
-        ))
-        
-        # Mark RIGHT edge of page
-        steps.append(create_step(
-            'wait_sensor',
-            {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} right edge'},
-            f"{page_description}: Wait TOP Y sensor (RIGHT edge)"
-        ))
-        
-        steps.append(create_step(
-            'tool_action',
-            {'tool': 'row_marker', 'action': 'down'},
-            f"{page_description}: Open row marker (RIGHT edge)"
-        ))
-        
-        steps.append(create_step(
-            'wait_sensor',
-            {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} right edge'},
-            f"{page_description}: Wait BOTTOM Y sensor (RIGHT edge)"
-        ))
-        
-        steps.append(create_step(
-            'tool_action',
-            {'tool': 'row_marker', 'action': 'up'},
-            f"{page_description}: Close row marker (RIGHT edge)"
-        ))
-        
-        # Move RIGHT-TO-LEFT to this page's LEFT edge  
-        steps.append(create_step(
-            'move_x',
-            {'position': page_left_edge},
-            f"RTL: Move to {page_description} LEFT edge: {page_left_edge}cm"
-        ))
-        
-        # Mark LEFT edge of page
-        steps.append(create_step(
-            'wait_sensor',
-            {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} left edge'},
-            f"{page_description}: Wait TOP Y sensor (LEFT edge)"
-        ))
-        
-        steps.append(create_step(
-            'tool_action',
-            {'tool': 'row_marker', 'action': 'down'},
-            f"{page_description}: Open row marker (LEFT edge)"
-        ))
-        
-        steps.append(create_step(
-            'wait_sensor',
-            {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} left edge'},
-            f"{page_description}: Wait BOTTOM Y sensor (LEFT edge)"
-        ))
-        
-        steps.append(create_step(
-            'tool_action',
-            {'tool': 'row_marker', 'action': 'up'},
-            f"{page_description}: Close row marker (LEFT edge)"
-        ))
 
-    # ADD VERTICAL CUTS BETWEEN ROW SECTIONS (if repeat_rows > 1)
-    if program.repeat_rows > 1:
-        for section_num in range(program.repeat_rows - 1):
-            # Cut position at the boundary between row sections
-            section_end_x = PAPER_OFFSET_X + (section_num + 1) * program.width
+    for section_index in range(program.repeat_rows):
+        section_num = section_index + 1
+
+        print(f"   Processing section {section_num}/{program.repeat_rows}")
+
+        # Mark all pages in this section (RIGHT-TO-LEFT within section)
+        for page_in_section in range(program.number_of_pages):
+            # Calculate global page index and RTL numbering
+            global_page_index = section_index * program.number_of_pages + page_in_section
+            rtl_page_number = global_page_index + 1
+
+            # Calculate total pages for physical positioning
+            total_pages = program.number_of_pages * program.repeat_rows
+
+            # Physical page position (rightmost page first) across ACTUAL paper width
+            physical_page_index = total_pages - 1 - global_page_index
+            page_left_edge = PAPER_OFFSET_X + program.left_margin + (physical_page_index * (program.page_width + program.buffer_between_pages))
+            page_right_edge = page_left_edge + program.page_width
+
+            page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, Page {page_in_section + 1})"
+
+            # Move to this page's RIGHT edge first (starting point for each page)
+            steps.append(create_step(
+                'move_x',
+                {'position': page_right_edge},
+                f"Move to {page_description} RIGHT edge: {page_right_edge}cm"
+            ))
+
+            # Mark RIGHT edge of page
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} right edge'},
+                f"{page_description}: Wait TOP Y sensor (RIGHT edge)"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_marker', 'action': 'down'},
+                f"{page_description}: Open row marker (RIGHT edge)"
+            ))
+
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} right edge'},
+                f"{page_description}: Wait BOTTOM Y sensor (RIGHT edge)"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_marker', 'action': 'up'},
+                f"{page_description}: Close row marker (RIGHT edge)"
+            ))
+
+            # Move RIGHT-TO-LEFT to this page's LEFT edge
+            steps.append(create_step(
+                'move_x',
+                {'position': page_left_edge},
+                f"RTL: Move to {page_description} LEFT edge: {page_left_edge}cm"
+            ))
+
+            # Mark LEFT edge of page
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} left edge'},
+                f"{page_description}: Wait TOP Y sensor (LEFT edge)"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_marker', 'action': 'down'},
+                f"{page_description}: Open row marker (LEFT edge)"
+            ))
+
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} left edge'},
+                f"{page_description}: Wait BOTTOM Y sensor (LEFT edge)"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_marker', 'action': 'up'},
+                f"{page_description}: Close row marker (LEFT edge)"
+            ))
+
+        # AFTER finishing all pages in this section, cut between sections (if not the last section)
+        if section_index < program.repeat_rows - 1:
+            # Cut position at the boundary between this section and the next
+            section_end_x = PAPER_OFFSET_X + (section_index + 1) * program.width
+
+            print(f"   Adding cut between section {section_num} and {section_num + 1} at X={section_end_x}cm")
 
             # Move to cut position between sections
             steps.append(create_step(
                 'move_x',
                 {'position': section_end_x},
-                f"Move to cut between row sections {section_num + 1} and {section_num + 2}: {section_end_x}cm"
+                f"Move to cut between row sections {section_num} and {section_num + 1}: {section_end_x}cm"
             ))
 
             # Perform cut between sections (vertical cut spanning full height)
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut between row sections {section_num + 1}-{section_num + 2}'},
-                f"Cut between row sections {section_num + 1} and {section_num + 2}: Wait for TOP Y sensor"
+                {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut between row sections {section_num}-{section_num + 1}'},
+                f"Cut between row sections {section_num} and {section_num + 1}: Wait for TOP Y sensor"
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_cutter', 'action': 'down'},
-                f"Cut between row sections {section_num + 1} and {section_num + 2}: Open row cutter"
+                f"Cut between row sections {section_num} and {section_num + 1}: Open row cutter"
             ))
 
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut between row sections {section_num + 1}-{section_num + 2}'},
-                f"Cut between row sections {section_num + 1} and {section_num + 2}: Wait for BOTTOM Y sensor"
+                {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut between row sections {section_num}-{section_num + 1}'},
+                f"Cut between row sections {section_num} and {section_num + 1}: Wait for BOTTOM Y sensor"
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_cutter', 'action': 'up'},
-                f"Cut between row sections {section_num + 1} and {section_num + 2}: Close row cutter"
+                f"Cut between row sections {section_num} and {section_num + 1}: Close row cutter"
             ))
 
     # STEP 3: Cut LEFT edge of ACTUAL paper last
