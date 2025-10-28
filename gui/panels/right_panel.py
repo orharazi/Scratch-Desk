@@ -334,7 +334,7 @@ class RightPanel:
 
         # Y-Axis Limit Switches
         tk.Label(ls_grid, text="Y:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=0, column=0, sticky='w')
+                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=0, column=0, sticky='w')
         self.y_top_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Top", variable=self.y_top_ls_var,
                       command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF', fg='black',
@@ -346,7 +346,7 @@ class RightPanel:
 
         # X-Axis Limit Switches (separate row)
         tk.Label(ls_grid, text="X:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=1, column=0, sticky='w')
+                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=1, column=0, sticky='w')
         self.x_right_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Right", variable=self.x_right_ls_var,
                       command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF', fg='black',
@@ -358,7 +358,7 @@ class RightPanel:
 
         # Rows Limit Switch (separate row)
         tk.Label(ls_grid, text="Row:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=2, column=0, sticky='w')
+                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=2, column=0, sticky='w')
         self.rows_ls_var = tk.BooleanVar(value=False)  # Default unchecked (UP)
         tk.Checkbutton(ls_grid, text="Limit Switch", variable=self.rows_ls_var,
                       command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
