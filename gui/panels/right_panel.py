@@ -295,7 +295,7 @@ class RightPanel:
         tk.Label(sensors_frame, text="📡 Sensors", font=('Arial', 8, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
 
-        # X and Y Sensors in 2 columns
+        # X and Y Sensors in separate rows
         sensors_grid = tk.Frame(sensors_frame, bg='#F0F8FF')
         sensors_grid.pack(fill=tk.X)
 
@@ -309,15 +309,15 @@ class RightPanel:
                  command=self.trigger_x_right, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=0, column=2, padx=2)
 
-        # Y Sensors (Lines) - Top and Bottom
+        # Y Sensors (Lines) - Top and Bottom (separate row)
         tk.Label(sensors_grid, text="Y:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=0, column=3, sticky='w', padx=(10,0))
+                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=1, column=0, sticky='w')
         tk.Button(sensors_grid, text="▲Top", bg='#8800FF', fg='black',
                  command=self.trigger_y_top, width=7, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).grid(row=0, column=4, padx=2)
+                 relief=tk.RAISED, bd=2).grid(row=1, column=1, padx=2)
         tk.Button(sensors_grid, text="Bottom▼", bg='#8800FF', fg='black',
                  command=self.trigger_y_bottom, width=7, font=('Arial', 7, 'bold'),
-                 relief=tk.RAISED, bd=2).grid(row=0, column=5, padx=2)
+                 relief=tk.RAISED, bd=2).grid(row=1, column=2, padx=2)
 
         # Separator
         tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
@@ -344,25 +344,25 @@ class RightPanel:
                       command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=2, padx=2)
 
-        # X-Axis Limit Switches
+        # X-Axis Limit Switches (separate row)
         tk.Label(ls_grid, text="X:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=0, column=3, sticky='w', padx=(10,0))
+                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=1, column=0, sticky='w')
         self.x_right_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Right", variable=self.x_right_ls_var,
                       command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=4, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=1, padx=2)
         self.x_left_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Left", variable=self.x_left_ls_var,
                       command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=5, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=2, padx=2)
 
-        # Rows Limit Switch (default UP)
+        # Rows Limit Switch (separate row)
         tk.Label(ls_grid, text="Row:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=0, column=6, sticky='w', padx=(10,0))
+                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=2, column=0, sticky='w')
         self.rows_ls_var = tk.BooleanVar(value=False)  # Default unchecked (UP)
         tk.Checkbutton(ls_grid, text="Limit Switch", variable=self.rows_ls_var,
                       command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=7, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60').grid(row=2, column=1, padx=2)
 
         # Separator
         tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
