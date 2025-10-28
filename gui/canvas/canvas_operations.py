@@ -590,6 +590,8 @@ class CanvasOperations:
                 # Canvas page number (LTR): section * pages_per_section + page
                 canvas_page_num = physical_section_index * pages_per_section + physical_page_in_section
 
+                print(f"🔍 RTL→Canvas conversion: RTL Page {rtl_page_num} → exec_section={execution_section}, page_in_section={page_in_section} → physical_section={physical_section_index}, physical_page={physical_page_in_section} → canvas_page={canvas_page_num}")
+
                 # Calculate row number based on canvas page position
                 # Canvas draws pages LTR: page 0, page 1, page 2, ...
                 # Each page has 2 edges: left edge (odd row) and right edge (even row)

@@ -361,6 +361,8 @@ def generate_row_marking_steps(program):
 
             page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, RTL Page {rtl_page_in_section + 1}/{program.number_of_pages})"
 
+            print(f"      📍 RTL Page {rtl_page_number}: section_index={section_index}, rtl_page_in_section={rtl_page_in_section}, physical_page={physical_page_in_section}, position={page_left_edge:.1f}-{page_right_edge:.1f}cm")
+
             # Move to this page's RIGHT edge first (starting point for each page)
             steps.append(create_step(
                 'move_x',
