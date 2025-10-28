@@ -201,22 +201,28 @@ class CanvasOperations:
                 )
                 self.main_app.work_line_objects[f'line_{overall_line_num}']['label_id'] = label_id
         
-        # Draw vertical lines (Row Pattern) WITH REPEAT SUPPORT - Show ALL page marks across repeated sections
-        first_page_start = paper_x + program.left_margin
-        
+        # Draw vertical lines (Row Pattern) WITH REPEAT SUPPORT - Each section is a duplicate with same layout
         # Calculate TOTAL pages across all repeated sections
         total_pages = program.number_of_pages * program.repeat_rows
-        
+
         print(f"📄 DRAWING PAGES: {total_pages} total pages ({program.number_of_pages} per section × {program.repeat_rows} sections)")
-        
+
         # Draw each page's start and end marks (across entire repeated area)
         page_mark_id = 1  # For tracking state
-        
+
         for page_num in range(total_pages):
-            # Calculate page start position across ENTIRE repeated paper
-            page_start_x = first_page_start + page_num * (program.page_width + program.buffer_between_pages)
-            
-            # Calculate page end position  
+            # Calculate which section and page within section
+            section_index = page_num // program.number_of_pages
+            page_in_section = page_num % program.number_of_pages
+
+            # Each section starts at paper_x + (section_index * section_width)
+            section_start_x = paper_x + (section_index * program.width)
+
+            # Within each section, pages follow the same layout as a single section
+            # First page starts at section_start + left_margin
+            page_start_x = section_start_x + program.left_margin + page_in_section * (program.page_width + program.buffer_between_pages)
+
+            # Calculate page end position
             page_end_x = page_start_x + program.page_width
             
             # Draw page START mark - spans ACTUAL paper height
