@@ -240,24 +240,26 @@ def line_cutter_up():
 # Row tools (X-axis operations)
 def row_marker_down():
     """Lower row marker to marking position"""
-    global row_marker_state
+    global row_marker_state, limit_switch_states
     print("MOCK: row_marker_down()")
     if row_marker_state != "down":
         print("Lowering row marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "down"
+        limit_switch_states['rows'] = True  # Sync limit switch with programmed state
         print("Row marker down - ready to mark")
     else:
         print("Row marker already down")
 
 def row_marker_up():
     """Raise row marker from marking position"""
-    global row_marker_state
+    global row_marker_state, limit_switch_states
     print("MOCK: row_marker_up()")
     if row_marker_state != "up":
         print("Raising row marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "up"
+        limit_switch_states['rows'] = False  # Sync limit switch with programmed state
         print("Row marker up")
     else:
         print("Row marker already up")
@@ -750,11 +752,17 @@ def toggle_row_marker_limit_switch():
 # Limit switch control functions
 def toggle_limit_switch(switch_name):
     """Toggle a limit switch state"""
-    global limit_switch_states
+    global limit_switch_states, row_marker_state
     if switch_name in limit_switch_states:
         limit_switch_states[switch_name] = not limit_switch_states[switch_name]
         state = "ON" if limit_switch_states[switch_name] else "OFF"
         print(f"Limit switch {switch_name} toggled to: {state}")
+
+        # Sync programmed row marker state with limit switch for 'rows'
+        if switch_name == 'rows':
+            row_marker_state = "down" if limit_switch_states[switch_name] else "up"
+            print(f"   Synced row_marker_state to: {row_marker_state.upper()}")
+
         return limit_switch_states[switch_name]
     return False
 
