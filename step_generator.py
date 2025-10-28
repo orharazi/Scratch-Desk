@@ -318,15 +318,19 @@ def generate_row_marking_steps(program):
     ))
     
     # STEP 2: Mark pages BY SECTION (RIGHT-TO-LEFT), cutting between sections as we go
-    # Process each repeated section individually
-    print(f"📄 PAGE MARKING BY SECTION:")
+    # Process sections from RIGHTMOST to LEFTMOST (RTL order)
+    print(f"📄 PAGE MARKING BY SECTION (RTL):")
     print(f"   Pages per section: {program.number_of_pages}")
     print(f"   Repeated sections: {program.repeat_rows}")
 
-    for section_index in range(program.repeat_rows):
+    # Process sections RIGHT-TO-LEFT: rightmost section first
+    for rtl_section_index in range(program.repeat_rows):
+        # RTL: section 0 is rightmost, section N-1 is leftmost
+        # Convert to physical LTR index: rightmost = highest index
+        section_index = program.repeat_rows - 1 - rtl_section_index
         section_num = section_index + 1
 
-        print(f"   Processing section {section_num}/{program.repeat_rows}")
+        print(f"   Processing section {section_num}/{program.repeat_rows} (RTL order: {rtl_section_index + 1})")
 
         # Mark all pages in this section (RIGHT-TO-LEFT execution order)
         # Process pages from rightmost to leftmost (RTL)
