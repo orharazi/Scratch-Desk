@@ -229,7 +229,7 @@ class CanvasOperations:
             # Drawing: page_num 0,1,2,3 (left to right)
             # RTL: page_num 3,2,1,0 (right to left) → R1,R2,R3... (right to left)
             rtl_drawing_row_num = (page_num * 2) + 1  # Drawing row number (left to right)
-            individual_row_num = program.number_of_pages * 2 - rtl_drawing_row_num + 1  # Convert to RTL numbering
+            individual_row_num = total_pages * 2 - rtl_drawing_row_num + 1  # Convert to RTL numbering (use total_pages for repeats)
             row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num}', 'pending')
 
             # Rows with color AND dash pattern changes based on state
@@ -263,7 +263,7 @@ class CanvasOperations:
             # Individual row state tracking - left edge is independent
             # Convert LEFT-TO-RIGHT drawing to RIGHT-TO-LEFT numbering for left edges
             rtl_drawing_row_num_left = (page_num * 2) + 2  # Drawing row number for left edges
-            individual_row_num_left = program.number_of_pages * 2 - rtl_drawing_row_num_left + 1  # Convert to RTL numbering
+            individual_row_num_left = total_pages * 2 - rtl_drawing_row_num_left + 1  # Convert to RTL numbering (use total_pages for repeats)
             end_row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num_left}', 'pending')
 
             # Rows with color AND dash pattern changes based on state
