@@ -404,7 +404,45 @@ def generate_row_marking_steps(program):
             {'tool': 'row_marker', 'action': 'up'},
             f"{page_description}: Close row marker (LEFT edge)"
         ))
-    
+
+    # ADD VERTICAL CUTS BETWEEN ROW SECTIONS (if repeat_rows > 1)
+    if program.repeat_rows > 1:
+        for section_num in range(program.repeat_rows - 1):
+            # Cut position at the boundary between row sections
+            section_end_x = PAPER_OFFSET_X + (section_num + 1) * program.width
+
+            # Move to cut position between sections
+            steps.append(create_step(
+                'move_x',
+                {'position': section_end_x},
+                f"Move to cut between row sections {section_num + 1} and {section_num + 2}: {section_end_x}cm"
+            ))
+
+            # Perform cut between sections (vertical cut spanning full height)
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut between row sections {section_num + 1}-{section_num + 2}'},
+                f"Cut between row sections {section_num + 1} and {section_num + 2}: Wait for TOP Y sensor"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_cutter', 'action': 'down'},
+                f"Cut between row sections {section_num + 1} and {section_num + 2}: Open row cutter"
+            ))
+
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut between row sections {section_num + 1}-{section_num + 2}'},
+                f"Cut between row sections {section_num + 1} and {section_num + 2}: Wait for BOTTOM Y sensor"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_cutter', 'action': 'up'},
+                f"Cut between row sections {section_num + 1} and {section_num + 2}: Close row cutter"
+            ))
+
     # STEP 3: Cut LEFT edge of ACTUAL paper last
     left_paper_cut_position = PAPER_OFFSET_X  # Left boundary of ACTUAL paper
     steps.append(create_step(

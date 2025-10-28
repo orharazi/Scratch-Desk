@@ -578,7 +578,7 @@ class CanvasOperations:
         # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
         # This excludes "row marker (RIGHT edge)" because it doesn't have "cut right"
         if 'row marker' not in step_desc:  # Extra safety: exclude row marking steps
-            # Track intermediate section cuts (e.g., "Cut between sections 1 and 2")
+            # Track intermediate LINE section cuts (e.g., "Cut between sections 1 and 2")
             section_cut_match = re.search(r'cut between sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
             if section_cut_match:
                 section_1 = section_cut_match.group(1)
@@ -587,10 +587,24 @@ class CanvasOperations:
 
                 if any(keyword in step_desc for keyword in ['close', 'finished']):
                     self.update_operation_state('cuts', cut_name, 'completed')
-                    print(f"✅ Section cut {section_1}-{section_2} → COMPLETED")
+                    print(f"✅ Line section cut {section_1}-{section_2} → COMPLETED")
                 elif any(keyword in step_desc for keyword in ['open']):
                     self.update_operation_state('cuts', cut_name, 'in_progress')
-                    print(f"🔄 Section cut {section_1}-{section_2} → IN PROGRESS")
+                    print(f"🔄 Line section cut {section_1}-{section_2} → IN PROGRESS")
+
+            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2")
+            row_section_cut_match = re.search(r'cut between row sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
+            if row_section_cut_match:
+                section_1 = row_section_cut_match.group(1)
+                section_2 = row_section_cut_match.group(2)
+                cut_name = f"row_section_{section_1}_{section_2}"
+
+                if any(keyword in step_desc for keyword in ['close', 'finished']):
+                    self.update_operation_state('cuts', cut_name, 'completed')
+                    print(f"✅ Row section cut {section_1}-{section_2} → COMPLETED")
+                elif any(keyword in step_desc for keyword in ['open']):
+                    self.update_operation_state('cuts', cut_name, 'in_progress')
+                    print(f"🔄 Row section cut {section_1}-{section_2} → IN PROGRESS")
 
             # Track outer edge cuts
             for cut_name in ['top', 'bottom', 'left', 'right']:
