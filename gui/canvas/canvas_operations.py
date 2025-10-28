@@ -386,11 +386,11 @@ class CanvasOperations:
                 cut_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
                 cut_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
 
-                # Intermediate cuts use same color as outer cuts (pending initially)
+                # Intermediate cuts use same color as outer cuts (pending initially) - SOLID line like edge cuts
                 intermediate_cut_id = self.main_app.canvas.create_line(
                     cut_x1_canvas, cut_y_canvas, cut_x2_canvas, cut_y_canvas,
                     fill=cuts_colors['pending'], width=visualization_settings.get("line_width_cuts", 4),
-                    tags="work_lines", dash=(8, 4)  # Dashed to distinguish from outer cuts
+                    tags="work_lines"  # Solid line like edge cuts - color changes only
                 )
 
                 # Add label for intermediate cut
@@ -423,11 +423,11 @@ class CanvasOperations:
                 cut_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + actual_paper_height)) * self.main_app.scale_y
                 cut_y2_canvas = self.main_app.offset_y + (max_y_cm - paper_y) * self.main_app.scale_y
 
-                # Intermediate cuts use same color as outer cuts (pending initially)
+                # Intermediate cuts use same color as outer cuts (pending initially) - SOLID line like edge cuts
                 intermediate_cut_id = self.main_app.canvas.create_line(
                     cut_x_canvas, cut_y1_canvas, cut_x_canvas, cut_y2_canvas,
                     fill=cuts_colors['pending'], width=visualization_settings.get("line_width_cuts", 4),
-                    tags="work_lines", dash=(8, 4)  # Dashed to distinguish from outer cuts
+                    tags="work_lines"  # Solid line like edge cuts - color changes only
                 )
 
                 # Add label for intermediate cut
@@ -634,7 +634,8 @@ class CanvasOperations:
                 row_key = obj_key  # Already in format 'row_N'
                 state = self.main_app.operation_states.get('rows', {}).get(row_key, 'pending')
             elif obj_type == 'cut':
-                cut_name = obj_key.split('_')[1]
+                # Extract cut name - handle both simple cuts (cut_top) and section cuts (cut_section_1_2, cut_row_section_1_2)
+                cut_name = obj_key.replace('cut_', '', 1)  # Remove first 'cut_' prefix only
                 state = self.main_app.operation_states.get('cuts', {}).get(cut_name, 'pending')
             else:
                 continue
