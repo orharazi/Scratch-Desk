@@ -537,36 +537,49 @@ class CanvasOperations:
                 print(f"✅ Line {line_num} → COMPLETED (marker closed)")
 
         # Track row operations - match "RTL Page X" with edge detection
-        # RTL pages are processed right-to-left, but rows are drawn left-to-right
-        # Need to convert: RTL Page 1 (rightmost) = visual page N-1 = highest row numbers
+        # RTL pages are processed with sections RTL and pages RTL within sections
+        # Need to convert RTL page number to canvas page position
         # ONLY change color on sensor/tool actions, NOT on move operations
         # ONLY track row MARKING operations, not cutting operations
         rtl_page_match = re.search(r'rtl page\s*(\d+)', step_desc, re.IGNORECASE)
         if rtl_page_match and 'row marker' in step_desc:  # Only for row marking, not cutting
             rtl_page_num = int(rtl_page_match.group(1))
 
-            # Calculate total pages to convert RTL numbering to visual position
+            # Calculate total pages to convert RTL numbering to canvas position
             if hasattr(self.main_app, 'current_program') and self.main_app.current_program:
                 program = self.main_app.current_program
-                total_pages = program.number_of_pages * program.repeat_rows
+                pages_per_section = program.number_of_pages
+                num_sections = program.repeat_rows
+                total_pages = pages_per_section * num_sections
 
-                # Convert RTL page number to visual page position (left-to-right)
-                # RTL Page 1 (rightmost) → visual page (total_pages - 1)
-                visual_page_num = total_pages - rtl_page_num
+                # RTL page number is 1-indexed, convert to 0-indexed
+                rtl_page_index = rtl_page_num - 1
 
-                # Calculate row number based on visual page position
-                # NOTE: Canvas drawing code has edges labeled backwards!
-                # Drawing code: page_start (low X) is drawn first, page_end (high X) is drawn second
-                # But page_start corresponds to odd row numbers (1,3,5,7...)
-                # And page_end corresponds to even row numbers (2,4,6,8...)
-                # In RTL execution: RIGHT edge (high X) is marked first, LEFT edge (low X) is marked second
+                # Decode RTL page index to section and page within section
+                # Step generator calculates: global_page_index = section_index * pages_per_section + rtl_page_in_section
+                # Where section_index is PHYSICAL index (from RTL conversion)
+                rtl_section_index = rtl_page_index // pages_per_section
+                rtl_page_in_section = rtl_page_index % pages_per_section
+
+                # Convert RTL section to physical section (RTL sections are processed rightmost first)
+                physical_section_index = num_sections - 1 - rtl_section_index
+
+                # Convert RTL page in section to physical page position
+                physical_page_in_section = pages_per_section - 1 - rtl_page_in_section
+
+                # Canvas page number (0-indexed, LTR): section * pages_per_section + page
+                canvas_page_num = physical_section_index * pages_per_section + physical_page_in_section
+
+                # Calculate row number based on canvas page position
+                # Canvas draws pages LTR: page 0, page 1, page 2, ...
+                # Each page has 2 edges: left edge (odd row) and right edge (even row)
                 row_num = None
                 if 'right edge' in step_desc:
-                    # RIGHT edge = high X = page_end = EVEN row numbers
-                    row_num = visual_page_num * 2 + 2
+                    # RIGHT edge = even row number
+                    row_num = canvas_page_num * 2 + 2
                 elif 'left edge' in step_desc:
-                    # LEFT edge = low X = page_start = ODD row numbers
-                    row_num = visual_page_num * 2 + 1
+                    # LEFT edge = odd row number
+                    row_num = canvas_page_num * 2 + 1
 
                 if row_num is not None:
                     row_key = f'row_{row_num}'
@@ -574,11 +587,11 @@ class CanvasOperations:
                     # Change to in_progress when OPENING the row marker (marking starts)
                     if 'open row marker' in step_desc:
                         self.update_operation_state('rows', row_key, 'in_progress')
-                        print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}, visual page {visual_page_num}) → IN PROGRESS")
+                        print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → IN PROGRESS")
                     # Change to completed when closing the row marker (marking finishes)
                     elif 'close row marker' in step_desc:
                         self.update_operation_state('rows', row_key, 'completed')
-                        print(f"✅ Row {row_num} (RTL Page {rtl_page_num}, visual page {visual_page_num}) → COMPLETED")
+                        print(f"✅ Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → COMPLETED")
 
         # Track cut edge operations - ONLY for actual cutting operations
         # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
