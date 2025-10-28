@@ -372,6 +372,61 @@ class CanvasOperations:
                 'color_in_progress': cuts_colors['in_progress'],
                 'color_completed': cuts_colors['completed']
             }
+
+        # Draw intermediate cuts between repeated sections (if repeat_lines > 1 or repeat_rows > 1)
+        # Horizontal cuts between line sections (when repeat_lines > 1)
+        if program.repeat_lines > 1:
+            for section_num in range(program.repeat_lines - 1):
+                # Cut position at the boundary between sections
+                # section_end_y = bottom of section = top of next section
+                section_end_y = paper_y + (program.repeat_lines - section_num - 1) * program.high
+
+                # Draw horizontal cut line spanning full actual width
+                cut_y_canvas = self.main_app.offset_y + (max_y_cm - section_end_y) * self.main_app.scale_y
+                cut_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
+                cut_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
+
+                # Intermediate cuts use same color as outer cuts (pending initially)
+                intermediate_cut_id = self.main_app.canvas.create_line(
+                    cut_x1_canvas, cut_y_canvas, cut_x2_canvas, cut_y_canvas,
+                    fill=cuts_colors['pending'], width=visualization_settings.get("line_width_cuts", 4),
+                    tags="work_lines", dash=(8, 4)  # Dashed to distinguish from outer cuts
+                )
+
+                # Add label for intermediate cut
+                self.main_app.canvas.create_text(
+                    cut_x2_canvas + 10, cut_y_canvas,
+                    text=f"SEC {section_num + 1}-{section_num + 2}",
+                    font=tuple(ui_fonts.get("small", ["Arial", 7])),
+                    fill=cuts_colors['pending'], tags="work_lines"
+                )
+
+        # Vertical cuts between row sections (when repeat_rows > 1)
+        if program.repeat_rows > 1:
+            for section_num in range(program.repeat_rows - 1):
+                # Cut position at the boundary between row sections
+                # section_end_x = right edge of section = left edge of next section
+                section_end_x = paper_x + (section_num + 1) * program.width
+
+                # Draw vertical cut line spanning full actual height
+                cut_x_canvas = self.main_app.offset_x + section_end_x * self.main_app.scale_x
+                cut_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + actual_paper_height)) * self.main_app.scale_y
+                cut_y2_canvas = self.main_app.offset_y + (max_y_cm - paper_y) * self.main_app.scale_y
+
+                # Intermediate cuts use same color as outer cuts (pending initially)
+                intermediate_cut_id = self.main_app.canvas.create_line(
+                    cut_x_canvas, cut_y1_canvas, cut_x_canvas, cut_y2_canvas,
+                    fill=cuts_colors['pending'], width=visualization_settings.get("line_width_cuts", 4),
+                    tags="work_lines", dash=(8, 4)  # Dashed to distinguish from outer cuts
+                )
+
+                # Add label for intermediate cut
+                self.main_app.canvas.create_text(
+                    cut_x_canvas, cut_y1_canvas - 10,
+                    text=f"SEC {section_num + 1}-{section_num + 2}",
+                    font=tuple(ui_fonts.get("small", ["Arial", 7])),
+                    fill=cuts_colors['pending'], tags="work_lines"
+                )
     
     def initialize_operation_states(self, program):
         """Initialize operation states for tracking completion status"""
