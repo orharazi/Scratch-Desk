@@ -61,20 +61,24 @@ class CanvasSensors:
             self.animate_pointer_to_sensor('x', sensor_x)
             
         elif sensor_type == 'x_right':
-            sensor_x = PAPER_OFFSET_X + program.width  # Right edge at paper offset + width
+            # Calculate ACTUAL width with repeats
+            actual_width = program.width * program.repeat_rows
+            sensor_x = PAPER_OFFSET_X + actual_width  # Right edge at paper offset + ACTUAL width
             self.canvas_manager.sensor_position_x = sensor_x
             self.canvas_manager.sensor_position_y = current_y  # PRESERVE current Y position
-            print(f"🔴 X_RIGHT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (right paper edge, width={program.width})")
-            # Highlight right sensor  
+            print(f"🔴 X_RIGHT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (right paper edge, actual_width={actual_width})")
+            # Highlight right sensor
             if 'x_right_sensor' in self.canvas_objects:
                 self.main_app.canvas.itemconfig(self.canvas_objects['x_right_sensor'],
                                                fill='red', outline='darkred', width=3)
             # Move pointer to right edge
             self.animate_pointer_to_sensor('x', sensor_x)
-            
+
         elif sensor_type == 'y_top':
             # Y_TOP sensor always triggers at the actual sensor position on paper
-            sensor_y = PAPER_OFFSET_Y + program.high  # Top edge of paper
+            # Calculate ACTUAL height with repeats
+            actual_height = program.high * program.repeat_lines
+            sensor_y = PAPER_OFFSET_Y + actual_height  # Top edge of ACTUAL paper
             self.canvas_manager.sensor_position_x = current_x
             self.canvas_manager.sensor_position_y = sensor_y
             print(f"🔵 Y_TOP SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})")

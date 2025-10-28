@@ -401,6 +401,16 @@ class CanvasOperations:
                     fill=cuts_colors['pending'], tags="work_lines"
                 )
 
+                # Store intermediate cut for dynamic updates
+                cut_name = f"section_{section_num + 1}_{section_num + 2}"
+                self.main_app.work_line_objects[f'cut_{cut_name}'] = {
+                    'id': intermediate_cut_id,
+                    'type': 'cut',
+                    'color_pending': cuts_colors['pending'],
+                    'color_in_progress': cuts_colors['in_progress'],
+                    'color_completed': cuts_colors['completed']
+                }
+
         # Vertical cuts between row sections (when repeat_rows > 1)
         if program.repeat_rows > 1:
             for section_num in range(program.repeat_rows - 1):
@@ -427,6 +437,16 @@ class CanvasOperations:
                     font=tuple(ui_fonts.get("small", ["Arial", 7])),
                     fill=cuts_colors['pending'], tags="work_lines"
                 )
+
+                # Store intermediate cut for dynamic updates (rows don't have intermediate cuts in execution, but keep for consistency)
+                cut_name = f"row_section_{section_num + 1}_{section_num + 2}"
+                self.main_app.work_line_objects[f'cut_{cut_name}'] = {
+                    'id': intermediate_cut_id,
+                    'type': 'cut',
+                    'color_pending': cuts_colors['pending'],
+                    'color_in_progress': cuts_colors['in_progress'],
+                    'color_completed': cuts_colors['completed']
+                }
     
     def initialize_operation_states(self, program):
         """Initialize operation states for tracking completion status"""
@@ -459,6 +479,19 @@ class CanvasOperations:
         for cut_name in cut_names:
             if cut_name not in self.main_app.operation_states['cuts']:
                 self.main_app.operation_states['cuts'][cut_name] = 'pending'
+
+        # Initialize intermediate section cut states
+        if program.repeat_lines > 1:
+            for section_num in range(program.repeat_lines - 1):
+                cut_name = f"section_{section_num + 1}_{section_num + 2}"
+                if cut_name not in self.main_app.operation_states['cuts']:
+                    self.main_app.operation_states['cuts'][cut_name] = 'pending'
+
+        if program.repeat_rows > 1:
+            for section_num in range(program.repeat_rows - 1):
+                cut_name = f"row_section_{section_num + 1}_{section_num + 2}"
+                if cut_name not in self.main_app.operation_states['cuts']:
+                    self.main_app.operation_states['cuts'][cut_name] = 'pending'
     
     def update_operation_state(self, operation_type, operation_id, new_state):
         """Update the state of a specific operation and refresh display"""
@@ -545,6 +578,21 @@ class CanvasOperations:
         # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
         # This excludes "row marker (RIGHT edge)" because it doesn't have "cut right"
         if 'row marker' not in step_desc:  # Extra safety: exclude row marking steps
+            # Track intermediate section cuts (e.g., "Cut between sections 1 and 2")
+            section_cut_match = re.search(r'cut between sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
+            if section_cut_match:
+                section_1 = section_cut_match.group(1)
+                section_2 = section_cut_match.group(2)
+                cut_name = f"section_{section_1}_{section_2}"
+
+                if any(keyword in step_desc for keyword in ['close', 'finished']):
+                    self.update_operation_state('cuts', cut_name, 'completed')
+                    print(f"✅ Section cut {section_1}-{section_2} → COMPLETED")
+                elif any(keyword in step_desc for keyword in ['open']):
+                    self.update_operation_state('cuts', cut_name, 'in_progress')
+                    print(f"🔄 Section cut {section_1}-{section_2} → IN PROGRESS")
+
+            # Track outer edge cuts
             for cut_name in ['top', 'bottom', 'left', 'right']:
                 # Match "cut X edge" pattern (works for both "cut top edge" and "cut right paper edge")
                 if f'cut {cut_name}' in step_desc and 'edge' in step_desc:
