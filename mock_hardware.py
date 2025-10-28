@@ -610,80 +610,64 @@ def set_execution_engine_reference(execution_engine):
     current_execution_engine = execution_engine
 
 def _move_to_sensor_location(sensor_type):
-    """Move pointer to sensor location when triggered during wait_sensor steps"""
+    """Trigger visual sensor update in canvas when triggered during wait_sensor steps.
+    NOTE: This does NOT move motors - only updates canvas display!
+    Motors only move during actual execution steps (move_x, move_y commands).
+    """
     global current_execution_engine
-    
+
     if not current_execution_engine:
-        print(f"No execution engine reference - sensor {sensor_type} triggered but no position update")
+        print(f"No execution engine reference - sensor {sensor_type} triggered but no GUI update")
         return
-        
+
     # Check if execution engine is currently running and in a wait_sensor step
     if not current_execution_engine.is_running:
         print(f"Execution engine not running - sensor {sensor_type} triggered but ignoring (not part of current execution plan)")
         return
-        
+
     # Check if current step is a wait_sensor step
     if (current_execution_engine.current_step_index < len(current_execution_engine.steps)):
         current_step = current_execution_engine.steps[current_execution_engine.current_step_index]
         if current_step.get('operation') != 'wait_sensor':
             print(f"Current step is not wait_sensor - sensor {sensor_type} triggered but ignoring (not part of current execution plan)")
             return
-        
+
         # Verify the sensor type matches the expected sensor in the current step
         expected_sensor = current_step.get('parameters', {}).get('sensor')
         sensor_match = False
-        
+
         if expected_sensor == 'x' and sensor_type in ['x_left', 'x_right']:
             sensor_match = True
         elif expected_sensor == 'y' and sensor_type in ['y_top', 'y_bottom']:
             sensor_match = True
         elif expected_sensor == sensor_type:
             sensor_match = True
-        
+
         if not sensor_match:
             print(f"Sensor {sensor_type} doesn't match expected sensor {expected_sensor} - ignoring trigger")
             return
-        
+
     if not hasattr(current_execution_engine, 'canvas_manager') or not current_execution_engine.canvas_manager:
         print(f"No canvas manager available - sensor {sensor_type} triggered but no GUI update")
         return
-        
+
     canvas_manager = current_execution_engine.canvas_manager
-    
+
     if not canvas_manager.main_app.current_program:
         print(f"No current program loaded - sensor {sensor_type} triggered but no program context")
         return
-        
-    program = canvas_manager.main_app.current_program
-    
-    # Calculate edge positions (paper boundaries)
-    PAPER_OFFSET_X = 15.0
-    PAPER_OFFSET_Y = 15.0
-    
-    current_x = get_current_x()
-    current_y = get_current_y()
-    
-    if sensor_type == 'x_left':
-        # Move to left edge of paper
-        move_x(PAPER_OFFSET_X)
-        print(f"📍 Pointer moved to LEFT edge: ({PAPER_OFFSET_X:.1f}, {current_y:.1f})")
-    elif sensor_type == 'x_right':
-        # Move to right edge of paper
-        edge_x = PAPER_OFFSET_X + program.width
-        move_x(edge_x)
-        print(f"📍 Pointer moved to RIGHT edge: ({edge_x:.1f}, {current_y:.1f})")
-    elif sensor_type == 'y_top':
-        # Move to top edge of paper
-        edge_y = PAPER_OFFSET_Y + program.high
-        move_y(edge_y)
-        print(f"📍 Pointer moved to TOP edge: ({current_x:.1f}, {edge_y:.1f})")
-    elif sensor_type == 'y_bottom':
-        # Move to bottom edge of paper
-        move_y(PAPER_OFFSET_Y)
-        print(f"📍 Pointer moved to BOTTOM edge: ({current_x:.1f}, {PAPER_OFFSET_Y:.1f})")
-    
-    # Update GUI position display
-    canvas_manager.update_position_display()
+
+    # IMPORTANT: Only update visual display, do NOT move motors!
+    # The canvas_sensors.trigger_sensor_visualization() will handle visual updates
+    # Motors should only move during actual execution steps (move_x, move_y commands)
+    print(f"📍 Sensor {sensor_type} triggered - updating canvas display only (motors remain at current position)")
+
+    # Trigger canvas visualization update without moving motors
+    if hasattr(canvas_manager, 'canvas_sensors'):
+        canvas_manager.canvas_sensors.trigger_sensor_visualization(sensor_type)
+    else:
+        # Fallback - just update position display
+        canvas_manager.update_position_display()
 
 # Tool state getter functions
 def get_line_marker_state():

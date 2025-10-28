@@ -665,52 +665,48 @@ class RightPanel:
         print("🔄 Complete system reset - All components restored to initial state")
     
     def trigger_x_left(self):
-        """Trigger X left sensor"""
+        """Trigger X left sensor - only sets event, does NOT move motors or canvas"""
         trigger_x_left_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: X-Left Triggered", fg='red')
             self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
 
-        # Animate sensor trigger visualization
-        if hasattr(self.main_app, 'canvas_manager'):
-            self.main_app.canvas_manager.trigger_sensor_visualization('x_left')
+        # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
+        # Manual triggers should only set the sensor event, not move anything
 
     def trigger_x_right(self):
-        """Trigger X right sensor"""
+        """Trigger X right sensor - only sets event, does NOT move motors or canvas"""
         trigger_x_right_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: X-Right Triggered", fg='red')
             self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
 
-        # Animate sensor trigger visualization
-        if hasattr(self.main_app, 'canvas_manager'):
-            self.main_app.canvas_manager.trigger_sensor_visualization('x_right')
+        # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
+        # Manual triggers should only set the sensor event, not move anything
 
     def trigger_y_top(self):
-        """Trigger Y top sensor"""
+        """Trigger Y top sensor - only sets event, does NOT move motors or canvas"""
         trigger_y_top_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: Y-Top Triggered", fg='red')
             self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
 
-        # Animate sensor trigger visualization
-        if hasattr(self.main_app, 'canvas_manager'):
-            self.main_app.canvas_manager.trigger_sensor_visualization('y_top')
+        # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
+        # Manual triggers should only set the sensor event, not move anything
 
     def trigger_y_bottom(self):
-        """Trigger Y bottom sensor"""
+        """Trigger Y bottom sensor - only sets event, does NOT move motors or canvas"""
         trigger_y_bottom_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: Y-Bottom Triggered", fg='red')
             self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
 
-        # Animate sensor trigger visualization
-        if hasattr(self.main_app, 'canvas_manager'):
-            self.main_app.canvas_manager.trigger_sensor_visualization('y_bottom')
+        # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
+        # Manual triggers should only set the sensor event, not move anything
     
     def toggle_ls(self, switch_name):
         """Toggle a limit switch"""
