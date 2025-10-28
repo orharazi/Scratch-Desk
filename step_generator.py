@@ -328,10 +328,18 @@ def generate_row_marking_steps(program):
 
         print(f"   Processing section {section_num}/{program.repeat_rows}")
 
-        # Mark all pages in this section (RIGHT-TO-LEFT within section)
-        for page_in_section in range(program.number_of_pages):
+        # Mark all pages in this section (RIGHT-TO-LEFT execution order)
+        # Process pages from rightmost to leftmost (RTL)
+        for rtl_page_in_section in range(program.number_of_pages):
+            # RTL execution: page 0 is rightmost, page N-1 is leftmost
+            # But physical position uses LTR layout: page 0 is leftmost, page N-1 is rightmost
+
+            # Calculate which physical page position (LTR) we're at
+            # RTL page 0 (rightmost) = LTR page N-1 (rightmost position)
+            physical_page_in_section = program.number_of_pages - 1 - rtl_page_in_section
+
             # Calculate global page index and RTL numbering
-            global_page_index = section_index * program.number_of_pages + page_in_section
+            global_page_index = section_index * program.number_of_pages + rtl_page_in_section
             rtl_page_number = global_page_index + 1
 
             # Calculate total pages for RTL numbering
@@ -341,15 +349,13 @@ def generate_row_marking_steps(program):
             # Section starts at PAPER_OFFSET_X + (section_index * section_width)
             section_start_x = PAPER_OFFSET_X + (section_index * program.width)
 
-            # Pages within section are numbered RIGHT-TO-LEFT (rightmost = page 0 in section)
-            # Convert global RTL page to section-relative position
-            physical_page_in_section = program.number_of_pages - 1 - page_in_section
-
-            # Calculate page edges within this section (respecting margins)
+            # Calculate page edges using LTR physical position (to match canvas)
+            # Physical page 0 (leftmost) at section_start + left_margin
+            # Physical page N-1 (rightmost) at section_start + left_margin + (N-1) * (width + buffer)
             page_left_edge = section_start_x + program.left_margin + (physical_page_in_section * (program.page_width + program.buffer_between_pages))
             page_right_edge = page_left_edge + program.page_width
 
-            page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, Page {page_in_section + 1})"
+            page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, RTL Page {rtl_page_in_section + 1}/{program.number_of_pages})"
 
             # Move to this page's RIGHT edge first (starting point for each page)
             steps.append(create_step(
