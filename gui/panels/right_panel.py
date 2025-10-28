@@ -338,11 +338,11 @@ class RightPanel:
         self.y_top_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Top", variable=self.y_top_ls_var,
                       command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=1, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=0, column=1, padx=2, sticky='w')
         self.y_bottom_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Bottom", variable=self.y_bottom_ls_var,
                       command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=2, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=0, column=2, padx=2, sticky='w')
 
         # X-Axis Limit Switches (separate row)
         tk.Label(ls_grid, text="X:", bg='#F0F8FF', fg='#003366',
@@ -350,11 +350,11 @@ class RightPanel:
         self.x_right_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Right", variable=self.x_right_ls_var,
                       command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=1, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=1, column=1, padx=2, sticky='w')
         self.x_left_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text="Left", variable=self.x_left_ls_var,
                       command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=2, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=1, column=2, padx=2, sticky='w')
 
         # Rows Limit Switch (separate row)
         tk.Label(ls_grid, text="Row:", bg='#F0F8FF', fg='#003366',
@@ -362,7 +362,7 @@ class RightPanel:
         self.rows_ls_var = tk.BooleanVar(value=False)  # Default unchecked (UP)
         tk.Checkbutton(ls_grid, text="Limit Switch", variable=self.rows_ls_var,
                       command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60').grid(row=2, column=1, padx=2)
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=2, column=1, padx=2, sticky='w')
 
         # Separator
         tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
