@@ -555,28 +555,13 @@ class CanvasOperations:
                 # RTL page number is 1-indexed, convert to 0-indexed
                 rtl_page_index = rtl_page_num - 1
 
-                # Decode RTL page index: step generator uses global_page_index = section_index * pages_per_section + rtl_page_in_section
-                # Where section_index is the PHYSICAL section index (after RTL→LTR conversion)
-                # So rtl_page_index directly gives us the position in the step generator's ordering
+                # Step generator calculates: rtl_page_number = rtl_section_index * pages_per_section + rtl_page_in_section + 1
+                # This means rtl_page_index (0-indexed) DIRECTLY represents execution order:
+                # - rtl_page_index 0 = first page executed (rightmost section, rightmost page)
+                # - rtl_page_index 1 = second page executed (rightmost section, second from right page)
+                # - etc.
 
-                # Step generator processes sections RTL, so:
-                # rtl_section 0 → physical section (num_sections - 1)
-                # rtl_section 1 → physical section (num_sections - 2)
-
-                # But global_page_index is built from PHYSICAL section_index, so we need to reverse-engineer it
-                # Step generator: for each rtl_section_index, section_index = num_sections - 1 - rtl_section_index
-                # Then: global_page_index = section_index * pages_per_section + rtl_page_in_section
-
-                # So: rtl_page_index = (num_sections - 1 - rtl_section_index) * pages_per_section + rtl_page_in_section
-                # We need to solve for physical section and page
-
-                # Simpler approach: rtl_page_index tells us execution order
-                # Execution: start at rightmost section, rightmost page, go RTL within section, then next section RTL
-                # RTL page 0: section (N-1), page 0
-                # RTL page 1: section (N-1), page 1
-                # RTL page (pages_per_section - 1): section (N-1), page (pages_per_section - 1)
-                # RTL page pages_per_section: section (N-2), page 0
-
+                # Decode execution order to section and page within section
                 execution_section = rtl_page_index // pages_per_section  # Which section in execution order (0 = first = rightmost)
                 page_in_section = rtl_page_index % pages_per_section  # Which page within that section (0 = first = rightmost)
 

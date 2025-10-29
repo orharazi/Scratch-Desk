@@ -342,9 +342,9 @@ def generate_row_marking_steps(program):
             # RTL page 0 (rightmost) = LTR page N-1 (rightmost position)
             physical_page_in_section = program.number_of_pages - 1 - rtl_page_in_section
 
-            # Calculate global page index and RTL numbering
-            global_page_index = section_index * program.number_of_pages + rtl_page_in_section
-            rtl_page_number = global_page_index + 1
+            # Calculate TRUE RTL page number based on EXECUTION order (not physical position)
+            # This represents: which page in the execution sequence (1 = first executed, N = last executed)
+            rtl_page_number = rtl_section_index * program.number_of_pages + rtl_page_in_section + 1
 
             # Calculate total pages for RTL numbering
             total_pages = program.number_of_pages * program.repeat_rows
