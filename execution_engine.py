@@ -795,17 +795,17 @@ class ExecutionEngine:
             # Transition flag is already set in main execution loop
             print("🔄 TRANSITION: Safety monitoring already paused by transition flag")
             
-            # Check if row marker is already DOWN
+            # Check if rows motor door is already CLOSED (limit switch ON)
             row_marker_programmed = get_row_marker_state()
             row_marker_actual = get_row_marker_limit_switch()
-            print(f"🔄 TRANSITION: Current row marker - Programmed: {row_marker_programmed}, Actual: {row_marker_actual}")
-            
+            print(f"🔄 TRANSITION: Current rows motor door - Programmed: {row_marker_programmed}, Actual: {row_marker_actual}")
+
             if row_marker_programmed == "down" and row_marker_actual == "down":
-                print("✅ Row marker already DOWN - proceeding with rows operations")
+                print("✅ Rows motor door already CLOSED - proceeding with rows operations")
                 self.in_transition = False  # Clear transition flag
                 return True
-            
-            print("⏸️  TRANSITION PAUSE: Waiting for row marker to be set DOWN")
+
+            print("⏸️  TRANSITION PAUSE: Waiting for rows motor door to be CLOSED (toggle limit switch button)")
             print("🔄 TRANSITION: Setting execution to paused state")
             
             # Pause execution temporarily
@@ -817,7 +817,7 @@ class ExecutionEngine:
             self._update_status("transition_alert", {
                 'from_operation': 'lines',
                 'to_operation': 'rows',
-                'message': 'Lines operations complete. Please set row marker to DOWN position to continue with rows operations.',
+                'message': 'Lines operations complete. Please CLOSE ROWS MOTOR DOOR (toggle limit switch button to ON) to continue with rows operations.',
                 'current_programmed': row_marker_programmed,
                 'current_actual': row_marker_actual
             })
@@ -837,13 +837,13 @@ class ExecutionEngine:
     
     def _wait_for_row_marker_down(self):
         """
-        Wait for row marker to be set DOWN with real-time monitoring
+        Wait for rows motor door to be CLOSED (limit switch ON) with real-time monitoring
         Auto-dismiss alert and resume execution when condition is met
         """
         import time
         from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
-        
-        print("⏳ Monitoring row marker state - waiting for DOWN position...")
+
+        print("⏳ Monitoring rows motor door - waiting for CLOSED position (limit switch ON)...")
         
         while not self.stop_event.is_set():
             # Check row marker state
@@ -854,7 +854,7 @@ class ExecutionEngine:
             # print(f"🔍 Monitoring: Programmed={row_marker_programmed.upper()}, Physical={row_marker_actual.upper()}")
             
             if row_marker_programmed == "down" and row_marker_actual == "down":
-                print("✅ Row marker set to DOWN - verifying stable position...")
+                print("✅ Rows motor door CLOSED - verifying stable position...")
                 
                 # Wait a short time to ensure the position is stable
                 time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
@@ -916,7 +916,7 @@ class ExecutionEngine:
 
                     # Auto-dismiss alert and resume execution
                     self._update_status("transition_complete", {
-                        'message': 'Row marker set to DOWN - resuming rows operations'
+                        'message': 'Rows motor door CLOSED - resuming rows operations'
                     })
 
                     # Resume execution automatically
