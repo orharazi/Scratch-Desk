@@ -42,7 +42,8 @@ PAPER_START_X = hardware_limits.get("paper_start_x", 15.0)     # cm from left ed
 
 # Tool states
 line_marker_state = "up"    # "up" or "down"
-line_marker_piston = "down" # "up" or "down" - default DOWN, UP only during movement
+line_marker_piston = "down" # "up" or "down" - default DOWN, UP only during X movement
+line_motor_piston = "down"  # "up" or "down" - lifts entire Y motor assembly, default DOWN, UP during Y movement
 line_cutter_state = "up"    # "up" or "down"
 row_marker_state = "up"     # "up" or "down" - programmed state
 row_marker_limit_switch = "up"  # "up" or "down" - actual physical position detected by limit switch
@@ -91,13 +92,14 @@ limit_switch_states = {
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
-    global line_marker_state, line_marker_piston, line_cutter_state, row_marker_state, row_marker_limit_switch, row_cutter_state
+    global line_marker_state, line_marker_piston, line_motor_piston, line_cutter_state, row_marker_state, row_marker_limit_switch, row_cutter_state
     global line_tools_height
-    
+
     current_x_position = 0.0
     current_y_position = 0.0
     line_marker_state = "up"
     line_marker_piston = "down"  # Default state is DOWN
+    line_motor_piston = "down"   # Default state is DOWN
     line_cutter_state = "up"
     row_marker_state = "up"
     row_marker_limit_switch = "up"  # Default limit switch position
@@ -152,7 +154,7 @@ def move_x(position):
 
 def move_y(position):
     """Move Y motor to specified position within limits"""
-    global current_y_position, line_marker_piston
+    global current_y_position, line_motor_piston
 
     print(f"MOCK: move_y({position:.1f})")
 
@@ -164,9 +166,9 @@ def move_y(position):
         position = MAX_Y_POSITION
 
     if position != current_y_position:
-        # Piston UP during Y movement
-        line_marker_piston = "up"
-        print(f"Lines marker piston UP (during Y movement)")
+        # Line motor piston UP during Y movement (lifts entire Y motor assembly)
+        line_motor_piston = "up"
+        print(f"Line motor piston UP (lifting Y motor assembly for movement)")
 
         print(f"Moving Y motor from {current_y_position:.1f}cm to {position:.1f}cm")
 
@@ -180,9 +182,9 @@ def move_y(position):
         current_y_position = position
         print(f"Y motor positioned at {current_y_position:.1f}cm")
 
-        # Piston DOWN when movement stops
-        line_marker_piston = "down"
-        print(f"Lines marker piston DOWN (Y movement stopped)")
+        # Line motor piston DOWN when movement stops
+        line_motor_piston = "down"
+        print(f"Line motor piston DOWN (Y motor assembly lowered)")
     else:
         print(f"Y motor already at {position:.1f}cm")
 
@@ -559,6 +561,31 @@ def move_line_tools_to_top():
     move_y(MAX_Y_POSITION)
     print("Line tools moved to top")
 
+# Line motor piston control functions
+def line_motor_piston_up():
+    """Lift line motor piston (raises entire Y motor assembly)"""
+    global line_motor_piston
+    print("MOCK: line_motor_piston_up()")
+    if line_motor_piston != "up":
+        print("Raising line motor piston - lifting Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston = "up"
+        print("Line motor piston UP - Y motor assembly raised")
+    else:
+        print("Line motor piston already UP")
+
+def line_motor_piston_down():
+    """Lower line motor piston (lowers entire Y motor assembly)"""
+    global line_motor_piston
+    print("MOCK: line_motor_piston_down()")
+    if line_motor_piston != "down":
+        print("Lowering line motor piston - lowering Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston = "down"
+        print("Line motor piston DOWN - Y motor assembly lowered")
+    else:
+        print("Line motor piston already DOWN")
+
 # Status and diagnostic functions
 def get_hardware_status():
     """Get current hardware status for debugging"""
@@ -683,6 +710,10 @@ def get_line_marker_state():
 def get_line_marker_piston_state():
     """Get current line marker piston state"""
     return line_marker_piston
+
+def get_line_motor_piston_state():
+    """Get current line motor piston state (lifts entire Y motor assembly)"""
+    return line_motor_piston
 
 def get_line_cutter_state():
     """Get current line cutter state"""

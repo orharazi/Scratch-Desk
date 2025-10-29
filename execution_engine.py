@@ -700,9 +700,9 @@ class ExecutionEngine:
                         if self.current_operation_type == 'lines':
                             # LINES OPERATIONS: Two safety checks
                             # 1. Row marker MUST be UP (door closed)
-                            # 2. Y motor (lines motor) must be at position 0
-                            from mock_hardware import get_current_y
-                            current_y = get_current_y()
+                            # 2. Line motor piston must be DOWN (Y motor assembly lowered)
+                            from mock_hardware import get_line_motor_piston_state
+                            line_motor_piston = get_line_motor_piston_state()
 
                             # Check 1: Row marker down during lines operations
                             if row_motor_limit_switch == "down":
@@ -714,33 +714,33 @@ class ExecutionEngine:
                                     f"   IMMEDIATE ACTION: Close the rows door (set marker UP)"
                                 )
 
-                            # Check 2: Y motor not at home position
-                            elif current_y != 0:
+                            # Check 2: Line motor piston UP during operations
+                            elif line_motor_piston == "up":
                                 safety_violation = True
                                 violation_message = (
-                                    f"🚨 LINES MOTOR POSITION SAFETY VIOLATION!\n"
-                                    f"   Lines motor (Y-axis) is NOT at home position during operation\n"
-                                    f"   Current Y position: {current_y:.1f}cm (must be 0cm)\n"
-                                    f"   RULE VIOLATED: Lines motor must be at home (0cm) before operations\n"
-                                    f"   IMMEDIATE ACTION: Return lines motor to home position (Y=0)"
+                                    f"🚨 LINE MOTOR PISTON SAFETY VIOLATION!\n"
+                                    f"   Line motor piston is UP during lines operation\n"
+                                    f"   Piston state: {line_motor_piston.upper()}\n"
+                                    f"   RULE VIOLATED: Line motor piston must be DOWN during operations\n"
+                                    f"   IMMEDIATE ACTION: Lower line motor piston (Y motor assembly must be DOWN)"
                                 )
                         
                         elif self.current_operation_type == 'rows':
                             # ROWS OPERATIONS: Three safety checks
-                            # 1. Door can only be CLOSED (limit switch DOWN) when Y motor is at 0
+                            # 1. Door can only be CLOSED (limit switch DOWN) when line motor piston is DOWN
                             # 2. Row motor limit switch must be DOWN during rows operations
-                            # 3. Y motor (lines motor) must be at position 0
-                            from mock_hardware import get_current_y
-                            current_y = get_current_y()
+                            # 3. Line motor piston must be DOWN (Y motor assembly lowered)
+                            from mock_hardware import get_line_motor_piston_state
+                            line_motor_piston = get_line_motor_piston_state()
                             row_motor_limit_switch = get_row_motor_limit_switch()
 
-                            # Check 1: Door closed while Y motor not at 0
-                            if row_motor_limit_switch == "down" and current_y != 0:
+                            # Check 1: Door closed while line motor piston UP
+                            if row_motor_limit_switch == "down" and line_motor_piston == "up":
                                 safety_violation = True
                                 violation_message = (
                                     f"🚨 ROWS MOTOR DOOR SAFETY VIOLATION!\n"
-                                    f"   Door CLOSED (limit switch DOWN) while lines motor is NOT at home position\n"
-                                    f"   Current Y position: {current_y:.1f}cm (must be 0cm to close door)\n"
+                                    f"   Door CLOSED (limit switch DOWN) while line motor piston is UP\n"
+                                    f"   Line motor piston: {line_motor_piston.upper()} (must be DOWN to close door)\n"
                                     f"   Limit switch: {row_motor_limit_switch.upper()}\n"
                                     f"   IMMEDIATE ACTION: Open the rows motor door (set limit switch to OFF)"
                                 )
@@ -756,15 +756,15 @@ class ExecutionEngine:
                                     f"   IMMEDIATE ACTION: Close the rows motor door (set limit switch to DOWN)"
                                 )
 
-                            # Check 3: Y motor not at home position
-                            elif current_y != 0:
+                            # Check 3: Line motor piston UP during operations
+                            elif line_motor_piston == "up":
                                 safety_violation = True
                                 violation_message = (
-                                    f"🚨 LINES MOTOR POSITION SAFETY VIOLATION!\n"
-                                    f"   Lines motor (Y-axis) is NOT at home position during rows operation\n"
-                                    f"   Current Y position: {current_y:.1f}cm (must be 0cm)\n"
-                                    f"   RULE VIOLATED: Lines motor must be at home (0cm) during rows operations\n"
-                                    f"   IMMEDIATE ACTION: Return lines motor to home position (Y=0)"
+                                    f"🚨 LINE MOTOR PISTON SAFETY VIOLATION!\n"
+                                    f"   Line motor piston is UP during rows operation\n"
+                                    f"   Piston state: {line_motor_piston.upper()}\n"
+                                    f"   RULE VIOLATED: Line motor piston must be DOWN during operations\n"
+                                    f"   IMMEDIATE ACTION: Lower line motor piston (Y motor assembly must be DOWN)"
                                 )
                         
                         if safety_violation:
@@ -789,24 +789,24 @@ class ExecutionEngine:
                             violation_resolved = False
 
                             if self.current_operation_type == 'lines':
-                                # LINES: Check both limit switch and Y motor position
-                                from mock_hardware import get_current_y
-                                current_y = get_current_y()
+                                # LINES: Check both limit switch and line motor piston
+                                from mock_hardware import get_line_motor_piston_state
+                                line_motor_piston = get_line_motor_piston_state()
 
-                                # Violation resolved if limit switch UP AND Y motor at 0
-                                if row_motor_limit_switch == "up" and current_y == 0:
+                                # Violation resolved if limit switch UP AND line motor piston DOWN
+                                if row_motor_limit_switch == "up" and line_motor_piston == "down":
                                     violation_resolved = True
-                                    print("✅ LINES SAFETY VIOLATION RESOLVED: Door open and Y motor at home")
+                                    print("✅ LINES SAFETY VIOLATION RESOLVED: Door open and line motor piston down")
 
                             elif self.current_operation_type == 'rows':
-                                # ROWS: Check door, limit switch, and Y motor position
-                                from mock_hardware import get_current_y
-                                current_y = get_current_y()
+                                # ROWS: Check door, limit switch, and line motor piston
+                                from mock_hardware import get_line_motor_piston_state
+                                line_motor_piston = get_line_motor_piston_state()
 
-                                # Violation resolved if limit switch DOWN AND Y motor at 0
-                                if row_motor_limit_switch == "down" and current_y == 0:
+                                # Violation resolved if limit switch DOWN AND line motor piston DOWN
+                                if row_motor_limit_switch == "down" and line_motor_piston == "down":
                                     violation_resolved = True
-                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door closed and Y motor at home")
+                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door closed and line motor piston down")
                             
                             if violation_resolved:
                                 # Flush all sensor buffers to ignore triggers that happened during pause
