@@ -6,7 +6,7 @@ Prevents dangerous operations that could damage the hardware
 """
 
 from mock_hardware import (
-    get_row_marker_state, get_row_marker_limit_switch,
+    get_row_marker_state, get_row_motor_limit_switch,
     get_line_marker_state, get_line_cutter_state,
     get_current_x, get_current_y
 )
@@ -47,7 +47,7 @@ class SafetySystem:
         
         # Check both programmed state and actual limit switch state
         row_marker_programmed = get_row_marker_state()  # Programmed position
-        row_marker_limit = get_row_marker_limit_switch()  # Actual position from limit switch
+        row_marker_limit = get_row_motor_limit_switch()  # Actual position from limit switch
         
         # Safety violation if either shows DOWN position
         if row_marker_programmed == "down" or row_marker_limit == "down":
@@ -199,7 +199,7 @@ class SafetySystem:
         
         # Check both programmed state and actual limit switch state
         row_marker_programmed = get_row_marker_state()  # Programmed position
-        row_marker_actual = get_row_marker_limit_switch()  # Actual position from limit switch
+        row_marker_actual = get_row_motor_limit_switch()  # Actual position from limit switch
         
         # Safety violation if either shows DOWN position during lines operation
         if row_marker_programmed == "down" or row_marker_actual == "down":
@@ -233,10 +233,9 @@ class SafetySystem:
             return True
 
         # Check actual limit switch state (door position sensor) and line marker state
-        from mock_hardware import get_current_y, get_line_marker_state
-        row_marker_limit = get_row_marker_limit_switch()  # Actual position from limit switch
+        from mock_hardware import get_current_y, get_line_marker_state, get_row_motor_limit_switch
+        row_marker_limit = get_row_motor_limit_switch()  # Actual position from limit switch
         current_y = get_current_y()  # Current Y motor position
-        line_marker_state = get_line_marker_state()  # Line marker state
 
         # Safety violation 1: Door is CLOSED (limit switch DOWN) and Y motor is NOT at position 0
         if row_marker_limit == "down" and current_y != 0:
@@ -252,21 +251,6 @@ class SafetySystem:
 
             self.log_violation("ROWS_DOOR_CLOSED", violation_msg)
             raise SafetyViolation(violation_msg, "ROWS_DOOR_CLOSED")
-
-        # Safety violation 2: Line marker is UP during rows operation
-        if line_marker_state == "up":
-            violation_msg = (
-                f"🚨 ROWS OPERATION SAFETY VIOLATION!\n"
-                f"   Operation: {description}\n"
-                f"   RULE VIOLATED: Line marker must be DOWN during rows operations\n"
-                f"   Line marker state: {line_marker_state.upper()}\n"
-                f"   ⚠️  IMMEDIATE ACTION REQUIRED: Lower the line marker (set to DOWN)\n"
-                f"   🛡️  Rows operations BLOCKED - line marker must be lowered"
-            )
-
-            self.log_violation("LINE_MARKER_UP", violation_msg)
-            raise SafetyViolation(violation_msg, "LINE_MARKER_UP")
-
         return True
     
     def _is_setup_movement(self, description):
@@ -319,7 +303,7 @@ class SafetySystem:
             'enabled': self.safety_enabled,
             'recent_violations': len(self.violations_log),
             'row_marker_programmed': get_row_marker_state(),
-            'row_marker_limit_switch': get_row_marker_limit_switch(),
+            'row_marker_limit_switch': get_row_motor_limit_switch(),
             'current_position': {'x': get_current_x(), 'y': get_current_y()}
         }
 

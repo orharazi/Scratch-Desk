@@ -687,9 +687,9 @@ class ExecutionEngine:
                     
                     # Check safety based on current operation type
                     try:
-                        from mock_hardware import get_row_marker_limit_switch
+                        from mock_hardware import get_row_motor_limit_switch
                         
-                        row_motor_limit_switch = get_row_marker_limit_switch()
+                        row_motor_limit_switch = get_row_motor_limit_switch()
                         
                         safety_violation = False
                         violation_message = ""
@@ -698,8 +698,13 @@ class ExecutionEngine:
                         # print(f"🛡️  Safety Monitor: Operation={self.current_operation_type}, Programmed={row_marker_programmed.upper()}, Physical={row_motor_limit_switch.upper()}")
                         
                         if self.current_operation_type == 'lines':
-                            # LINES OPERATIONS: Row marker MUST be UP (door closed)
-                            # Only check during actual line operations, not setup steps
+                            # LINES OPERATIONS: Two safety checks
+                            # 1. Row marker MUST be UP (door closed)
+                            # 2. Y motor (lines motor) must be at position 0
+                            from mock_hardware import get_current_y
+                            current_y = get_current_y()
+
+                            # Check 1: Row marker down during lines operations
                             if row_motor_limit_switch == "down":
                                 safety_violation = True
                                 violation_message = (
@@ -708,14 +713,26 @@ class ExecutionEngine:
                                     f"   State: {row_motor_limit_switch.upper()}\n"
                                     f"   IMMEDIATE ACTION: Close the rows door (set marker UP)"
                                 )
+
+                            # Check 2: Y motor not at home position
+                            elif current_y != 0:
+                                safety_violation = True
+                                violation_message = (
+                                    f"🚨 LINES MOTOR POSITION SAFETY VIOLATION!\n"
+                                    f"   Lines motor (Y-axis) is NOT at home position during operation\n"
+                                    f"   Current Y position: {current_y:.1f}cm (must be 0cm)\n"
+                                    f"   RULE VIOLATED: Lines motor must be at home (0cm) before operations\n"
+                                    f"   IMMEDIATE ACTION: Return lines motor to home position (Y=0)"
+                                )
                         
                         elif self.current_operation_type == 'rows':
-                            # ROWS OPERATIONS: Two safety checks
+                            # ROWS OPERATIONS: Three safety checks
                             # 1. Door can only be CLOSED (limit switch DOWN) when Y motor is at 0
-                            # 2. Line marker must be DOWN during rows operations
-                            from mock_hardware import get_current_y, get_line_marker_state
+                            # 2. Row motor limit switch must be DOWN during rows operations
+                            # 3. Y motor (lines motor) must be at position 0
+                            from mock_hardware import get_current_y
                             current_y = get_current_y()
-                            line_marker_state = get_line_marker_state()
+                            row_motor_limit_switch = get_row_motor_limit_switch()
 
                             # Check 1: Door closed while Y motor not at 0
                             if row_motor_limit_switch == "down" and current_y != 0:
@@ -728,15 +745,26 @@ class ExecutionEngine:
                                     f"   IMMEDIATE ACTION: Open the rows motor door (set limit switch to OFF)"
                                 )
 
-                            # Check 2: Line marker UP during rows operations
-                            elif line_marker_state == "up":
+                            # Check 2: Row motor limit switch UP during rows operations
+                            elif row_motor_limit_switch == "up":
                                 safety_violation = True
                                 violation_message = (
                                     f"🚨 ROWS OPERATION SAFETY VIOLATION!\n"
-                                    f"   Line marker is UP during rows operation\n"
-                                    f"   Line marker state: {line_marker_state.upper()}\n"
-                                    f"   RULE VIOLATED: Line marker must be DOWN during rows operations\n"
-                                    f"   IMMEDIATE ACTION: Lower the line marker (set to DOWN)"
+                                    f"   Row motor limit switch is UP during rows operation\n"
+                                    f"   Limit switch state: {row_motor_limit_switch.upper()}\n"
+                                    f"   RULE VIOLATED: Row motor door must be CLOSED during rows operations\n"
+                                    f"   IMMEDIATE ACTION: Close the rows motor door (set limit switch to DOWN)"
+                                )
+
+                            # Check 3: Y motor not at home position
+                            elif current_y != 0:
+                                safety_violation = True
+                                violation_message = (
+                                    f"🚨 LINES MOTOR POSITION SAFETY VIOLATION!\n"
+                                    f"   Lines motor (Y-axis) is NOT at home position during rows operation\n"
+                                    f"   Current Y position: {current_y:.1f}cm (must be 0cm)\n"
+                                    f"   RULE VIOLATED: Lines motor must be at home (0cm) during rows operations\n"
+                                    f"   IMMEDIATE ACTION: Return lines motor to home position (Y=0)"
                                 )
                         
                         if safety_violation:
@@ -761,26 +789,24 @@ class ExecutionEngine:
                             violation_resolved = False
 
                             if self.current_operation_type == 'lines':
-                                # LINES: Limit switch should be UP (door open)
-                                if row_motor_limit_switch == "up":
+                                # LINES: Check both limit switch and Y motor position
+                                from mock_hardware import get_current_y
+                                current_y = get_current_y()
+
+                                # Violation resolved if limit switch UP AND Y motor at 0
+                                if row_motor_limit_switch == "up" and current_y == 0:
                                     violation_resolved = True
-                                    print("✅ LINES SAFETY VIOLATION RESOLVED: Rows motor door opened (limit switch UP)")
+                                    print("✅ LINES SAFETY VIOLATION RESOLVED: Door open and Y motor at home")
 
                             elif self.current_operation_type == 'rows':
-                                # ROWS: Check both door and line marker conditions
-                                from mock_hardware import get_current_y, get_line_marker_state
+                                # ROWS: Check door, limit switch, and Y motor position
+                                from mock_hardware import get_current_y
                                 current_y = get_current_y()
-                                line_marker_state = get_line_marker_state()
 
-                                # Violation is resolved if:
-                                # 1. Door is open (limit switch UP) OR Y is at 0 (for door violation)
-                                # 2. AND line marker is DOWN (for line marker violation)
-                                door_ok = (row_motor_limit_switch == "up" or current_y == 0)
-                                line_marker_ok = (line_marker_state == "down")
-
-                                if door_ok and line_marker_ok:
+                                # Violation resolved if limit switch DOWN AND Y motor at 0
+                                if row_motor_limit_switch == "down" and current_y == 0:
                                     violation_resolved = True
-                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door and line marker positions correct")
+                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door closed and Y motor at home")
                             
                             if violation_resolved:
                                 # Flush all sensor buffers to ignore triggers that happened during pause
@@ -817,14 +843,14 @@ class ExecutionEngine:
         """
         try:
             print("🔄 TRANSITION: Starting _handle_lines_to_rows_transition")
-            from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+            from mock_hardware import get_row_marker_state, get_row_motor_limit_switch
             
             # Transition flag is already set in main execution loop
             print("🔄 TRANSITION: Safety monitoring already paused by transition flag")
             
             # Check if rows motor door is already CLOSED (limit switch ON)
             # Only check limit switch, NOT marker piston state
-            limit_switch_state = get_row_marker_limit_switch()
+            limit_switch_state = get_row_motor_limit_switch()
             print(f"🔄 TRANSITION: Current rows motor door limit switch: {limit_switch_state}")
 
             if limit_switch_state == "down":
@@ -867,14 +893,14 @@ class ExecutionEngine:
         Auto-dismiss alert and resume execution when condition is met
         """
         import time
-        from mock_hardware import get_row_marker_state, get_row_marker_limit_switch
+        from mock_hardware import get_row_marker_state, get_row_motor_limit_switch
 
         print("⏳ Monitoring rows motor door - waiting for CLOSED position (limit switch ON)...")
         
         while not self.stop_event.is_set():
             # Check ONLY limit switch state (motor door sensor)
             # Marker piston state is independent and controlled by program
-            limit_switch_state = get_row_marker_limit_switch()
+            limit_switch_state = get_row_motor_limit_switch()
 
             # Debug output to verify monitoring is running (less frequent)
             # print(f"🔍 Monitoring: Limit switch={limit_switch_state.upper()}")
@@ -886,7 +912,7 @@ class ExecutionEngine:
                 time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
 
                 # Double-check the limit switch is still ON
-                limit_switch_state_stable = get_row_marker_limit_switch()
+                limit_switch_state_stable = get_row_motor_limit_switch()
 
                 if limit_switch_state_stable == "down":
                     print("✅ Rows motor door limit switch stable - auto-resuming execution")

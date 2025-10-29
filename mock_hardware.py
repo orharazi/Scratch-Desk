@@ -152,29 +152,37 @@ def move_x(position):
 
 def move_y(position):
     """Move Y motor to specified position within limits"""
-    global current_y_position
-    
+    global current_y_position, line_marker_piston
+
     print(f"MOCK: move_y({position:.1f})")
-    
+
     if position < MIN_Y_POSITION:
         print(f"Warning: Y position {position:.1f} below minimum {MIN_Y_POSITION:.1f}, clamping")
         position = MIN_Y_POSITION
     elif position > MAX_Y_POSITION:
         print(f"Warning: Y position {position:.1f} above maximum {MAX_Y_POSITION:.1f}, clamping")
         position = MAX_Y_POSITION
-    
+
     if position != current_y_position:
+        # Piston UP during Y movement
+        line_marker_piston = "up"
+        print(f"Lines marker piston UP (during Y movement)")
+
         print(f"Moving Y motor from {current_y_position:.1f}cm to {position:.1f}cm")
-        
+
         # Simulate movement delay (keep short for responsiveness)
         move_distance = abs(position - current_y_position)
         delay_per_cm = timing_settings.get("motor_movement_delay_per_cm", 0.01)
         max_delay = timing_settings.get("max_motor_movement_delay", 0.5)
         delay = min(move_distance * delay_per_cm, max_delay)
         time.sleep(delay)
-        
+
         current_y_position = position
         print(f"Y motor positioned at {current_y_position:.1f}cm")
+
+        # Piston DOWN when movement stops
+        line_marker_piston = "down"
+        print(f"Lines marker piston DOWN (Y movement stopped)")
     else:
         print(f"Y motor already at {position:.1f}cm")
 
@@ -692,7 +700,7 @@ def get_line_tools_height():
     """Get current line tools height state"""
     return line_tools_height
 
-def get_row_marker_limit_switch():
+def get_row_motor_limit_switch():
     """Get current row marker limit switch state - reads from limit_switch_states['rows']"""
     # Map boolean limit switch state to "up"/"down" string
     # True (checked/ON) = DOWN, False (unchecked/OFF) = UP
