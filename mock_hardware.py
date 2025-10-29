@@ -733,18 +733,13 @@ def toggle_row_marker_limit_switch():
 
 # Limit switch control functions
 def toggle_limit_switch(switch_name):
-    """Toggle a limit switch state"""
-    global limit_switch_states, row_marker_state
+    """Toggle a limit switch state (does NOT affect row marker tool state)"""
+    global limit_switch_states
     if switch_name in limit_switch_states:
         limit_switch_states[switch_name] = not limit_switch_states[switch_name]
         state = "ON" if limit_switch_states[switch_name] else "OFF"
         print(f"Limit switch {switch_name} toggled to: {state}")
-
-        # Sync programmed row marker state with limit switch for 'rows'
-        if switch_name == 'rows':
-            row_marker_state = "down" if limit_switch_states[switch_name] else "up"
-            print(f"   Synced row_marker_state to: {row_marker_state.upper()}")
-
+        # Note: limit switch is for motor door safety, NOT for marker tool position
         return limit_switch_states[switch_name]
     return False
 
