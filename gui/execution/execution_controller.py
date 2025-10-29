@@ -224,17 +224,16 @@ class ExecutionController:
                 # Update progress text
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(
-                    text=f"{current_progress:.1f}% - Waiting for row marker DOWN"
+                    text=f"{current_progress:.1f}% - Waiting for rows motor door CLOSED"
                 )
             
             elif status == 'transition_waiting':
-                # Update dialog with current status (if dialog exists)
-                current_programmed = info.get('current_programmed', 'unknown').upper()
-                current_actual = info.get('current_actual', 'unknown').upper()
-                
+                # Update dialog with current limit switch status (if dialog exists)
+                limit_switch_state = info.get('limit_switch_state', 'up')
+
                 if hasattr(self, 'transition_dialog') and self.transition_dialog:
                     try:
-                        self.update_transition_dialog_status(current_programmed, current_actual)
+                        self.update_transition_dialog_status(limit_switch_state)
                     except:
                         pass  # Dialog may have been closed
             
@@ -434,28 +433,20 @@ The system will remain stopped until you manually address this issue."""
         
         status_title = tk.Label(
             status_frame,
-            text="Current Row Marker Status:",
+            text="Rows Motor Door Limit Switch:",
             font=('Arial', 10, 'bold'),
             padx=10, pady=5
         )
         status_title.pack()
-        
-        # Status labels (will be updated in real-time)
-        self.transition_programmed_label = tk.Label(
+
+        # Status label (will be updated in real-time)
+        self.transition_limit_switch_label = tk.Label(
             status_frame,
-            text="Programmed: UP",
+            text="Status: OFF (OPEN)",
             font=('Arial', 9),
             padx=10, pady=2
         )
-        self.transition_programmed_label.pack()
-        
-        self.transition_actual_label = tk.Label(
-            status_frame,
-            text="Actual: UP",
-            font=('Arial', 9),
-            padx=10, pady=2
-        )
-        self.transition_actual_label.pack()
+        self.transition_limit_switch_label.pack()
         
         # Progress indicator
         progress_frame = tk.Frame(main_frame)
@@ -463,7 +454,7 @@ The system will remain stopped until you manually address this issue."""
         
         tk.Label(
             progress_frame,
-            text="⏳ Waiting for row marker DOWN position...",
+            text="⏳ Waiting for rows motor door to CLOSE (limit switch ON)...",
             font=('Arial', 10, 'italic'),
             fg='blue'
         ).pack()
@@ -471,18 +462,18 @@ The system will remain stopped until you manually address this issue."""
         # Instructions for user
         instructions_label = tk.Label(
             main_frame,
-            text="💡 You can use the main window controls while this dialog is open.\nUse the 'Toggle Switch' button to set the row marker to DOWN position.",
+            text="💡 You can use the main window controls while this dialog is open.\nUse the 'Toggle Rows Motor Limit Switch' button to close the door (set to ON).",
             font=('Arial', 9, 'bold'),
             fg='blue',
             wraplength=400,
             justify=tk.CENTER
         )
         instructions_label.pack(pady=(5, 5))
-        
+
         # Auto-dismiss info
         auto_dismiss_label = tk.Label(
             main_frame,
-            text="This dialog will automatically close when the row marker is set to DOWN position.",
+            text="This dialog will automatically close when the motor door is CLOSED (limit switch ON).",
             font=('Arial', 9, 'italic'),
             fg='gray',
             wraplength=400,
@@ -492,24 +483,24 @@ The system will remain stopped until you manually address this issue."""
         
         print(f"📋 Transition dialog shown: {from_op} → {to_op}")
     
-    def update_transition_dialog_status(self, current_programmed, current_actual):
-        """Update the transition dialog with current status"""
+    def update_transition_dialog_status(self, limit_switch_state):
+        """Update the transition dialog with current limit switch status"""
         if not hasattr(self, 'transition_dialog') or not self.transition_dialog:
             return
-            
+
         try:
-            # Update status labels with current state
-            prog_color = 'green' if current_programmed == 'DOWN' else 'red'
-            actual_color = 'green' if current_actual == 'DOWN' else 'red'
-            
-            self.transition_programmed_label.config(
-                text=f"Programmed: {current_programmed}",
-                fg=prog_color
-            )
-            
-            self.transition_actual_label.config(
-                text=f"Actual: {current_actual}",
-                fg=actual_color
+            # Update status label with current limit switch state
+            # limit_switch_state is "down" (ON/CLOSED) or "up" (OFF/OPEN)
+            if limit_switch_state == "down":
+                status_text = "Status: ON (CLOSED)"
+                status_color = 'green'
+            else:
+                status_text = "Status: OFF (OPEN)"
+                status_color = 'red'
+
+            self.transition_limit_switch_label.config(
+                text=status_text,
+                fg=status_color
             )
             
         except Exception as e:

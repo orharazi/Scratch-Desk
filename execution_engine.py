@@ -925,11 +925,9 @@ class ExecutionEngine:
                     print("⚠️  Row marker position unstable - continuing to wait...")
                     continue
             
-            # Update status with current state (for GUI updates)
+            # Update status with current limit switch state (for GUI updates)
             self._update_status("transition_waiting", {
-                'current_programmed': row_marker_programmed,
-                'current_actual': row_marker_actual,
-                'waiting_for': 'down'
+                'limit_switch_state': limit_switch_state
             })
             
             # Check every 500ms for responsive monitoring (increased from 200ms for less spam)
