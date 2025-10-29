@@ -8,7 +8,9 @@ from mock_hardware import (
     line_marker_down, line_marker_up, line_cutter_down, line_cutter_up,
     row_marker_down, row_marker_up, row_cutter_down, row_cutter_up,
     lift_line_tools, lower_line_tools,
-    line_motor_piston_up, line_motor_piston_down, line_marker_piston_up, line_marker_piston_down
+    line_motor_piston_up, line_motor_piston_down, line_marker_piston_up, line_marker_piston_down,
+    get_line_marker_state, get_line_cutter_state, get_line_motor_piston_state,
+    get_row_marker_state, get_row_cutter_state
 )
 
 
@@ -18,14 +20,17 @@ class RightPanel:
     def __init__(self, main_app, parent_frame):
         self.main_app = main_app
         self.parent_frame = parent_frame
-        
+
         # Responsive font sizing based on window width
         self.update_font_sizes()
-        
+
         self.create_widgets()
-        
+
         # Bind to window resize for dynamic font adjustment
         self.main_app.root.bind('<Configure>', self.on_window_resize)
+
+        # Start periodic checkbox state synchronization
+        self.schedule_checkbox_sync()
     
     def update_font_sizes(self):
         """Update font sizes based on window dimensions"""
@@ -781,3 +786,42 @@ class RightPanel:
             row_cutter_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
+
+    def sync_checkbox_states(self):
+        """Synchronize checkbox states with actual hardware states"""
+        try:
+            # Get actual hardware states
+            line_marker_state = get_line_marker_state()
+            line_cutter_state = get_line_cutter_state()
+            line_motor_piston_state = get_line_motor_piston_state()
+            row_marker_state = get_row_marker_state()
+            row_cutter_state = get_row_cutter_state()
+
+            # Update checkbox variables to match hardware (checked = down/active)
+            # For line marker and cutter: checked = down
+            self.lines_marker_var.set(line_marker_state == "down")
+            self.lines_cutter_var.set(line_cutter_state == "down")
+
+            # For line motor piston: checked = down (opposite of default UP)
+            self.lines_motor_var.set(line_motor_piston_state == "down")
+
+            # For row marker and cutter: checked = down
+            self.rows_marker_var.set(row_marker_state == "down")
+            self.rows_cutter_var.set(row_cutter_state == "down")
+
+            # Update limit switch checkboxes
+            self.y_top_ls_var.set(get_limit_switch_state('y_top'))
+            self.y_bottom_ls_var.set(get_limit_switch_state('y_bottom'))
+            self.x_right_ls_var.set(get_limit_switch_state('x_right'))
+            self.x_left_ls_var.set(get_limit_switch_state('x_left'))
+            self.rows_ls_var.set(get_limit_switch_state('rows'))
+
+        except Exception as e:
+            # Silently ignore errors to avoid flooding console
+            pass
+
+    def schedule_checkbox_sync(self):
+        """Schedule periodic checkbox state synchronization"""
+        self.sync_checkbox_states()
+        # Schedule next update (200ms interval)
+        self.main_app.root.after(200, self.schedule_checkbox_sync)
