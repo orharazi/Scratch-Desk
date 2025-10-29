@@ -205,11 +205,11 @@ class RightPanel:
         current_info_frame.pack(fill=tk.X, padx=5, pady=3)
 
         self.current_step_label = tk.Label(current_info_frame, text="No step selected",
-                                          font=('Arial', 8, 'bold'), bg='lightgray', fg='darkblue',
-                                          wraplength=200)
+                                          font=('Arial', 10, 'bold'), bg='lightgray', fg='darkblue',
+                                          wraplength=250)
         self.current_step_label.pack(pady=3)
 
-        self.step_details = tk.Text(current_tab, height=6, width=25, font=('Arial', 7),
+        self.step_details = tk.Text(current_tab, height=6, width=25, font=('Arial', 10),
                                    wrap=tk.WORD, bg='white', fg='black', relief=tk.SUNKEN, bd=2)
         step_scroll = tk.Scrollbar(current_tab, orient=tk.VERTICAL)
         step_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -225,9 +225,9 @@ class RightPanel:
         queue_frame = tk.Frame(all_steps_tab, bg='white')
         queue_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
-        self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 6), height=8,
-                                       bg='white', fg='black', selectbackground='lightblue',
-                                       selectforeground='darkblue', relief=tk.SUNKEN, bd=2)
+        self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 9), height=8,
+                                       bg='white', fg='black', selectbackground='#4A90E2',
+                                       selectforeground='white', relief=tk.SUNKEN, bd=2)
         queue_scroll = tk.Scrollbar(queue_frame, orient=tk.VERTICAL)
         queue_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.steps_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -472,22 +472,26 @@ class RightPanel:
         for i, step in enumerate(self.main_app.steps):
             # Format step for display
             current_index = self.main_app.execution_engine.current_step_index
-            
+
             if i < current_index:
                 status_icon = "✓"  # Completed
             elif i == current_index:
                 status_icon = "►"  # Current
             else:
                 status_icon = " "  # Pending
-            
-            step_summary = f"{status_icon} {i+1:3d}. {step['operation']}: {step['description'][:40]}..."
+
+            step_summary = f"{status_icon} {i+1:3d}. {step['operation']}: {step['description'][:60]}..."
             self.steps_listbox.insert(tk.END, step_summary)
-        
-        # Scroll to current step
+
+            # Color-code items for better visibility
+            if i < current_index:
+                self.steps_listbox.itemconfig(i, fg='#28a745')  # Green for completed
+            elif i == current_index:
+                self.steps_listbox.itemconfig(i, fg='#007bff', selectbackground='#0056b3')  # Blue for current
+
+        # Scroll to current step (but don't select it - let user click to view details)
         current_index = self.main_app.execution_engine.current_step_index
         if 0 <= current_index < len(self.main_app.steps):
-            self.steps_listbox.selection_clear(0, tk.END)
-            self.steps_listbox.selection_set(current_index)
             self.steps_listbox.see(current_index)
         
         # Update navigation buttons
