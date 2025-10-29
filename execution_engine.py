@@ -716,15 +716,22 @@ class ExecutionEngine:
                                 )
 
                             # Check 2: Line motor piston UP during operations
+                            # EXCEPTION: Piston can be UP if rows motor (X-axis) is at position 0
                             elif line_motor_piston == "up":
-                                safety_violation = True
-                                violation_message = (
-                                    f"🚨 LINE MOTOR PISTON SAFETY VIOLATION!\n"
-                                    f"   Line motor piston is UP during lines operation\n"
-                                    f"   Piston state: {line_motor_piston.upper()}\n"
-                                    f"   RULE VIOLATED: Line motor piston must be DOWN during operations\n"
-                                    f"   IMMEDIATE ACTION: Lower line motor piston (Y motor assembly must be DOWN)"
-                                )
+                                from mock_hardware import get_current_x
+                                current_x = get_current_x()
+
+                                # Only trigger violation if X motor is NOT at position 0
+                                if current_x != 0:
+                                    safety_violation = True
+                                    violation_message = (
+                                        f"🚨 LINE MOTOR PISTON SAFETY VIOLATION!\n"
+                                        f"   Line motor piston is UP during lines operation\n"
+                                        f"   Piston state: {line_motor_piston.upper()}\n"
+                                        f"   Rows motor position: {current_x:.1f}cm (must be at 0cm for safe piston operation)\n"
+                                        f"   RULE VIOLATED: Line motor piston can only be UP when rows motor is at 0cm\n"
+                                        f"   IMMEDIATE ACTION: Move rows motor to 0cm OR lower line motor piston"
+                                    )
                         
                         elif self.current_operation_type == 'rows':
                             # ROWS OPERATIONS: Three safety checks
@@ -790,14 +797,20 @@ class ExecutionEngine:
                             violation_resolved = False
 
                             if self.current_operation_type == 'lines':
-                                # LINES: Check both limit switch and line motor piston
-                                from mock_hardware import get_line_motor_piston_state
+                                # LINES: Check limit switch, line motor piston, and X position
+                                from mock_hardware import get_line_motor_piston_state, get_current_x
                                 line_motor_piston = get_line_motor_piston_state()
+                                current_x = get_current_x()
 
-                                # Violation resolved if limit switch UP AND line motor piston DOWN
-                                if row_motor_limit_switch == "up" and line_motor_piston == "down":
+                                # Violation resolved if:
+                                # 1. Limit switch UP AND
+                                # 2. (Piston DOWN OR X motor at 0)
+                                if row_motor_limit_switch == "up" and (line_motor_piston == "down" or current_x == 0):
                                     violation_resolved = True
-                                    print("✅ LINES SAFETY VIOLATION RESOLVED: Door open and line motor piston down")
+                                    if line_motor_piston == "down":
+                                        print("✅ LINES SAFETY VIOLATION RESOLVED: Door open and line motor piston down")
+                                    else:
+                                        print(f"✅ LINES SAFETY VIOLATION RESOLVED: Door open and rows motor at 0cm (piston UP allowed)")
 
                             elif self.current_operation_type == 'rows':
                                 # ROWS: Check door, limit switch, and line motor piston
