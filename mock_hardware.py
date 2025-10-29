@@ -42,7 +42,7 @@ PAPER_START_X = hardware_limits.get("paper_start_x", 15.0)     # cm from left ed
 
 # Tool states
 line_marker_state = "up"    # "up" or "down"
-line_marker_piston = "down" # "up" or "down" - default DOWN, UP only during X movement
+line_marker_piston = "up"   # "up" or "down" - default UP, DOWN only when needed for operations
 line_motor_piston = "down"  # "up" or "down" - lifts entire Y motor assembly, default DOWN, UP during Y movement
 line_cutter_state = "up"    # "up" or "down"
 row_marker_state = "up"     # "up" or "down" - programmed state
@@ -98,7 +98,7 @@ def reset_hardware():
     current_x_position = 0.0
     current_y_position = 0.0
     line_marker_state = "up"
-    line_marker_piston = "down"  # Default state is DOWN
+    line_marker_piston = "up"    # Default state is UP
     line_motor_piston = "down"   # Default state is DOWN
     line_cutter_state = "up"
     row_marker_state = "up"
@@ -130,25 +130,17 @@ def move_x(position):
         position = MAX_X_POSITION
     
     if position != current_x_position:
-        # Piston UP during X movement
-        line_marker_piston = "up"
-        print(f"Lines marker piston UP (during movement)")
-        
         print(f"Moving X motor from {current_x_position:.1f}cm to {position:.1f}cm")
-        
+
         # Simulate movement delay (keep short for responsiveness)
         move_distance = abs(position - current_x_position)
         delay_per_cm = timing_settings.get("motor_movement_delay_per_cm", 0.01)
         max_delay = timing_settings.get("max_motor_movement_delay", 0.5)
         delay = min(move_distance * delay_per_cm, max_delay)
         time.sleep(delay)
-        
+
         current_x_position = position
         print(f"X motor positioned at {current_x_position:.1f}cm")
-        
-        # Piston DOWN when movement stops
-        line_marker_piston = "down"
-        print(f"Lines marker piston DOWN (movement stopped)")
     else:
         print(f"X motor already at {position:.1f}cm")
 
@@ -560,6 +552,31 @@ def move_line_tools_to_top():
     lift_line_tools()
     move_y(MAX_Y_POSITION)
     print("Line tools moved to top")
+
+# Line marker piston control functions
+def line_marker_piston_up():
+    """Raise line marker piston (default state)"""
+    global line_marker_piston
+    print("MOCK: line_marker_piston_up()")
+    if line_marker_piston != "up":
+        print("Raising line marker piston - returning to default position")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_marker_piston = "up"
+        print("Line marker piston UP - default position")
+    else:
+        print("Line marker piston already UP")
+
+def line_marker_piston_down():
+    """Lower line marker piston (for operations)"""
+    global line_marker_piston
+    print("MOCK: line_marker_piston_down()")
+    if line_marker_piston != "down":
+        print("Lowering line marker piston - preparing for operations")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_marker_piston = "down"
+        print("Line marker piston DOWN - ready for operations")
+    else:
+        print("Line marker piston already DOWN")
 
 # Line motor piston control functions
 def line_motor_piston_up():
