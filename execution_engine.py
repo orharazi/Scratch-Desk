@@ -598,16 +598,14 @@ class ExecutionEngine:
         return result
     
     def _row_marker_tool_down(self):
-        """Lower the row marker tool for marking (does NOT affect limit switch state)"""
+        """Lower the row marker tool for marking"""
         print("🔧 Row marker tool: DOWN (marking position)")
-        # This would control the physical marking tool, not the safety limit switch
-        # The limit switch state is ONLY controlled by user via toggle button
-    
+        row_marker_down()
+
     def _row_marker_tool_up(self):
-        """Raise the row marker tool after marking (does NOT affect limit switch state)"""
+        """Raise the row marker tool after marking"""
         print("🔧 Row marker tool: UP (raised position)")
-        # This would control the physical marking tool, not the safety limit switch
-        # The limit switch state is ONLY controlled by user via toggle button
+        row_marker_up()
     
     def _update_current_operation_type(self, step, allow_rows_transition=True):
         """Update the current operation type based on step description for safety monitoring"""
