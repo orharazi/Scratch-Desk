@@ -11,6 +11,35 @@ def create_step(operation, parameters=None, description=""):
         'description': description
     }
 
+def create_y_movement_with_piston(position, description):
+    """
+    Create Y motor movement steps with line motor piston control.
+
+    PISTON SAFETY PROTOCOL:
+    1. Lift line motor piston UP (raises Y motor assembly)
+    2. Move Y motor to target position
+    3. Lower line motor piston DOWN (lowers Y motor assembly)
+
+    Returns: List of 3 steps [piston_up, move_y, piston_down]
+    """
+    return [
+        create_step(
+            'tool_action',
+            {'tool': 'line_motor_piston', 'action': 'up'},
+            f"⚠️ ALERT: Lifting line motor piston (Y motor assembly rising)"
+        ),
+        create_step(
+            'move_y',
+            {'position': position},
+            description
+        ),
+        create_step(
+            'tool_action',
+            {'tool': 'line_motor_piston', 'action': 'down'},
+            "Line motor piston DOWN (Y motor assembly lowered)"
+        )
+    ]
+
 def generate_lines_marking_steps(program):
     """
     Generate steps for lines marking workflow with REPEAT SUPPORT.
@@ -56,9 +85,8 @@ def generate_lines_marking_steps(program):
     
     # Init: Move Y motor to ACTUAL high position (paper_offset + actual_paper_height)
     desk_y_position = PAPER_OFFSET_Y + actual_paper_height
-    steps.append(create_step(
-        'move_y',
-        {'position': desk_y_position},
+    steps.extend(create_y_movement_with_piston(
+        desk_y_position,
         f"Init: Move Y motor to {desk_y_position}cm (paper + {actual_paper_height}cm ACTUAL high)"
     ))
     
@@ -113,9 +141,8 @@ def generate_lines_marking_steps(program):
         
         # Move to first line of this section
         if section_num == 0:  # Only move for first section (already positioned at top)
-            steps.append(create_step(
-                'move_y',
-                {'position': first_line_y_section},
+            steps.extend(create_y_movement_with_piston(
+                first_line_y_section,
                 f"Move to first line of section {section_num + 1}: {first_line_y_section}cm"
             ))
         
@@ -128,9 +155,8 @@ def generate_lines_marking_steps(program):
             
             # Move to this line position (unless it's the first line of first section)
             if not (section_num == 0 and line_in_section == 0):
-                steps.append(create_step(
-                    'move_y',
-                    {'position': line_y_position},
+                steps.extend(create_y_movement_with_piston(
+                    line_y_position,
                     f"Move to line position: {line_y_position:.1f}cm"
                 ))
             
@@ -164,9 +190,8 @@ def generate_lines_marking_steps(program):
             cut_position = section_end_y  # Cut at the bottom of current section (= top of next section)
             
             # Move to cut position between sections
-            steps.append(create_step(
-                'move_y',
-                {'position': cut_position},
+            steps.extend(create_y_movement_with_piston(
+                cut_position,
                 f"Move to cut between sections {section_num + 1} and {section_num + 2}: {cut_position}cm"
             ))
             
@@ -197,9 +222,8 @@ def generate_lines_marking_steps(program):
     
     # Cut bottom edge: Move to bottom position (paper starting position)
     bottom_position = PAPER_OFFSET_Y
-    steps.append(create_step(
-        'move_y',
-        {'position': bottom_position},
+    steps.extend(create_y_movement_with_piston(
+        bottom_position,
         f"Move to bottom cut position: {bottom_position}cm (paper starting position)"
     ))
     
@@ -228,9 +252,8 @@ def generate_lines_marking_steps(program):
     ))
     
     # LINES OPERATION COMPLETE: Move lines motor to home position (Y=0)
-    steps.append(create_step(
-        'move_y',
-        {'position': 0.0},
+    steps.extend(create_y_movement_with_piston(
+        0.0,
         "Lines complete: Move lines motor to home position (Y=0)"
     ))
     
@@ -279,9 +302,8 @@ def generate_row_marking_steps(program):
     print(f"   ACTUAL PAPER SIZE: {actual_paper_width}cm W × {actual_paper_height}cm H")
     
     # INDEPENDENT MOTOR OPERATION: Ensure lines motor is at home position (Y=0)
-    steps.append(create_step(
-        'move_y',
-        {'position': 0.0},
+    steps.extend(create_y_movement_with_piston(
+        0.0,
         "Rows operation: Ensure lines motor is at home position (Y=0)"
     ))
     

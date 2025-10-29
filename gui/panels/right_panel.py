@@ -7,7 +7,8 @@ from mock_hardware import (
     toggle_limit_switch, get_limit_switch_state,
     line_marker_down, line_marker_up, line_cutter_down, line_cutter_up,
     row_marker_down, row_marker_up, row_cutter_down, row_cutter_up,
-    lift_line_tools, lower_line_tools
+    lift_line_tools, lower_line_tools,
+    line_motor_piston_up, line_motor_piston_down, line_marker_piston_up, line_marker_piston_down
 )
 
 
@@ -755,11 +756,11 @@ class RightPanel:
             self.main_app.canvas_manager.update_position_display()
 
     def toggle_line_motor(self):
-        """Toggle line motor height"""
+        """Toggle line motor piston (controls Y motor assembly lift)"""
         if self.lines_motor_var.get():
-            lower_line_tools()
+            line_motor_piston_down()
         else:
-            lift_line_tools()
+            line_motor_piston_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 

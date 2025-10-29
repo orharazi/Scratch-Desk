@@ -541,7 +541,8 @@ class ExecutionEngine:
                     'line_marker': {'down': line_marker_down, 'up': line_marker_up},
                     'line_cutter': {'down': line_cutter_down, 'up': line_cutter_up},
                     'row_marker': {'down': self._row_marker_tool_down, 'up': self._row_marker_tool_up},
-                    'row_cutter': {'down': row_cutter_down, 'up': row_cutter_up}
+                    'row_cutter': {'down': row_cutter_down, 'up': row_cutter_up},
+                    'line_motor_piston': {'down': line_motor_piston_down, 'up': line_motor_piston_up}
                 }
                 
                 if tool in tool_functions and action in tool_functions[tool]:
