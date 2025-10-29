@@ -796,12 +796,12 @@ class ExecutionEngine:
             print("🔄 TRANSITION: Safety monitoring already paused by transition flag")
             
             # Check if rows motor door is already CLOSED (limit switch ON)
-            row_marker_programmed = get_row_marker_state()
-            row_marker_actual = get_row_marker_limit_switch()
-            print(f"🔄 TRANSITION: Current rows motor door - Programmed: {row_marker_programmed}, Actual: {row_marker_actual}")
+            # Only check limit switch, NOT marker piston state
+            limit_switch_state = get_row_marker_limit_switch()
+            print(f"🔄 TRANSITION: Current rows motor door limit switch: {limit_switch_state}")
 
-            if row_marker_programmed == "down" and row_marker_actual == "down":
-                print("✅ Rows motor door already CLOSED - proceeding with rows operations")
+            if limit_switch_state == "down":
+                print("✅ Rows motor door already CLOSED (limit switch ON) - proceeding with rows operations")
                 self.in_transition = False  # Clear transition flag
                 return True
 
@@ -818,8 +818,7 @@ class ExecutionEngine:
                 'from_operation': 'lines',
                 'to_operation': 'rows',
                 'message': 'Lines operations complete. Please CLOSE ROWS MOTOR DOOR (toggle limit switch button to ON) to continue with rows operations.',
-                'current_programmed': row_marker_programmed,
-                'current_actual': row_marker_actual
+                'current_limit_switch': limit_switch_state
             })
             
             print("🔄 TRANSITION: Calling _wait_for_row_marker_down")
@@ -846,25 +845,24 @@ class ExecutionEngine:
         print("⏳ Monitoring rows motor door - waiting for CLOSED position (limit switch ON)...")
         
         while not self.stop_event.is_set():
-            # Check row marker state
-            row_marker_programmed = get_row_marker_state()
-            row_marker_actual = get_row_marker_limit_switch()
-            
+            # Check ONLY limit switch state (motor door sensor)
+            # Marker piston state is independent and controlled by program
+            limit_switch_state = get_row_marker_limit_switch()
+
             # Debug output to verify monitoring is running (less frequent)
-            # print(f"🔍 Monitoring: Programmed={row_marker_programmed.upper()}, Physical={row_marker_actual.upper()}")
-            
-            if row_marker_programmed == "down" and row_marker_actual == "down":
-                print("✅ Rows motor door CLOSED - verifying stable position...")
+            # print(f"🔍 Monitoring: Limit switch={limit_switch_state.upper()}")
+
+            if limit_switch_state == "down":
+                print("✅ Rows motor door CLOSED (limit switch ON) - verifying stable position...")
                 
                 # Wait a short time to ensure the position is stable
                 time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
-                
-                # Double-check the position is still stable
-                row_marker_programmed_stable = get_row_marker_state()
-                row_marker_actual_stable = get_row_marker_limit_switch()
-                
-                if row_marker_programmed_stable == "down" and row_marker_actual_stable == "down":
-                    print("✅ Row marker position stable - auto-resuming execution")
+
+                # Double-check the limit switch is still ON
+                limit_switch_state_stable = get_row_marker_limit_switch()
+
+                if limit_switch_state_stable == "down":
+                    print("✅ Rows motor door limit switch stable - auto-resuming execution")
 
                     # Clear transition flag to resume safety monitoring
                     self.in_transition = False
