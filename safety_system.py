@@ -220,33 +220,34 @@ class SafetySystem:
     
     def check_rows_operation_safety(self, description=""):
         """
-        Check safety for ROWS operations - row marker MUST be DOWN (door open)
-        
-        SAFETY RULE: During rows operations, the row marker must be DOWN  
-        Reason: Rows motor requires door open to access work area
+        Check safety for ROWS operations - door can only be CLOSED when X motor is at position 0
+
+        SAFETY RULE: Rows motor door can only be closed (limit switch DOWN) when X motor is at 0
+        Reason: Closing door with X motor not at home position could cause collision/damage
         """
         if not self.safety_enabled:
             return True
-        
-        # Check both programmed state and actual limit switch state
-        row_marker_programmed = get_row_marker_state()  # Programmed position
+
+        # Check actual limit switch state (door position sensor)
+        from mock_hardware import get_current_x
         row_marker_actual = get_row_marker_limit_switch()  # Actual position from limit switch
-        
-        # Safety violation if either shows UP position during rows operation
-        if row_marker_programmed == "up" or row_marker_actual == "up":
+        current_x = get_current_x()  # Current X motor position
+
+        # Safety violation if door is CLOSED (limit switch DOWN) and X motor is NOT at position 0
+        if row_marker_actual == "down" and current_x != 0:
             violation_msg = (
-                f"🚨 ROWS OPERATION SAFETY VIOLATION!\n"
+                f"🚨 ROWS MOTOR DOOR SAFETY VIOLATION!\n"
                 f"   Operation: {description}\n"
-                f"   RULE VIOLATED: Row marker must be DOWN during rows operations\n"
-                f"   Row marker programmed state: {row_marker_programmed.upper()}\n"
-                f"   Row marker actual position: {row_marker_actual.upper()}\n"
-                f"   ⚠️  IMMEDIATE ACTION REQUIRED: Open the rows door (set marker DOWN)\n"
-                f"   🛡️  Rows motor movement BLOCKED until door is opened"
+                f"   RULE VIOLATED: Door can only be closed when rows motor (X-axis) is at position 0\n"
+                f"   Current X position: {current_x:.1f}cm (must be 0cm to close door)\n"
+                f"   Limit switch state: {row_marker_actual.upper()} (CLOSED)\n"
+                f"   ⚠️  IMMEDIATE ACTION REQUIRED: Open the rows motor door (set limit switch to OFF)\n"
+                f"   🛡️  Rows motor movement BLOCKED - door closed while motor not at home"
             )
-            
+
             self.log_violation("ROWS_DOOR_CLOSED", violation_msg)
             raise SafetyViolation(violation_msg, "ROWS_DOOR_CLOSED")
-        
+
         return True
     
     def _is_setup_movement(self, description):

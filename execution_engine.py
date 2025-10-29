@@ -711,15 +711,20 @@ class ExecutionEngine:
                                 )
                         
                         elif self.current_operation_type == 'rows':
-                            # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
-                            # Only check during actual rows operations, not setup steps
-                            if row_marker_programmed == "up" or row_marker_actual == "up":
+                            # ROWS OPERATIONS: Door can only be CLOSED (limit switch DOWN) when X motor is at 0
+                            # If door is closed (limit switch DOWN) and X is not at 0, that's a violation
+                            from mock_hardware import get_current_x
+                            current_x = get_current_x()
+
+                            # Only trigger violation if door is CLOSED (limit switch DOWN) and X motor is NOT at position 0
+                            if row_marker_actual == "down" and current_x != 0:
                                 safety_violation = True
                                 violation_message = (
-                                    f"🚨 ROWS OPERATION EMERGENCY STOP!\n"
-                                    f"   Row marker changed to UP during rows operation\n"
-                                    f"   Programmed: {row_marker_programmed.upper()}, Actual: {row_marker_actual.upper()}\n"
-                                    f"   IMMEDIATE ACTION: Open the rows door (set marker DOWN)"
+                                    f"🚨 ROWS MOTOR DOOR SAFETY VIOLATION!\n"
+                                    f"   Door CLOSED (limit switch DOWN) while rows motor is NOT at home position\n"
+                                    f"   Current X position: {current_x:.1f}cm (must be 0cm to close door)\n"
+                                    f"   Limit switch: {row_marker_actual.upper()}\n"
+                                    f"   IMMEDIATE ACTION: Open the rows motor door (set limit switch to OFF)"
                                 )
                         
                         if safety_violation:
@@ -750,10 +755,14 @@ class ExecutionEngine:
                                     print("✅ LINES SAFETY VIOLATION RESOLVED: Row marker restored to UP")
                                     
                             elif self.current_operation_type == 'rows':
-                                # ROWS: Row marker should be DOWN (door open)
-                                if row_marker_programmed == "down" and row_marker_actual == "down":
+                                # ROWS: Door should be OPEN (limit switch OFF) OR X motor at position 0
+                                from mock_hardware import get_current_x
+                                current_x = get_current_x()
+
+                                # Violation is resolved if door is open OR X is at 0
+                                if row_marker_actual == "up" or current_x == 0:
                                     violation_resolved = True
-                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Row marker restored to DOWN")
+                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door opened or X motor at home position")
                             
                             if violation_resolved:
                                 # Flush all sensor buffers to ignore triggers that happened during pause
