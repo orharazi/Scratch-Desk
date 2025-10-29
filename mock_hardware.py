@@ -239,27 +239,25 @@ def line_cutter_up():
 
 # Row tools (X-axis operations)
 def row_marker_down():
-    """Lower row marker to marking position"""
-    global row_marker_state, limit_switch_states
+    """Lower row marker to marking position (does NOT affect motor door limit switch)"""
+    global row_marker_state
     print("MOCK: row_marker_down()")
     if row_marker_state != "down":
         print("Lowering row marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "down"
-        limit_switch_states['rows'] = True  # Sync limit switch with programmed state
         print("Row marker down - ready to mark")
     else:
         print("Row marker already down")
 
 def row_marker_up():
-    """Raise row marker from marking position"""
-    global row_marker_state, limit_switch_states
+    """Raise row marker from marking position (does NOT affect motor door limit switch)"""
+    global row_marker_state
     print("MOCK: row_marker_up()")
     if row_marker_state != "up":
         print("Raising row marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "up"
-        limit_switch_states['rows'] = False  # Sync limit switch with programmed state
         print("Row marker up")
     else:
         print("Row marker already up")
