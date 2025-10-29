@@ -220,20 +220,25 @@ class SafetySystem:
     
     def check_rows_operation_safety(self, description=""):
         """
-        Check safety for ROWS operations - door can only be CLOSED when X motor is at position 0
+        Check safety for ROWS operations - two safety rules:
+        1. Door can only be CLOSED when Y motor is at position 0
+        2. Line marker must be DOWN during rows operations
 
-        SAFETY RULE: Rows motor door can only be closed (limit switch DOWN) when X motor is at 0
-        Reason: Closing door with X motor not at home position could cause collision/damage
+        SAFETY RULES:
+        - Rows motor door can only be closed (limit switch DOWN) when Y motor is at 0
+        - Line marker must be DOWN during rows operations
+        Reason: Closing door with Y motor not at home position or line marker UP could cause collision/damage
         """
         if not self.safety_enabled:
             return True
 
-        # Check actual limit switch state (door position sensor)
-        from mock_hardware import get_current_y
+        # Check actual limit switch state (door position sensor) and line marker state
+        from mock_hardware import get_current_y, get_line_marker_state
         row_marker_limit = get_row_marker_limit_switch()  # Actual position from limit switch
-        current_y = get_current_y()  # Current X motor position
+        current_y = get_current_y()  # Current Y motor position
+        line_marker_state = get_line_marker_state()  # Line marker state
 
-        # Safety violation if door is CLOSED (limit switch DOWN) and X motor is NOT at position 0
+        # Safety violation 1: Door is CLOSED (limit switch DOWN) and Y motor is NOT at position 0
         if row_marker_limit == "down" and current_y != 0:
             violation_msg = (
                 f"🚨 ROWS MOTOR DOOR SAFETY VIOLATION!\n"
@@ -247,6 +252,20 @@ class SafetySystem:
 
             self.log_violation("ROWS_DOOR_CLOSED", violation_msg)
             raise SafetyViolation(violation_msg, "ROWS_DOOR_CLOSED")
+
+        # Safety violation 2: Line marker is UP during rows operation
+        if line_marker_state == "up":
+            violation_msg = (
+                f"🚨 ROWS OPERATION SAFETY VIOLATION!\n"
+                f"   Operation: {description}\n"
+                f"   RULE VIOLATED: Line marker must be DOWN during rows operations\n"
+                f"   Line marker state: {line_marker_state.upper()}\n"
+                f"   ⚠️  IMMEDIATE ACTION REQUIRED: Lower the line marker (set to DOWN)\n"
+                f"   🛡️  Rows operations BLOCKED - line marker must be lowered"
+            )
+
+            self.log_violation("LINE_MARKER_UP", violation_msg)
+            raise SafetyViolation(violation_msg, "LINE_MARKER_UP")
 
         return True
     

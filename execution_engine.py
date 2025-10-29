@@ -710,12 +710,14 @@ class ExecutionEngine:
                                 )
                         
                         elif self.current_operation_type == 'rows':
-                            # ROWS OPERATIONS: Door can only be CLOSED (limit switch DOWN) when Y motor is at 0
-                            # If door is closed (limit switch DOWN) and Y is not at 0, that's a violation
-                            from mock_hardware import get_current_y
+                            # ROWS OPERATIONS: Two safety checks
+                            # 1. Door can only be CLOSED (limit switch DOWN) when Y motor is at 0
+                            # 2. Line marker must be DOWN during rows operations
+                            from mock_hardware import get_current_y, get_line_marker_state
                             current_y = get_current_y()
+                            line_marker_state = get_line_marker_state()
 
-                            # Only trigger violation if door is CLOSED (limit switch DOWN) and Y motor is NOT at position 0
+                            # Check 1: Door closed while Y motor not at 0
                             if row_motor_limit_switch == "down" and current_y != 0:
                                 safety_violation = True
                                 violation_message = (
@@ -724,6 +726,17 @@ class ExecutionEngine:
                                     f"   Current Y position: {current_y:.1f}cm (must be 0cm to close door)\n"
                                     f"   Limit switch: {row_motor_limit_switch.upper()}\n"
                                     f"   IMMEDIATE ACTION: Open the rows motor door (set limit switch to OFF)"
+                                )
+
+                            # Check 2: Line marker UP during rows operations
+                            elif line_marker_state == "up":
+                                safety_violation = True
+                                violation_message = (
+                                    f"🚨 ROWS OPERATION SAFETY VIOLATION!\n"
+                                    f"   Line marker is UP during rows operation\n"
+                                    f"   Line marker state: {line_marker_state.upper()}\n"
+                                    f"   RULE VIOLATED: Line marker must be DOWN during rows operations\n"
+                                    f"   IMMEDIATE ACTION: Lower the line marker (set to DOWN)"
                                 )
                         
                         if safety_violation:
@@ -754,14 +767,20 @@ class ExecutionEngine:
                                     print("✅ LINES SAFETY VIOLATION RESOLVED: Rows motor door opened (limit switch UP)")
 
                             elif self.current_operation_type == 'rows':
-                                # ROWS: Door should be OPEN (limit switch OFF) OR Y motor at position 0
-                                from mock_hardware import get_current_y
+                                # ROWS: Check both door and line marker conditions
+                                from mock_hardware import get_current_y, get_line_marker_state
                                 current_y = get_current_y()
+                                line_marker_state = get_line_marker_state()
 
-                                # Violation is resolved if door is open OR Y is at 0
-                                if row_motor_limit_switch == "up" or current_y == 0:
+                                # Violation is resolved if:
+                                # 1. Door is open (limit switch UP) OR Y is at 0 (for door violation)
+                                # 2. AND line marker is DOWN (for line marker violation)
+                                door_ok = (row_motor_limit_switch == "up" or current_y == 0)
+                                line_marker_ok = (line_marker_state == "down")
+
+                                if door_ok and line_marker_ok:
                                     violation_resolved = True
-                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door opened or Y motor at home position")
+                                    print("✅ ROWS SAFETY VIOLATION RESOLVED: Door and line marker positions correct")
                             
                             if violation_resolved:
                                 # Flush all sensor buffers to ignore triggers that happened during pause
