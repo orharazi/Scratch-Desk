@@ -313,10 +313,9 @@ class HardwareStatusPanel:
                                self.sensor_triggered_color if line_motor_piston_state == 'DOWN' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
-            # For display purposes, get the actual marker state
-            line_marker_state = get_line_marker_state().upper()
-            self._update_widget('lines_piston_marker', line_marker_state,
-                               self.piston_down_color if line_marker_state == 'DOWN' else self.piston_up_color)
+            # Note: line_marker_piston_state was already retrieved above at line 298
+            self._update_widget('lines_piston_marker', line_marker_piston_state,
+                               self.piston_down_color if line_marker_piston_state == 'DOWN' else self.piston_up_color)
 
             self._update_widget('lines_piston_cutter', line_cutter_state,
                                self.piston_down_color if line_cutter_state == 'DOWN' else self.piston_up_color)
