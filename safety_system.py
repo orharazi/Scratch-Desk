@@ -47,10 +47,10 @@ class SafetySystem:
         
         # Check both programmed state and actual limit switch state
         row_marker_programmed = get_row_marker_state()  # Programmed position
-        row_marker_actual = get_row_marker_limit_switch()  # Actual position from limit switch
+        row_marker_limit = get_row_marker_limit_switch()  # Actual position from limit switch
         
         # Safety violation if either shows DOWN position
-        if row_marker_programmed == "down" or row_marker_actual == "down":
+        if row_marker_programmed == "down" or row_marker_limit == "down":
             current_y = get_current_y()
             target_info = f" to {target_y}cm" if target_y is not None else ""
             
@@ -59,7 +59,7 @@ class SafetySystem:
                 f"   Reason: Row marker is DOWN and blocks the lines axis\n"
                 f"   Current Y position: {current_y}cm\n"
                 f"   Row marker programmed state: {row_marker_programmed.upper()}\n"
-                f"   Row marker actual position: {row_marker_actual.upper()}\n"
+                f"   Row marker actual position: {row_marker_limit.upper()}\n"
                 f"   ACTION REQUIRED: Raise the row marker before Y-axis movement"
             )
             
@@ -229,18 +229,18 @@ class SafetySystem:
             return True
 
         # Check actual limit switch state (door position sensor)
-        from mock_hardware import get_current_x
-        row_marker_actual = get_row_marker_limit_switch()  # Actual position from limit switch
-        current_x = get_current_x()  # Current X motor position
+        from mock_hardware import get_current_y
+        row_marker_limit = get_row_marker_limit_switch()  # Actual position from limit switch
+        current_y = get_current_y()  # Current X motor position
 
         # Safety violation if door is CLOSED (limit switch DOWN) and X motor is NOT at position 0
-        if row_marker_actual == "down" and current_x != 0:
+        if row_marker_limit == "down" and current_y != 0:
             violation_msg = (
                 f"🚨 ROWS MOTOR DOOR SAFETY VIOLATION!\n"
                 f"   Operation: {description}\n"
-                f"   RULE VIOLATED: Door can only be closed when rows motor (X-axis) is at position 0\n"
-                f"   Current X position: {current_x:.1f}cm (must be 0cm to close door)\n"
-                f"   Limit switch state: {row_marker_actual.upper()} (CLOSED)\n"
+                f"   RULE VIOLATED: Door can only be closed when lines motor (Y-axis) is at position 0\n"
+                f"   Current Y position: {current_y:.1f}cm (must be 0cm to close door)\n"
+                f"   Limit switch state: {row_marker_limit.upper()} (CLOSED)\n"
                 f"   ⚠️  IMMEDIATE ACTION REQUIRED: Open the rows motor door (set limit switch to OFF)\n"
                 f"   🛡️  Rows motor movement BLOCKED - door closed while motor not at home"
             )
@@ -300,7 +300,7 @@ class SafetySystem:
             'enabled': self.safety_enabled,
             'recent_violations': len(self.violations_log),
             'row_marker_programmed': get_row_marker_state(),
-            'row_marker_actual': get_row_marker_limit_switch(),
+            'row_marker_limit_switch': get_row_marker_limit_switch(),
             'current_position': {'x': get_current_x(), 'y': get_current_y()}
         }
 
@@ -330,8 +330,8 @@ if __name__ == "__main__":
     # Test safety status
     status = get_safety_status()
     print(f"Safety enabled: {status['enabled']}")
-    print(f"Row marker programmed: {status['row_marker_programmed']}")
-    print(f"Row marker actual: {status['row_marker_actual']}")
+    print(f"Row marker limit_switch programmed: {status['row_marker_limit_switch']}")
+
     print(f"Current position: X={status['current_position']['x']}, Y={status['current_position']['y']}")
     
     # Test Y-axis movement with row marker up (should be safe)
