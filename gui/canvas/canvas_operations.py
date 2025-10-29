@@ -618,19 +618,22 @@ class CanvasOperations:
                     self.update_operation_state('cuts', cut_name, 'in_progress')
                     print(f"🔄 Line section cut {section_1}-{section_2} → IN PROGRESS")
 
-            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2")
+            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2" or "5 and 4")
             row_section_cut_match = re.search(r'cut between row sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
             if row_section_cut_match:
-                section_1 = row_section_cut_match.group(1)
-                section_2 = row_section_cut_match.group(2)
-                cut_name = f"row_section_{section_1}_{section_2}"
+                section_1 = int(row_section_cut_match.group(1))
+                section_2 = int(row_section_cut_match.group(2))
+                # Normalize to ascending order (canvas stores as lower_higher)
+                lower_section = min(section_1, section_2)
+                higher_section = max(section_1, section_2)
+                cut_name = f"row_section_{lower_section}_{higher_section}"
 
                 if any(keyword in step_desc for keyword in ['close', 'finished']):
                     self.update_operation_state('cuts', cut_name, 'completed')
-                    print(f"✅ Row section cut {section_1}-{section_2} → COMPLETED")
+                    print(f"✅ Row section cut {lower_section}-{higher_section} → COMPLETED")
                 elif any(keyword in step_desc for keyword in ['open']):
                     self.update_operation_state('cuts', cut_name, 'in_progress')
-                    print(f"🔄 Row section cut {section_1}-{section_2} → IN PROGRESS")
+                    print(f"🔄 Row section cut {lower_section}-{higher_section} → IN PROGRESS")
 
             # Track outer edge cuts
             for cut_name in ['top', 'bottom', 'left', 'right']:
