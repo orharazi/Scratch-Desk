@@ -594,6 +594,7 @@ def get_hardware_status():
         'y_position': current_y_position,
         'line_marker': line_marker_state,
         'line_marker_piston': line_marker_piston,
+        'line_motor_piston': line_motor_piston,
         'line_cutter': line_cutter_state,
         'row_marker': row_marker_state,
         'row_marker_limit_switch': row_marker_limit_switch,

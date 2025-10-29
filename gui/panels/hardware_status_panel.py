@@ -2,7 +2,7 @@ import tkinter as tk
 import json
 from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
-    get_line_marker_piston_state, get_row_motor_limit_switch,
+    get_line_marker_piston_state, get_line_motor_piston_state, get_row_motor_limit_switch,
     get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
     get_line_tools_height, get_sensor_trigger_states, get_limit_switch_state,
     get_line_marker_state
@@ -295,10 +295,10 @@ class HardwareStatusPanel:
                                self.sensor_triggered_color if sensor_triggers['y_bottom'] else self.sensor_ready_color)
 
             # Marker sensor (detect piston position)
-            line_marker_state = get_line_marker_state().upper()
+            line_marker_piston_state = get_line_marker_piston_state().upper()
             self._update_widget('lines_sensor_marker_piston',
-                               'TRIGGERED' if line_marker_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if line_marker_state == 'DOWN' else self.sensor_ready_color)
+                               'TRIGGERED' if line_marker_piston_state == 'DOWN' else 'READY',
+                               self.sensor_triggered_color if line_marker_piston_state == 'DOWN' else self.sensor_ready_color)
 
             # Cutter sensor (detect cutter position)
             line_cutter_state = get_line_cutter_state().upper()
@@ -306,21 +306,23 @@ class HardwareStatusPanel:
                                'TRIGGERED' if line_cutter_state == 'DOWN' else 'READY',
                                self.sensor_triggered_color if line_cutter_state == 'DOWN' else self.sensor_ready_color)
 
-            # Motor sensor (detect motor position)
-            line_motor_state = get_line_tools_height().upper()
+            # Motor sensor (detect line motor piston position)
+            line_motor_piston_state = get_line_motor_piston_state().upper()
             self._update_widget('lines_sensor_motor',
-                               'TRIGGERED' if line_motor_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if line_motor_state == 'DOWN' else self.sensor_ready_color)
+                               'TRIGGERED' if line_motor_piston_state == 'DOWN' else 'READY',
+                               self.sensor_triggered_color if line_motor_piston_state == 'DOWN' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
+            # For display purposes, get the actual marker state
+            line_marker_state = get_line_marker_state().upper()
             self._update_widget('lines_piston_marker', line_marker_state,
                                self.piston_down_color if line_marker_state == 'DOWN' else self.piston_up_color)
 
             self._update_widget('lines_piston_cutter', line_cutter_state,
                                self.piston_down_color if line_cutter_state == 'DOWN' else self.piston_up_color)
 
-            self._update_widget('lines_piston_motor', line_motor_state,
-                               self.piston_down_color if line_motor_state == 'DOWN' else self.piston_up_color)
+            self._update_widget('lines_piston_motor', line_motor_piston_state,
+                               self.piston_down_color if line_motor_piston_state == 'DOWN' else self.piston_up_color)
 
             # ROWS SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red
