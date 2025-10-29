@@ -332,6 +332,45 @@ def generate_row_marking_steps(program):
 
         print(f"   Processing section {section_num}/{program.repeat_rows} (RTL order: {rtl_section_index + 1})")
 
+        # BEFORE marking this section, cut the boundary on the RIGHT (if not the first section)
+        if rtl_section_index > 0:
+            # Cut position at the RIGHT boundary of this section
+            section_start_x = PAPER_OFFSET_X + section_index * program.width
+
+            print(f"   Adding cut BEFORE section {section_num} at X={section_start_x}cm")
+
+            # Move to cut position before this section
+            steps.append(create_step(
+                'move_x',
+                {'position': section_start_x},
+                f"Move to cut before row section {section_num}: {section_start_x}cm"
+            ))
+
+            # Perform cut before this section (vertical cut spanning full height)
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut before row section {section_num}'},
+                f"Cut before row section {section_num}: Wait for TOP Y sensor"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_cutter', 'action': 'down'},
+                f"Cut before row section {section_num}: Open row cutter"
+            ))
+
+            steps.append(create_step(
+                'wait_sensor',
+                {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut before row section {section_num}'},
+                f"Cut before row section {section_num}: Wait for BOTTOM Y sensor"
+            ))
+
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'row_cutter', 'action': 'up'},
+                f"Cut before row section {section_num}: Close row cutter"
+            ))
+
         # Mark all pages in this section (RIGHT-TO-LEFT execution order)
         # Process pages from rightmost to leftmost (RTL)
         for rtl_page_in_section in range(program.number_of_pages):
@@ -425,45 +464,6 @@ def generate_row_marking_steps(program):
                 'tool_action',
                 {'tool': 'row_marker', 'action': 'up'},
                 f"{page_description}: Close row marker (LEFT edge)"
-            ))
-
-        # AFTER finishing all pages in this section, cut between sections (if not the last section)
-        if section_index < program.repeat_rows - 1:
-            # Cut position at the boundary between this section and the next
-            section_end_x = PAPER_OFFSET_X + (section_index + 1) * program.width
-
-            print(f"   Adding cut between section {section_num} and {section_num + 1} at X={section_end_x}cm")
-
-            # Move to cut position between sections
-            steps.append(create_step(
-                'move_x',
-                {'position': section_end_x},
-                f"Move to cut between row sections {section_num} and {section_num + 1}: {section_end_x}cm"
-            ))
-
-            # Perform cut between sections (vertical cut spanning full height)
-            steps.append(create_step(
-                'wait_sensor',
-                {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut between row sections {section_num}-{section_num + 1}'},
-                f"Cut between row sections {section_num} and {section_num + 1}: Wait for TOP Y sensor"
-            ))
-
-            steps.append(create_step(
-                'tool_action',
-                {'tool': 'row_cutter', 'action': 'down'},
-                f"Cut between row sections {section_num} and {section_num + 1}: Open row cutter"
-            ))
-
-            steps.append(create_step(
-                'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut between row sections {section_num}-{section_num + 1}'},
-                f"Cut between row sections {section_num} and {section_num + 1}: Wait for BOTTOM Y sensor"
-            ))
-
-            steps.append(create_step(
-                'tool_action',
-                {'tool': 'row_cutter', 'action': 'up'},
-                f"Cut between row sections {section_num} and {section_num + 1}: Close row cutter"
             ))
 
     # STEP 3: Cut LEFT edge of ACTUAL paper last
