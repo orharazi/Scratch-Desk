@@ -233,7 +233,22 @@ class RightPanel:
         self.steps_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.steps_listbox.config(yscrollcommand=queue_scroll.set)
         queue_scroll.config(command=self.steps_listbox.yview)
-        
+
+        # Selected step details (separate from current step details)
+        selected_details_label = tk.Label(all_steps_tab, text="Selected Step Details:",
+                                         font=('Arial', 9, 'bold'), bg='white', fg='darkblue')
+        selected_details_label.pack(pady=(5, 2))
+
+        self.selected_step_details = tk.Text(all_steps_tab, height=4, width=25, font=('Arial', 10),
+                                            wrap=tk.WORD, bg='#f0f0f0', fg='black', relief=tk.SUNKEN, bd=2)
+        selected_scroll = tk.Scrollbar(all_steps_tab, orient=tk.VERTICAL)
+        selected_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.selected_step_details.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=2)
+        self.selected_step_details.config(yscrollcommand=selected_scroll.set)
+        selected_scroll.config(command=self.selected_step_details.yview)
+        self.selected_step_details.insert(1.0, "Click on a step to view details...")
+        self.selected_step_details.config(state=tk.DISABLED)
+
         # Bind listbox selection to show step details
         self.steps_listbox.bind('<<ListboxSelect>>', self.on_step_select)
         
@@ -520,14 +535,14 @@ class RightPanel:
             self.step_details.config(state=tk.DISABLED)
     
     def on_step_select(self, event):
-        """Handle step selection from listbox"""
+        """Handle step selection from listbox - shows in separate details area"""
         selection = self.steps_listbox.curselection()
         if selection and self.main_app.steps:
             step_index = selection[0]
             if 0 <= step_index < len(self.main_app.steps):
                 step = self.main_app.steps[step_index]
 
-                # Show step details in the text widget - fix newline parsing
+                # Show step details in the SELECTED step details widget (not current step widget)
                 details_text = f"Step {step_index + 1}/{len(self.main_app.steps)}\n\n"
                 details_text += f"Operation: {step['operation']}\n\n"
                 details_text += f"Description: {step['description']}\n\n"
@@ -537,10 +552,10 @@ class RightPanel:
                     for key, value in step['parameters'].items():
                         details_text += f"  {key}: {value}\n"
 
-                self.step_details.config(state=tk.NORMAL)
-                self.step_details.delete(1.0, tk.END)
-                self.step_details.insert(1.0, details_text)
-                self.step_details.config(state=tk.DISABLED)
+                self.selected_step_details.config(state=tk.NORMAL)
+                self.selected_step_details.delete(1.0, tk.END)
+                self.selected_step_details.insert(1.0, details_text)
+                self.selected_step_details.config(state=tk.DISABLED)
     
     def prev_step(self):
         """Go to previous step"""
