@@ -48,13 +48,19 @@ def generate_lines_marking_steps(program):
     print(f"   Repeats: {program.repeat_rows} rows × {program.repeat_lines} lines") 
     print(f"   ACTUAL PAPER SIZE: {actual_paper_width}cm W × {actual_paper_height}cm H")
     
-    # INDEPENDENT MOTOR OPERATION: Ensure rows motor is at home position (X=0)
+    # INDEPENDENT MOTOR OPERATION: Ensure both motors start at home position
     steps.append(create_step(
         'move_x',
         {'position': 0.0},
-        "Lines operation: Move rows motor to home position (X=0)"
+        "Init: Move rows motor to home position (X=0)"
     ))
-    
+
+    steps.append(create_step(
+        'move_y',
+        {'position': 0.0},
+        "Init: Move lines motor to home position (Y=0)"
+    ))
+
     # Init: Move Y motor to ACTUAL high position (paper_offset + actual_paper_height)
     desk_y_position = PAPER_OFFSET_Y + actual_paper_height
     steps.append(create_step(
