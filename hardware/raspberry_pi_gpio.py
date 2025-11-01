@@ -1,0 +1,335 @@
+#!/usr/bin/env python3
+
+"""
+Raspberry Pi GPIO Interface
+============================
+
+Handles all GPIO operations for pistons, sensors, and limit switches.
+Uses settings.json for GPIO pin configuration.
+"""
+
+import json
+import time
+from typing import Dict, Optional
+
+# Try to import RPi.GPIO, fall back to mock if not available
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+    print("✓ RPi.GPIO library loaded successfully")
+except (ImportError, RuntimeError):
+    GPIO_AVAILABLE = False
+    print("⚠ RPi.GPIO not available - running in mock mode")
+    # Create mock GPIO class for development on non-Raspberry Pi systems
+    class MockGPIO:
+        BCM = "BCM"
+        BOARD = "BOARD"
+        OUT = "OUT"
+        IN = "IN"
+        PUD_UP = "PUD_UP"
+        PUD_DOWN = "PUD_DOWN"
+        HIGH = True
+        LOW = False
+
+        def __init__(self):
+            self._pin_states = {}  # Track output pin states
+            self._pin_modes = {}   # Track pin modes
+
+        def setmode(self, mode):
+            print(f"MOCK GPIO: setmode({mode})")
+
+        def setwarnings(self, enabled):
+            print(f"MOCK GPIO: setwarnings({enabled})")
+
+        def setup(self, pin, mode, pull_up_down=None):
+            self._pin_modes[pin] = mode
+            if mode == "OUT":
+                self._pin_states[pin] = False
+            print(f"MOCK GPIO: setup(pin={pin}, mode={mode}, pull_up_down={pull_up_down})")
+
+        def output(self, pin, state):
+            self._pin_states[pin] = state
+            print(f"MOCK GPIO: output(pin={pin}, state={'HIGH' if state else 'LOW'})")
+
+        def input(self, pin):
+            # Return HIGH for sensor pins (simulating not triggered)
+            state = self._pin_states.get(pin, True)
+            return state
+
+        def cleanup(self):
+            print("MOCK GPIO: cleanup()")
+            self._pin_states.clear()
+            self._pin_modes.clear()
+
+    GPIO = MockGPIO()
+
+
+class RaspberryPiGPIO:
+    """
+    Interface for Raspberry Pi GPIO control of pistons, sensors, and limit switches
+    """
+
+    def __init__(self, config_path: str = "settings.json"):
+        """
+        Initialize GPIO interface
+
+        Args:
+            config_path: Path to settings.json configuration file
+        """
+        self.config = self._load_config(config_path)
+        self.gpio_config = self.config.get("hardware_config", {}).get("raspberry_pi", {})
+        self.is_initialized = False
+
+        # Pin mappings from settings
+        self.piston_pins = self.gpio_config.get("pistons", {})
+        self.sensor_pins = self.gpio_config.get("sensors", {})
+        self.limit_switch_pins = self.gpio_config.get("limit_switches", {})
+
+        print(f"\n{'='*60}")
+        print("Raspberry Pi GPIO Configuration")
+        print(f"{'='*60}")
+        print(f"Piston pins: {self.piston_pins}")
+        print(f"Sensor pins: {self.sensor_pins}")
+        print(f"Limit switch pins: {self.limit_switch_pins}")
+        print(f"{'='*60}\n")
+
+    def _load_config(self, config_path: str) -> Dict:
+        """Load configuration from settings.json"""
+        try:
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error loading config: {e}")
+            return {}
+
+    def initialize(self) -> bool:
+        """
+        Initialize GPIO pins for pistons, sensors, and limit switches
+
+        Returns:
+            True if initialization successful, False otherwise
+        """
+        if self.is_initialized:
+            print("GPIO already initialized")
+            return True
+
+        try:
+            # Set GPIO mode (BCM or BOARD)
+            gpio_mode = self.gpio_config.get("gpio_mode", "BCM")
+            if gpio_mode == "BCM":
+                GPIO.setmode(GPIO.BCM)
+            else:
+                GPIO.setmode(GPIO.BOARD)
+
+            GPIO.setwarnings(False)
+
+            # Setup piston pins as outputs (default LOW = retracted/up)
+            for piston_name, pin in self.piston_pins.items():
+                GPIO.setup(pin, GPIO.OUT)
+                GPIO.output(pin, GPIO.LOW)
+                print(f"✓ Piston '{piston_name}' initialized on GPIO {pin} (LOW/retracted)")
+
+            # Setup sensor pins as inputs with pull-up resistors
+            for sensor_name, pin in self.sensor_pins.items():
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                print(f"✓ Sensor '{sensor_name}' initialized on GPIO {pin} (INPUT with pull-up)")
+
+            # Setup limit switch pins as inputs with pull-up resistors
+            for switch_name, pin in self.limit_switch_pins.items():
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                print(f"✓ Limit switch '{switch_name}' initialized on GPIO {pin} (INPUT with pull-up)")
+
+            self.is_initialized = True
+            print("\n✓ Raspberry Pi GPIO initialized successfully\n")
+            return True
+
+        except Exception as e:
+            print(f"✗ Error initializing GPIO: {e}")
+            return False
+
+    # ========== PISTON CONTROL METHODS ==========
+
+    def set_piston(self, piston_name: str, state: str) -> bool:
+        """
+        Set piston state
+
+        Args:
+            piston_name: Name of piston (e.g., 'line_marker_piston')
+            state: 'up' or 'down'
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.is_initialized:
+            print("GPIO not initialized")
+            return False
+
+        if piston_name not in self.piston_pins:
+            print(f"Unknown piston: {piston_name}")
+            return False
+
+        try:
+            pin = self.piston_pins[piston_name]
+            # HIGH = extended/down, LOW = retracted/up
+            gpio_state = GPIO.HIGH if state == "down" else GPIO.LOW
+            GPIO.output(pin, gpio_state)
+            print(f"Piston '{piston_name}' set to {state.upper()} (GPIO {pin} = {'HIGH' if gpio_state else 'LOW'})")
+            return True
+        except Exception as e:
+            print(f"Error setting piston {piston_name}: {e}")
+            return False
+
+    def piston_up(self, piston_name: str) -> bool:
+        """Retract piston (set to UP position)"""
+        return self.set_piston(piston_name, "up")
+
+    def piston_down(self, piston_name: str) -> bool:
+        """Extend piston (set to DOWN position)"""
+        return self.set_piston(piston_name, "down")
+
+    # ========== SENSOR READING METHODS ==========
+
+    def read_sensor(self, sensor_name: str) -> Optional[bool]:
+        """
+        Read sensor state
+
+        Args:
+            sensor_name: Name of sensor (e.g., 'line_marker_state')
+
+        Returns:
+            True if sensor triggered (LOW signal), False if not triggered (HIGH signal), None on error
+        """
+        if not self.is_initialized:
+            print("GPIO not initialized")
+            return None
+
+        if sensor_name not in self.sensor_pins:
+            print(f"Unknown sensor: {sensor_name}")
+            return None
+
+        try:
+            pin = self.sensor_pins[sensor_name]
+            # Sensor triggered = LOW signal (pulled to ground)
+            # Sensor not triggered = HIGH signal (pull-up resistor)
+            state = GPIO.input(pin)
+            triggered = not state  # Invert: LOW = triggered (True), HIGH = not triggered (False)
+            return triggered
+        except Exception as e:
+            print(f"Error reading sensor {sensor_name}: {e}")
+            return None
+
+    def read_limit_switch(self, switch_name: str) -> Optional[bool]:
+        """
+        Read limit switch state
+
+        Args:
+            switch_name: Name of limit switch (e.g., 'rows_door')
+
+        Returns:
+            True if switch activated (LOW signal), False if not activated (HIGH signal), None on error
+        """
+        if not self.is_initialized:
+            print("GPIO not initialized")
+            return None
+
+        if switch_name not in self.limit_switch_pins:
+            print(f"Unknown limit switch: {switch_name}")
+            return None
+
+        try:
+            pin = self.limit_switch_pins[switch_name]
+            # Switch activated = LOW signal (pressed/closed)
+            # Switch not activated = HIGH signal (open)
+            state = GPIO.input(pin)
+            activated = not state  # Invert: LOW = activated (True), HIGH = not activated (False)
+            return activated
+        except Exception as e:
+            print(f"Error reading limit switch {switch_name}: {e}")
+            return None
+
+    def get_all_sensor_states(self) -> Dict[str, bool]:
+        """
+        Read all sensor states
+
+        Returns:
+            Dictionary mapping sensor names to their states
+        """
+        states = {}
+        for sensor_name in self.sensor_pins:
+            state = self.read_sensor(sensor_name)
+            if state is not None:
+                states[sensor_name] = state
+        return states
+
+    def get_all_limit_switch_states(self) -> Dict[str, bool]:
+        """
+        Read all limit switch states
+
+        Returns:
+            Dictionary mapping limit switch names to their states
+        """
+        states = {}
+        for switch_name in self.limit_switch_pins:
+            state = self.read_limit_switch(switch_name)
+            if state is not None:
+                states[switch_name] = state
+        return states
+
+    # ========== CLEANUP ==========
+
+    def cleanup(self):
+        """
+        Cleanup GPIO resources
+        Should be called when shutting down
+        """
+        if self.is_initialized:
+            try:
+                # Set all pistons to retracted/up position before cleanup
+                for piston_name in self.piston_pins:
+                    self.piston_up(piston_name)
+                time.sleep(0.1)
+
+                GPIO.cleanup()
+                self.is_initialized = False
+                print("✓ GPIO cleanup completed")
+            except Exception as e:
+                print(f"Error during GPIO cleanup: {e}")
+
+
+if __name__ == "__main__":
+    """Test GPIO interface"""
+    print("\n" + "="*60)
+    print("Raspberry Pi GPIO Interface Test")
+    print("="*60 + "\n")
+
+    # Create and initialize GPIO interface
+    gpio = RaspberryPiGPIO()
+
+    if gpio.initialize():
+        print("\nTesting piston control...")
+        # Test each piston
+        for piston_name in gpio.piston_pins:
+            print(f"\nTesting {piston_name}:")
+            gpio.piston_down(piston_name)
+            time.sleep(0.5)
+            gpio.piston_up(piston_name)
+            time.sleep(0.5)
+
+        print("\nReading all sensors...")
+        sensor_states = gpio.get_all_sensor_states()
+        for sensor, state in sensor_states.items():
+            print(f"  {sensor}: {'TRIGGERED' if state else 'READY'}")
+
+        print("\nReading all limit switches...")
+        switch_states = gpio.get_all_limit_switch_states()
+        for switch, state in switch_states.items():
+            print(f"  {switch}: {'ACTIVATED' if state else 'INACTIVE'}")
+
+        # Cleanup
+        gpio.cleanup()
+    else:
+        print("✗ Failed to initialize GPIO")
+
+    print("\n" + "="*60)
+    print("Test completed")
+    print("="*60 + "\n")
