@@ -2,8 +2,8 @@ import tkinter as tk
 import json
 from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
-    get_line_marker_piston_state, get_line_motor_piston_state, get_row_motor_limit_switch,
-    get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
+    get_line_marker_piston_state, get_line_cutter_piston_state, get_line_motor_piston_state,
+    get_row_motor_limit_switch, get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
     get_sensor_trigger_states, get_limit_switch_state,
     get_line_marker_state
 )
@@ -317,8 +317,9 @@ class HardwareStatusPanel:
             self._update_widget('lines_piston_marker', line_marker_piston_state,
                                self.piston_down_color if line_marker_piston_state == 'DOWN' else self.piston_up_color)
 
-            self._update_widget('lines_piston_cutter', line_cutter_state,
-                               self.piston_down_color if line_cutter_state == 'DOWN' else self.piston_up_color)
+            line_cutter_piston_state = get_line_cutter_piston_state().upper()
+            self._update_widget('lines_piston_cutter', line_cutter_piston_state,
+                               self.piston_down_color if line_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
             self._update_widget('lines_piston_motor', line_motor_piston_state,
                                self.piston_down_color if line_motor_piston_state == 'DOWN' else self.piston_up_color)

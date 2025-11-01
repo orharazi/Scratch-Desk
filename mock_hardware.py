@@ -24,6 +24,7 @@ LIMIT SWITCHES (Safety sensors):
 LINES TOOLS (Y-axis operations - horizontal marking/cutting):
 - line_marker_piston: Pneumatic piston that lifts/lowers the X-axis marker assembly
 - line_marker_state: Marking tool for drawing horizontal lines (UP/DOWN)
+- line_cutter_piston: Pneumatic piston that lifts/lowers the X-axis cutter assembly
 - line_cutter_state: Cutting tool for horizontal cuts (UP/DOWN)
 - line_motor_piston: Pneumatic piston that lifts/lowers the entire Y motor assembly during movement
 
@@ -85,8 +86,9 @@ PAPER_START_X = hardware_limits.get("paper_start_x", 15.0)     # cm from left ed
 # LINES TOOLS (Y-axis / horizontal operations)
 line_marker_state = "up"           # Marking tool for horizontal lines: "up" (inactive) or "down" (marking)
 line_marker_piston = "up"          # Piston that lifts X-axis marker assembly: "up" (default) or "down" (for operations)
-line_motor_piston = "down"         # Piston that lifts Y motor assembly: "down" (default) or "up" (during upward Y movement)
 line_cutter_state = "up"           # Cutting tool for horizontal cuts: "up" (inactive) or "down" (cutting)
+line_cutter_piston = "up"          # Piston that lifts X-axis cutter assembly: "up" (default) or "down" (for operations)
+line_motor_piston = "down"         # Piston that lifts Y motor assembly: "down" (default) or "up" (during upward Y movement)
 
 # ROWS TOOLS (X-axis / vertical operations)
 row_marker_state = "up"            # Marking tool for vertical lines (programmed state): "up" or "down"
@@ -135,15 +137,16 @@ limit_switch_states = {
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
-    global line_marker_state, line_marker_piston, line_motor_piston, line_cutter_state
+    global line_marker_state, line_marker_piston, line_cutter_state, line_cutter_piston, line_motor_piston
     global row_marker_state, row_marker_limit_switch, row_cutter_state
 
     current_x_position = 0.0
     current_y_position = 0.0
     line_marker_state = "up"
     line_marker_piston = "up"    # Default state is UP
-    line_motor_piston = "down"   # Default state is DOWN
     line_cutter_state = "up"
+    line_cutter_piston = "up"    # Default state is UP
+    line_motor_piston = "down"   # Default state is DOWN
     row_marker_state = "up"
     row_marker_limit_switch = "up"  # Default limit switch position
     row_cutter_state = "up"
@@ -267,9 +270,17 @@ def line_marker_up():
 
 def line_cutter_down():
     """Lower line cutter to cutting position"""
-    global line_cutter_state
+    global line_cutter_state, line_cutter_piston
     print("MOCK: line_cutter_down()")
     if line_cutter_state != "down":
+        # First lower the piston (bring cutter assembly down)
+        if line_cutter_piston != "down":
+            print("Lowering line cutter piston - bringing cutter assembly down")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            line_cutter_piston = "down"
+            print("Line cutter piston DOWN - assembly lowered")
+
+        # Then activate the cutter
         print("Lowering line cutter")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_cutter_state = "down"
@@ -279,13 +290,21 @@ def line_cutter_down():
 
 def line_cutter_up():
     """Raise line cutter from cutting position"""
-    global line_cutter_state
+    global line_cutter_state, line_cutter_piston
     print("MOCK: line_cutter_up()")
     if line_cutter_state != "up":
+        # First deactivate the cutter
         print("Raising line cutter")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_cutter_state = "up"
         print("Line cutter up")
+
+        # Then raise the piston (lift cutter assembly up to default position)
+        if line_cutter_piston != "up":
+            print("Raising line cutter piston - returning to default position")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            line_cutter_piston = "up"
+            print("Line cutter piston UP - default position")
     else:
         print("Line cutter already up")
 
@@ -618,6 +637,31 @@ def line_marker_piston_down():
     else:
         print("Line marker piston already DOWN")
 
+# Line cutter piston control functions
+def line_cutter_piston_up():
+    """Raise line cutter piston (default state)"""
+    global line_cutter_piston
+    print("MOCK: line_cutter_piston_up()")
+    if line_cutter_piston != "up":
+        print("Raising line cutter piston - returning to default position")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_cutter_piston = "up"
+        print("Line cutter piston UP - default position")
+    else:
+        print("Line cutter piston already UP")
+
+def line_cutter_piston_down():
+    """Lower line cutter piston (for operations)"""
+    global line_cutter_piston
+    print("MOCK: line_cutter_piston_down()")
+    if line_cutter_piston != "down":
+        print("Lowering line cutter piston - preparing for operations")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_cutter_piston = "down"
+        print("Line cutter piston DOWN - ready for operations")
+    else:
+        print("Line cutter piston already DOWN")
+
 # Line motor piston control functions
 def line_motor_piston_up():
     """Lift line motor piston (raises entire Y motor assembly)"""
@@ -651,8 +695,9 @@ def get_hardware_status():
         'y_position': current_y_position,
         'line_marker': line_marker_state,
         'line_marker_piston': line_marker_piston,
-        'line_motor_piston': line_motor_piston,
         'line_cutter': line_cutter_state,
+        'line_cutter_piston': line_cutter_piston,
+        'line_motor_piston': line_motor_piston,
         'row_marker': row_marker_state,
         'row_marker_limit_switch': row_marker_limit_switch,
         'row_cutter': row_cutter_state
@@ -666,8 +711,9 @@ def print_hardware_status():
     print(f"Y Position: {current_y_position:.1f}cm")
     print(f"Line Marker: {line_marker_state}")
     print(f"Line Marker Piston: {line_marker_piston}")
-    print(f"Line Motor Piston: {line_motor_piston}")
     print(f"Line Cutter: {line_cutter_state}")
+    print(f"Line Cutter Piston: {line_cutter_piston}")
+    print(f"Line Motor Piston: {line_motor_piston}")
     print(f"Row Marker: {row_marker_state}")
     print(f"Row Marker Limit Switch: {row_marker_limit_switch}")
     print(f"Row Cutter: {row_cutter_state}")
@@ -769,6 +815,10 @@ def get_line_marker_state():
 def get_line_marker_piston_state():
     """Get current line marker piston state"""
     return line_marker_piston
+
+def get_line_cutter_piston_state():
+    """Get current line cutter piston state"""
+    return line_cutter_piston
 
 def get_line_motor_piston_state():
     """Get current line motor piston state (lifts entire Y motor assembly)"""
