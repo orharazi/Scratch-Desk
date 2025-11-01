@@ -4,7 +4,7 @@ from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
     get_line_marker_piston_state, get_line_motor_piston_state, get_row_motor_limit_switch,
     get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
-    get_line_tools_height, get_sensor_trigger_states, get_limit_switch_state,
+    get_sensor_trigger_states, get_limit_switch_state,
     get_line_marker_state
 )
 

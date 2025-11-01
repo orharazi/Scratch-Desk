@@ -1,5 +1,44 @@
 #!/usr/bin/env python3
 
+"""
+CNC SCRATCH DESK - Hardware Abstraction Layer
+==============================================
+
+This module provides a virtual mock of the physical CNC Scratch Desk hardware.
+All variables here represent real hardware components that will be connected in production.
+
+MACHINE STRUCTURE:
+==================
+
+MOTORS & POSITIONING:
+- X Motor (Rows Motor): Horizontal movement (0-100cm) - moves marking/cutting tools left-right
+- Y Motor (Lines Motor): Vertical movement (0-100cm) - moves marking/cutting tools up-down
+
+LIMIT SWITCHES (Safety sensors):
+- y_top: Top Y-axis limit switch (detects top boundary)
+- y_bottom: Bottom Y-axis limit switch (detects bottom boundary)
+- x_right: Right X-axis limit switch (detects right boundary)
+- x_left: Left X-axis limit switch (detects left boundary)
+- rows: Door safety limit switch (prevents operation when door open)
+
+LINES TOOLS (Y-axis operations - horizontal marking/cutting):
+- line_marker_piston: Pneumatic piston that lifts/lowers the X-axis marker assembly
+- line_marker_state: Marking tool for drawing horizontal lines (UP/DOWN)
+- line_cutter_state: Cutting tool for horizontal cuts (UP/DOWN)
+- line_motor_piston: Pneumatic piston that lifts/lowers the entire Y motor assembly during movement
+
+ROWS TOOLS (X-axis operations - vertical marking/cutting):
+- row_marker_state: Marking tool for drawing vertical lines (UP/DOWN) - programmed state
+- row_marker_limit_switch: Physical sensor detecting actual row marker position (UP/DOWN)
+- row_cutter_state: Cutting tool for vertical cuts (UP/DOWN)
+
+EDGE DETECTION SENSORS:
+- x_left/x_right sensors: Detect paper edges during horizontal (lines) operations
+- y_top/y_bottom sensors: Detect paper edges during vertical (rows) operations
+
+All state changes are reflected in the Hardware Status panel in real-time.
+"""
+
 import time
 import threading
 import json
@@ -7,8 +46,8 @@ import os
 from threading import Event
 
 # Hardware state variables - optimized for Raspberry Pi (simple variables)
-current_x_position = 0.0  # cm
-current_y_position = 0.0  # cm
+current_x_position = 0.0  # cm - X motor (rows motor) position
+current_y_position = 0.0  # cm - Y motor (lines motor) position
 
 # Load settings from settings.json
 def load_settings():
@@ -40,15 +79,19 @@ MIN_X_POSITION = hardware_limits.get("min_x_position", 0.0)    # cm
 MIN_Y_POSITION = hardware_limits.get("min_y_position", 0.0)    # cm
 PAPER_START_X = hardware_limits.get("paper_start_x", 15.0)     # cm from left edge
 
-# Tool states
-line_marker_state = "up"    # "up" or "down"
-line_marker_piston = "up"   # "up" or "down" - default UP, DOWN only when needed for operations
-line_motor_piston = "down"  # "up" or "down" - lifts entire Y motor assembly, default DOWN, UP during Y movement
-line_cutter_state = "up"    # "up" or "down"
-row_marker_state = "up"     # "up" or "down" - programmed state
-row_marker_limit_switch = "up"  # "up" or "down" - actual physical position detected by limit switch
-row_cutter_state = "up"     # "up" or "down"
-line_tools_height = "up"    # "up" or "down"
+# === ACTUAL HARDWARE STATE VARIABLES ===
+# These variables directly represent physical hardware components
+
+# LINES TOOLS (Y-axis / horizontal operations)
+line_marker_state = "up"           # Marking tool for horizontal lines: "up" (inactive) or "down" (marking)
+line_marker_piston = "up"          # Piston that lifts X-axis marker assembly: "up" (default) or "down" (for operations)
+line_motor_piston = "down"         # Piston that lifts Y motor assembly: "down" (default) or "up" (during upward Y movement)
+line_cutter_state = "up"           # Cutting tool for horizontal cuts: "up" (inactive) or "down" (cutting)
+
+# ROWS TOOLS (X-axis / vertical operations)
+row_marker_state = "up"            # Marking tool for vertical lines (programmed state): "up" or "down"
+row_marker_limit_switch = "up"     # Physical sensor detecting row marker position: "up" or "down"
+row_cutter_state = "up"            # Cutting tool for vertical cuts: "up" (inactive) or "down" (cutting)
 
 # Sensor events for manual triggering
 sensor_events = {
@@ -92,8 +135,8 @@ limit_switch_states = {
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
-    global line_marker_state, line_marker_piston, line_motor_piston, line_cutter_state, row_marker_state, row_marker_limit_switch, row_cutter_state
-    global line_tools_height
+    global line_marker_state, line_marker_piston, line_motor_piston, line_cutter_state
+    global row_marker_state, row_marker_limit_switch, row_cutter_state
 
     current_x_position = 0.0
     current_y_position = 0.0
@@ -104,8 +147,7 @@ def reset_hardware():
     row_marker_state = "up"
     row_marker_limit_switch = "up"  # Default limit switch position
     row_cutter_state = "up"
-    line_tools_height = "up"
-    
+
     # Clear all sensor events
     for event in sensor_events.values():
         event.clear()
@@ -526,32 +568,22 @@ def trigger_y_bottom_sensor():
     sensor_trigger_timers['y_bottom'] = time.time()
     print("Manual trigger: Y BOTTOM sensor activated")
 
-# Tool positioning functions
+# Tool positioning functions (convenience functions for test controls)
 def lift_line_tools():
-    """Lift line tools off surface"""
-    global line_tools_height
+    """Lift line tools off surface (convenience function for manual testing)"""
     print("MOCK: lift_line_tools()")
-    if line_tools_height != "up":
-        print("Lifting line tools off surface")
-        line_marker_up()
-        line_cutter_up()
-        time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
-        line_tools_height = "up"
-        print("Line tools lifted")
-    else:
-        print("Line tools already lifted")
+    print("Lifting line tools off surface")
+    line_marker_up()
+    line_cutter_up()
+    time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
+    print("Line tools lifted")
 
 def lower_line_tools():
-    """Lower line tools to surface"""
-    global line_tools_height
+    """Lower line tools to surface (convenience function for manual testing)"""
     print("MOCK: lower_line_tools()")
-    if line_tools_height != "down":
-        print("Lowering line tools to surface")
-        time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
-        line_tools_height = "down"
-        print("Line tools lowered to surface")
-    else:
-        print("Line tools already at surface")
+    print("Lowering line tools to surface")
+    time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
+    print("Line tools lowered to surface")
 
 def move_line_tools_to_top():
     """Move line tools to maximum Y position"""
@@ -623,8 +655,7 @@ def get_hardware_status():
         'line_cutter': line_cutter_state,
         'row_marker': row_marker_state,
         'row_marker_limit_switch': row_marker_limit_switch,
-        'row_cutter': row_cutter_state,
-        'line_tools_height': line_tools_height
+        'row_cutter': row_cutter_state
     }
     return status
 
@@ -634,10 +665,12 @@ def print_hardware_status():
     print(f"X Position: {current_x_position:.1f}cm")
     print(f"Y Position: {current_y_position:.1f}cm")
     print(f"Line Marker: {line_marker_state}")
+    print(f"Line Marker Piston: {line_marker_piston}")
+    print(f"Line Motor Piston: {line_motor_piston}")
     print(f"Line Cutter: {line_cutter_state}")
     print(f"Row Marker: {row_marker_state}")
+    print(f"Row Marker Limit Switch: {row_marker_limit_switch}")
     print(f"Row Cutter: {row_cutter_state}")
-    print(f"Line Tools Height: {line_tools_height}")
     print("=====================\n")
 
 if __name__ == "__main__":
@@ -752,10 +785,6 @@ def get_row_marker_state():
 def get_row_cutter_state():
     """Get current row cutter state"""
     return row_cutter_state
-
-def get_line_tools_height():
-    """Get current line tools height state"""
-    return line_tools_height
 
 def get_row_motor_limit_switch():
     """Get current row marker limit switch state - reads from limit_switch_states['rows']"""
