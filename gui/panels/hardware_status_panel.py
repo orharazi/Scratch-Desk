@@ -324,7 +324,7 @@ class HardwareStatusPanel:
 
             line_motor_piston_state = get_line_motor_piston_state().upper()
             self._update_widget('lines_piston_motor', line_motor_piston_state,
-                               self.piston_down_color if line_motor_piston_state == 'UP' else self.piston_up_color)
+                               self.piston_down_color if line_motor_piston_state == 'DOWN' else self.piston_up_color)
 
             # ROWS SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red
