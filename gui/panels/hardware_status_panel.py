@@ -4,6 +4,7 @@ from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
     get_line_marker_piston_state, get_line_cutter_piston_state,
     get_line_motor_piston_state, get_line_motor_piston_sensor_state,
+    get_row_marker_piston_state, get_row_cutter_piston_state,
     get_row_motor_limit_switch, get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
     get_sensor_trigger_states, get_limit_switch_state,
     get_line_marker_state
@@ -310,8 +311,8 @@ class HardwareStatusPanel:
             # Motor sensor (detect line motor piston position)
             line_motor_piston_sensor_state = get_line_motor_piston_sensor_state().upper()
             self._update_widget('lines_sensor_motor',
-                               line_motor_piston_sensor_state,
-                               self.piston_down_color if line_motor_piston_sensor_state == 'DOWN' else self.piston_up_color)
+                                'TRIGGERED' if line_motor_piston_sensor_state == 'DOWN' else 'READY',
+                                self.sensor_triggered_color if line_motor_piston_sensor_state == 'DOWN' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             # Note: line_marker_piston_state was already retrieved above at line 298
@@ -335,7 +336,7 @@ class HardwareStatusPanel:
                                'TRIGGERED' if sensor_triggers['x_left'] else 'READY',
                                self.sensor_triggered_color if sensor_triggers['x_left'] else self.sensor_ready_color)
 
-            # Marker sensor
+            # Marker sensor (detect marker position)
             row_marker_state = get_row_marker_state().upper()
             self._update_widget('rows_sensor_marker_piston',
                                'TRIGGERED' if row_marker_state == 'DOWN' else 'READY',
@@ -348,11 +349,13 @@ class HardwareStatusPanel:
                                self.sensor_triggered_color if row_cutter_state == 'DOWN' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
-            self._update_widget('rows_piston_marker', row_marker_state,
-                               self.piston_down_color if row_marker_state == 'DOWN' else self.piston_up_color)
+            row_marker_piston_state = get_row_marker_piston_state().upper()
+            self._update_widget('rows_piston_marker', row_marker_piston_state,
+                               self.piston_down_color if row_marker_piston_state == 'DOWN' else self.piston_up_color)
 
-            self._update_widget('rows_piston_cutter', row_cutter_state,
-                               self.piston_down_color if row_cutter_state == 'DOWN' else self.piston_up_color)
+            row_cutter_piston_state = get_row_cutter_piston_state().upper()
+            self._update_widget('rows_piston_cutter', row_cutter_piston_state,
+                               self.piston_down_color if row_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
             # Update operation mode
             self._update_operation_mode()

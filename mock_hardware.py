@@ -30,9 +30,11 @@ LINES TOOLS (Y-axis operations - horizontal marking/cutting):
 - line_motor_piston_sensor: Sensor detecting Y motor piston position (UP/DOWN)
 
 ROWS TOOLS (X-axis operations - vertical marking/cutting):
-- row_marker_state: Marking tool for drawing vertical lines (UP/DOWN) - programmed state
+- row_marker_piston: Pneumatic piston that lifts/lowers the Y-axis marker assembly
+- row_marker_state: Sensor detecting marker tool position (UP/DOWN)
 - row_marker_limit_switch: Physical sensor detecting actual row marker position (UP/DOWN)
-- row_cutter_state: Cutting tool for vertical cuts (UP/DOWN)
+- row_cutter_piston: Pneumatic piston that lifts/lowers the Y-axis cutter assembly
+- row_cutter_state: Sensor detecting cutter tool position (UP/DOWN)
 
 EDGE DETECTION SENSORS:
 - x_left/x_right sensors: Detect paper edges during horizontal (lines) operations
@@ -93,9 +95,11 @@ line_motor_piston = "down"         # Piston that lifts Y motor assembly: "down" 
 line_motor_piston_sensor = "down"  # Sensor detecting Y motor piston position: "down" (default) or "up" (lifted)
 
 # ROWS TOOLS (X-axis / vertical operations)
-row_marker_state = "up"            # Marking tool for vertical lines (programmed state): "up" or "down"
+row_marker_piston = "up"           # Piston that lifts Y-axis marker assembly: "up" (default) or "down" (for operations)
+row_marker_state = "up"            # Sensor detecting marker tool position: "up" or "down"
 row_marker_limit_switch = "up"     # Physical sensor detecting row marker position: "up" or "down"
-row_cutter_state = "up"            # Cutting tool for vertical cuts: "up" (inactive) or "down" (cutting)
+row_cutter_piston = "up"           # Piston that lifts Y-axis cutter assembly: "up" (default) or "down" (for operations)
+row_cutter_state = "up"            # Sensor detecting cutter tool position: "up" (inactive) or "down" (cutting)
 
 # Sensor events for manual triggering
 sensor_events = {
@@ -141,7 +145,8 @@ def reset_hardware():
     global current_x_position, current_y_position
     global line_marker_state, line_marker_piston, line_cutter_state, line_cutter_piston
     global line_motor_piston, line_motor_piston_sensor
-    global row_marker_state, row_marker_limit_switch, row_cutter_state
+    global row_marker_piston, row_marker_state, row_marker_limit_switch
+    global row_cutter_piston, row_cutter_state
 
     current_x_position = 0.0
     current_y_position = 0.0
@@ -151,8 +156,10 @@ def reset_hardware():
     line_cutter_piston = "up"           # Default state is UP
     line_motor_piston = "down"          # Default state is DOWN
     line_motor_piston_sensor = "down"   # Default state is DOWN (not lifted)
+    row_marker_piston = "up"            # Default state is UP
     row_marker_state = "up"
-    row_marker_limit_switch = "up"  # Default limit switch position
+    row_marker_limit_switch = "up"      # Default limit switch position
+    row_cutter_piston = "up"            # Default state is UP
     row_cutter_state = "up"
 
     # Clear all sensor events
@@ -315,9 +322,17 @@ def line_cutter_up():
 # Row tools (X-axis operations)
 def row_marker_down():
     """Lower row marker to marking position (does NOT affect motor door limit switch)"""
-    global row_marker_state
+    global row_marker_state, row_marker_piston
     print("MOCK: row_marker_down()")
     if row_marker_state != "down":
+        # First lower the piston (bring marker assembly down)
+        if row_marker_piston != "down":
+            print("Lowering row marker piston - bringing marker assembly down")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            row_marker_piston = "down"
+            print("Row marker piston DOWN - assembly lowered")
+
+        # Then activate the marker
         print("Lowering row marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "down"
@@ -327,21 +342,37 @@ def row_marker_down():
 
 def row_marker_up():
     """Raise row marker from marking position (does NOT affect motor door limit switch)"""
-    global row_marker_state
+    global row_marker_state, row_marker_piston
     print("MOCK: row_marker_up()")
     if row_marker_state != "up":
+        # First deactivate the marker
         print("Raising row marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_state = "up"
         print("Row marker up")
+
+        # Then raise the piston (lift marker assembly up to default position)
+        if row_marker_piston != "up":
+            print("Raising row marker piston - returning to default position")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            row_marker_piston = "up"
+            print("Row marker piston UP - default position")
     else:
         print("Row marker already up")
 
 def row_cutter_down():
     """Lower row cutter to cutting position"""
-    global row_cutter_state
+    global row_cutter_state, row_cutter_piston
     print("MOCK: row_cutter_down()")
     if row_cutter_state != "down":
+        # First lower the piston (bring cutter assembly down)
+        if row_cutter_piston != "down":
+            print("Lowering row cutter piston - bringing cutter assembly down")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            row_cutter_piston = "down"
+            print("Row cutter piston DOWN - assembly lowered")
+
+        # Then activate the cutter
         print("Lowering row cutter")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_cutter_state = "down"
@@ -351,13 +382,21 @@ def row_cutter_down():
 
 def row_cutter_up():
     """Raise row cutter from cutting position"""
-    global row_cutter_state
+    global row_cutter_state, row_cutter_piston
     print("MOCK: row_cutter_up()")
     if row_cutter_state != "up":
+        # First deactivate the cutter
         print("Raising row cutter")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_cutter_state = "up"
         print("Row cutter up")
+
+        # Then raise the piston (lift cutter assembly up to default position)
+        if row_cutter_piston != "up":
+            print("Raising row cutter piston - returning to default position")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            row_cutter_piston = "up"
+            print("Row cutter piston UP - default position")
     else:
         print("Row cutter already up")
 
@@ -693,6 +732,56 @@ def line_motor_piston_down():
     else:
         print("Line motor piston already DOWN")
 
+# Row marker piston control functions
+def row_marker_piston_up():
+    """Raise row marker piston (default state)"""
+    global row_marker_piston
+    print("MOCK: row_marker_piston_up()")
+    if row_marker_piston != "up":
+        print("Raising row marker piston - returning to default position")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        row_marker_piston = "up"
+        print("Row marker piston UP - default position")
+    else:
+        print("Row marker piston already UP")
+
+def row_marker_piston_down():
+    """Lower row marker piston (for operations)"""
+    global row_marker_piston
+    print("MOCK: row_marker_piston_down()")
+    if row_marker_piston != "down":
+        print("Lowering row marker piston - preparing for operations")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        row_marker_piston = "down"
+        print("Row marker piston DOWN - ready for operations")
+    else:
+        print("Row marker piston already DOWN")
+
+# Row cutter piston control functions
+def row_cutter_piston_up():
+    """Raise row cutter piston (default state)"""
+    global row_cutter_piston
+    print("MOCK: row_cutter_piston_up()")
+    if row_cutter_piston != "up":
+        print("Raising row cutter piston - returning to default position")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        row_cutter_piston = "up"
+        print("Row cutter piston UP - default position")
+    else:
+        print("Row cutter piston already UP")
+
+def row_cutter_piston_down():
+    """Lower row cutter piston (for operations)"""
+    global row_cutter_piston
+    print("MOCK: row_cutter_piston_down()")
+    if row_cutter_piston != "down":
+        print("Lowering row cutter piston - preparing for operations")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        row_cutter_piston = "down"
+        print("Row cutter piston DOWN - ready for operations")
+    else:
+        print("Row cutter piston already DOWN")
+
 # Status and diagnostic functions
 def get_hardware_status():
     """Get current hardware status for debugging"""
@@ -705,8 +794,10 @@ def get_hardware_status():
         'line_cutter_piston': line_cutter_piston,
         'line_motor_piston': line_motor_piston,
         'line_motor_piston_sensor': line_motor_piston_sensor,
+        'row_marker_piston': row_marker_piston,
         'row_marker': row_marker_state,
         'row_marker_limit_switch': row_marker_limit_switch,
+        'row_cutter_piston': row_cutter_piston,
         'row_cutter': row_cutter_state
     }
     return status
@@ -722,8 +813,10 @@ def print_hardware_status():
     print(f"Line Cutter Piston: {line_cutter_piston}")
     print(f"Line Motor Piston: {line_motor_piston}")
     print(f"Line Motor Piston Sensor: {line_motor_piston_sensor}")
+    print(f"Row Marker Piston: {row_marker_piston}")
     print(f"Row Marker: {row_marker_state}")
     print(f"Row Marker Limit Switch: {row_marker_limit_switch}")
+    print(f"Row Cutter Piston: {row_cutter_piston}")
     print(f"Row Cutter: {row_cutter_state}")
     print("=====================\n")
 
@@ -844,9 +937,17 @@ def get_row_marker_state():
     """Get current row marker state"""
     return row_marker_state
 
+def get_row_marker_piston_state():
+    """Get current row marker piston state"""
+    return row_marker_piston
+
 def get_row_cutter_state():
     """Get current row cutter state"""
     return row_cutter_state
+
+def get_row_cutter_piston_state():
+    """Get current row cutter piston state"""
+    return row_cutter_piston
 
 def get_row_motor_limit_switch():
     """Get current row marker limit switch state - reads from limit_switch_states['rows']"""
