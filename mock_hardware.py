@@ -163,8 +163,10 @@ def move_y(position):
 
         # Line motor piston UP only when moving UP (increasing Y position)
         if moving_up:
+            print(f"⚠️ Lifting line motor piston UP (raising Y motor assembly for upward movement)")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
             line_motor_piston = "up"
-            print(f"⚠️ Line motor piston UP (lifting Y motor assembly for upward movement)")
+            print(f"Line motor piston UP - assembly raised")
 
         print(f"Moving Y motor from {current_y_position:.1f}cm to {position:.1f}cm ({'UP' if moving_up else 'DOWN'})")
 
@@ -180,8 +182,10 @@ def move_y(position):
 
         # Line motor piston DOWN when movement stops (if it was lifted)
         if moving_up and line_motor_piston == "up":
+            print(f"Lowering line motor piston DOWN (Y motor assembly returning to default position)")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
             line_motor_piston = "down"
-            print(f"Line motor piston DOWN (Y motor assembly lowered)")
+            print(f"Line motor piston DOWN - assembly lowered")
     else:
         print(f"Y motor already at {position:.1f}cm")
 
