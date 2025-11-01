@@ -32,7 +32,6 @@ LINES TOOLS (Y-axis operations - horizontal marking/cutting):
 ROWS TOOLS (X-axis operations - vertical marking/cutting):
 - row_marker_piston: Pneumatic piston that lifts/lowers the Y-axis marker assembly
 - row_marker_state: Sensor detecting marker tool position (UP/DOWN)
-- row_marker_limit_switch: Physical sensor detecting actual row marker position (UP/DOWN)
 - row_cutter_piston: Pneumatic piston that lifts/lowers the Y-axis cutter assembly
 - row_cutter_state: Sensor detecting cutter tool position (UP/DOWN)
 
@@ -97,7 +96,6 @@ line_motor_piston_sensor = "down"  # Sensor detecting Y motor piston position: "
 # ROWS TOOLS (X-axis / vertical operations)
 row_marker_piston = "up"           # Piston that lifts Y-axis marker assembly: "up" (default) or "down" (for operations)
 row_marker_state = "up"            # Sensor detecting marker tool position: "up" or "down"
-row_marker_limit_switch = "up"     # Physical sensor detecting row marker position: "up" or "down"
 row_cutter_piston = "up"           # Piston that lifts Y-axis cutter assembly: "up" (default) or "down" (for operations)
 row_cutter_state = "up"            # Sensor detecting cutter tool position: "up" (inactive) or "down" (cutting)
 
@@ -145,8 +143,9 @@ def reset_hardware():
     global current_x_position, current_y_position
     global line_marker_state, line_marker_piston, line_cutter_state, line_cutter_piston
     global line_motor_piston, line_motor_piston_sensor
-    global row_marker_piston, row_marker_state, row_marker_limit_switch
+    global row_marker_piston, row_marker_state
     global row_cutter_piston, row_cutter_state
+    global limit_switch_states
 
     current_x_position = 0.0
     current_y_position = 0.0
@@ -158,9 +157,9 @@ def reset_hardware():
     line_motor_piston_sensor = "down"   # Default state is DOWN (not lifted)
     row_marker_piston = "up"            # Default state is UP
     row_marker_state = "up"
-    row_marker_limit_switch = "up"      # Default limit switch position
     row_cutter_piston = "up"            # Default state is UP
     row_cutter_state = "up"
+    limit_switch_states['rows'] = False # Default is False (UP)
 
     # Clear all sensor events
     for event in sensor_events.values():
@@ -796,7 +795,7 @@ def get_hardware_status():
         'line_motor_piston_sensor': line_motor_piston_sensor,
         'row_marker_piston': row_marker_piston,
         'row_marker': row_marker_state,
-        'row_marker_limit_switch': row_marker_limit_switch,
+        'row_marker_limit_switch': "down" if limit_switch_states.get('rows', False) else "up",
         'row_cutter_piston': row_cutter_piston,
         'row_cutter': row_cutter_state
     }
@@ -815,7 +814,7 @@ def print_hardware_status():
     print(f"Line Motor Piston Sensor: {line_motor_piston_sensor}")
     print(f"Row Marker Piston: {row_marker_piston}")
     print(f"Row Marker: {row_marker_state}")
-    print(f"Row Marker Limit Switch: {row_marker_limit_switch}")
+    print(f"Row Marker Limit Switch: {'down' if limit_switch_states.get('rows', False) else 'up'}")
     print(f"Row Cutter Piston: {row_cutter_piston}")
     print(f"Row Cutter: {row_cutter_state}")
     print("=====================\n")
@@ -957,9 +956,10 @@ def get_row_motor_limit_switch():
 
 def set_row_marker_limit_switch(state):
     """Manually set row marker limit switch state (operator control)"""
-    global row_marker_limit_switch
+    global limit_switch_states
     if state in ["up", "down"]:
-        row_marker_limit_switch = state
+        # True (ON) = DOWN, False (OFF) = UP
+        limit_switch_states['rows'] = (state == "down")
         print(f"Row marker limit switch manually set to: {state.upper()}")
 
 def get_sensor_trigger_states():
@@ -982,9 +982,10 @@ def reset_sensor_trigger_state(sensor_name):
 
 def toggle_row_marker_limit_switch():
     """Toggle row marker limit switch state (for manual operator control)"""
-    global row_marker_limit_switch
-    new_state = "down" if row_marker_limit_switch == "up" else "up"
-    row_marker_limit_switch = new_state
+    global limit_switch_states
+    # Toggle the boolean state
+    limit_switch_states['rows'] = not limit_switch_states['rows']
+    new_state = "down" if limit_switch_states['rows'] else "up"
     print(f"Row marker limit switch toggled to: {new_state.upper()}")
     return new_state
 
