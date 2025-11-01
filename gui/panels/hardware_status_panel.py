@@ -2,7 +2,8 @@ import tkinter as tk
 import json
 from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
-    get_line_marker_piston_state, get_line_cutter_piston_state, get_line_motor_piston_state,
+    get_line_marker_piston_state, get_line_cutter_piston_state,
+    get_line_motor_piston_state, get_line_motor_piston_sensor_state,
     get_row_motor_limit_switch, get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
     get_sensor_trigger_states, get_limit_switch_state,
     get_line_marker_state
@@ -307,10 +308,10 @@ class HardwareStatusPanel:
                                self.sensor_triggered_color if line_cutter_state == 'DOWN' else self.sensor_ready_color)
 
             # Motor sensor (detect line motor piston position)
-            line_motor_piston_state = get_line_motor_piston_state().upper()
+            line_motor_piston_sensor_state = get_line_motor_piston_sensor_state().upper()
             self._update_widget('lines_sensor_motor',
-                               'TRIGGERED' if line_motor_piston_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if line_motor_piston_state == 'DOWN' else self.sensor_ready_color)
+                               'TRIGGERED' if line_motor_piston_sensor_state == 'UP' else 'READY',
+                               self.sensor_triggered_color if line_motor_piston_sensor_state == 'UP' else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             # Note: line_marker_piston_state was already retrieved above at line 298
@@ -321,8 +322,9 @@ class HardwareStatusPanel:
             self._update_widget('lines_piston_cutter', line_cutter_piston_state,
                                self.piston_down_color if line_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
+            line_motor_piston_state = get_line_motor_piston_state().upper()
             self._update_widget('lines_piston_motor', line_motor_piston_state,
-                               self.piston_down_color if line_motor_piston_state == 'DOWN' else self.piston_up_color)
+                               self.piston_down_color if line_motor_piston_state == 'UP' else self.piston_up_color)
 
             # ROWS SECTION
             # Sensors - color coded: READY=blue, TRIGGERED=red

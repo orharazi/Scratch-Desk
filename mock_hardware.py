@@ -23,10 +23,11 @@ LIMIT SWITCHES (Safety sensors):
 
 LINES TOOLS (Y-axis operations - horizontal marking/cutting):
 - line_marker_piston: Pneumatic piston that lifts/lowers the X-axis marker assembly
-- line_marker_state: Marking tool for drawing horizontal lines (UP/DOWN)
+- line_marker_state: Sensor detecting marker tool position (UP/DOWN)
 - line_cutter_piston: Pneumatic piston that lifts/lowers the X-axis cutter assembly
-- line_cutter_state: Cutting tool for horizontal cuts (UP/DOWN)
+- line_cutter_state: Sensor detecting cutter tool position (UP/DOWN)
 - line_motor_piston: Pneumatic piston that lifts/lowers the entire Y motor assembly during movement
+- line_motor_piston_sensor: Sensor detecting Y motor piston position (UP/DOWN)
 
 ROWS TOOLS (X-axis operations - vertical marking/cutting):
 - row_marker_state: Marking tool for drawing vertical lines (UP/DOWN) - programmed state
@@ -89,6 +90,7 @@ line_marker_piston = "up"          # Piston that lifts X-axis marker assembly: "
 line_cutter_state = "up"           # Cutting tool for horizontal cuts: "up" (inactive) or "down" (cutting)
 line_cutter_piston = "up"          # Piston that lifts X-axis cutter assembly: "up" (default) or "down" (for operations)
 line_motor_piston = "down"         # Piston that lifts Y motor assembly: "down" (default) or "up" (during upward Y movement)
+line_motor_piston_sensor = "down"  # Sensor detecting Y motor piston position: "down" (default) or "up" (lifted)
 
 # ROWS TOOLS (X-axis / vertical operations)
 row_marker_state = "up"            # Marking tool for vertical lines (programmed state): "up" or "down"
@@ -137,16 +139,18 @@ limit_switch_states = {
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
-    global line_marker_state, line_marker_piston, line_cutter_state, line_cutter_piston, line_motor_piston
+    global line_marker_state, line_marker_piston, line_cutter_state, line_cutter_piston
+    global line_motor_piston, line_motor_piston_sensor
     global row_marker_state, row_marker_limit_switch, row_cutter_state
 
     current_x_position = 0.0
     current_y_position = 0.0
     line_marker_state = "up"
-    line_marker_piston = "up"    # Default state is UP
+    line_marker_piston = "up"           # Default state is UP
     line_cutter_state = "up"
-    line_cutter_piston = "up"    # Default state is UP
-    line_motor_piston = "down"   # Default state is DOWN
+    line_cutter_piston = "up"           # Default state is UP
+    line_motor_piston = "down"          # Default state is DOWN
+    line_motor_piston_sensor = "down"   # Default state is DOWN (not lifted)
     row_marker_state = "up"
     row_marker_limit_switch = "up"  # Default limit switch position
     row_cutter_state = "up"
@@ -665,24 +669,26 @@ def line_cutter_piston_down():
 # Line motor piston control functions
 def line_motor_piston_up():
     """Lift line motor piston (raises entire Y motor assembly)"""
-    global line_motor_piston
+    global line_motor_piston, line_motor_piston_sensor
     print("MOCK: line_motor_piston_up()")
     if line_motor_piston != "up":
         print("Raising line motor piston - lifting Y motor assembly")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_motor_piston = "up"
+        line_motor_piston_sensor = "up"  # Sensor detects lifted position
         print("Line motor piston UP - Y motor assembly raised")
     else:
         print("Line motor piston already UP")
 
 def line_motor_piston_down():
     """Lower line motor piston (lowers entire Y motor assembly)"""
-    global line_motor_piston
+    global line_motor_piston, line_motor_piston_sensor
     print("MOCK: line_motor_piston_down()")
     if line_motor_piston != "down":
         print("Lowering line motor piston - lowering Y motor assembly")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_motor_piston = "down"
+        line_motor_piston_sensor = "down"  # Sensor detects lowered position
         print("Line motor piston DOWN - Y motor assembly lowered")
     else:
         print("Line motor piston already DOWN")
@@ -698,6 +704,7 @@ def get_hardware_status():
         'line_cutter': line_cutter_state,
         'line_cutter_piston': line_cutter_piston,
         'line_motor_piston': line_motor_piston,
+        'line_motor_piston_sensor': line_motor_piston_sensor,
         'row_marker': row_marker_state,
         'row_marker_limit_switch': row_marker_limit_switch,
         'row_cutter': row_cutter_state
@@ -714,6 +721,7 @@ def print_hardware_status():
     print(f"Line Cutter: {line_cutter_state}")
     print(f"Line Cutter Piston: {line_cutter_piston}")
     print(f"Line Motor Piston: {line_motor_piston}")
+    print(f"Line Motor Piston Sensor: {line_motor_piston_sensor}")
     print(f"Row Marker: {row_marker_state}")
     print(f"Row Marker Limit Switch: {row_marker_limit_switch}")
     print(f"Row Cutter: {row_cutter_state}")
@@ -823,6 +831,10 @@ def get_line_cutter_piston_state():
 def get_line_motor_piston_state():
     """Get current line motor piston state (lifts entire Y motor assembly)"""
     return line_motor_piston
+
+def get_line_motor_piston_sensor_state():
+    """Get current line motor piston sensor state (detects piston position)"""
+    return line_motor_piston_sensor
 
 def get_line_cutter_state():
     """Get current line cutter state"""
