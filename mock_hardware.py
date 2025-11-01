@@ -193,9 +193,17 @@ def get_current_y():
 # Line tools (Y-axis operations)
 def line_marker_down():
     """Lower line marker to marking position"""
-    global line_marker_state
+    global line_marker_state, line_marker_piston
     print("MOCK: line_marker_down()")
     if line_marker_state != "down":
+        # First lower the piston (bring marker assembly down)
+        if line_marker_piston != "down":
+            print("Lowering line marker piston - bringing marker assembly down")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            line_marker_piston = "down"
+            print("Line marker piston DOWN - assembly lowered")
+
+        # Then activate the marker
         print("Lowering line marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_marker_state = "down"
@@ -205,13 +213,21 @@ def line_marker_down():
 
 def line_marker_up():
     """Raise line marker from marking position"""
-    global line_marker_state
+    global line_marker_state, line_marker_piston
     print("MOCK: line_marker_up()")
     if line_marker_state != "up":
+        # First deactivate the marker
         print("Raising line marker")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         line_marker_state = "up"
         print("Line marker up")
+
+        # Then raise the piston (lift marker assembly up to default position)
+        if line_marker_piston != "up":
+            print("Raising line marker piston - returning to default position")
+            time.sleep(timing_settings.get("tool_action_delay", 0.1))
+            line_marker_piston = "up"
+            print("Line marker piston UP - default position")
     else:
         print("Line marker already up")
 
