@@ -159,7 +159,6 @@ def reset_hardware():
     row_marker_state = "up"
     row_cutter_piston = "up"            # Default state is UP
     row_cutter_state = "up"
-    limit_switch_states['rows'] = False # Default is False (UP)
 
     # Clear all sensor events
     for event in sensor_events.values():
