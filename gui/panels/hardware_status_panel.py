@@ -310,8 +310,8 @@ class HardwareStatusPanel:
             # Motor sensor (detect line motor piston position)
             line_motor_piston_sensor_state = get_line_motor_piston_sensor_state().upper()
             self._update_widget('lines_sensor_motor',
-                               'TRIGGERED' if line_motor_piston_sensor_state == 'UP' else 'READY',
-                               self.sensor_triggered_color if line_motor_piston_sensor_state == 'UP' else self.sensor_ready_color)
+                               line_motor_piston_sensor_state,
+                               self.piston_down_color if line_motor_piston_sensor_state == 'DOWN' else self.piston_up_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             # Note: line_marker_piston_state was already retrieved above at line 298
