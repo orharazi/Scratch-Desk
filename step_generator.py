@@ -62,11 +62,25 @@ def generate_lines_marking_steps(program):
     ))
 
     # Init: Move Y motor to ACTUAL high position (paper_offset + actual_paper_height)
+    # When moving UP, piston automatically lifts, but we show it explicitly in steps
     desk_y_position = PAPER_OFFSET_Y + actual_paper_height
+
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'line_motor_piston', 'action': 'up'},
+        f"⚠️ Lifting line motor piston UP (preparing for upward movement to {desk_y_position}cm)"
+    ))
+
     steps.append(create_step(
         'move_y',
         {'position': desk_y_position},
         f"Init: Move Y motor to {desk_y_position}cm (paper + {actual_paper_height}cm ACTUAL high)"
+    ))
+
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'line_motor_piston', 'action': 'down'},
+        "Line motor piston DOWN (Y motor assembly lowered to default position)"
     ))
     
     # Cut top edge workflow - LEFT sensor first, then RIGHT sensor
