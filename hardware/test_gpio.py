@@ -9,6 +9,11 @@ Tests Raspberry Pi GPIO control for pistons and sensors.
 
 import sys
 import time
+import os
+
+# Add parent directory to path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from hardware.raspberry_pi_gpio import RaspberryPiGPIO
 
 
