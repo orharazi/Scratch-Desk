@@ -203,8 +203,8 @@ class HardwareTestGUI:
 
             self.piston_widgets[piston_id] = state_label
 
-        # Sensors section
-        sensor_frame = ttk.LabelFrame(frame, text="Sensor States (Live)", padding="10")
+        # Tool Sensors section
+        sensor_frame = ttk.LabelFrame(frame, text="Tool Sensors (Live)", padding="10")
         sensor_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
 
         self.sensor_widgets = {}
@@ -213,12 +213,7 @@ class HardwareTestGUI:
             ("Line Cutter Sensor", "line_cutter_state"),
             ("Line Motor Sensor", "line_motor_piston_sensor"),
             ("Row Marker Sensor", "row_marker_state"),
-            ("Row Cutter Sensor", "row_cutter_state"),
-            ("X Left Edge", "x_left_edge"),
-            ("X Right Edge", "x_right_edge"),
-            ("Y Top Edge", "y_top_edge"),
-            ("Y Bottom Edge", "y_bottom_edge"),
-            ("Door Limit Switch", "rows_door")
+            ("Row Cutter Sensor", "row_cutter_state")
         ]
 
         for i, (name, sensor_id) in enumerate(sensors):
@@ -233,6 +228,56 @@ class HardwareTestGUI:
             state_label.grid(row=i, column=1, padx=5, pady=2)
 
             self.sensor_widgets[sensor_id] = state_label
+
+        # Edge Detection Sensors section
+        edge_frame = ttk.LabelFrame(frame, text="Edge Detection Sensors (Live)", padding="10")
+        edge_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+
+        edge_sensors = [
+            ("X Left Edge", "x_left_edge"),
+            ("X Right Edge", "x_right_edge"),
+            ("Y Top Edge", "y_top_edge"),
+            ("Y Bottom Edge", "y_bottom_edge")
+        ]
+
+        for i, (name, sensor_id) in enumerate(edge_sensors):
+            # Sensor name
+            ttk.Label(edge_frame, text=name, width=20).grid(row=i, column=0, sticky=tk.W, pady=2)
+
+            # State indicator
+            state_label = ttk.Label(edge_frame, text="READY",
+                                   width=12, anchor=tk.CENTER,
+                                   relief=tk.SUNKEN, background="#27AE60",
+                                   foreground="white", font=("Arial", 9, "bold"))
+            state_label.grid(row=i, column=1, padx=5, pady=2)
+
+            self.sensor_widgets[sensor_id] = state_label
+
+        # Limit Switches section
+        limit_frame = ttk.LabelFrame(frame, text="Limit Switches (Live)", padding="10")
+        limit_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
+
+        self.limit_switch_widgets = {}
+        limit_switches = [
+            ("Y Top Limit", "y_top"),
+            ("Y Bottom Limit", "y_bottom"),
+            ("X Right Limit", "x_right"),
+            ("X Left Limit", "x_left"),
+            ("Door Safety (Rows)", "rows")
+        ]
+
+        for i, (name, switch_id) in enumerate(limit_switches):
+            # Switch name
+            ttk.Label(limit_frame, text=name, width=20).grid(row=i, column=0, sticky=tk.W, pady=2)
+
+            # State indicator
+            state_label = ttk.Label(limit_frame, text="INACTIVE",
+                                   width=12, anchor=tk.CENTER,
+                                   relief=tk.SUNKEN, background="#95A5A6",
+                                   foreground="white", font=("Arial", 9, "bold"))
+            state_label.grid(row=i, column=1, padx=5, pady=2)
+
+            self.limit_switch_widgets[switch_id] = state_label
 
     def toggle_connection(self):
         """Connect or disconnect hardware"""
@@ -272,15 +317,28 @@ class HardwareTestGUI:
                     sensor_states = self.hardware.gpio.get_all_sensor_states()
 
                     for sensor_id, widget in self.sensor_widgets.items():
-                        if sensor_id == "rows_door":
-                            state = self.hardware.read_rows_door_limit_switch()
-                        else:
-                            state = sensor_states.get(sensor_id, False)
+                        state = sensor_states.get(sensor_id, False)
 
                         if state:
                             widget.config(text="TRIGGERED", background="#E74C3C")
                         else:
                             widget.config(text="READY", background="#27AE60")
+
+                    # Read all limit switches
+                    limit_switch_states = self.hardware.gpio.get_all_limit_switch_states()
+
+                    for switch_id, widget in self.limit_switch_widgets.items():
+                        # For rows switch, check the limit_switch_states dict
+                        if switch_id == "rows":
+                            state = self.hardware.gpio.get_limit_switch_state(switch_id)
+                        else:
+                            # For motor limit switches (y_top, y_bottom, x_left, x_right)
+                            state = self.hardware.gpio.get_limit_switch_state(switch_id)
+
+                        if state:
+                            widget.config(text="ACTIVATED", background="#E74C3C")
+                        else:
+                            widget.config(text="INACTIVE", background="#95A5A6")
 
                 time.sleep(0.2)  # Update 5 times per second
             except Exception as e:
