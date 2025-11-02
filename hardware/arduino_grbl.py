@@ -9,11 +9,45 @@ Controls X and Y motors via serial communication.
 """
 
 import json
-import serial
 import time
 import re
 from typing import Optional, Tuple, Dict
 from threading import Lock
+
+# Try to import pyserial, fall back to mock if not available
+try:
+    import serial
+    SERIAL_AVAILABLE = True
+    print("✓ pyserial library loaded successfully")
+except ImportError:
+    SERIAL_AVAILABLE = False
+    print("⚠ pyserial not available - Arduino GRBL will run in mock mode")
+    print("  Install with: pip3 install pyserial")
+    # Create mock serial class
+    class MockSerial:
+        def __init__(self, port, baudrate, timeout):
+            self.port = port
+            self.baudrate = baudrate
+            self.timeout = timeout
+            self.in_waiting = 0
+            print(f"MOCK SERIAL: Opened {port} at {baudrate} baud")
+
+        def write(self, data):
+            print(f"MOCK SERIAL >> {data.decode().strip()}")
+
+        def readline(self):
+            return b"ok\n"
+
+        def close(self):
+            print("MOCK SERIAL: Connection closed")
+
+        def flushInput(self):
+            pass
+
+    serial = type('serial', (), {
+        'Serial': MockSerial,
+        'SerialException': Exception
+    })()
 
 
 class ArduinoGRBL:

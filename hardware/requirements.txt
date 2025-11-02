@@ -1,0 +1,9 @@
+# Hardware Module Requirements
+# Install with: pip3 install -r hardware/requirements.txt
+
+# Serial communication for Arduino GRBL
+pyserial>=3.5
+
+# Raspberry Pi GPIO (only needed on Raspberry Pi)
+# Uncomment the line below when running on Raspberry Pi:
+# RPi.GPIO>=0.7.1
