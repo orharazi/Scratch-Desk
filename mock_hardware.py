@@ -1091,6 +1091,27 @@ def get_row_cutter_state():
     """Get current row cutter state (legacy - returns 'up' if up_sensor True, else 'down')"""
     return "up" if row_cutter_up_sensor else "down"
 
+def get_line_motor_piston_state():
+    """Get current line motor piston state (legacy - returns left piston state)"""
+    return "up" if line_motor_left_up_sensor else "down"
+
+# Edge sensor getters
+def get_x_left_edge():
+    """Get X left edge sensor state"""
+    return x_left_edge
+
+def get_x_right_edge():
+    """Get X right edge sensor state"""
+    return x_right_edge
+
+def get_y_top_edge():
+    """Get Y top edge sensor state"""
+    return y_top_edge
+
+def get_y_bottom_edge():
+    """Get Y bottom edge sensor state"""
+    return y_bottom_edge
+
 def get_row_motor_limit_switch():
     """Get current row marker limit switch state - reads from limit_switch_states['rows']"""
     # Map boolean limit switch state to "up"/"down" string
