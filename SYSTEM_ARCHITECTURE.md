@@ -37,21 +37,29 @@ CNC SCRATCH DESK MACHINE
 ├── LINES TOOLS (Horizontal operations, controlled by Y motor)
 │   ├── Line Marker Assembly
 │   │   ├── line_marker_piston → Lifts/lowers marker assembly
-│   │   └── line_marker_state (sensor) → Detects marker position
+│   │   ├── line_marker_up_sensor → Detects when marker is UP (True when piston up)
+│   │   └── line_marker_down_sensor → Detects when marker is DOWN (True when piston down)
 │   ├── Line Cutter Assembly
 │   │   ├── line_cutter_piston → Lifts/lowers cutter assembly
-│   │   └── line_cutter_state (sensor) → Detects cutter position
-│   └── Line Motor Piston (Y-axis lift mechanism)
-│       ├── line_motor_piston → Lifts entire Y motor during upward movement
-│       └── line_motor_piston_sensor → Detects piston position
+│   │   ├── line_cutter_up_sensor → Detects when cutter is UP
+│   │   └── line_cutter_down_sensor → Detects when cutter is DOWN
+│   └── Line Motor Dual Pistons (Y-axis lift mechanism - TWO INDEPENDENT PISTONS)
+│       ├── line_motor_piston_left → Lifts left side of Y motor assembly
+│       │   ├── line_motor_left_up_sensor → Detects when left piston is UP
+│       │   └── line_motor_left_down_sensor → Detects when left piston is DOWN
+│       └── line_motor_piston_right → Lifts right side of Y motor assembly
+│           ├── line_motor_right_up_sensor → Detects when right piston is UP
+│           └── line_motor_right_down_sensor → Detects when right piston is DOWN
 │
 ├── ROWS TOOLS (Vertical operations, controlled by X motor)
 │   ├── Row Marker Assembly
 │   │   ├── row_marker_piston → Lifts/lowers marker assembly
-│   │   └── row_marker_state (sensor) → Detects marker position
+│   │   ├── row_marker_up_sensor → Detects when marker is UP
+│   │   └── row_marker_down_sensor → Detects when marker is DOWN
 │   └── Row Cutter Assembly
 │       ├── row_cutter_piston → Lifts/lowers cutter assembly
-│       └── row_cutter_state (sensor) → Detects cutter position
+│       ├── row_cutter_up_sensor → Detects when cutter is UP
+│       └── row_cutter_down_sensor → Detects when cutter is DOWN
 │
 ├── EDGE DETECTION SENSORS (Paper boundary detection)
 │   ├── x_left_edge → Detects left paper edge during line operations
@@ -76,9 +84,18 @@ CNC SCRATCH DESK MACHINE
 - **DOWN**: Active operation position (extended)
 - GPIO: HIGH = DOWN (extended), LOW = UP (retracted)
 
-**SENSOR OPERATION:**
-- **READY**: Sensor not triggered (HIGH signal with pull-up)
-- **TRIGGERED**: Sensor activated (LOW signal, pulled to ground)
+**DUAL SENSOR ARCHITECTURE (NEW):**
+Each piston/tool has TWO sensors instead of one:
+- **UP Sensor**: Triggers (True) when piston reaches UP position
+- **DOWN Sensor**: Triggers (True) when piston reaches DOWN position
+- **Sensor Logic**:
+  - When piston UP → up_sensor=True, down_sensor=False
+  - When piston DOWN → up_sensor=False, down_sensor=True
+  - Both sensors are boolean values (True = triggered, False = not triggered)
+- **Line Motor Special Case**: Has TWO independent pistons (left + right), each with dual sensors
+  - Total of 4 sensors for line motor: left_up, left_down, right_up, right_down
+- **GPIO Reading**: LOW signal = triggered (True), HIGH signal = not triggered (False)
+  - Uses pull-up resistors, sensor grounds the line when activated
 
 **IMPORTANT SAFETY RULE:**
 The line motor piston ONLY lifts during UPWARD Y movement (from lower to higher Y position). It does NOT lift when moving down. This prevents collision with row marker.
@@ -149,19 +166,38 @@ Scratch-Desk/
 current_x_position = 0.0  # cm
 current_y_position = 0.0  # cm
 
-# Lines tools (Y-axis operations)
-line_marker_piston = "up"           # Piston control
-line_marker_state = "up"            # Sensor reading
-line_cutter_piston = "up"
-line_cutter_state = "up"
-line_motor_piston = "down"          # Default DOWN
-line_motor_piston_sensor = "down"
+# Lines tools (Y-axis operations) - DUAL SENSORS per tool
+line_marker_piston = "up"
+line_marker_up_sensor = True       # Boolean: True when piston is UP
+line_marker_down_sensor = False    # Boolean: True when piston is DOWN
 
-# Rows tools (X-axis operations)
+line_cutter_piston = "up"
+line_cutter_up_sensor = True
+line_cutter_down_sensor = False
+
+# Line Motor DUAL PISTONS (left + right) - Each with DUAL SENSORS
+line_motor_piston_left = "down"    # Default DOWN
+line_motor_left_up_sensor = False
+line_motor_left_down_sensor = True
+
+line_motor_piston_right = "down"   # Default DOWN
+line_motor_right_up_sensor = False
+line_motor_right_down_sensor = True
+
+# Rows tools (X-axis operations) - DUAL SENSORS per tool
 row_marker_piston = "up"
-row_marker_state = "up"
+row_marker_up_sensor = True
+row_marker_down_sensor = False
+
 row_cutter_piston = "up"
-row_cutter_state = "up"
+row_cutter_up_sensor = True
+row_cutter_down_sensor = False
+
+# Edge detection sensors (boolean)
+x_left_edge = False
+x_right_edge = False
+y_top_edge = False
+y_bottom_edge = False
 
 # Limit switches (in limit_switch_states dict)
 limit_switch_states = {
@@ -175,10 +211,14 @@ limit_switch_states = {
 
 **Key Functions**:
 - `move_x(position)` - Move X motor, automatic piston handling
-- `move_y(position)` - Move Y motor, lifts line_motor_piston ONLY on upward movement
-- `line_marker_down()/up()` - Controls piston + state together
-- `row_marker_down()/up()` - Controls piston + state together
-- (Similar for all tools)
+- `move_y(position)` - Move Y motor, lifts line_motor pistons ONLY on upward movement
+- `line_marker_down()/up()` - Controls piston + both sensors atomically
+- `row_marker_down()/up()` - Controls piston + both sensors atomically
+- `line_motor_piston_left_down()/up()` - Controls left piston independently
+- `line_motor_piston_right_down()/up()` - Controls right piston independently
+- `line_motor_piston_down()/up()` - Controls BOTH line motor pistons together
+- `get_line_marker_up_sensor()` - Individual sensor getter (12 total tool sensors)
+- `get_x_left_edge()` - Edge sensor getter (4 edge sensors)
 
 **CRITICAL**: Uses `settings.json` for ALL values - no hard-coded delays, speeds, or configurations.
 
@@ -192,9 +232,11 @@ limit_switch_states = {
 
 **raspberry_pi_gpio.py** - GPIO Control
 - Reads pin mappings from `settings.json` → `hardware_config.raspberry_pi`
-- Controls 5 pistons (OUTPUT pins)
-- Reads 9 sensors (INPUT pins with pull-up)
-- Reads 5 limit switches (INPUT pins with pull-up)
+- Controls 6 pistons (OUTPUT pins): 5 regular + 2 for line motor (left/right)
+- Reads 16 tool sensors (INPUT pins with pull-up): 12 up/down sensors (6 tools × 2)
+- Reads 4 edge sensors (INPUT pins with pull-up): x_left, x_right, y_top, y_bottom
+- Reads 1 limit switch (INPUT pin with pull-up): rows door safety
+- Total sensors: 16 tool + 4 edge + 1 limit = 21 sensor inputs
 - Auto-fallback to mock if RPi.GPIO not available
 
 **arduino_grbl.py** - Motor Control

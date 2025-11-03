@@ -7,8 +7,8 @@ CNC machine control software for marking and cutting scratch cards (lottery tick
 
 ### Hardware Stack
 ```
-Raspberry Pi (GPIO) → Pistons (5) + Sensors (9) + Limit Switches (5)
-Raspberry Pi (Serial) → Arduino GRBL → X/Y Motors + Motor Limit Switches (4)
+Raspberry Pi (GPIO) → Pistons (6: 5 regular + 2 line motor) + Tool Sensors (16: dual up/down per tool) + Edge Sensors (4) + Limit Switch (1)
+Raspberry Pi (Serial) → Arduino GRBL → X/Y Motors
 ```
 
 ### Software Stack
@@ -36,21 +36,30 @@ GUI (Tkinter) → Execution Engine → Step Generator → Hardware Interface →
 ❌ **NEVER**: `time.sleep(0.1)` or `color="#FF0000"`
 ✅ **ALWAYS**: `time.sleep(timing_settings.get("tool_action_delay", 0.1))` and `color=operation_colors["mark"]["pending"]`
 
-### 2. Hardware State (mock_hardware.py)
+### 2. Hardware State (mock_hardware.py) - DUAL SENSOR ARCHITECTURE
 **Every variable MUST appear in Hardware Status Panel (1:1 mapping)**
 
 **Motors**: `current_x_position`, `current_y_position` (in cm)
 
-**Lines Tools** (Y-axis, horizontal operations):
-- `line_marker_piston`, `line_marker_state`
-- `line_cutter_piston`, `line_cutter_state`
-- `line_motor_piston`, `line_motor_piston_sensor`
+**Lines Tools** (Y-axis, horizontal operations) - Each tool has TWO sensors (up + down):
+- Line Marker: `line_marker_piston`, `line_marker_up_sensor`, `line_marker_down_sensor`
+- Line Cutter: `line_cutter_piston`, `line_cutter_up_sensor`, `line_cutter_down_sensor`
+- Line Motor (DUAL PISTONS):
+  - Left: `line_motor_piston_left`, `line_motor_left_up_sensor`, `line_motor_left_down_sensor`
+  - Right: `line_motor_piston_right`, `line_motor_right_up_sensor`, `line_motor_right_down_sensor`
 
-**Rows Tools** (X-axis, vertical operations):
-- `row_marker_piston`, `row_marker_state`
-- `row_cutter_piston`, `row_cutter_state`
+**Rows Tools** (X-axis, vertical operations) - Each tool has TWO sensors (up + down):
+- Row Marker: `row_marker_piston`, `row_marker_up_sensor`, `row_marker_down_sensor`
+- Row Cutter: `row_cutter_piston`, `row_cutter_up_sensor`, `row_cutter_down_sensor`
+
+**Edge Sensors** (boolean): `x_left_edge`, `x_right_edge`, `y_top_edge`, `y_bottom_edge`
 
 **Limit Switches**: `limit_switch_states['y_top', 'y_bottom', 'x_left', 'x_right', 'rows']`
+
+**Sensor Logic**:
+- When piston UP → up_sensor=True, down_sensor=False
+- When piston DOWN → up_sensor=False, down_sensor=True
+- Both sensors are boolean (True = triggered, False = not triggered)
 
 ### 3. Coordinate System
 - **X-axis (Rows Motor)**: Horizontal (0-120cm), controls vertical marking/cutting
@@ -99,9 +108,12 @@ python3 hardware/hardware_test_gui.py  # Hardware test interface
 
 **New Piston/Sensor?**
 1. Add GPIO pin to `settings.json` → `hardware_config.raspberry_pi`
-2. Add variable to `mock_hardware.py`
-3. Add to `hardware_status_panel.py` display
-4. GPIO interface auto-loads from settings
+2. Add variable to `mock_hardware.py` (remember dual sensors: up_sensor + down_sensor)
+3. Add control functions (piston_up/down) that update both sensors atomically
+4. Add getter functions for each sensor
+5. Add to `hardware_status_panel.py` display
+6. Add to `hardware_test_gui.py` for testing
+7. GPIO interface auto-loads from settings
 
 **New Step Type?**
 1. Generate in `step_generator.py`
