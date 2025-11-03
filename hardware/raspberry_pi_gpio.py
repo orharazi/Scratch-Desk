@@ -187,6 +187,36 @@ class RaspberryPiGPIO:
         """Extend piston (set to DOWN position)"""
         return self.set_piston(piston_name, "down")
 
+    # ========== DUAL LINE MOTOR PISTON CONTROL ==========
+
+    def line_motor_piston_left_up(self) -> bool:
+        """Retract line motor LEFT piston"""
+        return self.piston_up("line_motor_piston_left")
+
+    def line_motor_piston_left_down(self) -> bool:
+        """Extend line motor LEFT piston"""
+        return self.piston_down("line_motor_piston_left")
+
+    def line_motor_piston_right_up(self) -> bool:
+        """Retract line motor RIGHT piston"""
+        return self.piston_up("line_motor_piston_right")
+
+    def line_motor_piston_right_down(self) -> bool:
+        """Extend line motor RIGHT piston"""
+        return self.piston_down("line_motor_piston_right")
+
+    def line_motor_piston_up(self) -> bool:
+        """Retract BOTH line motor pistons (left and right)"""
+        left_ok = self.line_motor_piston_left_up()
+        right_ok = self.line_motor_piston_right_up()
+        return left_ok and right_ok
+
+    def line_motor_piston_down(self) -> bool:
+        """Extend BOTH line motor pistons (left and right)"""
+        left_ok = self.line_motor_piston_left_down()
+        right_ok = self.line_motor_piston_right_down()
+        return left_ok and right_ok
+
     # ========== SENSOR READING METHODS ==========
 
     def read_sensor(self, sensor_name: str) -> Optional[bool]:
@@ -194,7 +224,7 @@ class RaspberryPiGPIO:
         Read sensor state
 
         Args:
-            sensor_name: Name of sensor (e.g., 'line_marker_state')
+            sensor_name: Name of sensor (e.g., 'line_marker_up_sensor')
 
         Returns:
             True if sensor triggered (LOW signal), False if not triggered (HIGH signal), None on error
@@ -217,6 +247,82 @@ class RaspberryPiGPIO:
         except Exception as e:
             print(f"Error reading sensor {sensor_name}: {e}")
             return None
+
+    # ========== INDIVIDUAL SENSOR GETTERS (DUAL SENSORS PER TOOL) ==========
+
+    # Line Marker Sensors
+    def get_line_marker_up_sensor(self) -> Optional[bool]:
+        """Read line marker UP sensor state"""
+        return self.read_sensor("line_marker_up_sensor")
+
+    def get_line_marker_down_sensor(self) -> Optional[bool]:
+        """Read line marker DOWN sensor state"""
+        return self.read_sensor("line_marker_down_sensor")
+
+    # Line Cutter Sensors
+    def get_line_cutter_up_sensor(self) -> Optional[bool]:
+        """Read line cutter UP sensor state"""
+        return self.read_sensor("line_cutter_up_sensor")
+
+    def get_line_cutter_down_sensor(self) -> Optional[bool]:
+        """Read line cutter DOWN sensor state"""
+        return self.read_sensor("line_cutter_down_sensor")
+
+    # Line Motor Left Piston Sensors
+    def get_line_motor_left_up_sensor(self) -> Optional[bool]:
+        """Read line motor LEFT piston UP sensor state"""
+        return self.read_sensor("line_motor_left_up_sensor")
+
+    def get_line_motor_left_down_sensor(self) -> Optional[bool]:
+        """Read line motor LEFT piston DOWN sensor state"""
+        return self.read_sensor("line_motor_left_down_sensor")
+
+    # Line Motor Right Piston Sensors
+    def get_line_motor_right_up_sensor(self) -> Optional[bool]:
+        """Read line motor RIGHT piston UP sensor state"""
+        return self.read_sensor("line_motor_right_up_sensor")
+
+    def get_line_motor_right_down_sensor(self) -> Optional[bool]:
+        """Read line motor RIGHT piston DOWN sensor state"""
+        return self.read_sensor("line_motor_right_down_sensor")
+
+    # Row Marker Sensors
+    def get_row_marker_up_sensor(self) -> Optional[bool]:
+        """Read row marker UP sensor state"""
+        return self.read_sensor("row_marker_up_sensor")
+
+    def get_row_marker_down_sensor(self) -> Optional[bool]:
+        """Read row marker DOWN sensor state"""
+        return self.read_sensor("row_marker_down_sensor")
+
+    # Row Cutter Sensors
+    def get_row_cutter_up_sensor(self) -> Optional[bool]:
+        """Read row cutter UP sensor state"""
+        return self.read_sensor("row_cutter_up_sensor")
+
+    def get_row_cutter_down_sensor(self) -> Optional[bool]:
+        """Read row cutter DOWN sensor state"""
+        return self.read_sensor("row_cutter_down_sensor")
+
+    # ========== EDGE SENSORS ==========
+
+    def get_x_left_edge_sensor(self) -> Optional[bool]:
+        """Read X-axis LEFT edge sensor state"""
+        return self.read_sensor("x_left_edge")
+
+    def get_x_right_edge_sensor(self) -> Optional[bool]:
+        """Read X-axis RIGHT edge sensor state"""
+        return self.read_sensor("x_right_edge")
+
+    def get_y_top_edge_sensor(self) -> Optional[bool]:
+        """Read Y-axis TOP edge sensor state"""
+        return self.read_sensor("y_top_edge")
+
+    def get_y_bottom_edge_sensor(self) -> Optional[bool]:
+        """Read Y-axis BOTTOM edge sensor state"""
+        return self.read_sensor("y_bottom_edge")
+
+    # ========== LIMIT SWITCHES ==========
 
     def read_limit_switch(self, switch_name: str) -> Optional[bool]:
         """
@@ -274,6 +380,10 @@ class RaspberryPiGPIO:
             if state is not None:
                 states[switch_name] = state
         return states
+
+    def get_rows_door_switch(self) -> Optional[bool]:
+        """Read rows door limit switch state"""
+        return self.read_limit_switch("rows_door")
 
     # ========== CLEANUP ==========
 

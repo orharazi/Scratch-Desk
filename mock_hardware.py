@@ -84,20 +84,40 @@ PAPER_START_X = hardware_limits.get("paper_start_x", 15.0)     # cm from left ed
 
 # === ACTUAL HARDWARE STATE VARIABLES ===
 # These variables directly represent physical hardware components
+# NOTE: Each piston/tool has TWO sensors (up sensor + down sensor)
+# Sensor logic: When piston UP → up_sensor=True, down_sensor=False
+#               When piston DOWN → up_sensor=False, down_sensor=True
 
 # LINES TOOLS (Y-axis / horizontal operations)
-line_marker_state = "up"           # Marking tool for horizontal lines: "up" (inactive) or "down" (marking)
-line_marker_piston = "up"          # Piston that lifts X-axis marker assembly: "up" (default) or "down" (for operations)
-line_cutter_state = "up"           # Cutting tool for horizontal cuts: "up" (inactive) or "down" (cutting)
-line_cutter_piston = "up"          # Piston that lifts X-axis cutter assembly: "up" (default) or "down" (for operations)
-line_motor_piston = "down"         # Piston that lifts Y motor assembly: "down" (default) or "up" (during upward Y movement)
-line_motor_piston_sensor = "down"  # Sensor detecting Y motor piston position: "down" (default) or "up" (lifted)
+# Line Marker - single piston with dual sensors
+line_marker_piston = "up"          # Piston control: "up" (default) or "down" (for operations)
+line_marker_up_sensor = True       # Sensor: True when piston is UP (default)
+line_marker_down_sensor = False    # Sensor: True when piston is DOWN
+
+# Line Cutter - single piston with dual sensors
+line_cutter_piston = "up"          # Piston control: "up" (default) or "down" (for operations)
+line_cutter_up_sensor = True       # Sensor: True when piston is UP (default)
+line_cutter_down_sensor = False    # Sensor: True when piston is DOWN
+
+# Line Motor - TWO pistons (left + right), each with dual sensors
+line_motor_piston_left = "down"    # Left piston: "down" (default) or "up" (during upward Y movement)
+line_motor_left_up_sensor = False  # Sensor: True when left piston is UP
+line_motor_left_down_sensor = True # Sensor: True when left piston is DOWN (default)
+
+line_motor_piston_right = "down"   # Right piston: "down" (default) or "up" (during upward Y movement)
+line_motor_right_up_sensor = False # Sensor: True when right piston is UP
+line_motor_right_down_sensor = True # Sensor: True when right piston is DOWN (default)
 
 # ROWS TOOLS (X-axis / vertical operations)
-row_marker_piston = "up"           # Piston that lifts Y-axis marker assembly: "up" (default) or "down" (for operations)
-row_marker_state = "up"            # Sensor detecting marker tool position: "up" or "down"
-row_cutter_piston = "up"           # Piston that lifts Y-axis cutter assembly: "up" (default) or "down" (for operations)
-row_cutter_state = "up"            # Sensor detecting cutter tool position: "up" (inactive) or "down" (cutting)
+# Row Marker - single piston with dual sensors
+row_marker_piston = "up"           # Piston control: "up" (default) or "down" (for operations)
+row_marker_up_sensor = True        # Sensor: True when piston is UP (default)
+row_marker_down_sensor = False     # Sensor: True when piston is DOWN
+
+# Row Cutter - single piston with dual sensors
+row_cutter_piston = "up"           # Piston control: "up" (default) or "down" (for operations)
+row_cutter_up_sensor = True        # Sensor: True when piston is UP (default)
+row_cutter_down_sensor = False     # Sensor: True when piston is DOWN
 
 # Sensor events for manual triggering
 sensor_events = {
@@ -141,24 +161,48 @@ limit_switch_states = {
 def reset_hardware():
     """Reset all hardware to initial state"""
     global current_x_position, current_y_position
-    global line_marker_state, line_marker_piston, line_cutter_state, line_cutter_piston
-    global line_motor_piston, line_motor_piston_sensor
-    global row_marker_piston, row_marker_state
-    global row_cutter_piston, row_cutter_state
+    global line_marker_piston, line_marker_up_sensor, line_marker_down_sensor
+    global line_cutter_piston, line_cutter_up_sensor, line_cutter_down_sensor
+    global line_motor_piston_left, line_motor_left_up_sensor, line_motor_left_down_sensor
+    global line_motor_piston_right, line_motor_right_up_sensor, line_motor_right_down_sensor
+    global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
+    global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     global limit_switch_states
 
     current_x_position = 0.0
     current_y_position = 0.0
-    line_marker_state = "up"
-    line_marker_piston = "up"           # Default state is UP
-    line_cutter_state = "up"
-    line_cutter_piston = "up"           # Default state is UP
-    line_motor_piston = "down"          # Default state is DOWN
-    line_motor_piston_sensor = "down"   # Default state is DOWN (not lifted)
-    row_marker_piston = "up"            # Default state is UP
-    row_marker_state = "up"
-    row_cutter_piston = "up"            # Default state is UP
-    row_cutter_state = "up"
+
+    # Line marker - default UP
+    line_marker_piston = "up"
+    line_marker_up_sensor = True
+    line_marker_down_sensor = False
+
+    # Line cutter - default UP
+    line_cutter_piston = "up"
+    line_cutter_up_sensor = True
+    line_cutter_down_sensor = False
+
+    # Line motor left piston - default DOWN
+    line_motor_piston_left = "down"
+    line_motor_left_up_sensor = False
+    line_motor_left_down_sensor = True
+
+    # Line motor right piston - default DOWN
+    line_motor_piston_right = "down"
+    line_motor_right_up_sensor = False
+    line_motor_right_down_sensor = True
+
+    # Row marker - default UP
+    row_marker_piston = "up"
+    row_marker_up_sensor = True
+    row_marker_down_sensor = False
+
+    # Row cutter - default UP
+    row_cutter_piston = "up"
+    row_cutter_up_sensor = True
+    row_cutter_down_sensor = False
+
+    limit_switch_states['rows'] = False # Default is False (UP)
 
     # Clear all sensor events
     for event in sensor_events.values():
@@ -239,162 +283,122 @@ def get_current_y():
 # Line tools (Y-axis operations)
 def line_marker_down():
     """Lower line marker to marking position"""
-    global line_marker_state, line_marker_piston
+    global line_marker_piston, line_marker_up_sensor, line_marker_down_sensor
     print("MOCK: line_marker_down()")
-    if line_marker_state != "down":
-        # First lower the piston (bring marker assembly down)
-        if line_marker_piston != "down":
-            print("Lowering line marker piston - bringing marker assembly down")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            line_marker_piston = "down"
-            print("Line marker piston DOWN - assembly lowered")
-
-        # Then activate the marker
-        print("Lowering line marker")
+    if line_marker_piston != "down":
+        print("Lowering line marker piston - bringing marker assembly down")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_marker_state = "down"
-        print("Line marker down - ready to mark")
+        line_marker_piston = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        line_marker_up_sensor = False
+        line_marker_down_sensor = True
+        print("Line marker piston DOWN - assembly lowered (up_sensor=False, down_sensor=True)")
     else:
         print("Line marker already down")
 
 def line_marker_up():
     """Raise line marker from marking position"""
-    global line_marker_state, line_marker_piston
+    global line_marker_piston, line_marker_up_sensor, line_marker_down_sensor
     print("MOCK: line_marker_up()")
-    if line_marker_state != "up":
-        # First deactivate the marker
-        print("Raising line marker")
+    if line_marker_piston != "up":
+        print("Raising line marker piston - returning to default position")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_marker_state = "up"
-        print("Line marker up")
-
-        # Then raise the piston (lift marker assembly up to default position)
-        if line_marker_piston != "up":
-            print("Raising line marker piston - returning to default position")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            line_marker_piston = "up"
-            print("Line marker piston UP - default position")
+        line_marker_piston = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        line_marker_up_sensor = True
+        line_marker_down_sensor = False
+        print("Line marker piston UP - default position (up_sensor=True, down_sensor=False)")
     else:
         print("Line marker already up")
 
 def line_cutter_down():
     """Lower line cutter to cutting position"""
-    global line_cutter_state, line_cutter_piston
+    global line_cutter_piston, line_cutter_up_sensor, line_cutter_down_sensor
     print("MOCK: line_cutter_down()")
-    if line_cutter_state != "down":
-        # First lower the piston (bring cutter assembly down)
-        if line_cutter_piston != "down":
-            print("Lowering line cutter piston - bringing cutter assembly down")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            line_cutter_piston = "down"
-            print("Line cutter piston DOWN - assembly lowered")
-
-        # Then activate the cutter
-        print("Lowering line cutter")
+    if line_cutter_piston != "down":
+        print("Lowering line cutter piston - bringing cutter assembly down")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_cutter_state = "down"
-        print("Line cutter down - ready to cut")
+        line_cutter_piston = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        line_cutter_up_sensor = False
+        line_cutter_down_sensor = True
+        print("Line cutter piston DOWN - assembly lowered (up_sensor=False, down_sensor=True)")
     else:
         print("Line cutter already down")
 
 def line_cutter_up():
     """Raise line cutter from cutting position"""
-    global line_cutter_state, line_cutter_piston
+    global line_cutter_piston, line_cutter_up_sensor, line_cutter_down_sensor
     print("MOCK: line_cutter_up()")
-    if line_cutter_state != "up":
-        # First deactivate the cutter
-        print("Raising line cutter")
+    if line_cutter_piston != "up":
+        print("Raising line cutter piston - returning to default position")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_cutter_state = "up"
-        print("Line cutter up")
-
-        # Then raise the piston (lift cutter assembly up to default position)
-        if line_cutter_piston != "up":
-            print("Raising line cutter piston - returning to default position")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            line_cutter_piston = "up"
-            print("Line cutter piston UP - default position")
+        line_cutter_piston = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        line_cutter_up_sensor = True
+        line_cutter_down_sensor = False
+        print("Line cutter piston UP - default position (up_sensor=True, down_sensor=False)")
     else:
         print("Line cutter already up")
 
 # Row tools (X-axis operations)
 def row_marker_down():
     """Lower row marker to marking position (does NOT affect motor door limit switch)"""
-    global row_marker_state, row_marker_piston
+    global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     print("MOCK: row_marker_down()")
-    if row_marker_state != "down":
-        # First lower the piston (bring marker assembly down)
-        if row_marker_piston != "down":
-            print("Lowering row marker piston - bringing marker assembly down")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            row_marker_piston = "down"
-            print("Row marker piston DOWN - assembly lowered")
-
-        # Then activate the marker
-        print("Lowering row marker")
+    if row_marker_piston != "down":
+        print("Lowering row marker piston - bringing marker assembly down")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        row_marker_state = "down"
-        print("Row marker down - ready to mark")
+        row_marker_piston = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        row_marker_up_sensor = False
+        row_marker_down_sensor = True
+        print("Row marker piston DOWN - assembly lowered (up_sensor=False, down_sensor=True)")
     else:
         print("Row marker already down")
 
 def row_marker_up():
     """Raise row marker from marking position (does NOT affect motor door limit switch)"""
-    global row_marker_state, row_marker_piston
+    global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     print("MOCK: row_marker_up()")
-    if row_marker_state != "up":
-        # First deactivate the marker
-        print("Raising row marker")
+    if row_marker_piston != "up":
+        print("Raising row marker piston - returning to default position")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        row_marker_state = "up"
-        print("Row marker up")
-
-        # Then raise the piston (lift marker assembly up to default position)
-        if row_marker_piston != "up":
-            print("Raising row marker piston - returning to default position")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            row_marker_piston = "up"
-            print("Row marker piston UP - default position")
+        row_marker_piston = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        row_marker_up_sensor = True
+        row_marker_down_sensor = False
+        print("Row marker piston UP - default position (up_sensor=True, down_sensor=False)")
     else:
         print("Row marker already up")
 
 def row_cutter_down():
     """Lower row cutter to cutting position"""
-    global row_cutter_state, row_cutter_piston
+    global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     print("MOCK: row_cutter_down()")
-    if row_cutter_state != "down":
-        # First lower the piston (bring cutter assembly down)
-        if row_cutter_piston != "down":
-            print("Lowering row cutter piston - bringing cutter assembly down")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            row_cutter_piston = "down"
-            print("Row cutter piston DOWN - assembly lowered")
-
-        # Then activate the cutter
-        print("Lowering row cutter")
+    if row_cutter_piston != "down":
+        print("Lowering row cutter piston - bringing cutter assembly down")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        row_cutter_state = "down"
-        print("Row cutter down - ready to cut")
+        row_cutter_piston = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        row_cutter_up_sensor = False
+        row_cutter_down_sensor = True
+        print("Row cutter piston DOWN - assembly lowered (up_sensor=False, down_sensor=True)")
     else:
         print("Row cutter already down")
 
 def row_cutter_up():
     """Raise row cutter from cutting position"""
-    global row_cutter_state, row_cutter_piston
+    global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     print("MOCK: row_cutter_up()")
-    if row_cutter_state != "up":
-        # First deactivate the cutter
-        print("Raising row cutter")
+    if row_cutter_piston != "up":
+        print("Raising row cutter piston - returning to default position")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        row_cutter_state = "up"
-        print("Row cutter up")
-
-        # Then raise the piston (lift cutter assembly up to default position)
-        if row_cutter_piston != "up":
-            print("Raising row cutter piston - returning to default position")
-            time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            row_cutter_piston = "up"
-            print("Row cutter piston UP - default position")
+        row_cutter_piston = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        row_cutter_up_sensor = True
+        row_cutter_down_sensor = False
+        print("Row cutter piston UP - default position (up_sensor=True, down_sensor=False)")
     else:
         print("Row cutter already up")
 
@@ -704,79 +708,135 @@ def line_cutter_piston_down():
         print("Line cutter piston already DOWN")
 
 # Line motor piston control functions
-def line_motor_piston_up():
-    """Lift line motor piston (raises entire Y motor assembly)"""
-    global line_motor_piston, line_motor_piston_sensor
-    print("MOCK: line_motor_piston_up()")
-    if line_motor_piston != "up":
-        print("Raising line motor piston - lifting Y motor assembly")
+# Line motor dual pistons (left + right) control functions
+def line_motor_piston_left_up():
+    """Lift left line motor piston (raises left side of Y motor assembly)"""
+    global line_motor_piston_left, line_motor_left_up_sensor, line_motor_left_down_sensor
+    print("MOCK: line_motor_piston_left_up()")
+    if line_motor_piston_left != "up":
+        print("Raising left line motor piston - lifting left side of Y motor assembly")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_motor_piston = "up"
-        line_motor_piston_sensor = "up"  # Sensor detects lifted position
-        print("Line motor piston UP - Y motor assembly raised")
+        line_motor_piston_left = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        line_motor_left_up_sensor = True
+        line_motor_left_down_sensor = False
+        print("Left line motor piston UP (up_sensor=True, down_sensor=False)")
     else:
-        print("Line motor piston already UP")
+        print("Left line motor piston already UP")
+
+def line_motor_piston_left_down():
+    """Lower left line motor piston (lowers left side of Y motor assembly)"""
+    global line_motor_piston_left, line_motor_left_up_sensor, line_motor_left_down_sensor
+    print("MOCK: line_motor_piston_left_down()")
+    if line_motor_piston_left != "down":
+        print("Lowering left line motor piston - lowering left side of Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston_left = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        line_motor_left_up_sensor = False
+        line_motor_left_down_sensor = True
+        print("Left line motor piston DOWN (up_sensor=False, down_sensor=True)")
+    else:
+        print("Left line motor piston already DOWN")
+
+def line_motor_piston_right_up():
+    """Lift right line motor piston (raises right side of Y motor assembly)"""
+    global line_motor_piston_right, line_motor_right_up_sensor, line_motor_right_down_sensor
+    print("MOCK: line_motor_piston_right_up()")
+    if line_motor_piston_right != "up":
+        print("Raising right line motor piston - lifting right side of Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston_right = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        line_motor_right_up_sensor = True
+        line_motor_right_down_sensor = False
+        print("Right line motor piston UP (up_sensor=True, down_sensor=False)")
+    else:
+        print("Right line motor piston already UP")
+
+def line_motor_piston_right_down():
+    """Lower right line motor piston (lowers right side of Y motor assembly)"""
+    global line_motor_piston_right, line_motor_right_up_sensor, line_motor_right_down_sensor
+    print("MOCK: line_motor_piston_right_down()")
+    if line_motor_piston_right != "down":
+        print("Lowering right line motor piston - lowering right side of Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston_right = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        line_motor_right_up_sensor = False
+        line_motor_right_down_sensor = True
+        print("Right line motor piston DOWN (up_sensor=False, down_sensor=True)")
+    else:
+        print("Right line motor piston already DOWN")
+
+# Convenience functions to control both pistons together
+def line_motor_piston_up():
+    """Lift both line motor pistons (raises entire Y motor assembly)"""
+    print("MOCK: line_motor_piston_up() - lifting BOTH pistons")
+    line_motor_piston_left_up()
+    line_motor_piston_right_up()
 
 def line_motor_piston_down():
-    """Lower line motor piston (lowers entire Y motor assembly)"""
-    global line_motor_piston, line_motor_piston_sensor
-    print("MOCK: line_motor_piston_down()")
-    if line_motor_piston != "down":
-        print("Lowering line motor piston - lowering Y motor assembly")
-        time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_motor_piston = "down"
-        line_motor_piston_sensor = "down"  # Sensor detects lowered position
-        print("Line motor piston DOWN - Y motor assembly lowered")
-    else:
-        print("Line motor piston already DOWN")
+    """Lower both line motor pistons (lowers entire Y motor assembly)"""
+    print("MOCK: line_motor_piston_down() - lowering BOTH pistons")
+    line_motor_piston_left_down()
+    line_motor_piston_right_down()
 
 # Row marker piston control functions
 def row_marker_piston_up():
     """Raise row marker piston (default state)"""
-    global row_marker_piston
+    global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     print("MOCK: row_marker_piston_up()")
     if row_marker_piston != "up":
         print("Raising row marker piston - returning to default position")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_piston = "up"
-        print("Row marker piston UP - default position")
+        row_marker_up_sensor = True
+        row_marker_down_sensor = False
+        print("Row marker piston UP - default position (up_sensor=True, down_sensor=False)")
     else:
         print("Row marker piston already UP")
 
 def row_marker_piston_down():
     """Lower row marker piston (for operations)"""
-    global row_marker_piston
+    global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     print("MOCK: row_marker_piston_down()")
     if row_marker_piston != "down":
         print("Lowering row marker piston - preparing for operations")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_marker_piston = "down"
-        print("Row marker piston DOWN - ready for operations")
+        row_marker_up_sensor = False
+        row_marker_down_sensor = True
+        print("Row marker piston DOWN - ready for operations (up_sensor=False, down_sensor=True)")
     else:
         print("Row marker piston already DOWN")
 
 # Row cutter piston control functions
 def row_cutter_piston_up():
     """Raise row cutter piston (default state)"""
-    global row_cutter_piston
+    global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     print("MOCK: row_cutter_piston_up()")
     if row_cutter_piston != "up":
         print("Raising row cutter piston - returning to default position")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_cutter_piston = "up"
-        print("Row cutter piston UP - default position")
+        row_cutter_up_sensor = True
+        row_cutter_down_sensor = False
+        print("Row cutter piston UP - default position (up_sensor=True, down_sensor=False)")
     else:
         print("Row cutter piston already UP")
 
 def row_cutter_piston_down():
     """Lower row cutter piston (for operations)"""
-    global row_cutter_piston
+    global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     print("MOCK: row_cutter_piston_down()")
     if row_cutter_piston != "down":
         print("Lowering row cutter piston - preparing for operations")
         time.sleep(timing_settings.get("tool_action_delay", 0.1))
         row_cutter_piston = "down"
-        print("Row cutter piston DOWN - ready for operations")
+        row_cutter_up_sensor = False
+        row_cutter_down_sensor = True
+        print("Row cutter piston DOWN - ready for operations (up_sensor=False, down_sensor=True)")
     else:
         print("Row cutter piston already DOWN")
 
@@ -786,17 +846,32 @@ def get_hardware_status():
     status = {
         'x_position': current_x_position,
         'y_position': current_y_position,
-        'line_marker': line_marker_state,
+        # Line marker
         'line_marker_piston': line_marker_piston,
-        'line_cutter': line_cutter_state,
+        'line_marker_up_sensor': line_marker_up_sensor,
+        'line_marker_down_sensor': line_marker_down_sensor,
+        # Line cutter
         'line_cutter_piston': line_cutter_piston,
-        'line_motor_piston': line_motor_piston,
-        'line_motor_piston_sensor': line_motor_piston_sensor,
+        'line_cutter_up_sensor': line_cutter_up_sensor,
+        'line_cutter_down_sensor': line_cutter_down_sensor,
+        # Line motor left piston
+        'line_motor_piston_left': line_motor_piston_left,
+        'line_motor_left_up_sensor': line_motor_left_up_sensor,
+        'line_motor_left_down_sensor': line_motor_left_down_sensor,
+        # Line motor right piston
+        'line_motor_piston_right': line_motor_piston_right,
+        'line_motor_right_up_sensor': line_motor_right_up_sensor,
+        'line_motor_right_down_sensor': line_motor_right_down_sensor,
+        # Row marker
         'row_marker_piston': row_marker_piston,
-        'row_marker': row_marker_state,
-        'row_marker_limit_switch': "down" if limit_switch_states.get('rows', False) else "up",
+        'row_marker_up_sensor': row_marker_up_sensor,
+        'row_marker_down_sensor': row_marker_down_sensor,
+        # Row cutter
         'row_cutter_piston': row_cutter_piston,
-        'row_cutter': row_cutter_state
+        'row_cutter_up_sensor': row_cutter_up_sensor,
+        'row_cutter_down_sensor': row_cutter_down_sensor,
+        # Limit switch
+        'row_marker_limit_switch': "down" if limit_switch_states.get('rows', False) else "up"
     }
     return status
 
@@ -805,17 +880,31 @@ def print_hardware_status():
     print("\n=== Hardware Status ===")
     print(f"X Position: {current_x_position:.1f}cm")
     print(f"Y Position: {current_y_position:.1f}cm")
-    print(f"Line Marker: {line_marker_state}")
-    print(f"Line Marker Piston: {line_marker_piston}")
-    print(f"Line Cutter: {line_cutter_state}")
-    print(f"Line Cutter Piston: {line_cutter_piston}")
-    print(f"Line Motor Piston: {line_motor_piston}")
-    print(f"Line Motor Piston Sensor: {line_motor_piston_sensor}")
-    print(f"Row Marker Piston: {row_marker_piston}")
-    print(f"Row Marker: {row_marker_state}")
-    print(f"Row Marker Limit Switch: {'down' if limit_switch_states.get('rows', False) else 'up'}")
-    print(f"Row Cutter Piston: {row_cutter_piston}")
-    print(f"Row Cutter: {row_cutter_state}")
+    print(f"\nLine Marker:")
+    print(f"  Piston: {line_marker_piston}")
+    print(f"  Up Sensor: {line_marker_up_sensor}")
+    print(f"  Down Sensor: {line_marker_down_sensor}")
+    print(f"\nLine Cutter:")
+    print(f"  Piston: {line_cutter_piston}")
+    print(f"  Up Sensor: {line_cutter_up_sensor}")
+    print(f"  Down Sensor: {line_cutter_down_sensor}")
+    print(f"\nLine Motor Left Piston:")
+    print(f"  Piston: {line_motor_piston_left}")
+    print(f"  Up Sensor: {line_motor_left_up_sensor}")
+    print(f"  Down Sensor: {line_motor_left_down_sensor}")
+    print(f"\nLine Motor Right Piston:")
+    print(f"  Piston: {line_motor_piston_right}")
+    print(f"  Up Sensor: {line_motor_right_up_sensor}")
+    print(f"  Down Sensor: {line_motor_right_down_sensor}")
+    print(f"\nRow Marker:")
+    print(f"  Piston: {row_marker_piston}")
+    print(f"  Up Sensor: {row_marker_up_sensor}")
+    print(f"  Down Sensor: {row_marker_down_sensor}")
+    print(f"\nRow Cutter:")
+    print(f"  Piston: {row_cutter_piston}")
+    print(f"  Up Sensor: {row_cutter_up_sensor}")
+    print(f"  Down Sensor: {row_cutter_down_sensor}")
+    print(f"\nRow Marker Limit Switch: {'down' if limit_switch_states.get('rows', False) else 'up'}")
     print("=====================\n")
 
 if __name__ == "__main__":
@@ -907,45 +996,100 @@ def _move_to_sensor_location(sensor_type):
         canvas_manager.update_position_display()
 
 # Tool state getter functions
-def get_line_marker_state():
-    """Get current line marker state"""
-    return line_marker_state
-
+# Line Marker getters
 def get_line_marker_piston_state():
     """Get current line marker piston state"""
     return line_marker_piston
 
+def get_line_marker_up_sensor():
+    """Get line marker up sensor state"""
+    return line_marker_up_sensor
+
+def get_line_marker_down_sensor():
+    """Get line marker down sensor state"""
+    return line_marker_down_sensor
+
+# Line Cutter getters
 def get_line_cutter_piston_state():
     """Get current line cutter piston state"""
     return line_cutter_piston
 
-def get_line_motor_piston_state():
-    """Get current line motor piston state (lifts entire Y motor assembly)"""
-    return line_motor_piston
+def get_line_cutter_up_sensor():
+    """Get line cutter up sensor state"""
+    return line_cutter_up_sensor
 
-def get_line_motor_piston_sensor_state():
-    """Get current line motor piston sensor state (detects piston position)"""
-    return line_motor_piston_sensor
+def get_line_cutter_down_sensor():
+    """Get line cutter down sensor state"""
+    return line_cutter_down_sensor
 
-def get_line_cutter_state():
-    """Get current line cutter state"""
-    return line_cutter_state
+# Line Motor Left Piston getters
+def get_line_motor_piston_left_state():
+    """Get current line motor left piston state"""
+    return line_motor_piston_left
 
-def get_row_marker_state():
-    """Get current row marker state"""
-    return row_marker_state
+def get_line_motor_left_up_sensor():
+    """Get line motor left up sensor state"""
+    return line_motor_left_up_sensor
 
+def get_line_motor_left_down_sensor():
+    """Get line motor left down sensor state"""
+    return line_motor_left_down_sensor
+
+# Line Motor Right Piston getters
+def get_line_motor_piston_right_state():
+    """Get current line motor right piston state"""
+    return line_motor_piston_right
+
+def get_line_motor_right_up_sensor():
+    """Get line motor right up sensor state"""
+    return line_motor_right_up_sensor
+
+def get_line_motor_right_down_sensor():
+    """Get line motor right down sensor state"""
+    return line_motor_right_down_sensor
+
+# Row Marker getters
 def get_row_marker_piston_state():
     """Get current row marker piston state"""
     return row_marker_piston
 
-def get_row_cutter_state():
-    """Get current row cutter state"""
-    return row_cutter_state
+def get_row_marker_up_sensor():
+    """Get row marker up sensor state"""
+    return row_marker_up_sensor
 
+def get_row_marker_down_sensor():
+    """Get row marker down sensor state"""
+    return row_marker_down_sensor
+
+# Row Cutter getters
 def get_row_cutter_piston_state():
     """Get current row cutter piston state"""
     return row_cutter_piston
+
+def get_row_cutter_up_sensor():
+    """Get row cutter up sensor state"""
+    return row_cutter_up_sensor
+
+def get_row_cutter_down_sensor():
+    """Get row cutter down sensor state"""
+    return row_cutter_down_sensor
+
+# Legacy compatibility getters (for old code that expects single sensor)
+def get_line_marker_state():
+    """Get current line marker state (legacy - returns 'up' if up_sensor True, else 'down')"""
+    return "up" if line_marker_up_sensor else "down"
+
+def get_line_cutter_state():
+    """Get current line cutter state (legacy - returns 'up' if up_sensor True, else 'down')"""
+    return "up" if line_cutter_up_sensor else "down"
+
+def get_row_marker_state():
+    """Get current row marker state (legacy - returns 'up' if up_sensor True, else 'down')"""
+    return "up" if row_marker_up_sensor else "down"
+
+def get_row_cutter_state():
+    """Get current row cutter state (legacy - returns 'up' if up_sensor True, else 'down')"""
+    return "up" if row_cutter_up_sensor else "down"
 
 def get_row_motor_limit_switch():
     """Get current row marker limit switch state - reads from limit_switch_states['rows']"""

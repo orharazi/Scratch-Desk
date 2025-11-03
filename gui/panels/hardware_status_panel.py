@@ -2,12 +2,21 @@ import tkinter as tk
 import json
 from mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
+    # Piston states
     get_line_marker_piston_state, get_line_cutter_piston_state,
-    get_line_motor_piston_state, get_line_motor_piston_sensor_state,
+    get_line_motor_piston_left_state, get_line_motor_piston_right_state,
     get_row_marker_piston_state, get_row_cutter_piston_state,
-    get_row_motor_limit_switch, get_row_marker_state, get_line_cutter_state, get_row_cutter_state,
-    get_sensor_trigger_states, get_limit_switch_state,
-    get_line_marker_state
+    # Tool sensors (up/down)
+    get_line_marker_up_sensor, get_line_marker_down_sensor,
+    get_line_cutter_up_sensor, get_line_cutter_down_sensor,
+    get_line_motor_left_up_sensor, get_line_motor_left_down_sensor,
+    get_line_motor_right_up_sensor, get_line_motor_right_down_sensor,
+    get_row_marker_up_sensor, get_row_marker_down_sensor,
+    get_row_cutter_up_sensor, get_row_cutter_down_sensor,
+    # Edge sensors
+    get_x_left_edge, get_x_right_edge, get_y_top_edge, get_y_bottom_edge,
+    # Limit switches
+    get_limit_switch_state
 )
 
 
@@ -87,34 +96,50 @@ class HardwareStatusPanel:
         # LINES Section
         self._create_section_header(grid_frame, 1, row, "✏️ LINES", heading_font)
         row_offset = row + 1
-        # Sensors subsection
-        self._create_subsection_header(grid_frame, 1, row_offset, "Sensors", tiny_font)
+        # Tool Sensors subsection (UP/DOWN sensors for each tool)
+        self._create_subsection_header(grid_frame, 1, row_offset, "Tool Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "Right Edge", "rows_sensor_right_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "Left Edge", "rows_sensor_left_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, "Marker Sensor", "lines_sensor_marker_piston", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 3, "Cutter Sensor", "lines_sensor_cutter", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 4, "Motor Sensor", "lines_sensor_motor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, "Marker ↑", "line_marker_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, "Marker ↓", "line_marker_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, "Cutter ↑", "line_cutter_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 3, "Cutter ↓", "line_cutter_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 4, "Motor L↑", "line_motor_left_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 5, "Motor L↓", "line_motor_left_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 6, "Motor R↑", "line_motor_right_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 7, "Motor R↓", "line_motor_right_down_sensor", label_font, tiny_font)
+        # Edge Sensors subsection
+        row_offset += 8
+        self._create_subsection_header(grid_frame, 1, row_offset, "Edge Sensors", tiny_font)
+        row_offset += 1
+        self._create_grid_item(grid_frame, 1, row_offset, "Y Top", "y_top_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, "Y Bottom", "y_bottom_edge_sensor", label_font, tiny_font)
         # Pistons subsection
-        row_offset += 5
+        row_offset += 2
         self._create_subsection_header(grid_frame, 1, row_offset, "Pistons", tiny_font)
         row_offset += 1
         self._create_grid_item(grid_frame, 1, row_offset, "Marker", "lines_piston_marker", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 1, "Cutter", "lines_piston_cutter", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, "Motor", "lines_piston_motor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, "Motor Left", "lines_piston_motor_left", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 3, "Motor Right", "lines_piston_motor_right", label_font, tiny_font)
 
         # ROWS Section
         self._create_section_header(grid_frame, 2, row, "✂️ ROWS", heading_font)
         row_offset = row + 1
-        # Sensors subsection
-        self._create_subsection_header(grid_frame, 2, row_offset, "Sensors", tiny_font)
+        # Tool Sensors subsection (UP/DOWN sensors for each tool)
+        self._create_subsection_header(grid_frame, 2, row_offset, "Tool Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, "Top Edge", "lines_sensor_top_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "Bottom Edge", "lines_sensor_bottom_edge", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 2, "Marker Sensor", "rows_sensor_marker_piston", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 3, "Cutter Sensor", "rows_sensor_cutter", label_font, tiny_font)
-        # Pistons subsection
+        self._create_grid_item(grid_frame, 2, row_offset, "Marker ↑", "row_marker_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, "Marker ↓", "row_marker_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 2, "Cutter ↑", "row_cutter_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 3, "Cutter ↓", "row_cutter_down_sensor", label_font, tiny_font)
+        # Edge Sensors subsection
         row_offset += 4
+        self._create_subsection_header(grid_frame, 2, row_offset, "Edge Sensors", tiny_font)
+        row_offset += 1
+        self._create_grid_item(grid_frame, 2, row_offset, "X Left", "x_left_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, "X Right", "x_right_edge_sensor", label_font, tiny_font)
+        # Pistons subsection
+        row_offset += 2
         self._create_subsection_header(grid_frame, 2, row_offset, "Pistons", tiny_font)
         row_offset += 1
         self._create_grid_item(grid_frame, 2, row_offset, "Marker", "rows_piston_marker", label_font, tiny_font)
@@ -254,7 +279,6 @@ class HardwareStatusPanel:
         try:
             # Get all hardware states
             hw_status = get_hardware_status()
-            sensor_triggers = get_sensor_trigger_states()
 
             # Motor positions
             self._update_widget('x_position', f"{hw_status['x_position']:.1f}", self.colors.get("motor_x", "#E74C3C"))
@@ -287,35 +311,60 @@ class HardwareStatusPanel:
                                'ON' if rows_ls else 'OFF',
                                self.switch_on_color if rows_ls else self.switch_off_color)
 
-            # LINES SECTION
-            # Sensors - color coded: READY=blue, TRIGGERED=red
-            self._update_widget('lines_sensor_top_edge',
-                               'TRIGGERED' if sensor_triggers['y_top'] else 'READY',
-                               self.sensor_triggered_color if sensor_triggers['y_top'] else self.sensor_ready_color)
-            self._update_widget('lines_sensor_bottom_edge',
-                               'TRIGGERED' if sensor_triggers['y_bottom'] else 'READY',
-                               self.sensor_triggered_color if sensor_triggers['y_bottom'] else self.sensor_ready_color)
+            # LINES SECTION - Tool Sensors (UP/DOWN sensors for each tool)
+            # Color coded: READY (False)=blue, TRIGGERED (True)=red
+            # Line Marker Sensors
+            line_marker_up = get_line_marker_up_sensor()
+            self._update_widget('line_marker_up_sensor',
+                               'TRIG' if line_marker_up else 'READY',
+                               self.sensor_triggered_color if line_marker_up else self.sensor_ready_color)
+            line_marker_down = get_line_marker_down_sensor()
+            self._update_widget('line_marker_down_sensor',
+                               'TRIG' if line_marker_down else 'READY',
+                               self.sensor_triggered_color if line_marker_down else self.sensor_ready_color)
 
-            # Marker sensor (detect piston position)
-            line_marker_piston_state = get_line_marker_piston_state().upper()
-            self._update_widget('lines_sensor_marker_piston',
-                               'TRIGGERED' if line_marker_piston_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if line_marker_piston_state == 'DOWN' else self.sensor_ready_color)
+            # Line Cutter Sensors
+            line_cutter_up = get_line_cutter_up_sensor()
+            self._update_widget('line_cutter_up_sensor',
+                               'TRIG' if line_cutter_up else 'READY',
+                               self.sensor_triggered_color if line_cutter_up else self.sensor_ready_color)
+            line_cutter_down = get_line_cutter_down_sensor()
+            self._update_widget('line_cutter_down_sensor',
+                               'TRIG' if line_cutter_down else 'READY',
+                               self.sensor_triggered_color if line_cutter_down else self.sensor_ready_color)
 
-            # Cutter sensor (detect cutter position)
-            line_cutter_state = get_line_cutter_state().upper()
-            self._update_widget('lines_sensor_cutter',
-                               'TRIGGERED' if line_cutter_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if line_cutter_state == 'DOWN' else self.sensor_ready_color)
+            # Line Motor Left Piston Sensors
+            line_motor_left_up = get_line_motor_left_up_sensor()
+            self._update_widget('line_motor_left_up_sensor',
+                               'TRIG' if line_motor_left_up else 'READY',
+                               self.sensor_triggered_color if line_motor_left_up else self.sensor_ready_color)
+            line_motor_left_down = get_line_motor_left_down_sensor()
+            self._update_widget('line_motor_left_down_sensor',
+                               'TRIG' if line_motor_left_down else 'READY',
+                               self.sensor_triggered_color if line_motor_left_down else self.sensor_ready_color)
 
-            # Motor sensor (detect line motor piston position)
-            line_motor_piston_sensor_state = get_line_motor_piston_sensor_state().upper()
-            self._update_widget('lines_sensor_motor',
-                                'TRIGGERED' if line_motor_piston_sensor_state == 'DOWN' else 'READY',
-                                self.sensor_triggered_color if line_motor_piston_sensor_state == 'DOWN' else self.sensor_ready_color)
+            # Line Motor Right Piston Sensors
+            line_motor_right_up = get_line_motor_right_up_sensor()
+            self._update_widget('line_motor_right_up_sensor',
+                               'TRIG' if line_motor_right_up else 'READY',
+                               self.sensor_triggered_color if line_motor_right_up else self.sensor_ready_color)
+            line_motor_right_down = get_line_motor_right_down_sensor()
+            self._update_widget('line_motor_right_down_sensor',
+                               'TRIG' if line_motor_right_down else 'READY',
+                               self.sensor_triggered_color if line_motor_right_down else self.sensor_ready_color)
+
+            # Edge Sensors (Y-axis for Lines)
+            y_top_edge = get_y_top_edge()
+            self._update_widget('y_top_edge_sensor',
+                               'TRIG' if y_top_edge else 'READY',
+                               self.sensor_triggered_color if y_top_edge else self.sensor_ready_color)
+            y_bottom_edge = get_y_bottom_edge()
+            self._update_widget('y_bottom_edge_sensor',
+                               'TRIG' if y_bottom_edge else 'READY',
+                               self.sensor_triggered_color if y_bottom_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
-            # Note: line_marker_piston_state was already retrieved above at line 298
+            line_marker_piston_state = get_line_marker_piston_state().upper()
             self._update_widget('lines_piston_marker', line_marker_piston_state,
                                self.piston_down_color if line_marker_piston_state == 'DOWN' else self.piston_up_color)
 
@@ -323,30 +372,45 @@ class HardwareStatusPanel:
             self._update_widget('lines_piston_cutter', line_cutter_piston_state,
                                self.piston_down_color if line_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
-            line_motor_piston_state = get_line_motor_piston_state().upper()
-            self._update_widget('lines_piston_motor', line_motor_piston_state,
-                               self.piston_down_color if line_motor_piston_state == 'DOWN' else self.piston_up_color)
+            line_motor_left_piston_state = get_line_motor_piston_left_state().upper()
+            self._update_widget('lines_piston_motor_left', line_motor_left_piston_state,
+                               self.piston_down_color if line_motor_left_piston_state == 'DOWN' else self.piston_up_color)
 
-            # ROWS SECTION
-            # Sensors - color coded: READY=blue, TRIGGERED=red
-            self._update_widget('rows_sensor_right_edge',
-                               'TRIGGERED' if sensor_triggers['x_right'] else 'READY',
-                               self.sensor_triggered_color if sensor_triggers['x_right'] else self.sensor_ready_color)
-            self._update_widget('rows_sensor_left_edge',
-                               'TRIGGERED' if sensor_triggers['x_left'] else 'READY',
-                               self.sensor_triggered_color if sensor_triggers['x_left'] else self.sensor_ready_color)
+            line_motor_right_piston_state = get_line_motor_piston_right_state().upper()
+            self._update_widget('lines_piston_motor_right', line_motor_right_piston_state,
+                               self.piston_down_color if line_motor_right_piston_state == 'DOWN' else self.piston_up_color)
 
-            # Marker sensor (detect marker position)
-            row_marker_state = get_row_marker_state().upper()
-            self._update_widget('rows_sensor_marker_piston',
-                               'TRIGGERED' if row_marker_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if row_marker_state == 'DOWN' else self.sensor_ready_color)
+            # ROWS SECTION - Tool Sensors (UP/DOWN sensors for each tool)
+            # Color coded: READY (False)=blue, TRIGGERED (True)=red
+            # Row Marker Sensors
+            row_marker_up = get_row_marker_up_sensor()
+            self._update_widget('row_marker_up_sensor',
+                               'TRIG' if row_marker_up else 'READY',
+                               self.sensor_triggered_color if row_marker_up else self.sensor_ready_color)
+            row_marker_down = get_row_marker_down_sensor()
+            self._update_widget('row_marker_down_sensor',
+                               'TRIG' if row_marker_down else 'READY',
+                               self.sensor_triggered_color if row_marker_down else self.sensor_ready_color)
 
-            # Cutter sensor (detect cutter position)
-            row_cutter_state = get_row_cutter_state().upper()
-            self._update_widget('rows_sensor_cutter',
-                               'TRIGGERED' if row_cutter_state == 'DOWN' else 'READY',
-                               self.sensor_triggered_color if row_cutter_state == 'DOWN' else self.sensor_ready_color)
+            # Row Cutter Sensors
+            row_cutter_up = get_row_cutter_up_sensor()
+            self._update_widget('row_cutter_up_sensor',
+                               'TRIG' if row_cutter_up else 'READY',
+                               self.sensor_triggered_color if row_cutter_up else self.sensor_ready_color)
+            row_cutter_down = get_row_cutter_down_sensor()
+            self._update_widget('row_cutter_down_sensor',
+                               'TRIG' if row_cutter_down else 'READY',
+                               self.sensor_triggered_color if row_cutter_down else self.sensor_ready_color)
+
+            # Edge Sensors (X-axis for Rows)
+            x_left_edge = get_x_left_edge()
+            self._update_widget('x_left_edge_sensor',
+                               'TRIG' if x_left_edge else 'READY',
+                               self.sensor_triggered_color if x_left_edge else self.sensor_ready_color)
+            x_right_edge = get_x_right_edge()
+            self._update_widget('x_right_edge_sensor',
+                               'TRIG' if x_right_edge else 'READY',
+                               self.sensor_triggered_color if x_right_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             row_marker_piston_state = get_row_marker_piston_state().upper()
@@ -423,8 +487,8 @@ class HardwareStatusPanel:
             if hasattr(self.main_app, 'canvas_manager'):
                 mode = self.main_app.canvas_manager.motor_operation_mode.upper()
 
-                # Get row marker state
-                row_marker_state = get_row_marker_state().upper()
+                # Get row marker state (piston position)
+                row_marker_state = get_row_marker_piston_state().upper()
 
                 # Safety check: row marker position must match operation type
                 if mode == 'LINES':

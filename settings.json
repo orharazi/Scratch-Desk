@@ -110,22 +110,30 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": false,
+    "use_real_hardware": true,
     "raspberry_pi": {
       "gpio_mode": "BCM",
       "pistons": {
         "line_marker_piston": 17,
         "line_cutter_piston": 27,
-        "line_motor_piston": 22,
+        "line_motor_piston_left": 22,
+        "line_motor_piston_right": 11,
         "row_marker_piston": 23,
         "row_cutter_piston": 24
       },
       "sensors": {
-        "line_marker_state": 5,
-        "line_cutter_state": 6,
-        "line_motor_piston_sensor": 13,
-        "row_marker_state": 19,
-        "row_cutter_state": 26,
+        "line_marker_up_sensor": 5,
+        "line_marker_down_sensor": 4,
+        "line_cutter_up_sensor": 6,
+        "line_cutter_down_sensor": 7,
+        "line_motor_left_up_sensor": 8,
+        "line_motor_left_down_sensor": 9,
+        "line_motor_right_up_sensor": 10,
+        "line_motor_right_down_sensor": 14,
+        "row_marker_up_sensor": 19,
+        "row_marker_down_sensor": 15,
+        "row_cutter_up_sensor": 26,
+        "row_cutter_down_sensor": 18,
         "x_left_edge": 20,
         "x_right_edge": 21,
         "y_top_edge": 16,

@@ -227,7 +227,7 @@ class HardwareInterface:
         return self.gpio.piston_up("line_cutter_piston")
 
     def line_motor_piston_down(self) -> bool:
-        """Lower line motor piston"""
+        """Lower BOTH line motor pistons (left and right)"""
         if not self.use_real_hardware:
             print("MOCK: line_motor_piston_down()")
             return True
@@ -236,10 +236,10 @@ class HardwareInterface:
             print("Hardware not initialized")
             return False
 
-        return self.gpio.piston_down("line_motor_piston")
+        return self.gpio.line_motor_piston_down()
 
     def line_motor_piston_up(self) -> bool:
-        """Raise line motor piston"""
+        """Raise BOTH line motor pistons (left and right)"""
         if not self.use_real_hardware:
             print("MOCK: line_motor_piston_up()")
             return True
@@ -248,7 +248,55 @@ class HardwareInterface:
             print("Hardware not initialized")
             return False
 
-        return self.gpio.piston_up("line_motor_piston")
+        return self.gpio.line_motor_piston_up()
+
+    def line_motor_piston_left_down(self) -> bool:
+        """Lower line motor LEFT piston"""
+        if not self.use_real_hardware:
+            print("MOCK: line_motor_piston_left_down()")
+            return True
+
+        if not self.is_initialized or not self.gpio:
+            print("Hardware not initialized")
+            return False
+
+        return self.gpio.line_motor_piston_left_down()
+
+    def line_motor_piston_left_up(self) -> bool:
+        """Raise line motor LEFT piston"""
+        if not self.use_real_hardware:
+            print("MOCK: line_motor_piston_left_up()")
+            return True
+
+        if not self.is_initialized or not self.gpio:
+            print("Hardware not initialized")
+            return False
+
+        return self.gpio.line_motor_piston_left_up()
+
+    def line_motor_piston_right_down(self) -> bool:
+        """Lower line motor RIGHT piston"""
+        if not self.use_real_hardware:
+            print("MOCK: line_motor_piston_right_down()")
+            return True
+
+        if not self.is_initialized or not self.gpio:
+            print("Hardware not initialized")
+            return False
+
+        return self.gpio.line_motor_piston_right_down()
+
+    def line_motor_piston_right_up(self) -> bool:
+        """Raise line motor RIGHT piston"""
+        if not self.use_real_hardware:
+            print("MOCK: line_motor_piston_right_up()")
+            return True
+
+        if not self.is_initialized or not self.gpio:
+            print("Hardware not initialized")
+            return False
+
+        return self.gpio.line_motor_piston_right_up()
 
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
@@ -298,99 +346,217 @@ class HardwareInterface:
 
         return self.gpio.piston_up("row_cutter_piston")
 
-    # ========== SENSOR READING (via GPIO) ==========
+    # ========== SENSOR READING (via GPIO) - DUAL SENSORS PER TOOL ==========
 
-    def read_line_marker_state(self) -> bool:
-        """Read line marker sensor state"""
+    # Line Marker Sensors
+    def get_line_marker_up_sensor(self) -> bool:
+        """Read line marker UP sensor state"""
         if not self.use_real_hardware:
-            print("MOCK: read_line_marker_state() -> False")
             return False
 
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.read_sensor("line_marker_state")
+        state = self.gpio.get_line_marker_up_sensor()
         return state if state is not None else False
 
-    def read_line_cutter_state(self) -> bool:
-        """Read line cutter sensor state"""
+    def get_line_marker_down_sensor(self) -> bool:
+        """Read line marker DOWN sensor state"""
         if not self.use_real_hardware:
-            print("MOCK: read_line_cutter_state() -> False")
             return False
 
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.read_sensor("line_cutter_state")
+        state = self.gpio.get_line_marker_down_sensor()
         return state if state is not None else False
 
-    def read_line_motor_piston_sensor(self) -> bool:
-        """Read line motor piston sensor state"""
+    # Line Cutter Sensors
+    def get_line_cutter_up_sensor(self) -> bool:
+        """Read line cutter UP sensor state"""
         if not self.use_real_hardware:
-            print("MOCK: read_line_motor_piston_sensor() -> False")
             return False
 
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.read_sensor("line_motor_piston_sensor")
+        state = self.gpio.get_line_cutter_up_sensor()
         return state if state is not None else False
 
-    def read_row_marker_state(self) -> bool:
-        """Read row marker sensor state"""
+    def get_line_cutter_down_sensor(self) -> bool:
+        """Read line cutter DOWN sensor state"""
         if not self.use_real_hardware:
-            print("MOCK: read_row_marker_state() -> False")
             return False
 
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.read_sensor("row_marker_state")
+        state = self.gpio.get_line_cutter_down_sensor()
         return state if state is not None else False
 
-    def read_row_cutter_state(self) -> bool:
-        """Read row cutter sensor state"""
+    # Line Motor Left Piston Sensors
+    def get_line_motor_left_up_sensor(self) -> bool:
+        """Read line motor LEFT piston UP sensor state"""
         if not self.use_real_hardware:
-            print("MOCK: read_row_cutter_state() -> False")
             return False
 
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.read_sensor("row_cutter_state")
+        state = self.gpio.get_line_motor_left_up_sensor()
+        return state if state is not None else False
+
+    def get_line_motor_left_down_sensor(self) -> bool:
+        """Read line motor LEFT piston DOWN sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_line_motor_left_down_sensor()
+        return state if state is not None else False
+
+    # Line Motor Right Piston Sensors
+    def get_line_motor_right_up_sensor(self) -> bool:
+        """Read line motor RIGHT piston UP sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_line_motor_right_up_sensor()
+        return state if state is not None else False
+
+    def get_line_motor_right_down_sensor(self) -> bool:
+        """Read line motor RIGHT piston DOWN sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_line_motor_right_down_sensor()
+        return state if state is not None else False
+
+    # Row Marker Sensors
+    def get_row_marker_up_sensor(self) -> bool:
+        """Read row marker UP sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_marker_up_sensor()
+        return state if state is not None else False
+
+    def get_row_marker_down_sensor(self) -> bool:
+        """Read row marker DOWN sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_marker_down_sensor()
+        return state if state is not None else False
+
+    # Row Cutter Sensors
+    def get_row_cutter_up_sensor(self) -> bool:
+        """Read row cutter UP sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_cutter_up_sensor()
+        return state if state is not None else False
+
+    def get_row_cutter_down_sensor(self) -> bool:
+        """Read row cutter DOWN sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_cutter_down_sensor()
+        return state if state is not None else False
+
+    # ========== EDGE SENSORS ==========
+
+    def get_x_left_edge_sensor(self) -> bool:
+        """Read X-axis LEFT edge sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_x_left_edge_sensor()
+        return state if state is not None else False
+
+    def get_x_right_edge_sensor(self) -> bool:
+        """Read X-axis RIGHT edge sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_x_right_edge_sensor()
+        return state if state is not None else False
+
+    def get_y_top_edge_sensor(self) -> bool:
+        """Read Y-axis TOP edge sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_y_top_edge_sensor()
+        return state if state is not None else False
+
+    def get_y_bottom_edge_sensor(self) -> bool:
+        """Read Y-axis BOTTOM edge sensor state"""
+        if not self.use_real_hardware:
+            return False
+
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_y_bottom_edge_sensor()
         return state if state is not None else False
 
     def read_edge_sensors(self) -> Dict[str, bool]:
         """
-        Read all edge detection sensors
+        Read all edge detection sensors (convenience method)
 
         Returns:
             Dictionary with sensor states: {'x_left': bool, 'x_right': bool, 'y_top': bool, 'y_bottom': bool}
         """
-        if not self.use_real_hardware:
-            print("MOCK: read_edge_sensors()")
-            return {'x_left': False, 'x_right': False, 'y_top': False, 'y_bottom': False}
-
-        if not self.is_initialized or not self.gpio:
-            return {'x_left': False, 'x_right': False, 'y_top': False, 'y_bottom': False}
-
         return {
-            'x_left': self.gpio.read_sensor("x_left_edge") or False,
-            'x_right': self.gpio.read_sensor("x_right_edge") or False,
-            'y_top': self.gpio.read_sensor("y_top_edge") or False,
-            'y_bottom': self.gpio.read_sensor("y_bottom_edge") or False
+            'x_left': self.get_x_left_edge_sensor(),
+            'x_right': self.get_x_right_edge_sensor(),
+            'y_top': self.get_y_top_edge_sensor(),
+            'y_bottom': self.get_y_bottom_edge_sensor()
         }
 
-    def read_rows_door_limit_switch(self) -> bool:
+    # ========== LIMIT SWITCHES ==========
+
+    def get_rows_door_switch(self) -> bool:
         """Read rows door limit switch state"""
         if not self.use_real_hardware:
-            print("MOCK: read_rows_door_limit_switch() -> False")
             return False
 
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.read_limit_switch("rows_door")
+        state = self.gpio.get_rows_door_switch()
         return state if state is not None else False
 
     # ========== EMERGENCY CONTROLS ==========
