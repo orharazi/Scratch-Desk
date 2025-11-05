@@ -473,7 +473,7 @@ class RightPanel:
             # Get step count summary
             summary = get_step_count_summary(self.main_app.current_program)
             self.step_info_label.config(
-                text=f"Generated {len(self.main_app.steps)} steps ({summary['total_repetitions']} repetitions)"
+                text=f"Generated {len(self.main_app.steps)} steps ({summary['total_repeats']} repetitions)"
             )
             
         except Exception as e:
