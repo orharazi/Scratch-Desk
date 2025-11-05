@@ -161,17 +161,40 @@ class ExecutionEngine:
         return True
     
     def reset_execution(self):
-        """Reset execution to beginning"""
+        """Reset execution to beginning - fully reset all state"""
         if self.is_running:
             print("Cannot reset while running - stop execution first")
             return False
-        
+
+        # Reset execution state
         self.current_step_index = 0
         self.step_results = []
         self.start_time = None
         self.end_time = None
         self.is_paused = False
-        print("Execution reset to beginning")
+        self.is_running = False
+
+        # Reset threading events to initial state
+        self.stop_event.clear()
+        self.pause_event.set()  # Not paused initially
+        self.safety_monitor_stop.set()  # Stop any lingering safety monitor
+
+        # Reset operation tracking
+        self.current_operation_type = None
+        self.in_transition = False
+
+        # Clean up threads if they're still around
+        if self.execution_thread and self.execution_thread.is_alive():
+            print("⚠️ Warning: Execution thread still alive during reset - waiting for cleanup")
+            self.execution_thread.join(timeout=1.0)
+        if self.safety_monitor_thread and self.safety_monitor_thread.is_alive():
+            print("⚠️ Warning: Safety monitor thread still alive during reset - waiting for cleanup")
+            self.safety_monitor_thread.join(timeout=1.0)
+
+        self.execution_thread = None
+        self.safety_monitor_thread = None
+
+        print("✅ Execution fully reset - all state cleared, ready to start")
         return True
     
     def step_forward(self):
