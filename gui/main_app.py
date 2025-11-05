@@ -171,28 +171,34 @@ class ScratchDeskGUI:
         self.left_frame = tk.Frame(self.root, bg='lightgray')
         self.center_frame = tk.Frame(self.root, bg='white')
         self.right_frame = tk.Frame(self.root, bg='lightblue')
-        self.bottom_frame = tk.Frame(self.root, bg='#2C3E50')  # Bottom frame for hardware status
 
-        # Configure responsive column and row weights
-        self.root.grid_rowconfigure(0, weight=1)  # Top row (main panels) spans full height
-        self.root.grid_rowconfigure(1, minsize=130, weight=0)  # Bottom row (hardware status) fixed height
+        # Configure responsive column and row weights - single row spanning full height
+        self.root.grid_rowconfigure(0, weight=1)  # Single row spans full height
         self.root.grid_columnconfigure(0, minsize=250, weight=1)  # Left: min 250px
         self.root.grid_columnconfigure(1, minsize=920, weight=4)  # Center: larger weight for canvas
         self.root.grid_columnconfigure(2, minsize=200, weight=1)  # Right: reduced to 200px min
 
-        # Grid frames for responsive layout
-        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=(5,3))
-        self.center_frame.grid(row=0, column=1, sticky="nsew", padx=3, pady=(5,3))
-        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=(3,5), pady=(5,3))
-        self.bottom_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=5, pady=(3,5))
+        # Grid frames for responsive layout - all in single row
+        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=5)
+        self.center_frame.grid(row=0, column=1, sticky="nsew", padx=3, pady=5)
+        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=(3,5), pady=5)
     
     def create_panels(self):
         """Create and initialize all GUI panels"""
         self.left_panel = LeftPanel(self, self.left_frame)
         # Create center panel - store reference immediately for canvas setup checks
         self.center_panel = CenterPanel(self, self.center_frame)
-        self.right_panel = RightPanel(self, self.right_frame)
-        self.hardware_status_panel = HardwareStatusPanel(self, self.bottom_frame)
+
+        # Right frame now contains both control panel and hardware status
+        # Create container frames in right panel
+        right_top_frame = tk.Frame(self.right_frame, bg='lightblue')
+        right_top_frame.pack(fill=tk.BOTH, expand=True)
+
+        right_bottom_frame = tk.Frame(self.right_frame, bg='#2C3E50')
+        right_bottom_frame.pack(fill=tk.BOTH, expand=False)
+
+        self.right_panel = RightPanel(self, right_top_frame)
+        self.hardware_status_panel = HardwareStatusPanel(self, right_bottom_frame)
 
         # NOW finalize canvas setup after all panels are created and laid out
         print("📦 All panels created, calling finalize_canvas_setup()")
