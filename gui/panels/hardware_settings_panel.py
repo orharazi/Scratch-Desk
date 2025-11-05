@@ -18,7 +18,7 @@ class HardwareSettingsPanel:
             text="⚙️ Hardware Settings",
             font=('Arial', 10, 'bold'),
             bg='#E8F4F8',
-            fg='#2C3E50',
+            fg='black',
             padx=10,
             pady=5
         )
@@ -60,7 +60,7 @@ class HardwareSettingsPanel:
             text="Hardware Mode:",
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
-            fg='#2C3E50'
+            fg='black'
         ).pack(side=tk.LEFT, padx=(0, 10))
 
         # Radio buttons
@@ -74,6 +74,7 @@ class HardwareSettingsPanel:
             command=self.on_mode_changed,
             font=('Arial', 9),
             bg='#E8F4F8',
+            fg='black',
             activebackground='#D0E8F0'
         )
         self.sim_radio.pack(side=tk.LEFT, padx=5)
@@ -86,6 +87,7 @@ class HardwareSettingsPanel:
             command=self.on_mode_changed,
             font=('Arial', 9),
             bg='#E8F4F8',
+            fg='black',
             activebackground='#D0E8F0',
             state=tk.DISABLED  # Initially disabled until port is selected
         )
@@ -102,7 +104,7 @@ class HardwareSettingsPanel:
             text="Arduino Port:",
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
-            fg='#2C3E50'
+            fg='black'
         ).pack(side=tk.LEFT, padx=(0, 10))
 
         # Port dropdown
