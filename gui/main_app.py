@@ -18,6 +18,7 @@ from gui.panels.left_panel import LeftPanel
 from gui.panels.center_panel import CenterPanel
 from gui.panels.right_panel import RightPanel
 from gui.panels.hardware_status_panel import HardwareStatusPanel
+from gui.panels.hardware_settings_panel import HardwareSettingsPanel
 from gui.canvas.canvas_manager import CanvasManager
 from gui.execution.execution_controller import ExecutionController
 
@@ -186,14 +187,18 @@ class ScratchDeskGUI:
         # Create center panel - store reference immediately for canvas setup checks
         self.center_panel = CenterPanel(self, self.center_frame)
 
-        # Right frame now contains both control panel and hardware status
+        # Right frame now contains settings, control panel and hardware status
         # Create container frames in right panel
+        right_settings_frame = tk.Frame(self.right_frame, bg='#E8F4F8')
+        right_settings_frame.pack(fill=tk.X, expand=False)
+
         right_top_frame = tk.Frame(self.right_frame, bg='lightblue')
         right_top_frame.pack(fill=tk.BOTH, expand=True)
 
         right_bottom_frame = tk.Frame(self.right_frame, bg='#2C3E50')
         right_bottom_frame.pack(fill=tk.BOTH, expand=False)
 
+        self.hardware_settings_panel = HardwareSettingsPanel(self, right_settings_frame)
         self.right_panel = RightPanel(self, right_top_frame)
         self.hardware_status_panel = HardwareStatusPanel(self, right_bottom_frame)
 

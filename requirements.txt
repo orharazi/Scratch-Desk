@@ -1,0 +1,7 @@
+# Scratch Desk Control System - Python Dependencies
+
+# Serial communication for Arduino GRBL
+pyserial>=3.5
+
+# Optional: Raspberry Pi GPIO (only needed on Raspberry Pi)
+# RPi.GPIO>=0.7.1  # Uncomment if running on Raspberry Pi
