@@ -192,6 +192,9 @@ class HardwareStatusPanel:
                                anchor='center', width=10)  # Fixed width prevents resize
         status_label.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
 
+        # Debug: Print widget creation
+        print(f"Created widget: {status_key}")
+
         # Store references
         self.status_widgets[status_key] = {
             'label': status_label,
@@ -280,6 +283,9 @@ class HardwareStatusPanel:
             # Get all hardware states
             hw_status = get_hardware_status()
 
+            # Debug: Print that we're updating
+            print(f"🔧 Hardware status update: X={hw_status.get('x_position', '?')}, Y={hw_status.get('y_position', '?')}")
+
             # Motor positions
             self._update_widget('x_position', f"{hw_status['x_position']:.1f}", self.colors.get("motor_x", "#E74C3C"))
             self._update_widget('y_position', f"{hw_status['y_position']:.1f}", self.colors.get("motor_y", "#3498DB"))
@@ -353,15 +359,15 @@ class HardwareStatusPanel:
                                'TRIG' if line_motor_right_down else 'READY',
                                self.sensor_triggered_color if line_motor_right_down else self.sensor_ready_color)
 
-            # Edge Sensors (Y-axis for Lines)
-            y_top_edge = get_y_top_edge()
-            self._update_widget('y_top_edge_sensor',
-                               'TRIG' if y_top_edge else 'READY',
-                               self.sensor_triggered_color if y_top_edge else self.sensor_ready_color)
-            y_bottom_edge = get_y_bottom_edge()
-            self._update_widget('y_bottom_edge_sensor',
-                               'TRIG' if y_bottom_edge else 'READY',
-                               self.sensor_triggered_color if y_bottom_edge else self.sensor_ready_color)
+            # Edge Sensors (X-axis for Lines)
+            x_left_edge = get_x_left_edge()
+            self._update_widget('x_left_edge_sensor',
+                               'TRIG' if x_left_edge else 'READY',
+                               self.sensor_triggered_color if x_left_edge else self.sensor_ready_color)
+            x_right_edge = get_x_right_edge()
+            self._update_widget('x_right_edge_sensor',
+                               'TRIG' if x_right_edge else 'READY',
+                               self.sensor_triggered_color if x_right_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             line_marker_piston_state = get_line_marker_piston_state().upper()
@@ -402,15 +408,15 @@ class HardwareStatusPanel:
                                'TRIG' if row_cutter_down else 'READY',
                                self.sensor_triggered_color if row_cutter_down else self.sensor_ready_color)
 
-            # Edge Sensors (X-axis for Rows)
-            x_left_edge = get_x_left_edge()
-            self._update_widget('x_left_edge_sensor',
-                               'TRIG' if x_left_edge else 'READY',
-                               self.sensor_triggered_color if x_left_edge else self.sensor_ready_color)
-            x_right_edge = get_x_right_edge()
-            self._update_widget('x_right_edge_sensor',
-                               'TRIG' if x_right_edge else 'READY',
-                               self.sensor_triggered_color if x_right_edge else self.sensor_ready_color)
+            # Edge Sensors (Y-axis for Rows)
+            y_top_edge = get_y_top_edge()
+            self._update_widget('y_top_edge_sensor',
+                               'TRIG' if y_top_edge else 'READY',
+                               self.sensor_triggered_color if y_top_edge else self.sensor_ready_color)
+            y_bottom_edge = get_y_bottom_edge()
+            self._update_widget('y_bottom_edge_sensor',
+                               'TRIG' if y_bottom_edge else 'READY',
+                               self.sensor_triggered_color if y_bottom_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             row_marker_piston_state = get_row_marker_piston_state().upper()
@@ -425,7 +431,9 @@ class HardwareStatusPanel:
             self._update_operation_mode()
 
         except Exception as e:
-            print(f"Error updating hardware status: {e}")
+            print(f"❌ ERROR in update_hardware_status: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _update_operation_mode(self):
         """Update operation mode with status and explanation"""

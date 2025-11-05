@@ -133,6 +133,12 @@ sensor_results = {
     'y_sensor': None
 }
 
+# Edge sensor states (hardware sensors that detect paper edges)
+x_left_edge = False      # X left edge sensor
+x_right_edge = False     # X right edge sensor
+y_top_edge = False       # Y top edge sensor
+y_bottom_edge = False    # Y bottom edge sensor
+
 # Sensor trigger states (for live monitoring)
 sensor_trigger_states = {
     'x_left': False,
@@ -168,6 +174,7 @@ def reset_hardware():
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     global limit_switch_states
+    global x_left_edge, x_right_edge, y_top_edge, y_bottom_edge
 
     current_x_position = 0.0
     current_y_position = 0.0
@@ -201,6 +208,12 @@ def reset_hardware():
     row_cutter_piston = "up"
     row_cutter_up_sensor = True
     row_cutter_down_sensor = False
+
+    # Edge sensors - default off
+    x_left_edge = False
+    x_right_edge = False
+    y_top_edge = False
+    y_bottom_edge = False
 
     limit_switch_states['rows'] = False # Default is False (UP)
 
@@ -598,38 +611,42 @@ def flush_all_sensor_buffers():
 # Manual sensor triggers for testing
 def trigger_x_left_sensor():
     """Manually trigger left X sensor"""
-    global sensor_trigger_states, sensor_trigger_timers
+    global sensor_trigger_states, sensor_trigger_timers, x_left_edge
     print("MOCK: trigger_x_left_sensor()")
     sensor_events['x_left'].set()
     sensor_trigger_states['x_left'] = True
     sensor_trigger_timers['x_left'] = time.time()
+    x_left_edge = True  # Set edge sensor state
     print("Manual trigger: X LEFT sensor activated")
 
 def trigger_x_right_sensor():
     """Manually trigger right X sensor"""
-    global sensor_trigger_states, sensor_trigger_timers
+    global sensor_trigger_states, sensor_trigger_timers, x_right_edge
     print("MOCK: trigger_x_right_sensor()")
     sensor_events['x_right'].set()
     sensor_trigger_states['x_right'] = True
     sensor_trigger_timers['x_right'] = time.time()
+    x_right_edge = True  # Set edge sensor state
     print("Manual trigger: X RIGHT sensor activated")
 
 def trigger_y_top_sensor():
     """Manually trigger top Y sensor"""
-    global sensor_trigger_states, sensor_trigger_timers
+    global sensor_trigger_states, sensor_trigger_timers, y_top_edge
     print("MOCK: trigger_y_top_sensor()")
     sensor_events['y_top'].set()
     sensor_trigger_states['y_top'] = True
     sensor_trigger_timers['y_top'] = time.time()
+    y_top_edge = True  # Set edge sensor state
     print("Manual trigger: Y TOP sensor activated")
 
 def trigger_y_bottom_sensor():
     """Manually trigger bottom Y sensor"""
-    global sensor_trigger_states, sensor_trigger_timers
+    global sensor_trigger_states, sensor_trigger_timers, y_bottom_edge
     print("MOCK: trigger_y_bottom_sensor()")
     sensor_events['y_bottom'].set()
     sensor_trigger_states['y_bottom'] = True
     sensor_trigger_timers['y_bottom'] = time.time()
+    y_bottom_edge = True  # Set edge sensor state
     print("Manual trigger: Y BOTTOM sensor activated")
 
 # Tool positioning functions (convenience functions for test controls)
@@ -1129,12 +1146,22 @@ def set_row_marker_limit_switch(state):
 def get_sensor_trigger_states():
     """Get current sensor trigger states with auto-reset after 1 second"""
     global sensor_trigger_states, sensor_trigger_timers
+    global x_left_edge, x_right_edge, y_top_edge, y_bottom_edge
     current_time = time.time()
 
     # Auto-reset sensors that have been triggered for more than 1 second
     for sensor_name in sensor_trigger_states:
         if sensor_trigger_states[sensor_name] and (current_time - sensor_trigger_timers[sensor_name] > 1.0):
             sensor_trigger_states[sensor_name] = False
+            # Also reset edge sensor states
+            if sensor_name == 'x_left':
+                x_left_edge = False
+            elif sensor_name == 'x_right':
+                x_right_edge = False
+            elif sensor_name == 'y_top':
+                y_top_edge = False
+            elif sensor_name == 'y_bottom':
+                y_bottom_edge = False
 
     return sensor_trigger_states.copy()
 
