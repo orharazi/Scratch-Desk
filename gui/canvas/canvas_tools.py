@@ -1,15 +1,16 @@
 import tkinter as tk
 import re
-from core.mock_hardware import get_hardware_status
 
 
 class CanvasTools:
     """Handles tool status visualization and updates"""
-    
+
     def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
         self.canvas_manager = canvas_manager
         self.canvas_objects = main_app.canvas_objects
+        # Access hardware through canvas_manager
+        self.hardware = canvas_manager.hardware
     
     def update_tool_status_from_step(self, step_description):
         """Update tool status indicators based on step description with original logic"""

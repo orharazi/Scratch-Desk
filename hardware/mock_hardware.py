@@ -1202,3 +1202,310 @@ def set_limit_switch_state(switch_name, state):
     if switch_name in limit_switch_states:
         limit_switch_states[switch_name] = state
         print(f"Limit switch {switch_name} set to: {'ON' if state else 'OFF'}")
+
+
+# ============================================================================
+# CLASS-BASED WRAPPER FOR FACTORY PATTERN
+# ============================================================================
+
+class MockHardware:
+    """
+    Class-based wrapper for mock hardware functions.
+    Provides same interface as RealHardware for factory pattern.
+    """
+
+    def __init__(self, config_path: str = "config/settings.json"):
+        """Initialize mock hardware"""
+        self.config_path = config_path
+        self.is_initialized = False
+        print("\n✓ Mock Hardware initialized\n")
+
+    def initialize(self) -> bool:
+        """Initialize mock hardware (always succeeds)"""
+        self.is_initialized = True
+        return True
+
+    # ========== MOTOR CONTROL ==========
+    def move_x(self, position: float) -> bool:
+        return move_x(position)
+
+    def move_y(self, position: float) -> bool:
+        return move_y(position)
+
+    def move_to(self, x: float, y: float) -> bool:
+        move_x(x)
+        move_y(y)
+        return True
+
+    def home_motors(self) -> bool:
+        move_x(0.0)
+        move_y(0.0)
+        return True
+
+    # ========== POSITION GETTERS ==========
+    def get_current_x(self) -> float:
+        return get_current_x()
+
+    def get_current_y(self) -> float:
+        return get_current_y()
+
+    # ========== PISTON CONTROL ==========
+    def line_marker_piston_down(self) -> bool:
+        return line_marker_piston_down()
+
+    def line_marker_piston_up(self) -> bool:
+        return line_marker_piston_up()
+
+    def line_cutter_piston_down(self) -> bool:
+        return line_cutter_piston_down()
+
+    def line_cutter_piston_up(self) -> bool:
+        return line_cutter_piston_up()
+
+    def line_motor_piston_down(self) -> bool:
+        return line_motor_piston_down()
+
+    def line_motor_piston_up(self) -> bool:
+        return line_motor_piston_up()
+
+    def line_motor_piston_left_down(self) -> bool:
+        return line_motor_piston_left_down()
+
+    def line_motor_piston_left_up(self) -> bool:
+        return line_motor_piston_left_up()
+
+    def line_motor_piston_right_down(self) -> bool:
+        return line_motor_piston_right_down()
+
+    def line_motor_piston_right_up(self) -> bool:
+        return line_motor_piston_right_up()
+
+    def row_marker_piston_down(self) -> bool:
+        return row_marker_piston_down()
+
+    def row_marker_piston_up(self) -> bool:
+        return row_marker_piston_up()
+
+    def row_cutter_piston_down(self) -> bool:
+        return row_cutter_piston_down()
+
+    def row_cutter_piston_up(self) -> bool:
+        return row_cutter_piston_up()
+
+    # ========== TOOL ACTION WRAPPERS ==========
+    def line_marker_down(self) -> bool:
+        return line_marker_down()
+
+    def line_marker_up(self) -> bool:
+        return line_marker_up()
+
+    def line_cutter_down(self) -> bool:
+        return line_cutter_down()
+
+    def line_cutter_up(self) -> bool:
+        return line_cutter_up()
+
+    def row_marker_down(self) -> bool:
+        return row_marker_down()
+
+    def row_marker_up(self) -> bool:
+        return row_marker_up()
+
+    def row_cutter_down(self) -> bool:
+        return row_cutter_down()
+
+    def row_cutter_up(self) -> bool:
+        return row_cutter_up()
+
+    def lift_line_tools(self) -> bool:
+        return lift_line_tools()
+
+    def lower_line_tools(self) -> bool:
+        return lower_line_tools()
+
+    def move_line_tools_to_top(self) -> bool:
+        return move_line_tools_to_top()
+
+    # ========== SENSOR GETTERS ==========
+    def get_line_marker_up_sensor(self) -> bool:
+        return get_line_marker_up_sensor()
+
+    def get_line_marker_down_sensor(self) -> bool:
+        return get_line_marker_down_sensor()
+
+    def get_line_cutter_up_sensor(self) -> bool:
+        return get_line_cutter_up_sensor()
+
+    def get_line_cutter_down_sensor(self) -> bool:
+        return get_line_cutter_down_sensor()
+
+    def get_line_motor_left_up_sensor(self) -> bool:
+        return get_line_motor_left_up_sensor()
+
+    def get_line_motor_left_down_sensor(self) -> bool:
+        return get_line_motor_left_down_sensor()
+
+    def get_line_motor_right_up_sensor(self) -> bool:
+        return get_line_motor_right_up_sensor()
+
+    def get_line_motor_right_down_sensor(self) -> bool:
+        return get_line_motor_right_down_sensor()
+
+    def get_row_marker_up_sensor(self) -> bool:
+        return get_row_marker_up_sensor()
+
+    def get_row_marker_down_sensor(self) -> bool:
+        return get_row_marker_down_sensor()
+
+    def get_row_cutter_up_sensor(self) -> bool:
+        return get_row_cutter_up_sensor()
+
+    def get_row_cutter_down_sensor(self) -> bool:
+        return get_row_cutter_down_sensor()
+
+    # ========== STATE GETTERS ==========
+    def get_line_marker_state(self) -> str:
+        return get_line_marker_state()
+
+    def get_line_cutter_state(self) -> str:
+        return get_line_cutter_state()
+
+    def get_row_marker_state(self) -> str:
+        return get_row_marker_state()
+
+    def get_row_cutter_state(self) -> str:
+        return get_row_cutter_state()
+
+    def get_line_marker_piston_state(self) -> str:
+        return get_line_marker_piston_state()
+
+    def get_line_cutter_piston_state(self) -> str:
+        return get_line_cutter_piston_state()
+
+    def get_line_motor_piston_state(self) -> str:
+        return get_line_motor_piston_state()
+
+    def get_line_motor_piston_left_state(self) -> str:
+        return get_line_motor_piston_left_state()
+
+    def get_line_motor_piston_right_state(self) -> str:
+        return get_line_motor_piston_right_state()
+
+    def get_row_marker_piston_state(self) -> str:
+        return get_row_marker_piston_state()
+
+    def get_row_cutter_piston_state(self) -> str:
+        return get_row_cutter_piston_state()
+
+    # ========== EDGE SENSORS ==========
+    def get_x_left_edge_sensor(self) -> bool:
+        return get_x_left_edge()
+
+    def get_x_right_edge_sensor(self) -> bool:
+        return get_x_right_edge()
+
+    def get_y_top_edge_sensor(self) -> bool:
+        return get_y_top_edge()
+
+    def get_y_bottom_edge_sensor(self) -> bool:
+        return get_y_bottom_edge()
+
+    def get_x_left_edge(self) -> bool:
+        return get_x_left_edge()
+
+    def get_x_right_edge(self) -> bool:
+        return get_x_right_edge()
+
+    def get_y_top_edge(self) -> bool:
+        return get_y_top_edge()
+
+    def get_y_bottom_edge(self) -> bool:
+        return get_y_bottom_edge()
+
+    def read_edge_sensors(self):
+        return {
+            'x_left': get_x_left_edge(),
+            'x_right': get_x_right_edge(),
+            'y_top': get_y_top_edge(),
+            'y_bottom': get_y_bottom_edge()
+        }
+
+    # ========== LIMIT SWITCHES ==========
+    def get_door_switch(self) -> bool:
+        return get_limit_switch_state("rows_door")
+
+    def get_rows_door_switch(self) -> bool:
+        return get_limit_switch_state("rows_door")
+
+    def get_limit_switch_state(self, switch_name: str) -> bool:
+        return get_limit_switch_state(switch_name)
+
+    def get_row_motor_limit_switch(self) -> bool:
+        return get_limit_switch_state("rows_door")
+
+    def set_limit_switch_state(self, switch_name: str, state: bool):
+        set_limit_switch_state(switch_name, state)
+
+    def set_row_marker_limit_switch(self, state: bool):
+        set_limit_switch_state("rows_door", state)
+
+    def toggle_limit_switch(self, switch_name: str):
+        toggle_limit_switch(switch_name)
+
+    def toggle_row_marker_limit_switch(self):
+        toggle_limit_switch("rows_door")
+
+    # ========== SENSOR TRIGGERS ==========
+    def trigger_x_left_sensor(self):
+        trigger_x_left_sensor()
+
+    def trigger_x_right_sensor(self):
+        trigger_x_right_sensor()
+
+    def trigger_y_top_sensor(self):
+        trigger_y_top_sensor()
+
+    def trigger_y_bottom_sensor(self):
+        trigger_y_bottom_sensor()
+
+    def get_sensor_trigger_states(self):
+        return get_sensor_trigger_states()
+
+    # ========== WAIT FOR SENSORS ==========
+    def wait_for_x_sensor(self):
+        wait_for_x_sensor()
+
+    def wait_for_y_sensor(self):
+        wait_for_y_sensor()
+
+    def wait_for_x_left_sensor(self):
+        wait_for_x_left_sensor()
+
+    def wait_for_x_right_sensor(self):
+        wait_for_x_right_sensor()
+
+    def wait_for_y_top_sensor(self):
+        wait_for_y_top_sensor()
+
+    def wait_for_y_bottom_sensor(self):
+        wait_for_y_bottom_sensor()
+
+    # ========== STATUS & CONTROL ==========
+    def get_hardware_status(self):
+        return get_hardware_status()
+
+    def reset_hardware(self):
+        reset_hardware()
+
+    def emergency_stop(self) -> bool:
+        print("MOCK: Emergency stop")
+        return True
+
+    def resume_operation(self) -> bool:
+        print("MOCK: Resume operation")
+        return True
+
+    def shutdown(self):
+        """Shutdown mock hardware"""
+        print("MOCK: Shutdown")
+        self.is_initialized = False

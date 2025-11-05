@@ -1,7 +1,6 @@
 import tkinter as tk
 import re
 import json
-from core.mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
 
 # Load settings
 def load_settings():
@@ -17,10 +16,12 @@ validation_settings = settings.get("validation", {})
 
 class CanvasPosition:
     """Handles position tracking, motor visualization, and movement operations"""
-    
+
     def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
         self.canvas_manager = canvas_manager
+        # Access hardware through canvas_manager
+        self.hardware = canvas_manager.hardware
         self.canvas_objects = main_app.canvas_objects
     
     def move_tool_to_first_line(self):

@@ -1,6 +1,5 @@
 import tkinter as tk
 import re
-from core.mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
 
 from .canvas_setup import CanvasSetup
 from .canvas_sensors import CanvasSensors
@@ -11,9 +10,11 @@ from .canvas_tools import CanvasTools
 
 class CanvasManager:
     """Main canvas manager that coordinates all canvas modules with original functionality"""
-    
+
     def __init__(self, main_app):
         self.main_app = main_app
+        # Access hardware through main_app
+        self.hardware = main_app.hardware
         # Use main app's canvas_objects for consistency
         self.canvas_objects = main_app.canvas_objects
         

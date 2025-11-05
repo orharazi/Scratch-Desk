@@ -5,11 +5,7 @@ Safety System for CNC Scratch Desk Control
 Prevents dangerous operations that could damage the hardware
 """
 
-from core.mock_hardware import (
-    get_row_marker_state, get_row_motor_limit_switch,
-    get_line_marker_state, get_line_cutter_state,
-    get_current_x, get_current_y
-)
+from hardware.hardware_factory import get_hardware_interface
 
 class SafetyViolation(Exception):
     """Exception raised when a safety condition is violated"""
@@ -20,10 +16,12 @@ class SafetyViolation(Exception):
 
 class SafetySystem:
     """Hardware safety system to prevent dangerous operations"""
-    
+
     def __init__(self):
         self.safety_enabled = True
         self.violations_log = []
+        # Get hardware interface via factory
+        self.hardware = get_hardware_interface()
     
     def enable_safety(self):
         """Enable safety checks"""
@@ -46,12 +44,12 @@ class SafetySystem:
             return True
         
         # Check both programmed state and actual limit switch state
-        row_marker_programmed = get_row_marker_state()  # Programmed position
-        row_marker_limit = get_row_motor_limit_switch()  # Actual position from limit switch
-        
+        row_marker_programmed = self.hardware.get_row_marker_state()  # Programmed position
+        row_marker_limit = self.hardware.get_row_motor_limit_switch()  # Actual position from limit switch
+
         # Safety violation if either shows DOWN position
         if row_marker_programmed == "down" or row_marker_limit == "down":
-            current_y = get_current_y()
+            current_y = self.hardware.get_current_y()
             target_info = f" to {target_y}cm" if target_y is not None else ""
             
             violation_msg = (
@@ -126,9 +124,9 @@ class SafetySystem:
                 # Check if Y offset would cause Y movement
                 y_offset = parameters.get('y_offset', 0.0)
                 if y_offset != 0.0:
-                    # LINES OPERATIONS: Row marker MUST be UP (door closed)  
+                    # LINES OPERATIONS: Row marker MUST be UP (door closed)
                     self.check_lines_operation_safety(description)
-                    current_y = get_current_y()
+                    current_y = self.hardware.get_current_y()
                     target_y = current_y + y_offset
                     self.check_y_axis_movement_safety(target_y)
                 
@@ -137,7 +135,7 @@ class SafetySystem:
                 if x_offset != 0.0:
                     # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
                     self.check_rows_operation_safety(description)
-                    current_x = get_current_x()
+                    current_x = self.hardware.get_current_x()
                     target_x = current_x + x_offset
                     self.check_x_axis_movement_safety(target_x)
                     
@@ -198,8 +196,8 @@ class SafetySystem:
             return True
         
         # Check both programmed state and actual limit switch state
-        row_marker_programmed = get_row_marker_state()  # Programmed position
-        row_marker_actual = get_row_motor_limit_switch()  # Actual position from limit switch
+        row_marker_programmed = self.hardware.get_row_marker_state()  # Programmed position
+        row_marker_actual = self.hardware.get_row_motor_limit_switch()  # Actual position from limit switch
         
         # Safety violation if either shows DOWN position during lines operation
         if row_marker_programmed == "down" or row_marker_actual == "down":
@@ -233,9 +231,8 @@ class SafetySystem:
             return True
 
         # Check actual limit switch state (door position sensor) and line marker state
-        from mock_hardware import get_current_y, get_line_marker_state, get_row_motor_limit_switch
-        row_marker_limit = get_row_motor_limit_switch()  # Actual position from limit switch
-        current_y = get_current_y()  # Current Y motor position
+        row_marker_limit = self.hardware.get_row_motor_limit_switch()  # Actual position from limit switch
+        current_y = self.hardware.get_current_y()  # Current Y motor position
 
         # Safety violation 1: Door is CLOSED (limit switch DOWN) and Y motor is NOT at position 0
         if row_marker_limit == "down" and current_y != 0:
@@ -302,9 +299,9 @@ class SafetySystem:
         return {
             'enabled': self.safety_enabled,
             'recent_violations': len(self.violations_log),
-            'row_marker_programmed': get_row_marker_state(),
-            'row_marker_limit_switch': get_row_motor_limit_switch(),
-            'current_position': {'x': get_current_x(), 'y': get_current_y()}
+            'row_marker_programmed': self.hardware.get_row_marker_state(),
+            'row_marker_limit_switch': self.hardware.get_row_motor_limit_switch(),
+            'current_position': {'x': self.hardware.get_current_x(), 'y': self.hardware.get_current_y()}
         }
 
 # Global safety system instance

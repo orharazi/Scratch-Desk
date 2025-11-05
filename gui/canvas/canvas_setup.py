@@ -1,17 +1,15 @@
 import tkinter as tk
-from core.mock_hardware import (
-    get_current_x, get_current_y, move_x, move_y, get_hardware_status,
-    get_line_marker_piston_state, get_row_motor_limit_switch
-)
 
 
 class CanvasSetup:
     """Handles canvas setup, grid drawing, and basic visual elements"""
-    
+
     def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
         self.canvas_manager = canvas_manager
         self.canvas_objects = main_app.canvas_objects
+        # Access hardware through canvas_manager
+        self.hardware = canvas_manager.hardware
     
     def setup_canvas(self):
         """Setup canvas elements for desk simulation using settings"""

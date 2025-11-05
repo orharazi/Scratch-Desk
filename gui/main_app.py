@@ -11,11 +11,7 @@ import json
 from core.csv_parser import CSVParser
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.execution_engine import ExecutionEngine
-from core.mock_hardware import (
-    trigger_x_left_sensor, trigger_x_right_sensor,
-    trigger_y_top_sensor, trigger_y_bottom_sensor,
-    get_current_x, get_current_y, reset_hardware
-)
+from hardware.hardware_factory import get_hardware_interface
 
 # Import GUI components
 from gui.panels.left_panel import LeftPanel
@@ -44,7 +40,10 @@ class ScratchDeskGUI:
                 self.root.attributes('-zoomed', True)  # Alternative maximize
             except tk.TclError:
                 pass  # Fall back to normal size
-        
+
+        # Initialize hardware interface
+        self.hardware = get_hardware_interface()
+
         # Load settings
         self.settings = self.load_settings()
         
@@ -104,15 +103,13 @@ class ScratchDeskGUI:
         # Connect canvas manager to execution engine for GUI updates
         self.execution_engine.canvas_manager = self.canvas_manager
         
-        # Set execution engine reference in mock hardware for sensor positioning
-        from core.mock_hardware import set_execution_engine_reference
-        set_execution_engine_reference(self.execution_engine)
+        # Set execution engine reference in hardware for sensor positioning
+        self.hardware.set_execution_engine_reference(self.execution_engine)
 
         # Set initial position to motor home positions (0, 0)
         # Motors start at home positions, not paper positions
-        from core.mock_hardware import move_x, move_y
-        move_x(0.0)  # Rows motor home position
-        move_y(0.0)  # Lines motor home position
+        self.hardware.move_x(0.0)  # Rows motor home position
+        self.hardware.move_y(0.0)  # Lines motor home position
         self.canvas_manager.update_position_display()
         
         # Start position update timer

@@ -3,7 +3,7 @@
 import threading
 import time
 import json
-from core.mock_hardware import *
+from hardware.hardware_factory import get_hardware_interface
 from core.safety_system import SafetyViolation, check_step_safety
 
 # Load settings
@@ -28,28 +28,31 @@ class ExecutionEngine:
         self.is_running = False
         self.is_paused = False
         self.execution_thread = None
-        
+
+        # Hardware interface (factory pattern)
+        self.hardware = get_hardware_interface()
+
         # Threading events for control
         self.pause_event = threading.Event()
         self.stop_event = threading.Event()
         self.safety_monitor_stop = threading.Event()
         self.in_transition = False  # Flag to pause safety monitoring during transitions
-        
+
         # Progress tracking
         self.step_results = []
         self.start_time = None
         self.end_time = None
-        
+
         # Status callback (for GUI updates)
         self.status_callback = None
-        
+
         # Operation callback (for individual operation tracking)
         self.operation_callback = None
-        
+
         # Safety monitoring
         self.safety_monitor_thread = None
         self.current_operation_type = None  # 'lines' or 'rows'
-        
+
         # Set pause event initially (not paused)
         self.pause_event.set()
     
@@ -91,8 +94,7 @@ class ExecutionEngine:
         self.start_time = time.time()
         
         # Pass execution engine reference to mock hardware for sensor waiting functions
-        from mock_hardware import set_execution_engine_reference
-        set_execution_engine_reference(self)
+        self.hardware.set_execution_engine_reference(self)
         
         # Start execution thread
         self.execution_thread = threading.Thread(target=self._execution_loop, daemon=False)
@@ -126,8 +128,7 @@ class ExecutionEngine:
             return False
         
         # Flush all sensor buffers when manually resuming (in case paused due to safety)
-        from mock_hardware import flush_all_sensor_buffers
-        flush_all_sensor_buffers()
+        self.hardware.flush_all_sensor_buffers()
         
         self.is_paused = False
         self.pause_event.set()
@@ -459,44 +460,44 @@ class ExecutionEngine:
             if operation == 'move_x':
                 target_x = parameters['position']
                 # Use instant movement (no animation)
-                move_x(target_x)
-                
+                self.hardware.move_x(target_x)
+
                 # Update GUI position display if available
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
                     self.canvas_manager.update_position_display()
-                
+
                 return {'success': True, 'position': target_x}
             
             elif operation == 'move_y':
                 target_y = parameters['position']
                 # Use instant movement (no animation)
-                move_y(target_y)
-                
+                self.hardware.move_y(target_y)
+
                 # Update GUI position display if available
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
                     self.canvas_manager.update_position_display()
-                
+
                 return {'success': True, 'position': target_y}
             
             elif operation == 'move_position':
                 # Move to position with offsets (for repeat patterns)
                 x_offset = parameters.get('x_offset', 0.0)
                 y_offset = parameters.get('y_offset', 0.0)
-                
+
                 # Calculate target position from current base position + offsets
-                current_x = get_current_x()
-                current_y = get_current_y()
+                current_x = self.hardware.get_current_x()
+                current_y = self.hardware.get_current_y()
                 target_x = current_x + x_offset
                 target_y = current_y + y_offset
-                
+
                 # Use instant movement (no animation)
-                move_x(target_x)
-                move_y(target_y)
-                
+                self.hardware.move_x(target_x)
+                self.hardware.move_y(target_y)
+
                 # Update GUI position display if available
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
                     self.canvas_manager.update_position_display()
-                
+
                 return {'success': True, 'position': (target_x, target_y)}
             
             elif operation == 'wait_sensor':
@@ -510,17 +511,17 @@ class ExecutionEngine:
                 
                 # Wait for manual sensor trigger
                 if sensor == 'x':
-                    result = wait_for_x_sensor()
+                    result = self.hardware.wait_for_x_sensor()
                 elif sensor == 'y':
-                    result = wait_for_y_sensor()
+                    result = self.hardware.wait_for_y_sensor()
                 elif sensor == 'x_left':
-                    result = wait_for_x_left_sensor()
+                    result = self.hardware.wait_for_x_left_sensor()
                 elif sensor == 'x_right':
-                    result = wait_for_x_right_sensor()
+                    result = self.hardware.wait_for_x_right_sensor()
                 elif sensor == 'y_top':
-                    result = wait_for_y_top_sensor()
+                    result = self.hardware.wait_for_y_top_sensor()
                 elif sensor == 'y_bottom':
-                    result = wait_for_y_bottom_sensor()
+                    result = self.hardware.wait_for_y_bottom_sensor()
                 else:
                     return {'success': False, 'error': f'Unknown sensor: {sensor}'}
                 
@@ -538,11 +539,11 @@ class ExecutionEngine:
                 # NOTE: row_marker tool actions do NOT affect the limit switch state
                 # The limit switch is ONLY controlled by user via toggle button
                 tool_functions = {
-                    'line_marker': {'down': line_marker_down, 'up': line_marker_up},
-                    'line_cutter': {'down': line_cutter_down, 'up': line_cutter_up},
+                    'line_marker': {'down': self.hardware.line_marker_down, 'up': self.hardware.line_marker_up},
+                    'line_cutter': {'down': self.hardware.line_cutter_down, 'up': self.hardware.line_cutter_up},
                     'row_marker': {'down': self._row_marker_tool_down, 'up': self._row_marker_tool_up},
-                    'row_cutter': {'down': row_cutter_down, 'up': row_cutter_up},
-                    'line_motor_piston': {'down': line_motor_piston_down, 'up': line_motor_piston_up}
+                    'row_cutter': {'down': self.hardware.row_cutter_down, 'up': self.hardware.row_cutter_up},
+                    'line_motor_piston': {'down': self.hardware.line_motor_piston_down, 'up': self.hardware.line_motor_piston_up}
                 }
                 
                 if tool in tool_functions and action in tool_functions[tool]:
@@ -559,16 +560,16 @@ class ExecutionEngine:
             
             elif operation == 'tool_positioning':
                 action = parameters['action']
-                
+
                 if action == 'lift_line_tools':
-                    lift_line_tools()
+                    self.hardware.lift_line_tools()
                 elif action == 'lower_line_tools':
-                    lower_line_tools()
+                    self.hardware.lower_line_tools()
                 elif action == 'move_line_tools_to_top':
-                    move_line_tools_to_top()
+                    self.hardware.move_line_tools_to_top()
                 else:
                     return {'success': False, 'error': f'Unknown positioning action: {action}'}
-                
+
                 return {'success': True, 'action': action}
             
             elif operation == 'program_start':
@@ -601,12 +602,12 @@ class ExecutionEngine:
     def _row_marker_tool_down(self):
         """Lower the row marker tool for marking"""
         print("🔧 Row marker tool: DOWN (marking position)")
-        row_marker_down()
+        self.hardware.row_marker_down()
 
     def _row_marker_tool_up(self):
         """Raise the row marker tool after marking"""
         print("🔧 Row marker tool: UP (raised position)")
-        row_marker_up()
+        self.hardware.row_marker_up()
     
     def _update_current_operation_type(self, step, allow_rows_transition=True):
         """Update the current operation type based on step description for safety monitoring"""
@@ -688,9 +689,7 @@ class ExecutionEngine:
                     
                     # Check safety based on current operation type
                     try:
-                        from mock_hardware import get_row_motor_limit_switch
-                        
-                        row_motor_limit_switch = get_row_motor_limit_switch()
+                        row_motor_limit_switch = self.hardware.get_row_motor_limit_switch()
                         
                         safety_violation = False
                         violation_message = ""
@@ -702,8 +701,7 @@ class ExecutionEngine:
                             # LINES OPERATIONS: Two safety checks
                             # 1. Row marker MUST be UP (door closed)
                             # 2. Line motor piston must be DOWN (Y motor assembly lowered)
-                            from mock_hardware import get_line_motor_piston_state
-                            line_motor_piston = get_line_motor_piston_state()
+                            line_motor_piston = self.hardware.get_line_motor_piston_state()
 
                             # Check 1: Row marker down during lines operations
                             if row_motor_limit_switch == "down":
@@ -718,8 +716,7 @@ class ExecutionEngine:
                             # Check 2: Line motor piston UP during operations
                             # EXCEPTION: Piston can be UP if rows motor (X-axis) is at position 0
                             elif line_motor_piston == "up":
-                                from mock_hardware import get_current_x
-                                current_x = get_current_x()
+                                current_x = self.hardware.get_current_x()
 
                                 # Only trigger violation if X motor is NOT at position 0
                                 if current_x != 0:
@@ -738,9 +735,8 @@ class ExecutionEngine:
                             # 1. Door can only be CLOSED (limit switch DOWN) when line motor piston is DOWN
                             # 2. Row motor limit switch must be DOWN during rows operations
                             # 3. Line motor piston must be DOWN (Y motor assembly lowered)
-                            from mock_hardware import get_line_motor_piston_state
-                            line_motor_piston = get_line_motor_piston_state()
-                            row_motor_limit_switch = get_row_motor_limit_switch()
+                            line_motor_piston = self.hardware.get_line_motor_piston_state()
+                            row_motor_limit_switch = self.hardware.get_row_motor_limit_switch()
 
                             # Check 1: Door closed while line motor piston UP
                             if row_motor_limit_switch == "down" and line_motor_piston == "up":
@@ -798,9 +794,8 @@ class ExecutionEngine:
 
                             if self.current_operation_type == 'lines':
                                 # LINES: Check limit switch, line motor piston, and X position
-                                from mock_hardware import get_line_motor_piston_state, get_current_x
-                                line_motor_piston = get_line_motor_piston_state()
-                                current_x = get_current_x()
+                                line_motor_piston = self.hardware.get_line_motor_piston_state()
+                                current_x = self.hardware.get_current_x()
 
                                 # Violation resolved if:
                                 # 1. Limit switch UP AND
@@ -814,8 +809,7 @@ class ExecutionEngine:
 
                             elif self.current_operation_type == 'rows':
                                 # ROWS: Check door, limit switch, and line motor piston
-                                from mock_hardware import get_line_motor_piston_state
-                                line_motor_piston = get_line_motor_piston_state()
+                                line_motor_piston = self.hardware.get_line_motor_piston_state()
 
                                 # Violation resolved if limit switch DOWN AND line motor piston DOWN
                                 if row_motor_limit_switch == "down" and line_motor_piston == "down":
@@ -824,8 +818,7 @@ class ExecutionEngine:
                             
                             if violation_resolved:
                                 # Flush all sensor buffers to ignore triggers that happened during pause
-                                from mock_hardware import flush_all_sensor_buffers
-                                flush_all_sensor_buffers()
+                                self.hardware.flush_all_sensor_buffers()
                                 
                                 # Auto-resume execution
                                 self.is_paused = False
@@ -857,14 +850,13 @@ class ExecutionEngine:
         """
         try:
             print("🔄 TRANSITION: Starting _handle_lines_to_rows_transition")
-            from mock_hardware import get_row_marker_state, get_row_motor_limit_switch
-            
+
             # Transition flag is already set in main execution loop
             print("🔄 TRANSITION: Safety monitoring already paused by transition flag")
-            
+
             # Check if rows motor door is already CLOSED (limit switch ON)
             # Only check limit switch, NOT marker piston state
-            limit_switch_state = get_row_motor_limit_switch()
+            limit_switch_state = self.hardware.get_row_motor_limit_switch()
             print(f"🔄 TRANSITION: Current rows motor door limit switch: {limit_switch_state}")
 
             if limit_switch_state == "down":
@@ -907,14 +899,13 @@ class ExecutionEngine:
         Auto-dismiss alert and resume execution when condition is met
         """
         import time
-        from mock_hardware import get_row_marker_state, get_row_motor_limit_switch
 
         print("⏳ Monitoring rows motor door - waiting for CLOSED position (limit switch ON)...")
-        
+
         while not self.stop_event.is_set():
             # Check ONLY limit switch state (motor door sensor)
             # Marker piston state is independent and controlled by program
-            limit_switch_state = get_row_motor_limit_switch()
+            limit_switch_state = self.hardware.get_row_motor_limit_switch()
 
             # Debug output to verify monitoring is running (less frequent)
             # print(f"🔍 Monitoring: Limit switch={limit_switch_state.upper()}")
@@ -926,7 +917,7 @@ class ExecutionEngine:
                 time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
 
                 # Double-check the limit switch is still ON
-                limit_switch_state_stable = get_row_motor_limit_switch()
+                limit_switch_state_stable = self.hardware.get_row_motor_limit_switch()
 
                 if limit_switch_state_stable == "down":
                     print("✅ Rows motor door limit switch stable - auto-resuming execution")
@@ -941,7 +932,6 @@ class ExecutionEngine:
 
                     # CRITICAL: Find and execute the first move_x step immediately to position motor
                     # This ensures the visual shows the motor at the correct position before resuming
-                    from mock_hardware import move_x, get_current_x
                     print(f"🔄 TRANSITION: Looking for first move_x step after current position {self.current_step_index}")
 
                     # Find the first move_x step after the current position
@@ -957,8 +947,8 @@ class ExecutionEngine:
                     if first_move_x_step:
                         target_x = first_move_x_step.get('parameters', {}).get('position', 0)
                         print(f"🔄 TRANSITION: Immediately moving X motor to {target_x}cm")
-                        move_x(target_x)
-                        print(f"✅ TRANSITION: X motor now at {get_current_x()}cm")
+                        self.hardware.move_x(target_x)
+                        print(f"✅ TRANSITION: X motor now at {self.hardware.get_current_x()}cm")
 
                     # Force clear sensor override and update position display
                     if hasattr(self, 'canvas_manager') and self.canvas_manager:
