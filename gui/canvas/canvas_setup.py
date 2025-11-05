@@ -163,8 +163,8 @@ class CanvasSetup:
     def draw_motor_position_lines(self, sim_settings):
         """Draw X and Y motor position lines across the entire board"""
         # Get current motor positions
-        current_x = get_current_x()
-        current_y = get_current_y()
+        current_x = self.hardware.get_current_x()
+        current_y = self.hardware.get_current_y()
         
         max_y_cm = sim_settings.get("max_display_y", 80)
         max_x_cm = sim_settings.get("max_display_x", 120)

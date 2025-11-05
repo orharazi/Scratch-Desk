@@ -40,14 +40,14 @@ class CanvasSensors:
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
         PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
         PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
-        
+
         # Store current hardware positions
-        current_x = get_current_x()
-        current_y = get_current_y()
-        
+        current_x = self.hardware.get_current_x()
+        current_y = self.hardware.get_current_y()
+
         print(f"🎯 SENSOR TRIGGER: {sensor_type}")
-        current_hardware_x = get_current_x()
-        current_hardware_y = get_current_y()
+        current_hardware_x = self.hardware.get_current_x()
+        current_hardware_y = self.hardware.get_current_y()
         
         if sensor_type == 'x_left':
             sensor_x = PAPER_OFFSET_X  # Left edge at paper offset (15.0)
@@ -127,10 +127,10 @@ class CanvasSensors:
     def animate_pointer_to_sensor(self, axis, position):
         """Move pointer to sensor position while displaying motor lines according to operation mode"""
         max_y_cm = self.main_app.settings.get("simulation", {}).get("max_display_y", 80)
-        
+
         # Get current hardware position for the other axis
-        current_x = get_current_x()
-        current_y = get_current_y()
+        current_x = self.hardware.get_current_x()
+        current_y = self.hardware.get_current_y()
         
         if axis == 'x':
             # X sensor triggered - pointer moves to (sensor_x, current_y)

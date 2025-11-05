@@ -40,10 +40,10 @@ class CanvasPosition:
         # Move to first line position
         first_line_x = PAPER_OFFSET_X + (program.width / 2)  # Center of paper width
         first_line_y = PAPER_OFFSET_Y + program.top_margin  # First line position
-        
+
         print(f"Moving tool to first line at ({first_line_x:.1f}, {first_line_y:.1f})")
-        move_x(first_line_x)
-        move_y(first_line_y)
+        self.hardware.move_x(first_line_x)
+        self.hardware.move_y(first_line_y)
         
         # Update canvas display
         self.update_position_display()
@@ -60,8 +60,8 @@ class CanvasPosition:
             return self.canvas_manager.canvas_sensors.update_sensor_position_display()
 
         # Get current hardware positions
-        current_x = get_current_x()
-        current_y = get_current_y()
+        current_x = self.hardware.get_current_x()
+        current_y = self.hardware.get_current_y()
         print(f"   Hardware position: X={current_x:.1f}, Y={current_y:.1f}")
 
         # Check if position OR mode changed to avoid unnecessary updates
