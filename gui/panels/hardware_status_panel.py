@@ -280,6 +280,10 @@ class HardwareStatusPanel:
     def update_hardware_status(self):
         """Update all hardware status displays"""
         try:
+            # Trigger auto-reset for edge sensors (resets sensors triggered > 1 second ago)
+            from mock_hardware import get_sensor_trigger_states
+            get_sensor_trigger_states()
+
             # Get all hardware states
             hw_status = get_hardware_status()
 
