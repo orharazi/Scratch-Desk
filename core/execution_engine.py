@@ -681,7 +681,7 @@ class ExecutionEngine:
                     
                     # Skip safety monitoring during setup steps
                     if hasattr(self, 'current_step_description'):
-                        from safety_system import safety_system
+                        from core.safety_system import safety_system
                         if safety_system._is_setup_movement(self.current_step_description):
                             print(f"🔧 Skipping safety monitor for setup step: {self.current_step_description[:50]}...")
                             time.sleep(timing_settings.get("safety_check_interval", 0.1))
