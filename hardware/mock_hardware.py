@@ -1440,8 +1440,8 @@ class MockHardware:
     def get_limit_switch_state(self, switch_name: str) -> bool:
         return get_limit_switch_state(switch_name)
 
-    def get_row_motor_limit_switch(self) -> bool:
-        return get_limit_switch_state("rows_door")
+    def get_row_motor_limit_switch(self) -> str:
+        return get_row_motor_limit_switch()
 
     def set_limit_switch_state(self, switch_name: str, state: bool):
         set_limit_switch_state(switch_name, state)
@@ -1450,7 +1450,7 @@ class MockHardware:
         set_limit_switch_state("rows_door", state)
 
     def toggle_limit_switch(self, switch_name: str):
-        toggle_limit_switch(switch_name)
+        return toggle_limit_switch(switch_name)
 
     def toggle_row_marker_limit_switch(self):
         toggle_limit_switch("rows_door")
