@@ -95,6 +95,13 @@ class CanvasManager:
         """Set up the canvas with all visual elements"""
         return self.canvas_setup.setup_canvas()
     
+    # === CANVAS UPDATE METHODS ===
+    def update_work_lines_display(self, program):
+        """Update work lines display for the given program"""
+        if hasattr(self.canvas_operations, 'update_canvas_paper_area'):
+            return self.canvas_operations.update_canvas_paper_area()
+        return None
+
     # === SENSOR METHODS ===
     def trigger_sensor_visualization(self, sensor_type):
         """Trigger sensor visualization with original logic"""
