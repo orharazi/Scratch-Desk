@@ -11,6 +11,7 @@ Uses settings.json for GPIO pin configuration.
 import json
 import time
 from typing import Dict, Optional
+from hardware.multiplexer import CD74HC4067Multiplexer
 
 # Try to import RPi.GPIO, fall back to mock if not available
 try:
@@ -82,14 +83,17 @@ class RaspberryPiGPIO:
 
         # Pin mappings from settings
         self.piston_pins = self.gpio_config.get("pistons", {})
-        self.sensor_pins = self.gpio_config.get("sensors", {})
+        self.multiplexer_config = self.gpio_config.get("multiplexer", {})
+        self.direct_sensor_pins = self.gpio_config.get("direct_sensors", {})
         self.limit_switch_pins = self.gpio_config.get("limit_switches", {})
+        self.multiplexer = None  # Will be initialized later
 
         print(f"\n{'='*60}")
         print("Raspberry Pi GPIO Configuration")
         print(f"{'='*60}")
         print(f"Piston pins: {self.piston_pins}")
-        print(f"Sensor pins: {self.sensor_pins}")
+        print(f"Multiplexer config: {self.multiplexer_config}")
+        print(f"Direct sensor pins: {self.direct_sensor_pins}")
         print(f"Limit switch pins: {self.limit_switch_pins}")
         print(f"{'='*60}\n")
 
@@ -129,10 +133,22 @@ class RaspberryPiGPIO:
                 GPIO.output(pin, GPIO.LOW)
                 print(f"✓ Piston '{piston_name}' initialized on GPIO {pin} (LOW/retracted)")
 
-            # Setup sensor pins as inputs with pull-up resistors
-            for sensor_name, pin in self.sensor_pins.items():
-                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                print(f"✓ Sensor '{sensor_name}' initialized on GPIO {pin} (INPUT with pull-up)")
+            # Initialize multiplexer for sensor reading
+            if self.multiplexer_config:
+                self.multiplexer = CD74HC4067Multiplexer(
+                    GPIO,
+                    self.multiplexer_config['s0'],
+                    self.multiplexer_config['s1'],
+                    self.multiplexer_config['s2'],
+                    self.multiplexer_config['s3'],
+                    self.multiplexer_config['sig']
+                )
+                print(f"✓ Multiplexer initialized with {len(self.multiplexer_config.get('channels', {}))} sensors")
+
+            # Setup direct sensor pins as inputs with pull-down resistors
+            for sensor_name, pin in self.direct_sensor_pins.items():
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+                print(f"✓ Direct sensor '{sensor_name}' initialized on GPIO {pin} (INPUT with pull-down)")
 
             # Setup limit switch pins as inputs with pull-up resistors
             for switch_name, pin in self.limit_switch_pins.items():
@@ -221,29 +237,40 @@ class RaspberryPiGPIO:
 
     def read_sensor(self, sensor_name: str) -> Optional[bool]:
         """
-        Read sensor state
+        Read sensor state (via multiplexer or direct GPIO)
 
         Args:
             sensor_name: Name of sensor (e.g., 'line_marker_up_sensor')
 
         Returns:
-            True if sensor triggered (LOW signal), False if not triggered (HIGH signal), None on error
+            True if sensor triggered (HIGH signal), False if not triggered (LOW signal), None on error
         """
         if not self.is_initialized:
             print("GPIO not initialized")
             return None
 
-        if sensor_name not in self.sensor_pins:
-            print(f"Unknown sensor: {sensor_name}")
-            return None
-
         try:
-            pin = self.sensor_pins[sensor_name]
-            # Sensor triggered = LOW signal (pulled to ground)
-            # Sensor not triggered = HIGH signal (pull-up resistor)
-            state = GPIO.input(pin)
-            triggered = not state  # Invert: LOW = triggered (True), HIGH = not triggered (False)
-            return triggered
+            # Check if sensor is connected via multiplexer
+            mux_channels = self.multiplexer_config.get('channels', {})
+            if sensor_name in mux_channels:
+                if not self.multiplexer:
+                    print(f"Multiplexer not initialized")
+                    return None
+                channel = mux_channels[sensor_name]
+                # Read from multiplexer channel
+                state = self.multiplexer.read_channel(channel)
+                return state  # HIGH = triggered (True), LOW = not triggered (False)
+
+            # Check if it's a direct sensor
+            elif sensor_name in self.direct_sensor_pins:
+                pin = self.direct_sensor_pins[sensor_name]
+                state = GPIO.input(pin)
+                return state  # HIGH = triggered (True), LOW = not triggered (False)
+
+            else:
+                print(f"Unknown sensor: {sensor_name}")
+                return None
+
         except Exception as e:
             print(f"Error reading sensor {sensor_name}: {e}")
             return None
@@ -398,6 +425,11 @@ class RaspberryPiGPIO:
                 for piston_name in self.piston_pins:
                     self.piston_up(piston_name)
                 time.sleep(0.1)
+
+                # Cleanup multiplexer
+                if self.multiplexer:
+                    self.multiplexer.cleanup()
+                    print("✓ Multiplexer cleanup completed")
 
                 GPIO.cleanup()
                 self.is_initialized = False

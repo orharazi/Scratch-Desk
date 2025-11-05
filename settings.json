@@ -121,23 +121,32 @@
         "row_marker_piston": 23,
         "row_cutter_piston": 24
       },
-      "sensors": {
-        "line_marker_up_sensor": 5,
-        "line_marker_down_sensor": 4,
-        "line_cutter_up_sensor": 6,
-        "line_cutter_down_sensor": 7,
-        "line_motor_left_up_sensor": 8,
-        "line_motor_left_down_sensor": 9,
-        "line_motor_right_up_sensor": 10,
-        "line_motor_right_down_sensor": 14,
-        "row_marker_up_sensor": 19,
-        "row_marker_down_sensor": 15,
-        "row_cutter_up_sensor": 26,
-        "row_cutter_down_sensor": 18,
+      "multiplexer": {
+        "s0": 6,
+        "s1": 12,
+        "s2": 13,
+        "s3": 16,
+        "sig": 5,
+        "channels": {
+          "line_motor_right_up_sensor": 0,
+          "line_motor_right_down_sensor": 1,
+          "line_motor_left_up_sensor": 2,
+          "line_motor_left_down_sensor": 3,
+          "line_marker_up_sensor": 4,
+          "line_marker_down_sensor": 5,
+          "line_cutter_up_sensor": 6,
+          "line_cutter_down_sensor": 7,
+          "row_marker_up_sensor": 8,
+          "row_marker_down_sensor": 9,
+          "row_cutter_up_sensor": 10,
+          "row_cutter_down_sensor": 11
+        }
+      },
+      "direct_sensors": {
         "x_left_edge": 20,
         "x_right_edge": 21,
-        "y_top_edge": 16,
-        "y_bottom_edge": 12
+        "y_top_edge": 19,
+        "y_bottom_edge": 26
       },
       "limit_switches": {
         "rows_door": 25
