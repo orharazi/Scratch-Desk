@@ -14,9 +14,6 @@ class LeftPanel:
     
     def create_widgets(self):
         """Create all widgets for the left panel"""
-        # Work Operations Status (moved from center panel)
-        self.create_work_operations_status()
-
         # Title - Compact
         tk.Label(self.parent_frame, text="PROGRAM CONTROL", font=('Arial', 11, 'bold'),
                 bg='lightgray').pack(pady=3)

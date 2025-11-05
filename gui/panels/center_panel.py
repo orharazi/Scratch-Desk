@@ -16,13 +16,16 @@ class CenterPanel:
         # Title
         tk.Label(self.parent_frame, text="DESK SIMULATION", font=('Arial', 12, 'bold')).pack(pady=5)
 
-        # Create canvas frame - expands to fill available space (removed Work Operations Status from above)
+        # Create canvas container with horizontal layout
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
 
+        # Work Operations Status on the left side of canvas
+        self.create_work_operations_status(canvas_container)
+
         # Create responsive canvas that fills available space
         self.main_app.canvas = tk.Canvas(canvas_container, bg='white', relief=tk.SUNKEN, bd=2)
-        self.main_app.canvas.pack(fill=tk.BOTH, expand=True)
+        self.main_app.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Initialize dimensions - will be updated immediately by responsive scaling
         # Don't use settings.json values - calculate based on actual window size
@@ -140,16 +143,71 @@ class CenterPanel:
             ("Ready", cut_colors['pending']), ("Working", cut_colors['in_progress']), ("Done", cut_colors['completed'])
         ])
     
+    def create_work_operations_status(self, parent):
+        """Create work operations status box on left side of canvas"""
+        # Work operations frame - vertical on left side
+        ops_frame = tk.Frame(parent, relief=tk.RIDGE, bd=2, bg='lightblue', width=150)
+        ops_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        ops_frame.pack_propagate(False)  # Maintain fixed width
+
+        # Title
+        tk.Label(ops_frame, text="📋 WORK\nOPERATIONS\nSTATUS",
+                font=('Arial', 8, 'bold'), bg='lightblue', fg='darkblue').pack(pady=5)
+
+        operation_colors = self.main_app.settings.get("operation_colors", {})
+        mark_colors = operation_colors.get("mark", {
+            "pending": "#880808",
+            "in_progress": "#FF8800",
+            "completed": "#00AA00"
+        })
+        cut_colors = operation_colors.get("cuts", {
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
+        })
+
+        # MARK Operations
+        mark_frame = tk.Frame(ops_frame, bg='lightblue')
+        mark_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 8, 'bold'),
+                bg='lightblue', fg='darkblue').pack()
+
+        self.mark_status_frame = tk.Frame(mark_frame, bg='lightblue')
+        self.mark_status_frame.pack(pady=2)
+
+        self.create_status_indicators(self.mark_status_frame, [
+            ("Ready", mark_colors['pending']),
+            ("Work", mark_colors['in_progress']),
+            ("Done", mark_colors['completed'])
+        ])
+
+        # CUT Operations
+        cut_frame = tk.Frame(ops_frame, bg='lightblue')
+        cut_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 8, 'bold'),
+                bg='lightblue', fg='darkblue').pack()
+
+        self.cut_status_frame = tk.Frame(cut_frame, bg='lightblue')
+        self.cut_status_frame.pack(pady=2)
+
+        self.create_status_indicators(self.cut_status_frame, [
+            ("Ready", cut_colors['pending']),
+            ("Work", cut_colors['in_progress']),
+            ("Done", cut_colors['completed'])
+        ])
+
     def create_status_indicators(self, parent, status_list):
-        """Create colored line indicators for operation statuses"""
+        """Create colored line indicators for operation statuses - vertical layout"""
         for status_text, color in status_list:
             indicator_frame = tk.Frame(parent, bg='lightblue')
-            indicator_frame.pack(side=tk.LEFT, padx=3)
+            indicator_frame.pack(pady=2)
 
             # Colored line indicator
-            canvas = tk.Canvas(indicator_frame, width=15, height=8, bg='lightblue', highlightthickness=0)
+            canvas = tk.Canvas(indicator_frame, width=80, height=4, bg='lightblue', highlightthickness=0)
             canvas.pack()
-            canvas.create_line(2, 4, 13, 4, fill=color, width=3)
+            canvas.create_line(2, 2, 78, 2, fill=color, width=3)
 
             # Status text
             tk.Label(indicator_frame, text=status_text, font=('Arial', 7),

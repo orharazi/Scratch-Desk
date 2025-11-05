@@ -174,11 +174,11 @@ class ScratchDeskGUI:
         self.bottom_frame = tk.Frame(self.root, bg='#2C3E50')  # Bottom frame for hardware status
 
         # Configure responsive column and row weights
-        self.root.grid_rowconfigure(0, weight=1)  # Top row (main panels) flexible
+        self.root.grid_rowconfigure(0, weight=1)  # Top row (main panels) spans full height
         self.root.grid_rowconfigure(1, minsize=130, weight=0)  # Bottom row (hardware status) fixed height
         self.root.grid_columnconfigure(0, minsize=250, weight=1)  # Left: min 250px
-        self.root.grid_columnconfigure(1, minsize=920, weight=3)  # Center: larger weight for canvas
-        self.root.grid_columnconfigure(2, minsize=280, weight=1)  # Right: min 280px
+        self.root.grid_columnconfigure(1, minsize=920, weight=4)  # Center: larger weight for canvas
+        self.root.grid_columnconfigure(2, minsize=200, weight=1)  # Right: reduced to 200px min
 
         # Grid frames for responsive layout
         self.left_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=(5,3))
