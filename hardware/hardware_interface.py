@@ -596,6 +596,370 @@ class HardwareInterface:
 
         return self.grbl.resume()
 
+    # ========== POSITION GETTERS ==========
+
+    def get_current_x(self) -> float:
+        """Get current X motor position in cm"""
+        if not self.use_real_hardware:
+            # In mock mode, import from mock_hardware
+            from core.mock_hardware import get_current_x as mock_get_x
+            return mock_get_x()
+
+        if not self.is_initialized or not self.grbl:
+            return 0.0
+
+        return self.grbl.current_x
+
+    def get_current_y(self) -> float:
+        """Get current Y motor position in cm"""
+        if not self.use_real_hardware:
+            # In mock mode, import from mock_hardware
+            from core.mock_hardware import get_current_y as mock_get_y
+            return mock_get_y()
+
+        if not self.is_initialized or not self.grbl:
+            return 0.0
+
+        return self.grbl.current_y
+
+    # ========== TOOL ACTION METHODS ==========
+
+    def line_marker_down(self) -> bool:
+        """Lower line marker tool"""
+        return self.line_marker_piston_down()
+
+    def line_marker_up(self) -> bool:
+        """Raise line marker tool"""
+        return self.line_marker_piston_up()
+
+    def line_cutter_down(self) -> bool:
+        """Lower line cutter tool"""
+        return self.line_cutter_piston_down()
+
+    def line_cutter_up(self) -> bool:
+        """Raise line cutter tool"""
+        return self.line_cutter_piston_up()
+
+    def row_marker_down(self) -> bool:
+        """Lower row marker tool"""
+        return self.row_marker_piston_down()
+
+    def row_marker_up(self) -> bool:
+        """Raise row marker tool"""
+        return self.row_marker_piston_up()
+
+    def row_cutter_down(self) -> bool:
+        """Lower row cutter tool"""
+        return self.row_cutter_piston_down()
+
+    def row_cutter_up(self) -> bool:
+        """Raise row cutter tool"""
+        return self.row_cutter_piston_up()
+
+    def lift_line_tools(self) -> bool:
+        """Lift all line tools (marker, cutter, motor pistons)"""
+        marker_ok = self.line_marker_up()
+        cutter_ok = self.line_cutter_up()
+        motor_ok = self.line_motor_piston_up()
+        return marker_ok and cutter_ok and motor_ok
+
+    def lower_line_tools(self) -> bool:
+        """Lower all line tools (marker, cutter, motor pistons)"""
+        marker_ok = self.line_marker_down()
+        cutter_ok = self.line_cutter_down()
+        motor_ok = self.line_motor_piston_down()
+        return marker_ok and cutter_ok and motor_ok
+
+    def move_line_tools_to_top(self) -> bool:
+        """Move line motor to top position and lift all tools"""
+        # First lift tools
+        tools_lifted = self.lift_line_tools()
+        # Then move to max Y position (top)
+        if self.use_real_hardware:
+            # Get max Y from settings
+            max_y = self.config.get("hardware_limits", {}).get("max_y_position", 100.0)
+        else:
+            from core.mock_hardware import load_settings
+            settings = load_settings()
+            max_y = settings.get("hardware_limits", {}).get("max_y_position", 100.0)
+
+        moved = self.move_y(max_y)
+        return tools_lifted and moved
+
+    # ========== STATE GETTERS ==========
+
+    def get_line_marker_state(self) -> str:
+        """Get line marker tool state"""
+        up = self.get_line_marker_up_sensor()
+        down = self.get_line_marker_down_sensor()
+        if up and not down:
+            return "up"
+        elif down and not up:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_line_cutter_state(self) -> str:
+        """Get line cutter tool state"""
+        up = self.get_line_cutter_up_sensor()
+        down = self.get_line_cutter_down_sensor()
+        if up and not down:
+            return "up"
+        elif down and not up:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_row_marker_state(self) -> str:
+        """Get row marker tool state"""
+        up = self.get_row_marker_up_sensor()
+        down = self.get_row_marker_down_sensor()
+        if up and not down:
+            return "up"
+        elif down and not up:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_row_cutter_state(self) -> str:
+        """Get row cutter tool state"""
+        up = self.get_row_cutter_up_sensor()
+        down = self.get_row_cutter_down_sensor()
+        if up and not down:
+            return "up"
+        elif down and not up:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_line_marker_piston_state(self) -> str:
+        """Get line marker piston state"""
+        return self.get_line_marker_state()
+
+    def get_line_cutter_piston_state(self) -> str:
+        """Get line cutter piston state"""
+        return self.get_line_cutter_state()
+
+    def get_line_motor_piston_state(self) -> str:
+        """Get line motor piston state (combined left+right)"""
+        left_up = self.get_line_motor_left_up_sensor()
+        left_down = self.get_line_motor_left_down_sensor()
+        right_up = self.get_line_motor_right_up_sensor()
+        right_down = self.get_line_motor_right_down_sensor()
+
+        if left_up and right_up:
+            return "up"
+        elif left_down and right_down:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_line_motor_piston_left_state(self) -> str:
+        """Get line motor LEFT piston state"""
+        up = self.get_line_motor_left_up_sensor()
+        down = self.get_line_motor_left_down_sensor()
+        if up and not down:
+            return "up"
+        elif down and not up:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_line_motor_piston_right_state(self) -> str:
+        """Get line motor RIGHT piston state"""
+        up = self.get_line_motor_right_up_sensor()
+        down = self.get_line_motor_right_down_sensor()
+        if up and not down:
+            return "up"
+        elif down and not up:
+            return "down"
+        else:
+            return "unknown"
+
+    def get_row_marker_piston_state(self) -> str:
+        """Get row marker piston state"""
+        return self.get_row_marker_state()
+
+    def get_row_cutter_piston_state(self) -> str:
+        """Get row cutter piston state"""
+        return self.get_row_cutter_state()
+
+    # ========== EDGE SENSOR GETTERS (compatibility wrappers) ==========
+
+    def get_x_left_edge(self) -> bool:
+        """Get X left edge sensor state"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_x_left_edge as mock_get
+            return mock_get()
+        return self.get_x_left_edge_sensor()
+
+    def get_x_right_edge(self) -> bool:
+        """Get X right edge sensor state"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_x_right_edge as mock_get
+            return mock_get()
+        return self.get_x_right_edge_sensor()
+
+    def get_y_top_edge(self) -> bool:
+        """Get Y top edge sensor state"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_y_top_edge as mock_get
+            return mock_get()
+        return self.get_y_top_edge_sensor()
+
+    def get_y_bottom_edge(self) -> bool:
+        """Get Y bottom edge sensor state"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_y_bottom_edge as mock_get
+            return mock_get()
+        return self.get_y_bottom_edge_sensor()
+
+    # ========== LIMIT SWITCH METHODS ==========
+
+    def get_limit_switch_state(self, switch_name: str) -> bool:
+        """Get limit switch state by name"""
+        if switch_name == "rows_door" or switch_name == "door":
+            return self.get_door_switch()
+
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_limit_switch_state as mock_get
+            return mock_get(switch_name)
+
+        return False
+
+    def get_row_motor_limit_switch(self) -> bool:
+        """Get row motor limit switch (door) state"""
+        return self.get_door_switch()
+
+    def set_limit_switch_state(self, switch_name: str, state: bool):
+        """Set limit switch state (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import set_limit_switch_state as mock_set
+            mock_set(switch_name, state)
+
+    def set_row_marker_limit_switch(self, state: bool):
+        """Set row marker limit switch state (mock mode only)"""
+        self.set_limit_switch_state("rows_door", state)
+
+    def toggle_limit_switch(self, switch_name: str):
+        """Toggle limit switch state (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import toggle_limit_switch as mock_toggle
+            mock_toggle(switch_name)
+
+    def toggle_row_marker_limit_switch(self):
+        """Toggle row marker limit switch (mock mode only)"""
+        self.toggle_limit_switch("rows_door")
+
+    # ========== SENSOR TRIGGER METHODS (mock mode only) ==========
+
+    def trigger_x_left_sensor(self):
+        """Trigger X left sensor (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import trigger_x_left_sensor as mock_trigger
+            mock_trigger()
+
+    def trigger_x_right_sensor(self):
+        """Trigger X right sensor (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import trigger_x_right_sensor as mock_trigger
+            mock_trigger()
+
+    def trigger_y_top_sensor(self):
+        """Trigger Y top sensor (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import trigger_y_top_sensor as mock_trigger
+            mock_trigger()
+
+    def trigger_y_bottom_sensor(self):
+        """Trigger Y bottom sensor (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import trigger_y_bottom_sensor as mock_trigger
+            mock_trigger()
+
+    def get_sensor_trigger_states(self):
+        """Get sensor trigger states (mock mode only)"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_sensor_trigger_states as mock_get
+            return mock_get()
+        return {}
+
+    # ========== WAIT FOR SENSOR METHODS ==========
+
+    def wait_for_x_sensor(self):
+        """Wait for X sensor trigger"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import wait_for_x_sensor as mock_wait
+            mock_wait()
+
+    def wait_for_y_sensor(self):
+        """Wait for Y sensor trigger"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import wait_for_y_sensor as mock_wait
+            mock_wait()
+
+    def wait_for_x_left_sensor(self):
+        """Wait for X left sensor trigger"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import wait_for_x_left_sensor as mock_wait
+            mock_wait()
+
+    def wait_for_x_right_sensor(self):
+        """Wait for X right sensor trigger"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import wait_for_x_right_sensor as mock_wait
+            mock_wait()
+
+    def wait_for_y_top_sensor(self):
+        """Wait for Y top sensor trigger"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import wait_for_y_top_sensor as mock_wait
+            mock_wait()
+
+    def wait_for_y_bottom_sensor(self):
+        """Wait for Y bottom sensor trigger"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import wait_for_y_bottom_sensor as mock_wait
+            mock_wait()
+
+    # ========== HARDWARE STATUS ==========
+
+    def get_hardware_status(self):
+        """Get complete hardware status dictionary"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import get_hardware_status as mock_get
+            return mock_get()
+
+        # Build status from real hardware
+        return {
+            'x_position': self.get_current_x(),
+            'y_position': self.get_current_y(),
+            'line_marker': self.get_line_marker_state(),
+            'line_cutter': self.get_line_cutter_state(),
+            'line_motor_piston': self.get_line_motor_piston_state(),
+            'row_marker': self.get_row_marker_state(),
+            'row_cutter': self.get_row_cutter_state(),
+            'door_switch': self.get_door_switch(),
+            'x_left_edge': self.get_x_left_edge(),
+            'x_right_edge': self.get_x_right_edge(),
+            'y_top_edge': self.get_y_top_edge(),
+            'y_bottom_edge': self.get_y_bottom_edge()
+        }
+
+    def reset_hardware(self):
+        """Reset hardware to initial state"""
+        if not self.use_real_hardware:
+            from core.mock_hardware import reset_hardware as mock_reset
+            mock_reset()
+            return
+
+        # Reset real hardware
+        if self.is_initialized:
+            # Home motors
+            self.home_motors()
+            # Raise all tools
+            self.lift_line_tools()
+
     # ========== CLEANUP ==========
 
     def shutdown(self):
