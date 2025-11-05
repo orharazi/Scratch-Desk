@@ -16,10 +16,7 @@ class CenterPanel:
         # Title
         tk.Label(self.parent_frame, text="DESK SIMULATION", font=('Arial', 12, 'bold')).pack(pady=5)
 
-        # Work Operations Status Box (moved above canvas for visibility)
-        self.create_work_operations_status()
-
-        # Create canvas frame - expands to fill available space
+        # Create canvas frame - expands to fill available space (removed Work Operations Status from above)
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
 

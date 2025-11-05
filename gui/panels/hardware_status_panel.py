@@ -76,14 +76,14 @@ class HardwareStatusPanel:
         grid_frame = tk.Frame(main_container, bg=self.bg_color)
         grid_frame.pack(fill=tk.BOTH, expand=True, padx=3, pady=3)
 
-        # Configure grid columns with equal weight
-        for i in range(4):
+        # Configure grid columns with equal weight (3 columns now)
+        for i in range(3):
             grid_frame.columnconfigure(i, weight=1, uniform="cols")
 
         row = 0
 
-        # MOTORS Section
-        self._create_section_header(grid_frame, 0, row, "🎯 MOTORS", heading_font)
+        # MOTORS & SYSTEM Section (combined to save space)
+        self._create_section_header(grid_frame, 0, row, "🎯 MOTORS & SYSTEM", heading_font)
         row_offset = row + 1
         self._create_grid_item(grid_frame, 0, row_offset, "X Position", "x_position", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 1, "Y Position", "y_position", label_font, tiny_font)
@@ -92,6 +92,11 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 0, row_offset + 4, "Right Limit Switch", "right_limit_switch", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 5, "Left Limit Switch", "left_limit_switch", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 6, "Rows Limit Switch", "rows_limit_switch", label_font, tiny_font)
+        # System items (merged into same column)
+        row_offset += 7
+        self._create_operation_mode_item(grid_frame, 0, row_offset, heading_font, label_font, tiny_font)
+        row_offset += 3
+        self._create_progress_section(grid_frame, 0, row_offset, label_font, tiny_font)
 
         # LINES Section
         self._create_section_header(grid_frame, 1, row, "✏️ LINES", heading_font)
@@ -144,13 +149,6 @@ class HardwareStatusPanel:
         row_offset += 1
         self._create_grid_item(grid_frame, 2, row_offset, "Marker", "rows_piston_marker", label_font, tiny_font)
         self._create_grid_item(grid_frame, 2, row_offset + 1, "Cutter", "rows_piston_cutter", label_font, tiny_font)
-
-        # SYSTEM Section
-        self._create_section_header(grid_frame, 3, row, "⚡ SYSTEM", heading_font)
-        row_offset = row + 1
-        self._create_operation_mode_item(grid_frame, 3, row_offset, heading_font, label_font, tiny_font)
-        row_offset += 3
-        self._create_progress_section(grid_frame, 3, row_offset, label_font, tiny_font)
 
     def _create_section_header(self, parent, col, row, text, font):
         """Create section header"""

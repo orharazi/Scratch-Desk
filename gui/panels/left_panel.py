@@ -14,6 +14,9 @@ class LeftPanel:
     
     def create_widgets(self):
         """Create all widgets for the left panel"""
+        # Work Operations Status (moved from center panel)
+        self.create_work_operations_status()
+
         # Title - Compact
         tk.Label(self.parent_frame, text="PROGRAM CONTROL", font=('Arial', 11, 'bold'),
                 bg='lightgray').pack(pady=3)
@@ -415,3 +418,69 @@ class LeftPanel:
             # Handle invalid field values gracefully
             self.actual_size_label.config(text="Invalid values")
             self.fit_status_label.config(text="⚠️ Check your input values", fg='orange')
+
+    def create_work_operations_status(self):
+        """Create work operations status box (moved from center panel for more canvas space)"""
+        # Work operations frame
+        ops_frame = tk.Frame(self.parent_frame, relief=tk.RIDGE, bd=2, bg='lightblue')
+        ops_frame.pack(fill=tk.X, padx=10, pady=(5, 10))
+
+        # Title
+        tk.Label(ops_frame, text="📋 WORK OPERATIONS STATUS",
+                font=('Arial', 9, 'bold'), bg='lightblue', fg='darkblue').pack(pady=2)
+
+        # Operations displayed vertically for narrow panel
+        operation_colors = self.main_app.settings.get("operation_colors", {})
+        mark_colors = operation_colors.get("mark", {
+            "pending": "#880808",
+            "in_progress": "#FF8800",
+            "completed": "#00AA00"
+        })
+        cut_colors = operation_colors.get("cuts", {
+            "pending": "#8800FF",
+            "in_progress": "#FF0088",
+            "completed": "#AA00AA"
+        })
+
+        # MARK Operations
+        mark_frame = tk.Frame(ops_frame, bg='lightblue')
+        mark_frame.pack(fill=tk.X, padx=5, pady=2)
+
+        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 8, 'bold'),
+                bg='lightblue', fg='darkblue').pack()
+
+        self.mark_status_frame = tk.Frame(mark_frame, bg='lightblue')
+        self.mark_status_frame.pack(pady=1)
+
+        self.create_status_indicators(self.mark_status_frame, [
+            ("Ready", mark_colors['pending']), ("Working", mark_colors['in_progress']), ("Done", mark_colors['completed'])
+        ])
+
+        # CUT Operations
+        cut_frame = tk.Frame(ops_frame, bg='lightblue')
+        cut_frame.pack(fill=tk.X, padx=5, pady=2)
+
+        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 8, 'bold'),
+                bg='lightblue', fg='darkblue').pack()
+
+        self.cut_status_frame = tk.Frame(cut_frame, bg='lightblue')
+        self.cut_status_frame.pack(pady=1)
+
+        self.create_status_indicators(self.cut_status_frame, [
+            ("Ready", cut_colors['pending']), ("Working", cut_colors['in_progress']), ("Done", cut_colors['completed'])
+        ])
+
+    def create_status_indicators(self, parent, status_list):
+        """Create colored line indicators for operation statuses"""
+        for status_text, color in status_list:
+            indicator_frame = tk.Frame(parent, bg='lightblue')
+            indicator_frame.pack(side=tk.LEFT, padx=2)
+
+            # Colored line indicator
+            canvas = tk.Canvas(indicator_frame, width=12, height=6, bg='lightblue', highlightthickness=0)
+            canvas.pack()
+            canvas.create_line(2, 3, 10, 3, fill=color, width=2)
+
+            # Status text
+            tk.Label(indicator_frame, text=status_text, font=('Arial', 6),
+                    bg='lightblue', fg=color).pack()
