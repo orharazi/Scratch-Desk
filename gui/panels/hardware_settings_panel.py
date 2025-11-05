@@ -27,10 +27,10 @@ class HardwareSettingsPanel:
         # Load current settings
         self.load_settings()
 
-        # Create UI elements
+        # Create UI elements (order matters - status_label must exist before refresh_ports)
         self.create_mode_selector()
-        self.create_port_selector()
         self.create_status_display()
+        self.create_port_selector()
         self.create_action_buttons()
 
         # Update initial state
