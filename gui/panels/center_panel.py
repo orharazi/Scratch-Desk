@@ -20,12 +20,9 @@ class CenterPanel:
         canvas_container = tk.Frame(self.parent_frame)
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
 
-        # Work Operations Status on the left side of canvas
-        self.create_work_operations_status(canvas_container)
-
         # Create responsive canvas that fills available space
         self.main_app.canvas = tk.Canvas(canvas_container, bg='white', relief=tk.SUNKEN, bd=2)
-        self.main_app.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.main_app.canvas.pack(fill=tk.BOTH, expand=True)
 
         # Initialize dimensions - will be updated immediately by responsive scaling
         # Don't use settings.json values - calculate based on actual window size
