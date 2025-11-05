@@ -111,8 +111,8 @@ class HardwareStatusPanel:
         row_offset += 8
         self._create_subsection_header(grid_frame, 1, row_offset, "Edge Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "Y Top", "y_top_edge_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "Y Bottom", "y_bottom_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, "X Left", "x_left_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, "X Right", "x_right_edge_sensor", label_font, tiny_font)
         # Pistons subsection
         row_offset += 2
         self._create_subsection_header(grid_frame, 1, row_offset, "Pistons", tiny_font)
@@ -136,8 +136,8 @@ class HardwareStatusPanel:
         row_offset += 4
         self._create_subsection_header(grid_frame, 2, row_offset, "Edge Sensors", tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, "X Left", "x_left_edge_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "X Right", "x_right_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, "Y Top", "y_top_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, "Y Bottom", "y_bottom_edge_sensor", label_font, tiny_font)
         # Pistons subsection
         row_offset += 2
         self._create_subsection_header(grid_frame, 2, row_offset, "Pistons", tiny_font)
