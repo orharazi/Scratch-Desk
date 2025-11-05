@@ -1,23 +1,5 @@
 import tkinter as tk
 import json
-from core.mock_hardware import (
-    get_current_x, get_current_y, get_hardware_status,
-    # Piston states
-    get_line_marker_piston_state, get_line_cutter_piston_state,
-    get_line_motor_piston_left_state, get_line_motor_piston_right_state,
-    get_row_marker_piston_state, get_row_cutter_piston_state,
-    # Tool sensors (up/down)
-    get_line_marker_up_sensor, get_line_marker_down_sensor,
-    get_line_cutter_up_sensor, get_line_cutter_down_sensor,
-    get_line_motor_left_up_sensor, get_line_motor_left_down_sensor,
-    get_line_motor_right_up_sensor, get_line_motor_right_down_sensor,
-    get_row_marker_up_sensor, get_row_marker_down_sensor,
-    get_row_cutter_up_sensor, get_row_cutter_down_sensor,
-    # Edge sensors
-    get_x_left_edge, get_x_right_edge, get_y_top_edge, get_y_bottom_edge,
-    # Limit switches
-    get_limit_switch_state
-)
 
 
 class HardwareStatusPanel:
@@ -26,6 +8,8 @@ class HardwareStatusPanel:
     def __init__(self, main_app, parent_frame):
         self.main_app = main_app
         self.parent_frame = parent_frame
+        # Access hardware through main_app
+        self.hardware = main_app.hardware
         self.status_widgets = {}  # {key: {'label': tk.Label, 'frame': tk.Frame}}
 
         # Load settings
@@ -279,11 +263,10 @@ class HardwareStatusPanel:
         """Update all hardware status displays"""
         try:
             # Trigger auto-reset for edge sensors (resets sensors triggered > 1 second ago)
-            from core.mock_hardware import get_sensor_trigger_states
-            get_sensor_trigger_states()
+            self.hardware.get_sensor_trigger_states()
 
             # Get all hardware states
-            hw_status = get_hardware_status()
+            hw_status = self.hardware.get_hardware_status()
 
             # Debug: Print that we're updating
             print(f"🔧 Hardware status update: X={hw_status.get('x_position', '?')}, Y={hw_status.get('y_position', '?')}")
@@ -294,27 +277,27 @@ class HardwareStatusPanel:
 
             # Limit switches - color coded: OFF=gray, ON=orange
             # Y-axis (Lines) - Top/Bottom
-            y_top_ls = get_limit_switch_state('y_top')
+            y_top_ls = self.hardware.get_limit_switch_state('y_top')
             self._update_widget('top_limit_switch',
                                'ON' if y_top_ls else 'OFF',
                                self.switch_on_color if y_top_ls else self.switch_off_color)
-            y_bottom_ls = get_limit_switch_state('y_bottom')
+            y_bottom_ls = self.hardware.get_limit_switch_state('y_bottom')
             self._update_widget('bottom_limit_switch',
                                'ON' if y_bottom_ls else 'OFF',
                                self.switch_on_color if y_bottom_ls else self.switch_off_color)
 
             # X-axis (Rows) - Right/Left
-            x_right_ls = get_limit_switch_state('x_right')
+            x_right_ls = self.hardware.get_limit_switch_state('x_right')
             self._update_widget('right_limit_switch',
                                'ON' if x_right_ls else 'OFF',
                                self.switch_on_color if x_right_ls else self.switch_off_color)
-            x_left_ls = get_limit_switch_state('x_left')
+            x_left_ls = self.hardware.get_limit_switch_state('x_left')
             self._update_widget('left_limit_switch',
                                'ON' if x_left_ls else 'OFF',
                                self.switch_on_color if x_left_ls else self.switch_off_color)
 
             # Rows limit switch
-            rows_ls = get_limit_switch_state('rows')
+            rows_ls = self.hardware.get_limit_switch_state('rows')
             self._update_widget('rows_limit_switch',
                                'ON' if rows_ls else 'OFF',
                                self.switch_on_color if rows_ls else self.switch_off_color)
@@ -322,110 +305,110 @@ class HardwareStatusPanel:
             # LINES SECTION - Tool Sensors (UP/DOWN sensors for each tool)
             # Color coded: READY (False)=blue, TRIGGERED (True)=red
             # Line Marker Sensors
-            line_marker_up = get_line_marker_up_sensor()
+            line_marker_up = self.hardware.get_line_marker_up_sensor()
             self._update_widget('line_marker_up_sensor',
                                'TRIG' if line_marker_up else 'READY',
                                self.sensor_triggered_color if line_marker_up else self.sensor_ready_color)
-            line_marker_down = get_line_marker_down_sensor()
+            line_marker_down = self.hardware.get_line_marker_down_sensor()
             self._update_widget('line_marker_down_sensor',
                                'TRIG' if line_marker_down else 'READY',
                                self.sensor_triggered_color if line_marker_down else self.sensor_ready_color)
 
             # Line Cutter Sensors
-            line_cutter_up = get_line_cutter_up_sensor()
+            line_cutter_up = self.hardware.get_line_cutter_up_sensor()
             self._update_widget('line_cutter_up_sensor',
                                'TRIG' if line_cutter_up else 'READY',
                                self.sensor_triggered_color if line_cutter_up else self.sensor_ready_color)
-            line_cutter_down = get_line_cutter_down_sensor()
+            line_cutter_down = self.hardware.get_line_cutter_down_sensor()
             self._update_widget('line_cutter_down_sensor',
                                'TRIG' if line_cutter_down else 'READY',
                                self.sensor_triggered_color if line_cutter_down else self.sensor_ready_color)
 
             # Line Motor Left Piston Sensors
-            line_motor_left_up = get_line_motor_left_up_sensor()
+            line_motor_left_up = self.hardware.get_line_motor_left_up_sensor()
             self._update_widget('line_motor_left_up_sensor',
                                'TRIG' if line_motor_left_up else 'READY',
                                self.sensor_triggered_color if line_motor_left_up else self.sensor_ready_color)
-            line_motor_left_down = get_line_motor_left_down_sensor()
+            line_motor_left_down = self.hardware.get_line_motor_left_down_sensor()
             self._update_widget('line_motor_left_down_sensor',
                                'TRIG' if line_motor_left_down else 'READY',
                                self.sensor_triggered_color if line_motor_left_down else self.sensor_ready_color)
 
             # Line Motor Right Piston Sensors
-            line_motor_right_up = get_line_motor_right_up_sensor()
+            line_motor_right_up = self.hardware.get_line_motor_right_up_sensor()
             self._update_widget('line_motor_right_up_sensor',
                                'TRIG' if line_motor_right_up else 'READY',
                                self.sensor_triggered_color if line_motor_right_up else self.sensor_ready_color)
-            line_motor_right_down = get_line_motor_right_down_sensor()
+            line_motor_right_down = self.hardware.get_line_motor_right_down_sensor()
             self._update_widget('line_motor_right_down_sensor',
                                'TRIG' if line_motor_right_down else 'READY',
                                self.sensor_triggered_color if line_motor_right_down else self.sensor_ready_color)
 
             # Edge Sensors (X-axis for Lines)
-            x_left_edge = get_x_left_edge()
+            x_left_edge = self.hardware.get_x_left_edge()
             self._update_widget('x_left_edge_sensor',
                                'TRIG' if x_left_edge else 'READY',
                                self.sensor_triggered_color if x_left_edge else self.sensor_ready_color)
-            x_right_edge = get_x_right_edge()
+            x_right_edge = self.hardware.get_x_right_edge()
             self._update_widget('x_right_edge_sensor',
                                'TRIG' if x_right_edge else 'READY',
                                self.sensor_triggered_color if x_right_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
-            line_marker_piston_state = get_line_marker_piston_state().upper()
+            line_marker_piston_state = self.hardware.get_line_marker_piston_state().upper()
             self._update_widget('lines_piston_marker', line_marker_piston_state,
                                self.piston_down_color if line_marker_piston_state == 'DOWN' else self.piston_up_color)
 
-            line_cutter_piston_state = get_line_cutter_piston_state().upper()
+            line_cutter_piston_state = self.hardware.get_line_cutter_piston_state().upper()
             self._update_widget('lines_piston_cutter', line_cutter_piston_state,
                                self.piston_down_color if line_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
-            line_motor_left_piston_state = get_line_motor_piston_left_state().upper()
+            line_motor_left_piston_state = self.hardware.get_line_motor_piston_left_state().upper()
             self._update_widget('lines_piston_motor_left', line_motor_left_piston_state,
                                self.piston_down_color if line_motor_left_piston_state == 'DOWN' else self.piston_up_color)
 
-            line_motor_right_piston_state = get_line_motor_piston_right_state().upper()
+            line_motor_right_piston_state = self.hardware.get_line_motor_piston_right_state().upper()
             self._update_widget('lines_piston_motor_right', line_motor_right_piston_state,
                                self.piston_down_color if line_motor_right_piston_state == 'DOWN' else self.piston_up_color)
 
             # ROWS SECTION - Tool Sensors (UP/DOWN sensors for each tool)
             # Color coded: READY (False)=blue, TRIGGERED (True)=red
             # Row Marker Sensors
-            row_marker_up = get_row_marker_up_sensor()
+            row_marker_up = self.hardware.get_row_marker_up_sensor()
             self._update_widget('row_marker_up_sensor',
                                'TRIG' if row_marker_up else 'READY',
                                self.sensor_triggered_color if row_marker_up else self.sensor_ready_color)
-            row_marker_down = get_row_marker_down_sensor()
+            row_marker_down = self.hardware.get_row_marker_down_sensor()
             self._update_widget('row_marker_down_sensor',
                                'TRIG' if row_marker_down else 'READY',
                                self.sensor_triggered_color if row_marker_down else self.sensor_ready_color)
 
             # Row Cutter Sensors
-            row_cutter_up = get_row_cutter_up_sensor()
+            row_cutter_up = self.hardware.get_row_cutter_up_sensor()
             self._update_widget('row_cutter_up_sensor',
                                'TRIG' if row_cutter_up else 'READY',
                                self.sensor_triggered_color if row_cutter_up else self.sensor_ready_color)
-            row_cutter_down = get_row_cutter_down_sensor()
+            row_cutter_down = self.hardware.get_row_cutter_down_sensor()
             self._update_widget('row_cutter_down_sensor',
                                'TRIG' if row_cutter_down else 'READY',
                                self.sensor_triggered_color if row_cutter_down else self.sensor_ready_color)
 
             # Edge Sensors (Y-axis for Rows)
-            y_top_edge = get_y_top_edge()
+            y_top_edge = self.hardware.get_y_top_edge()
             self._update_widget('y_top_edge_sensor',
                                'TRIG' if y_top_edge else 'READY',
                                self.sensor_triggered_color if y_top_edge else self.sensor_ready_color)
-            y_bottom_edge = get_y_bottom_edge()
+            y_bottom_edge = self.hardware.get_y_bottom_edge()
             self._update_widget('y_bottom_edge_sensor',
                                'TRIG' if y_bottom_edge else 'READY',
                                self.sensor_triggered_color if y_bottom_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
-            row_marker_piston_state = get_row_marker_piston_state().upper()
+            row_marker_piston_state = self.hardware.get_row_marker_piston_state().upper()
             self._update_widget('rows_piston_marker', row_marker_piston_state,
                                self.piston_down_color if row_marker_piston_state == 'DOWN' else self.piston_up_color)
 
-            row_cutter_piston_state = get_row_cutter_piston_state().upper()
+            row_cutter_piston_state = self.hardware.get_row_cutter_piston_state().upper()
             self._update_widget('rows_piston_cutter', row_cutter_piston_state,
                                self.piston_down_color if row_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
@@ -498,7 +481,7 @@ class HardwareStatusPanel:
                 mode = self.main_app.canvas_manager.motor_operation_mode.upper()
 
                 # Get row marker state (piston position)
-                row_marker_state = get_row_marker_piston_state().upper()
+                row_marker_state = self.hardware.get_row_marker_piston_state().upper()
 
                 # Safety check: row marker position must match operation type
                 if mode == 'LINES':

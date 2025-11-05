@@ -1,25 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
-from core.mock_hardware import (
-    trigger_x_left_sensor, trigger_x_right_sensor,
-    trigger_y_top_sensor, trigger_y_bottom_sensor,
-    toggle_limit_switch, get_limit_switch_state,
-    line_marker_down, line_marker_up, line_cutter_down, line_cutter_up,
-    row_marker_down, row_marker_up, row_cutter_down, row_cutter_up,
-    lift_line_tools, lower_line_tools,
-    line_motor_piston_up, line_motor_piston_down, line_marker_piston_up, line_marker_piston_down,
-    get_line_marker_state, get_line_cutter_state, get_line_motor_piston_state,
-    get_row_marker_state, get_row_cutter_state
-)
 
 
 class RightPanel:
     """Right panel for step navigation and execution controls"""
-    
+
     def __init__(self, main_app, parent_frame):
         self.main_app = main_app
         self.parent_frame = parent_frame
+        # Access hardware through main_app
+        self.hardware = main_app.hardware
 
         # Responsive font sizing based on window width
         self.update_font_sizes()
@@ -617,12 +608,11 @@ class RightPanel:
         self.main_app.execution_engine.reset_execution()
 
         # Reset hardware state (position, tools, sensors)
-        from core.mock_hardware import reset_hardware, move_x, move_y
-        reset_hardware()
-        
+        self.hardware.reset_hardware()
+
         # Move hardware to motor home positions (0, 0)
-        move_x(0.0)  # Rows motor home position  
-        move_y(0.0)  # Lines motor home position
+        self.hardware.move_x(0.0)  # Rows motor home position
+        self.hardware.move_y(0.0)  # Lines motor home position
         
         # Reset operation states to pending
         if hasattr(self.main_app, 'operation_states'):
@@ -691,7 +681,7 @@ class RightPanel:
     
     def trigger_x_left(self):
         """Trigger X left sensor - only sets event, does NOT move motors or canvas"""
-        trigger_x_left_sensor()
+        self.hardware.trigger_x_left_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: X-Left Triggered", fg='red')
@@ -702,7 +692,7 @@ class RightPanel:
 
     def trigger_x_right(self):
         """Trigger X right sensor - only sets event, does NOT move motors or canvas"""
-        trigger_x_right_sensor()
+        self.hardware.trigger_x_right_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: X-Right Triggered", fg='red')
@@ -713,7 +703,7 @@ class RightPanel:
 
     def trigger_y_top(self):
         """Trigger Y top sensor - only sets event, does NOT move motors or canvas"""
-        trigger_y_top_sensor()
+        self.hardware.trigger_y_top_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: Y-Top Triggered", fg='red')
@@ -724,7 +714,7 @@ class RightPanel:
 
     def trigger_y_bottom(self):
         """Trigger Y bottom sensor - only sets event, does NOT move motors or canvas"""
-        trigger_y_bottom_sensor()
+        self.hardware.trigger_y_bottom_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text="Sensor: Y-Bottom Triggered", fg='red')
@@ -735,7 +725,7 @@ class RightPanel:
     
     def toggle_ls(self, switch_name):
         """Toggle a limit switch"""
-        state = toggle_limit_switch(switch_name)
+        state = self.hardware.toggle_limit_switch(switch_name)
         print(f"Limit switch {switch_name} toggled: {'ON' if state else 'OFF'}")
 
         # Force canvas position update to refresh indicators
@@ -745,45 +735,45 @@ class RightPanel:
     def toggle_line_marker(self):
         """Toggle line marker piston"""
         if self.lines_marker_var.get():
-            line_marker_down()
+            self.hardware.line_marker_down()
         else:
-            line_marker_up()
+            self.hardware.line_marker_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
     def toggle_line_cutter(self):
         """Toggle line cutter piston"""
         if self.lines_cutter_var.get():
-            line_cutter_down()
+            self.hardware.line_cutter_down()
         else:
-            line_cutter_up()
+            self.hardware.line_cutter_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
     def toggle_line_motor(self):
         """Toggle line motor piston (controls Y motor assembly lift)"""
         if self.lines_motor_var.get():
-            line_motor_piston_down()
+            self.hardware.line_motor_piston_down()
         else:
-            line_motor_piston_up()
+            self.hardware.line_motor_piston_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
     def toggle_row_marker(self):
         """Toggle row marker piston"""
         if self.rows_marker_var.get():
-            row_marker_down()
+            self.hardware.row_marker_down()
         else:
-            row_marker_up()
+            self.hardware.row_marker_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
     def toggle_row_cutter(self):
         """Toggle row cutter piston"""
         if self.rows_cutter_var.get():
-            row_cutter_down()
+            self.hardware.row_cutter_down()
         else:
-            row_cutter_up()
+            self.hardware.row_cutter_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
@@ -791,11 +781,11 @@ class RightPanel:
         """Synchronize checkbox states with actual hardware states"""
         try:
             # Get actual hardware states
-            line_marker_state = get_line_marker_state()
-            line_cutter_state = get_line_cutter_state()
-            line_motor_piston_state = get_line_motor_piston_state()
-            row_marker_state = get_row_marker_state()
-            row_cutter_state = get_row_cutter_state()
+            line_marker_state = self.hardware.get_line_marker_state()
+            line_cutter_state = self.hardware.get_line_cutter_state()
+            line_motor_piston_state = self.hardware.get_line_motor_piston_state()
+            row_marker_state = self.hardware.get_row_marker_state()
+            row_cutter_state = self.hardware.get_row_cutter_state()
 
             # Update checkbox variables to match hardware (checked = down/active)
             # For line marker and cutter: checked = down
@@ -810,11 +800,11 @@ class RightPanel:
             self.rows_cutter_var.set(row_cutter_state == "down")
 
             # Update limit switch checkboxes
-            self.y_top_ls_var.set(get_limit_switch_state('y_top'))
-            self.y_bottom_ls_var.set(get_limit_switch_state('y_bottom'))
-            self.x_right_ls_var.set(get_limit_switch_state('x_right'))
-            self.x_left_ls_var.set(get_limit_switch_state('x_left'))
-            self.rows_ls_var.set(get_limit_switch_state('rows'))
+            self.y_top_ls_var.set(self.hardware.get_limit_switch_state('y_top'))
+            self.y_bottom_ls_var.set(self.hardware.get_limit_switch_state('y_bottom'))
+            self.x_right_ls_var.set(self.hardware.get_limit_switch_state('x_right'))
+            self.x_left_ls_var.set(self.hardware.get_limit_switch_state('x_left'))
+            self.rows_ls_var.set(self.hardware.get_limit_switch_state('rows'))
 
         except Exception as e:
             # Silently ignore errors to avoid flooding console
