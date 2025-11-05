@@ -1,6 +1,6 @@
 import tkinter as tk
 import re
-from mock_hardware import get_hardware_status
+from core.mock_hardware import get_hardware_status
 
 
 class CanvasTools:

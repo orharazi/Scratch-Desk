@@ -20,12 +20,12 @@ class HardwareInterface:
     Manages both Raspberry Pi GPIO and Arduino GRBL
     """
 
-    def __init__(self, config_path: str = "settings.json"):
+    def __init__(self, config_path: str = "config/settings.json"):
         """
         Initialize hardware interface
 
         Args:
-            config_path: Path to settings.json configuration file
+            config_path: Path to config/settings.json configuration file
         """
         self.config_path = config_path
         self.config = self._load_config(config_path)
@@ -45,7 +45,7 @@ class HardwareInterface:
         print(f"{'='*60}\n")
 
     def _load_config(self, config_path: str) -> Dict:
-        """Load configuration from settings.json"""
+        """Load configuration from config/settings.json"""
         try:
             with open(config_path, 'r') as f:
                 return json.load(f)

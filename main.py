@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import time
-from csv_parser import CSVParser
-from program_model import ScratchDeskProgram
+from core.csv_parser import CSVParser
+from core.program_model import ScratchDeskProgram
 
 def main():
     print("Scratch Desk Program Manager for Raspberry Pi")

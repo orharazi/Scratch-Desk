@@ -3,14 +3,14 @@
 import threading
 import time
 import json
-from mock_hardware import *
-from safety_system import SafetyViolation, check_step_safety
+from core.mock_hardware import *
+from core.safety_system import SafetyViolation, check_step_safety
 
 # Load settings
 def load_settings():
-    """Load settings from settings.json"""
+    """Load settings from config/settings.json"""
     try:
-        with open('settings.json', 'r') as f:
+        with open('config/settings.json', 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}

@@ -1,6 +1,6 @@
 import tkinter as tk
 import json
-from mock_hardware import (
+from core.mock_hardware import (
     get_current_x, get_current_y, get_hardware_status,
     # Piston states
     get_line_marker_piston_state, get_line_cutter_piston_state,
@@ -279,7 +279,7 @@ class HardwareStatusPanel:
         """Update all hardware status displays"""
         try:
             # Trigger auto-reset for edge sensors (resets sensors triggered > 1 second ago)
-            from mock_hardware import get_sensor_trigger_states
+            from core.mock_hardware import get_sensor_trigger_states
             get_sensor_trigger_states()
 
             # Get all hardware states

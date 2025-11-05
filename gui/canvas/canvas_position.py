@@ -1,12 +1,12 @@
 import tkinter as tk
 import re
 import json
-from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
+from core.mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
 
 # Load settings
 def load_settings():
     try:
-        with open('settings.json', 'r') as f:
+        with open('config/settings.json', 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}

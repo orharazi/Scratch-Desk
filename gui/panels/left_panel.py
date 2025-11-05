@@ -353,7 +353,7 @@ class LeftPanel:
         self.actual_size_label.config(text=f"{actual_width} × {actual_height} cm")
         
         # Check if it fits on desk (from program model constants)
-        from program_model import ScratchDeskProgram
+        from core.program_model import ScratchDeskProgram
         max_width = ScratchDeskProgram.MAX_WIDTH_OF_DESK
         max_height = ScratchDeskProgram.MAX_HEIGHT_OF_DESK
         
@@ -391,9 +391,9 @@ class LeftPanel:
             actual_height = high * repeat_lines
             
             self.actual_size_label.config(text=f"{actual_width} × {actual_height} cm")
-            
+
             # Check if it fits on desk
-            from program_model import ScratchDeskProgram
+            from core.program_model import ScratchDeskProgram
             max_width = ScratchDeskProgram.MAX_WIDTH_OF_DESK
             max_height = ScratchDeskProgram.MAX_HEIGHT_OF_DESK
             

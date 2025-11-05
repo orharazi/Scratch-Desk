@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-from step_generator import generate_complete_program_steps, get_step_count_summary
-from mock_hardware import (
+from core.step_generator import generate_complete_program_steps, get_step_count_summary
+from core.mock_hardware import (
     trigger_x_left_sensor, trigger_x_right_sensor,
     trigger_y_top_sensor, trigger_y_bottom_sensor,
     toggle_limit_switch, get_limit_switch_state,
@@ -615,9 +615,9 @@ class RightPanel:
         """Reset execution and UI state"""
         # Reset execution engine
         self.main_app.execution_engine.reset_execution()
-        
+
         # Reset hardware state (position, tools, sensors)
-        from mock_hardware import reset_hardware, move_x, move_y
+        from core.mock_hardware import reset_hardware, move_x, move_y
         reset_hardware()
         
         # Move hardware to motor home positions (0, 0)

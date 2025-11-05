@@ -52,11 +52,11 @@ from threading import Event
 current_x_position = 0.0  # cm - X motor (rows motor) position
 current_y_position = 0.0  # cm - Y motor (lines motor) position
 
-# Load settings from settings.json
+# Load settings from config/settings.json
 def load_settings():
-    """Load hardware settings from settings.json"""
+    """Load hardware settings from config/settings.json"""
     try:
-        with open('settings.json', 'r') as f:
+        with open('config/settings.json', 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         # Default settings if file not found

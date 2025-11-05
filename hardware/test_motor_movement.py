@@ -126,7 +126,7 @@ def test_axis_limits(grbl: ArduinoGRBL):
     # Read limits from settings
     import json
     try:
-        with open("settings.json", 'r') as f:
+        with open("config/settings.json", 'r') as f:
             config = json.load(f)
         max_x = config.get("hardware_limits", {}).get("max_x_position", 120)
         max_y = config.get("hardware_limits", {}).get("max_y_position", 80)

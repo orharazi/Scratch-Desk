@@ -1,5 +1,5 @@
 import tkinter as tk
-from mock_hardware import (
+from core.mock_hardware import (
     get_current_x, get_current_y, move_x, move_y, get_hardware_status,
     get_line_marker_piston_state, get_row_motor_limit_switch
 )

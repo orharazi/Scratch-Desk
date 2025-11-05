@@ -5,7 +5,7 @@ Safety System for CNC Scratch Desk Control
 Prevents dangerous operations that could damage the hardware
 """
 
-from mock_hardware import (
+from core.mock_hardware import (
     get_row_marker_state, get_row_motor_limit_switch,
     get_line_marker_state, get_line_cutter_state,
     get_current_x, get_current_y

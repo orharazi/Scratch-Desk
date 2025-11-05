@@ -8,11 +8,11 @@ import os
 import json
 
 # Import our modules
-from csv_parser import CSVParser
-from step_generator import generate_complete_program_steps, get_step_count_summary
-from execution_engine import ExecutionEngine
-from mock_hardware import (
-    trigger_x_left_sensor, trigger_x_right_sensor, 
+from core.csv_parser import CSVParser
+from core.step_generator import generate_complete_program_steps, get_step_count_summary
+from core.execution_engine import ExecutionEngine
+from core.mock_hardware import (
+    trigger_x_left_sensor, trigger_x_right_sensor,
     trigger_y_top_sensor, trigger_y_bottom_sensor,
     get_current_x, get_current_y, reset_hardware
 )
@@ -105,12 +105,12 @@ class ScratchDeskGUI:
         self.execution_engine.canvas_manager = self.canvas_manager
         
         # Set execution engine reference in mock hardware for sensor positioning
-        from mock_hardware import set_execution_engine_reference
+        from core.mock_hardware import set_execution_engine_reference
         set_execution_engine_reference(self.execution_engine)
-        
+
         # Set initial position to motor home positions (0, 0)
         # Motors start at home positions, not paper positions
-        from mock_hardware import move_x, move_y
+        from core.mock_hardware import move_x, move_y
         move_x(0.0)  # Rows motor home position
         move_y(0.0)  # Lines motor home position
         self.canvas_manager.update_position_display()
@@ -119,12 +119,12 @@ class ScratchDeskGUI:
         self.schedule_position_update()
         
         # Initial load
-        self.load_csv_file_by_path("sample_programs.csv")
+        self.load_csv_file_by_path("data/sample_programs.csv")
     
     def load_settings(self):
-        """Load settings from settings.json"""
+        """Load settings from config/settings.json"""
         try:
-            with open('settings.json', 'r') as f:
+            with open('config/settings.json', 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return {

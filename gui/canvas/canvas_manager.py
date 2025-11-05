@@ -1,6 +1,6 @@
 import tkinter as tk
 import re
-from mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
+from core.mock_hardware import get_current_x, get_current_y, move_x, move_y, get_hardware_status
 
 from .canvas_setup import CanvasSetup
 from .canvas_sensors import CanvasSensors

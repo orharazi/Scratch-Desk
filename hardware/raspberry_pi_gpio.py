@@ -70,12 +70,12 @@ class RaspberryPiGPIO:
     Interface for Raspberry Pi GPIO control of pistons, sensors, and limit switches
     """
 
-    def __init__(self, config_path: str = "settings.json"):
+    def __init__(self, config_path: str = "config/settings.json"):
         """
         Initialize GPIO interface
 
         Args:
-            config_path: Path to settings.json configuration file
+            config_path: Path to config/settings.json configuration file
         """
         self.config = self._load_config(config_path)
         self.gpio_config = self.config.get("hardware_config", {}).get("raspberry_pi", {})

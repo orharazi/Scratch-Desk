@@ -1,5 +1,5 @@
 import csv
-from program_model import ScratchDeskProgram
+from core.program_model import ScratchDeskProgram
 
 class CSVParser:
     """

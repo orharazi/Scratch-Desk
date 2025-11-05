@@ -55,12 +55,12 @@ class ArduinoGRBL:
     Interface for Arduino GRBL motor control via G-code
     """
 
-    def __init__(self, config_path: str = "settings.json"):
+    def __init__(self, config_path: str = "config/settings.json"):
         """
         Initialize GRBL interface
 
         Args:
-            config_path: Path to settings.json configuration file
+            config_path: Path to config/settings.json configuration file
         """
         self.config = self._load_config(config_path)
         self.grbl_config = self.config.get("hardware_config", {}).get("arduino_grbl", {})
@@ -91,7 +91,7 @@ class ArduinoGRBL:
         print(f"{'='*60}\n")
 
     def _load_config(self, config_path: str) -> Dict:
-        """Load configuration from settings.json"""
+        """Load configuration from config/settings.json"""
         try:
             with open(config_path, 'r') as f:
                 return json.load(f)
