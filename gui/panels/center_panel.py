@@ -24,9 +24,6 @@ class CenterPanel:
         self.main_app.canvas = tk.Canvas(canvas_container, bg='white', relief=tk.SUNKEN, bd=2)
         self.main_app.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Create Work Operations Status as overlay at top of canvas
-        self.create_work_operations_overlay()
-
         # Initialize dimensions - will be updated immediately by responsive scaling
         # Don't use settings.json values - calculate based on actual window size
         self.main_app.actual_canvas_width = 900  # Placeholder, will be overwritten
@@ -73,6 +70,11 @@ class CenterPanel:
                     self._update_canvas_scaling(width, height)
                     self.main_app.canvas_manager.setup_canvas()
                     print(f"   ✅ Canvas initialized with scale={self.main_app.scale_x:.2f}")
+
+                    # Create Work Operations Status overlay AFTER canvas is fully initialized
+                    self.create_work_operations_overlay()
+                    print("   ✅ Work Operations Status overlay created")
+
                     # Enable Configure events for future window resizes
                     self._ignore_configure_events = False
                 else:
@@ -229,81 +231,83 @@ class CenterPanel:
         })
 
         # Create overlay frame at top-left of canvas using canvas window
-        overlay_frame = tk.Frame(self.main_app.canvas, bg='#E8F4F8', relief=tk.RAISED, bd=2)
+        # Use slightly larger fonts and padding for better visibility
+        overlay_frame = tk.Frame(self.main_app.canvas, bg='#E8F4F8', relief=tk.RAISED, bd=3)
 
-        # Title row - more compact
+        # Title row - slightly larger
         title_label = tk.Label(
             overlay_frame,
             text="📋 WORK OPERATIONS STATUS",
-            font=('Arial', 8, 'bold'),
+            font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
             fg='black',
-            pady=2
+            padx=8,
+            pady=3
         )
         title_label.pack()
 
         # Operations in horizontal row
         ops_row = tk.Frame(overlay_frame, bg='#E8F4F8')
-        ops_row.pack(padx=5, pady=2)
+        ops_row.pack(padx=8, pady=4)
 
         # MARK Operations
         mark_frame = tk.Frame(ops_row, bg='#E8F4F8')
-        mark_frame.pack(side=tk.LEFT, padx=5)
+        mark_frame.pack(side=tk.LEFT, padx=8)
 
-        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 7, 'bold'),
+        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 8, 'bold'),
                 bg='#E8F4F8', fg='black').pack()
 
         mark_indicators = tk.Frame(mark_frame, bg='#E8F4F8')
-        mark_indicators.pack()
+        mark_indicators.pack(pady=2)
 
-        # Horizontal compact indicators for MARK
+        # Horizontal compact indicators for MARK - slightly larger
         for status_text, color in [("Ready", mark_colors['pending']),
                                    ("Work", mark_colors['in_progress']),
                                    ("Done", mark_colors['completed'])]:
             ind = tk.Frame(mark_indicators, bg='#E8F4F8')
-            ind.pack(side=tk.LEFT, padx=2)
+            ind.pack(side=tk.LEFT, padx=3)
 
-            # Small colored line
-            c = tk.Canvas(ind, width=15, height=3, bg='#E8F4F8', highlightthickness=0)
+            # Small colored line - slightly larger
+            c = tk.Canvas(ind, width=20, height=4, bg='#E8F4F8', highlightthickness=0)
             c.pack()
-            c.create_line(1, 1, 14, 1, fill=color, width=2)
+            c.create_line(2, 2, 18, 2, fill=color, width=3)
 
-            # Tiny label
-            tk.Label(ind, text=status_text, font=('Arial', 6),
+            # Label - slightly larger
+            tk.Label(ind, text=status_text, font=('Arial', 7),
                     bg='#E8F4F8', fg=color).pack()
 
         # Separator
-        tk.Frame(ops_row, width=2, bg='gray').pack(side=tk.LEFT, fill=tk.Y, padx=3)
+        tk.Frame(ops_row, width=2, bg='gray').pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
         # CUT Operations
         cut_frame = tk.Frame(ops_row, bg='#E8F4F8')
-        cut_frame.pack(side=tk.LEFT, padx=5)
+        cut_frame.pack(side=tk.LEFT, padx=8)
 
-        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 7, 'bold'),
+        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 8, 'bold'),
                 bg='#E8F4F8', fg='black').pack()
 
         cut_indicators = tk.Frame(cut_frame, bg='#E8F4F8')
-        cut_indicators.pack()
+        cut_indicators.pack(pady=2)
 
-        # Horizontal compact indicators for CUT
+        # Horizontal compact indicators for CUT - slightly larger
         for status_text, color in [("Ready", cut_colors['pending']),
                                    ("Work", cut_colors['in_progress']),
                                    ("Done", cut_colors['completed'])]:
             ind = tk.Frame(cut_indicators, bg='#E8F4F8')
-            ind.pack(side=tk.LEFT, padx=2)
+            ind.pack(side=tk.LEFT, padx=3)
 
-            # Small colored line
-            c = tk.Canvas(ind, width=15, height=3, bg='#E8F4F8', highlightthickness=0)
+            # Small colored line - slightly larger
+            c = tk.Canvas(ind, width=20, height=4, bg='#E8F4F8', highlightthickness=0)
             c.pack()
-            c.create_line(1, 1, 14, 1, fill=color, width=2)
+            c.create_line(2, 2, 18, 2, fill=color, width=3)
 
-            # Tiny label
-            tk.Label(ind, text=status_text, font=('Arial', 6),
+            # Label - slightly larger
+            tk.Label(ind, text=status_text, font=('Arial', 7),
                     bg='#E8F4F8', fg=color).pack()
 
-        # Place overlay at top-left corner of canvas (will be repositioned after canvas is initialized)
+        # Place overlay at top-left corner of canvas - moved down and right slightly to be more visible
         self.ops_overlay_window = self.main_app.canvas.create_window(
-            10, 10,
+            15, 15,
             window=overlay_frame,
             anchor='nw',
             tags='work_ops_overlay'
@@ -311,6 +315,11 @@ class CenterPanel:
 
         # Store reference for potential updates
         self.main_app.work_ops_overlay = overlay_frame
+
+        # Raise overlay to ensure it's on top of all other canvas objects
+        self.main_app.canvas.tag_raise('work_ops_overlay')
+
+        print("✅ Work Operations Status overlay created and raised to top")
 
     def _on_canvas_resize(self, event):
         """Handle canvas resize events - both initial setup and user-initiated resizes"""
