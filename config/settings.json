@@ -147,9 +147,6 @@
         "x_right_edge": 21,
         "y_top_edge": 19,
         "y_bottom_edge": 26
-      },
-      "limit_switches": {
-        "rows_door": 25
       }
     },
     "arduino_grbl": {
@@ -162,6 +159,13 @@
         "feed_rate": 1000,
         "rapid_rate": 3000,
         "acceleration": 50
+      },
+      "limit_switches": {
+        "door": {
+          "pin": "D2",
+          "type": "normally_open",
+          "pull_up": true
+        }
       }
     }
   }

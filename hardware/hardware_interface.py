@@ -548,16 +548,29 @@ class HardwareInterface:
 
     # ========== LIMIT SWITCHES ==========
 
-    def get_rows_door_switch(self) -> bool:
-        """Read rows door limit switch state"""
+    def get_door_switch(self) -> bool:
+        """
+        Read door limit switch state (from Arduino GRBL)
+
+        Returns:
+            True if door is closed, False if open
+        """
         if not self.use_real_hardware:
             return False
 
-        if not self.is_initialized or not self.gpio:
+        if not self.is_initialized or not self.grbl:
             return False
 
-        state = self.gpio.get_rows_door_switch()
+        state = self.grbl.get_door_switch_state()
         return state if state is not None else False
+
+    def get_rows_door_switch(self) -> bool:
+        """
+        Read rows door limit switch state (legacy method - now routes to Arduino)
+
+        DEPRECATED: Use get_door_switch() instead
+        """
+        return self.get_door_switch()
 
     # ========== EMERGENCY CONTROLS ==========
 

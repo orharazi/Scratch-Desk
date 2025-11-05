@@ -408,9 +408,8 @@ class RaspberryPiGPIO:
                 states[switch_name] = state
         return states
 
-    def get_rows_door_switch(self) -> Optional[bool]:
-        """Read rows door limit switch state"""
-        return self.read_limit_switch("rows_door")
+    # Note: Door limit switch has been moved to Arduino GRBL
+    # Use hardware_interface.get_door_switch() instead
 
     # ========== CLEANUP ==========
 

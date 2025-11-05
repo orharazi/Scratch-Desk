@@ -74,6 +74,10 @@ class ArduinoGRBL:
         self.feed_rate = self.grbl_settings.get("feed_rate", 1000)  # mm/min
         self.rapid_rate = self.grbl_settings.get("rapid_rate", 3000)  # mm/min
 
+        # Limit switches configuration
+        self.limit_switches = self.grbl_config.get("limit_switches", {})
+        self.door_switch_config = self.limit_switches.get("door", {})
+
         self.serial_connection: Optional[serial.Serial] = None
         self.is_connected = False
         self.command_lock = Lock()  # Thread safety for serial commands
@@ -88,6 +92,8 @@ class ArduinoGRBL:
         print(f"Baud Rate: {self.baud_rate}")
         print(f"Feed Rate: {self.feed_rate} mm/min")
         print(f"Rapid Rate: {self.rapid_rate} mm/min")
+        if self.door_switch_config:
+            print(f"Door Switch: Pin {self.door_switch_config.get('pin', 'N/A')}")
         print(f"{'='*60}\n")
 
     def _load_config(self, config_path: str) -> Dict:
@@ -405,6 +411,55 @@ class ArduinoGRBL:
         except Exception as e:
             print(f"Error sending reset: {e}")
             return False
+
+    def read_door_switch(self) -> Optional[bool]:
+        """
+        Read door limit switch state from Arduino digital pin
+
+        Returns:
+            True if door is closed (switch activated), False if open, None on error
+        """
+        if not self.is_connected:
+            print("Not connected to Arduino")
+            return None
+
+        if not self.door_switch_config:
+            print("Door switch not configured")
+            return None
+
+        try:
+            # Send custom M-code to read digital pin
+            # This requires custom firmware on Arduino to support reading digital pins
+            # Format: M119 for GRBL built-in limit switch status
+            response = self._send_command("M119", timeout=1.0)
+
+            if response:
+                # Parse door switch status from response
+                # GRBL M119 format: "Door:X" where X is 0 (open) or 1 (closed)
+                door_match = re.search(r'Door:(\d)', response, re.IGNORECASE)
+                if door_match:
+                    state = int(door_match.group(1))
+                    return bool(state)  # True = closed, False = open
+
+                # Alternative: Check for "Door" keyword in response
+                if "door" in response.lower():
+                    return "closed" in response.lower() or "triggered" in response.lower()
+
+            # If no specific door status, assume open (safe default)
+            return False
+
+        except Exception as e:
+            print(f"Error reading door switch: {e}")
+            return None
+
+    def get_door_switch_state(self) -> Optional[bool]:
+        """
+        Get door limit switch state
+
+        Returns:
+            True if door is closed, False if open, None on error
+        """
+        return self.read_door_switch()
 
     def disconnect(self):
         """
