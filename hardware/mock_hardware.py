@@ -1505,6 +1505,15 @@ class MockHardware:
         print("MOCK: Resume operation")
         return True
 
+    # ========== EXECUTION ENGINE INTEGRATION ==========
+    def set_execution_engine_reference(self, engine):
+        """Set execution engine reference for sensor waiting"""
+        set_execution_engine_reference(engine)
+
+    def flush_all_sensor_buffers(self):
+        """Flush all sensor buffers"""
+        flush_all_sensor_buffers()
+
     def shutdown(self):
         """Shutdown mock hardware"""
         print("MOCK: Shutdown")
