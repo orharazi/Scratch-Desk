@@ -174,7 +174,8 @@ class ArduinoGRBL:
 
             # Send a simple command to verify connection
             print("  Sending status query to GRBL...")
-            response = self._send_command("?")  # Status query
+            response = self._send_command("?")
+            print(f"Response: {response}")  # Status query
 
             if response:
                 self.is_connected = True
