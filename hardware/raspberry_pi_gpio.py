@@ -214,6 +214,9 @@ class RaspberryPiGPIO:
             self.is_initialized = True
             print("\n✓ Raspberry Pi GPIO initialized successfully")
 
+            # Test GPIO reads immediately
+            self._test_gpio_reads()
+
             # Start continuous polling thread for all switches
             self.start_switch_polling()
 
@@ -529,6 +532,61 @@ class RaspberryPiGPIO:
     # Note: Door limit switch has been moved to Arduino GRBL
     # Use hardware_interface.get_door_switch() instead
 
+    # ========== GPIO TEST ==========
+
+    def _test_gpio_reads(self):
+        """Test GPIO reads immediately after initialization"""
+        print("\n" + "="*60)
+        print("TESTING GPIO PIN READS")
+        print("="*60)
+
+        # Test edge sensor pins
+        print("\n📍 Testing Edge Sensor Pins (X/Y axis):")
+        for sensor_name, pin in self.direct_sensor_pins.items():
+            try:
+                # Read pin 5 times rapidly
+                readings = []
+                for _ in range(5):
+                    readings.append(GPIO.input(pin))
+                    time.sleep(0.001)  # 1ms between reads
+
+                # Check if all readings are the same (stable)
+                if len(set(readings)) == 1:
+                    state = readings[0]
+                    print(f"   ✓ {sensor_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} (stable)")
+                else:
+                    print(f"   ⚠️  {sensor_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}")
+                    print(f"      This indicates floating pin or electrical noise!")
+                    print(f"      Check: 1) Wire connection, 2) Pull-down resistor, 3) Power supply")
+            except Exception as e:
+                print(f"   ❌ {sensor_name:20s} [pin {pin:2d}] = ERROR: {e}")
+
+        # Test limit switch pins
+        if self.limit_switch_pins:
+            print("\n🔒 Testing Limit Switch Pins:")
+            for switch_name, pin in self.limit_switch_pins.items():
+                try:
+                    readings = []
+                    for _ in range(5):
+                        readings.append(GPIO.input(pin))
+                        time.sleep(0.001)
+
+                    if len(set(readings)) == 1:
+                        state = readings[0]
+                        inverted = not state
+                        print(f"   ✓ {switch_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} → {'ACTIVATED' if inverted else 'INACTIVE'} (stable)")
+                    else:
+                        print(f"   ⚠️  {switch_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}")
+                except Exception as e:
+                    print(f"   ❌ {switch_name:20s} [pin {pin:2d}] = ERROR: {e}")
+
+        print("\n💡 IMPORTANT: If pins show UNSTABLE:")
+        print("   1. Check physical wiring - loose connections cause noise")
+        print("   2. Ensure switches are properly connected to GND or 3.3V")
+        print("   3. Verify pull-down/pull-up resistors are configured")
+        print("   4. Test: touch wire to GND (should show LOW) or 3.3V (should show HIGH)")
+        print("="*60 + "\n")
+
     # ========== CONTINUOUS SWITCH POLLING ==========
 
     def start_switch_polling(self):
@@ -559,6 +617,8 @@ class RaspberryPiGPIO:
         print("✅ Switch polling thread started!\n")
 
         poll_count = 0
+        debounce_counters = {}  # Track consecutive readings for debouncing
+        DEBOUNCE_COUNT = 3  # Require 3 consecutive same readings to confirm change
 
         while self.polling_active:
             try:
@@ -567,18 +627,46 @@ class RaspberryPiGPIO:
                 # Poll all direct sensor switches (edge sensors)
                 for sensor_name, pin in self.direct_sensor_pins.items():
                     try:
+                        # Read pin multiple times for stability
                         current_state = GPIO.input(pin)
-                        last_state = self.switch_states.get(sensor_name)
 
-                        # Log state change
-                        if last_state is None:
-                            # First read - initialize
+                        # Debounce: require multiple consecutive same readings
+                        last_confirmed_state = self.switch_states.get(sensor_name)
+
+                        if sensor_name not in debounce_counters:
+                            debounce_counters[sensor_name] = {'pending_state': None, 'count': 0}
+
+                        debounce = debounce_counters[sensor_name]
+
+                        # First read - initialize immediately
+                        if last_confirmed_state is None:
                             self.switch_states[sensor_name] = current_state
                             print(f"🔌 SWITCH INITIAL STATE: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}]")
-                        elif last_state != current_state:
-                            # State changed!
-                            self.switch_states[sensor_name] = current_state
-                            print(f"🔔 SWITCH CHANGED: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}] (poll #{poll_count})")
+                            print(f"   💡 To change this switch, physically connect/disconnect pin {pin} to GND or 3.3V")
+                            debounce['pending_state'] = current_state
+                            debounce['count'] = DEBOUNCE_COUNT
+                        else:
+                            # Check if this reading matches pending state
+                            if debounce['pending_state'] == current_state:
+                                debounce['count'] += 1
+                            else:
+                                # State is different, start new debounce sequence
+                                debounce['pending_state'] = current_state
+                                debounce['count'] = 1
+
+                            # If we have enough consecutive readings and it's different from confirmed state
+                            if debounce['count'] >= DEBOUNCE_COUNT and current_state != last_confirmed_state:
+                                # State change confirmed!
+                                self.switch_states[sensor_name] = current_state
+                                old_state_str = 'HIGH (CLOSED/ON)' if last_confirmed_state else 'LOW (OPEN/OFF)'
+                                new_state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
+                                print(f"\n🔔 ═══ SWITCH CHANGED ═══")
+                                print(f"   Switch: {sensor_name}")
+                                print(f"   Pin: {pin}")
+                                print(f"   Old: {old_state_str}")
+                                print(f"   New: {new_state_str}")
+                                print(f"   Poll: #{poll_count}")
+                                print(f"   ═══════════════════════\n")
 
                     except Exception as e:
                         print(f"❌ Error reading {sensor_name} on pin {pin}: {e}")
