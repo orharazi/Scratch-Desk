@@ -59,9 +59,18 @@
   "visualization": {
     "line_width_marks": 3,
     "line_width_cuts": 4,
-    "dash_pattern_pending": [5, 5],
-    "dash_pattern_in_progress": [8, 4],
-    "dash_pattern_completed": [10, 2],
+    "dash_pattern_pending": [
+      5,
+      5
+    ],
+    "dash_pattern_in_progress": [
+      8,
+      4
+    ],
+    "dash_pattern_completed": [
+      10,
+      2
+    ],
     "sensor_indicator_size": 3,
     "sensor_highlight_color": "#FF0000",
     "sensor_highlight_outline": "#8B0000",
@@ -71,13 +80,38 @@
     "motor_intersection_size": 4
   },
   "ui_fonts": {
-    "title": ["Arial", 12, "bold"],
-    "heading": ["Arial", 10, "bold"],
-    "normal": ["Arial", 9],
-    "label": ["Arial", 8, "bold"],
-    "dialog_title": ["Arial", 14, "bold"],
-    "dialog_message": ["Arial", 11],
-    "dialog_label": ["Arial", 10]
+    "title": [
+      "Arial",
+      12,
+      "bold"
+    ],
+    "heading": [
+      "Arial",
+      10,
+      "bold"
+    ],
+    "normal": [
+      "Arial",
+      9
+    ],
+    "label": [
+      "Arial",
+      8,
+      "bold"
+    ],
+    "dialog_title": [
+      "Arial",
+      14,
+      "bold"
+    ],
+    "dialog_message": [
+      "Arial",
+      11
+    ],
+    "dialog_label": [
+      "Arial",
+      10
+    ]
   },
   "ui_spacing": {
     "frame_padding": 5,
@@ -110,7 +144,7 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": true,
+    "use_real_hardware": false,
     "raspberry_pi": {
       "gpio_mode": "BCM",
       "pistons": {
@@ -150,7 +184,7 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/ttyACM0",
+      "serial_port": "/dev/cu.BLTH",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
