@@ -293,15 +293,16 @@ class RightPanel:
         self.progress_label.pack(pady=1)
 
         # TEST CONTROLS SECTION - Hardware testing controls (compact layout)
-        test_controls_frame = tk.Frame(self.scrollable_frame, relief=tk.RIDGE, bd=2, bg='#F0F8FF')
-        test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Store reference for enabling/disabling based on hardware mode
+        self.test_controls_frame = tk.Frame(self.scrollable_frame, relief=tk.RIDGE, bd=2, bg='#F0F8FF')
+        self.test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Title
-        tk.Label(test_controls_frame, text="🧪 TEST CONTROLS", font=('Arial', 9, 'bold'),
+        tk.Label(self.test_controls_frame, text="🧪 TEST CONTROLS", font=('Arial', 9, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(pady=(5, 8))
 
         # EDGE SENSORS Section
-        sensors_frame = tk.Frame(test_controls_frame, bg='#F0F8FF')
+        sensors_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
         sensors_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
         tk.Label(sensors_frame, text="📡 Sensors", font=('Arial', 8, 'bold'),
@@ -332,10 +333,10 @@ class RightPanel:
                  relief=tk.RAISED, bd=2).grid(row=1, column=2, padx=2)
 
         # Separator
-        tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
+        tk.Frame(self.test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
 
         # LIMIT SWITCHES Section
-        limit_switches_frame = tk.Frame(test_controls_frame, bg='#F0F8FF')
+        limit_switches_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
         limit_switches_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
         tk.Label(limit_switches_frame, text="🔌 Limit Switches", font=('Arial', 8, 'bold'),
@@ -377,10 +378,10 @@ class RightPanel:
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=2, column=1, padx=2, sticky='w')
 
         # Separator
-        tk.Frame(test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
+        tk.Frame(self.test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
 
         # PISTONS Section
-        pistons_frame = tk.Frame(test_controls_frame, bg='#F0F8FF')
+        pistons_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
         pistons_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
         tk.Label(pistons_frame, text="🔧 Pistons (↓=checked)", font=('Arial', 8, 'bold'),
@@ -437,6 +438,9 @@ class RightPanel:
         self.main_app.pause_btn = self.pause_btn
         self.main_app.stop_btn = self.stop_btn
         self.main_app.reset_btn = self.reset_btn
+
+        # Disable test controls if in real hardware mode
+        self.update_test_controls_state()
     
     def generate_steps(self):
         """Generate steps for current program"""
@@ -815,3 +819,32 @@ class RightPanel:
         self.sync_checkbox_states()
         # Schedule next update (200ms interval)
         self.main_app.root.after(200, self.schedule_checkbox_sync)
+
+    def update_test_controls_state(self):
+        """Enable/disable test controls based on hardware mode"""
+        # Check if we're using real hardware by checking the class type
+        from hardware.real_hardware import RealHardware
+        is_real_hardware = isinstance(self.hardware, RealHardware)
+
+        if is_real_hardware:
+            # Disable all test controls on real hardware
+            self._set_frame_state(self.test_controls_frame, tk.DISABLED)
+            print("🔒 Test controls DISABLED - Real hardware mode active")
+        else:
+            # Enable test controls in simulation mode
+            self._set_frame_state(self.test_controls_frame, tk.NORMAL)
+            print("🔓 Test controls ENABLED - Simulation mode active")
+
+    def _set_frame_state(self, frame, state):
+        """Recursively set state of all widgets in a frame"""
+        for child in frame.winfo_children():
+            widget_type = child.winfo_class()
+            try:
+                if widget_type in ('Button', 'Checkbutton', 'Radiobutton'):
+                    child.config(state=state)
+                elif widget_type in ('Frame', 'LabelFrame'):
+                    # Recursively handle nested frames
+                    self._set_frame_state(child, state)
+            except tk.TclError:
+                # Some widgets don't support state, skip them
+                pass
