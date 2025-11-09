@@ -116,43 +116,95 @@ class ArduinoGRBL:
             print("Already connected to GRBL")
             return True
 
+        # First check if port is configured
+        if not self.serial_port or self.serial_port == "None":
+            error_msg = "❌ ARDUINO PORT NOT CONFIGURED - No serial port specified in settings"
+            print(f"\n{error_msg}")
+            print("   Please configure the Arduino port in Hardware Settings panel")
+            print("   Select the correct port from the dropdown and click Apply & Save\n")
+            raise RuntimeError(error_msg)
+
         try:
-            print(f"Connecting to GRBL on {self.serial_port} at {self.baud_rate} baud...")
+            print(f"Attempting to connect to Arduino GRBL...")
+            print(f"  Port: {self.serial_port}")
+            print(f"  Baud rate: {self.baud_rate}")
+            print(f"  Timeout: {self.connection_timeout}s")
+
+            # Check if port exists (list available ports)
+            import serial.tools.list_ports
+            available_ports = [port.device for port in serial.tools.list_ports.comports()]
+            print(f"  Available ports: {available_ports if available_ports else 'None found'}")
+
+            if self.serial_port not in available_ports:
+                error_msg = f"❌ PORT NOT FOUND - '{self.serial_port}' is not available"
+                print(f"\n{error_msg}")
+                print(f"   Available ports: {', '.join(available_ports) if available_ports else 'None'}")
+                print("   Check Arduino is connected and port is correct in Hardware Settings\n")
+                raise RuntimeError(error_msg)
 
             # Open serial connection
-            self.serial_connection = serial.Serial(
-                port=self.serial_port,
-                baudrate=self.baud_rate,
-                timeout=self.connection_timeout
-            )
+            try:
+                self.serial_connection = serial.Serial(
+                    port=self.serial_port,
+                    baudrate=self.baud_rate,
+                    timeout=self.connection_timeout
+                )
+                print(f"  ✓ Serial port opened")
+            except serial.SerialException as e:
+                if "Permission denied" in str(e):
+                    error_msg = f"❌ PERMISSION DENIED - Cannot access port '{self.serial_port}'"
+                    print(f"\n{error_msg}")
+                    print("   Try: sudo usermod -a -G dialout $USER")
+                    print("   Then logout and login again\n")
+                elif "Device is busy" in str(e) or "Resource busy" in str(e):
+                    error_msg = f"❌ PORT IN USE - '{self.serial_port}' is already open by another program"
+                    print(f"\n{error_msg}")
+                    print("   Close other programs using the Arduino (Arduino IDE, screen, minicom, etc.)\n")
+                else:
+                    error_msg = f"❌ SERIAL ERROR - {str(e)}"
+                    print(f"\n{error_msg}\n")
+                raise RuntimeError(error_msg)
 
             # Wait for GRBL to initialize (it sends startup message)
+            print("  Waiting for GRBL to initialize...")
             time.sleep(2)
 
             # Flush any startup messages
             self.serial_connection.flushInput()
 
             # Send a simple command to verify connection
+            print("  Sending status query to GRBL...")
             response = self._send_command("?")  # Status query
 
             if response:
                 self.is_connected = True
-                print("✓ Connected to GRBL successfully")
+                print("  ✓ GRBL responded successfully")
+                print("✓ Connected to Arduino GRBL")
 
                 # Initialize GRBL
                 self._initialize_grbl()
                 return True
             else:
-                print("✗ No response from GRBL")
+                error_msg = "❌ NO RESPONSE FROM GRBL - Device not responding or wrong baud rate"
+                print(f"\n{error_msg}")
+                print("   Check:")
+                print("   1. Arduino has GRBL firmware installed")
+                print("   2. Correct baud rate (usually 115200)")
+                print("   3. USB cable supports data (not charge-only)\n")
                 self.disconnect()
-                return False
+                raise RuntimeError(error_msg)
 
+        except RuntimeError:
+            # Re-raise our detailed errors
+            raise
         except serial.SerialException as e:
-            print(f"✗ Serial connection error: {e}")
-            return False
+            error_msg = f"❌ SERIAL EXCEPTION - {type(e).__name__}: {str(e)}"
+            print(f"\n{error_msg}\n")
+            raise RuntimeError(error_msg)
         except Exception as e:
-            print(f"✗ Error connecting to GRBL: {e}")
-            return False
+            error_msg = f"❌ UNEXPECTED ARDUINO ERROR - {type(e).__name__}: {str(e)}"
+            print(f"\n{error_msg}\n")
+            raise RuntimeError(error_msg)
 
     def _initialize_grbl(self):
         """Initialize GRBL with required settings"""

@@ -117,51 +117,95 @@ class RaspberryPiGPIO:
             print("GPIO already initialized")
             return True
 
+        # Check if running on Raspberry Pi
+        try:
+            import RPi.GPIO as GPIO_TEST
+        except (ImportError, RuntimeError) as e:
+            error_msg = "❌ NOT RUNNING ON RASPBERRY PI - RPi.GPIO module not available or not on Pi hardware"
+            print(f"\n{error_msg}")
+            print("   This application requires Raspberry Pi hardware to run in Real Hardware mode.")
+            print("   Switch to Simulation mode in Hardware Settings to test without Pi hardware.\n")
+            raise RuntimeError(error_msg)
+
         try:
             # Set GPIO mode (BCM or BOARD)
             gpio_mode = self.gpio_config.get("gpio_mode", "BCM")
-            if gpio_mode == "BCM":
-                GPIO.setmode(GPIO.BCM)
-            else:
-                GPIO.setmode(GPIO.BOARD)
+            print(f"Setting GPIO mode: {gpio_mode}")
 
-            GPIO.setwarnings(False)
+            try:
+                if gpio_mode == "BCM":
+                    GPIO.setmode(GPIO.BCM)
+                else:
+                    GPIO.setmode(GPIO.BOARD)
+                GPIO.setwarnings(False)
+                print(f"✓ GPIO mode set to {gpio_mode}")
+            except Exception as e:
+                raise RuntimeError(f"Failed to set GPIO mode: {str(e)}. Check GPIO permissions (run with sudo?)")
 
             # Setup piston pins as outputs (default LOW = retracted/up)
+            print(f"\nInitializing {len(self.piston_pins)} piston outputs...")
             for piston_name, pin in self.piston_pins.items():
-                GPIO.setup(pin, GPIO.OUT)
-                GPIO.output(pin, GPIO.LOW)
-                print(f"✓ Piston '{piston_name}' initialized on GPIO {pin} (LOW/retracted)")
+                try:
+                    GPIO.setup(pin, GPIO.OUT)
+                    GPIO.output(pin, GPIO.LOW)
+                    print(f"  ✓ Piston '{piston_name}' on GPIO {pin}")
+                except Exception as e:
+                    raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
 
             # Initialize multiplexer for sensor reading
             if self.multiplexer_config:
-                self.multiplexer = CD74HC4067Multiplexer(
-                    GPIO,
-                    self.multiplexer_config['s0'],
-                    self.multiplexer_config['s1'],
-                    self.multiplexer_config['s2'],
-                    self.multiplexer_config['s3'],
-                    self.multiplexer_config['sig']
-                )
-                print(f"✓ Multiplexer initialized with {len(self.multiplexer_config.get('channels', {}))} sensors")
+                print(f"\nInitializing multiplexer for sensor reading...")
+                try:
+                    self.multiplexer = CD74HC4067Multiplexer(
+                        GPIO,
+                        self.multiplexer_config['s0'],
+                        self.multiplexer_config['s1'],
+                        self.multiplexer_config['s2'],
+                        self.multiplexer_config['s3'],
+                        self.multiplexer_config['sig']
+                    )
+                    channels = self.multiplexer_config.get('channels', {})
+                    print(f"  ✓ Multiplexer initialized")
+                    print(f"  ✓ Control pins: S0={self.multiplexer_config['s0']}, S1={self.multiplexer_config['s1']}, S2={self.multiplexer_config['s2']}, S3={self.multiplexer_config['s3']}")
+                    print(f"  ✓ Signal pin: {self.multiplexer_config['sig']}")
+                    print(f"  ✓ Configured channels: {len(channels)}")
+                except KeyError as e:
+                    raise RuntimeError(f"Multiplexer config missing required key: {str(e)}. Check settings.json")
+                except Exception as e:
+                    raise RuntimeError(f"Failed to initialize multiplexer: {str(e)}")
 
             # Setup direct sensor pins as inputs with pull-down resistors
-            for sensor_name, pin in self.direct_sensor_pins.items():
-                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-                print(f"✓ Direct sensor '{sensor_name}' initialized on GPIO {pin} (INPUT with pull-down)")
+            if self.direct_sensor_pins:
+                print(f"\nInitializing {len(self.direct_sensor_pins)} direct sensor inputs...")
+                for sensor_name, pin in self.direct_sensor_pins.items():
+                    try:
+                        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+                        print(f"  ✓ Sensor '{sensor_name}' on GPIO {pin}")
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to setup sensor '{sensor_name}' on GPIO {pin}: {str(e)}")
 
             # Setup limit switch pins as inputs with pull-up resistors
-            for switch_name, pin in self.limit_switch_pins.items():
-                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                print(f"✓ Limit switch '{switch_name}' initialized on GPIO {pin} (INPUT with pull-up)")
+            if self.limit_switch_pins:
+                print(f"\nInitializing {len(self.limit_switch_pins)} limit switches...")
+                for switch_name, pin in self.limit_switch_pins.items():
+                    try:
+                        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                        print(f"  ✓ Limit switch '{switch_name}' on GPIO {pin}")
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to setup limit switch '{switch_name}' on GPIO {pin}: {str(e)}")
 
             self.is_initialized = True
             print("\n✓ Raspberry Pi GPIO initialized successfully\n")
             return True
 
+        except RuntimeError as e:
+            # Re-raise RuntimeError with our detailed message
+            print(f"\n✗ GPIO Initialization Failed: {str(e)}\n")
+            raise
         except Exception as e:
-            print(f"✗ Error initializing GPIO: {e}")
-            return False
+            error_msg = f"Unexpected GPIO error: {type(e).__name__}: {str(e)}"
+            print(f"\n✗ {error_msg}\n")
+            raise RuntimeError(error_msg)
 
     # ========== PISTON CONTROL METHODS ==========
 
