@@ -150,7 +150,7 @@
       "pistons": {
         "line_marker_piston": 3,
         "line_cutter_piston": 14,
-        "line_motor_piston": 22,
+        "line_motor_piston": 2,
         "row_marker_piston": 15,
         "row_cutter_piston": 10
       },
