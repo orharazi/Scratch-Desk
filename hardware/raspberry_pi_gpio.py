@@ -10,6 +10,7 @@ Uses settings.json for GPIO pin configuration.
 
 import json
 import time
+import threading
 from typing import Dict, Optional
 from hardware.multiplexer import CD74HC4067Multiplexer
 
@@ -87,6 +88,11 @@ class RaspberryPiGPIO:
         self.direct_sensor_pins = self.gpio_config.get("direct_sensors", {})
         self.limit_switch_pins = self.gpio_config.get("limit_switches", {})
         self.multiplexer = None  # Will be initialized later
+
+        # Polling thread for continuous switch monitoring
+        self.polling_thread = None
+        self.polling_active = False
+        self.switch_states = {}  # Track last known state of all switches
 
         print(f"\n{'='*60}")
         print("Raspberry Pi GPIO Configuration")
@@ -206,7 +212,11 @@ class RaspberryPiGPIO:
                         raise RuntimeError(f"Failed to setup limit switch '{switch_name}' on GPIO {pin}: {str(e)}")
 
             self.is_initialized = True
-            print("\n✓ Raspberry Pi GPIO initialized successfully\n")
+            print("\n✓ Raspberry Pi GPIO initialized successfully")
+
+            # Start continuous polling thread for all switches
+            self.start_switch_polling()
+
             return True
 
         except RuntimeError as e:
@@ -519,6 +529,120 @@ class RaspberryPiGPIO:
     # Note: Door limit switch has been moved to Arduino GRBL
     # Use hardware_interface.get_door_switch() instead
 
+    # ========== CONTINUOUS SWITCH POLLING ==========
+
+    def start_switch_polling(self):
+        """Start continuous polling thread to monitor all switches"""
+        if self.polling_active:
+            print("⚠️ Polling thread already running")
+            return
+
+        print("\n🔄 Starting continuous switch polling thread...")
+        print("   This thread will monitor ALL switches and log state changes")
+        print("   Poll interval: 100ms (10 times per second)\n")
+
+        self.polling_active = True
+        self.polling_thread = threading.Thread(target=self._poll_switches_continuously, daemon=True)
+        self.polling_thread.start()
+
+    def stop_switch_polling(self):
+        """Stop the continuous polling thread"""
+        if self.polling_active:
+            print("🛑 Stopping switch polling thread...")
+            self.polling_active = False
+            if self.polling_thread:
+                self.polling_thread.join(timeout=1.0)
+            print("✓ Polling thread stopped")
+
+    def _poll_switches_continuously(self):
+        """Background thread that continuously polls all switches and logs changes"""
+        print("✅ Switch polling thread started!\n")
+
+        poll_count = 0
+
+        while self.polling_active:
+            try:
+                poll_count += 1
+
+                # Poll all direct sensor switches (edge sensors)
+                for sensor_name, pin in self.direct_sensor_pins.items():
+                    try:
+                        current_state = GPIO.input(pin)
+                        last_state = self.switch_states.get(sensor_name)
+
+                        # Log state change
+                        if last_state is None:
+                            # First read - initialize
+                            self.switch_states[sensor_name] = current_state
+                            print(f"🔌 SWITCH INITIAL STATE: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}]")
+                        elif last_state != current_state:
+                            # State changed!
+                            self.switch_states[sensor_name] = current_state
+                            print(f"🔔 SWITCH CHANGED: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}] (poll #{poll_count})")
+
+                    except Exception as e:
+                        print(f"❌ Error reading {sensor_name} on pin {pin}: {e}")
+
+                # Poll multiplexer switches (piston position sensors)
+                if self.multiplexer:
+                    channels = self.multiplexer_config.get('channels', {})
+                    for sensor_name, channel in channels.items():
+                        try:
+                            current_state = self.multiplexer.read_channel(channel)
+                            switch_key = f"mux_{sensor_name}"
+                            last_state = self.switch_states.get(switch_key)
+
+                            # Log state change
+                            if last_state is None:
+                                # First read - initialize
+                                self.switch_states[switch_key] = current_state
+                                print(f"🔌 MUX SWITCH INITIAL: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}]")
+                            elif last_state != current_state:
+                                # State changed!
+                                self.switch_states[switch_key] = current_state
+                                print(f"🔔 MUX SWITCH CHANGED: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}] (poll #{poll_count})")
+
+                        except Exception as e:
+                            print(f"❌ Error reading mux {sensor_name} on channel {channel}: {e}")
+
+                # Poll limit switches
+                for switch_name, pin in self.limit_switch_pins.items():
+                    try:
+                        raw_state = GPIO.input(pin)
+                        current_state = not raw_state  # Inverted: LOW = activated
+                        switch_key = f"limit_{switch_name}"
+                        last_state = self.switch_states.get(switch_key)
+
+                        # Log state change
+                        if last_state is None:
+                            # First read - initialize
+                            self.switch_states[switch_key] = current_state
+                            print(f"🔌 LIMIT SWITCH INITIAL: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}]")
+                        elif last_state != current_state:
+                            # State changed!
+                            self.switch_states[switch_key] = current_state
+                            print(f"🔔 LIMIT SWITCH CHANGED: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}] (poll #{poll_count})")
+
+                    except Exception as e:
+                        print(f"❌ Error reading limit switch {switch_name} on pin {pin}: {e}")
+
+                # Status update every 100 polls (10 seconds at 100ms interval)
+                if poll_count % 100 == 0:
+                    edge_count = len(self.direct_sensor_pins)
+                    mux_count = len(self.multiplexer_config.get('channels', {})) if self.multiplexer else 0
+                    limit_count = len(self.limit_switch_pins)
+                    total = edge_count + mux_count + limit_count
+                    print(f"💓 Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {mux_count} mux + {limit_count} limit)")
+
+                # Sleep 100ms between polls (10 Hz)
+                time.sleep(0.1)
+
+            except Exception as e:
+                print(f"❌ Polling thread error: {e}")
+                time.sleep(0.1)
+
+        print("🛑 Polling thread exiting")
+
     # ========== CLEANUP ==========
 
     def cleanup(self):
@@ -528,6 +652,9 @@ class RaspberryPiGPIO:
         """
         if self.is_initialized:
             try:
+                # Stop polling thread first
+                self.stop_switch_polling()
+
                 # Set all pistons to retracted/up position before cleanup
                 for piston_name in self.piston_pins:
                     self.piston_up(piston_name)
