@@ -309,6 +309,13 @@ class RaspberryPiGPIO:
             elif sensor_name in self.direct_sensor_pins:
                 pin = self.direct_sensor_pins[sensor_name]
                 state = GPIO.input(pin)
+                # Debug: Print edge sensor states when they change
+                if sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']:
+                    if not hasattr(self, '_last_edge_states'):
+                        self._last_edge_states = {}
+                    if self._last_edge_states.get(sensor_name) != state:
+                        print(f"🔍 EDGE SENSOR CHANGED: {sensor_name} = {'HIGH (TRIGGERED)' if state else 'LOW (READY)'} (pin {pin})")
+                        self._last_edge_states[sensor_name] = state
                 return state  # HIGH = triggered (True), LOW = not triggered (False)
 
             else:
@@ -379,7 +386,9 @@ class RaspberryPiGPIO:
 
     def get_x_left_edge_sensor(self) -> Optional[bool]:
         """Read X-axis LEFT edge sensor state"""
-        return self.read_sensor("x_left_edge")
+        state = self.read_sensor("x_left_edge")
+        self._debug_edge_sensors()
+        return state
 
     def get_x_right_edge_sensor(self) -> Optional[bool]:
         """Read X-axis RIGHT edge sensor state"""
@@ -392,6 +401,24 @@ class RaspberryPiGPIO:
     def get_y_bottom_edge_sensor(self) -> Optional[bool]:
         """Read Y-axis BOTTOM edge sensor state"""
         return self.read_sensor("y_bottom_edge")
+
+    def _debug_edge_sensors(self):
+        """Periodically print all edge sensor states for debugging"""
+        import time
+        if not hasattr(self, '_last_debug_time'):
+            self._last_debug_time = 0
+
+        current_time = time.time()
+        # Print every 5 seconds
+        if current_time - self._last_debug_time > 5.0:
+            self._last_debug_time = current_time
+            x_left = self.read_sensor("x_left_edge")
+            x_right = self.read_sensor("x_right_edge")
+            y_top = self.read_sensor("y_top_edge")
+            y_bottom = self.read_sensor("y_bottom_edge")
+            print(f"\n📊 EDGE SENSORS STATUS:")
+            print(f"   X-Left: {'TRIG' if x_left else 'READY'} | X-Right: {'TRIG' if x_right else 'READY'}")
+            print(f"   Y-Top: {'TRIG' if y_top else 'READY'} | Y-Bottom: {'TRIG' if y_bottom else 'READY'}\n")
 
     # ========== LIMIT SWITCHES ==========
 
