@@ -102,6 +102,18 @@ class CD74HC4067Multiplexer:
         # Read digital value from SIG pin
         value = self.GPIO.input(self.sig)
 
+        # Debug logging for channel reads (reduced frequency)
+        if not hasattr(self, '_debug_reads'):
+            self._debug_reads = 0
+            self._last_channel_states = {}
+
+        self._debug_reads += 1
+
+        # Log when a channel state changes
+        if self._last_channel_states.get(channel) != value:
+            print(f"🔍 MUX CHANNEL {channel} CHANGED: {'HIGH (TRIG)' if value else 'LOW (READY)'}")
+            self._last_channel_states[channel] = value
+
         return bool(value)
 
     def cleanup(self):

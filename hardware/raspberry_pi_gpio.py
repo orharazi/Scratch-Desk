@@ -407,18 +407,30 @@ class RaspberryPiGPIO:
         import time
         if not hasattr(self, '_last_debug_time'):
             self._last_debug_time = 0
+            self._debug_counter = 0
 
         current_time = time.time()
-        # Print every 5 seconds
-        if current_time - self._last_debug_time > 5.0:
+        self._debug_counter += 1
+
+        # Print every 2 seconds with read counter
+        if current_time - self._last_debug_time > 2.0:
             self._last_debug_time = current_time
             x_left = self.read_sensor("x_left_edge")
             x_right = self.read_sensor("x_right_edge")
             y_top = self.read_sensor("y_top_edge")
             y_bottom = self.read_sensor("y_bottom_edge")
-            print(f"\n📊 EDGE SENSORS STATUS:")
-            print(f"   X-Left: {'TRIG' if x_left else 'READY'} | X-Right: {'TRIG' if x_right else 'READY'}")
-            print(f"   Y-Top: {'TRIG' if y_top else 'READY'} | Y-Bottom: {'TRIG' if y_bottom else 'READY'}\n")
+
+            # Also read all piston sensors
+            line_marker_up = self.read_sensor("line_marker_up_sensor")
+            line_marker_down = self.read_sensor("line_marker_down_sensor")
+
+            print(f"\n📊 SENSOR POLLING STATUS (reads: {self._debug_counter}):")
+            print(f"   Edge Sensors:")
+            print(f"      X-Left: {'TRIG' if x_left else 'READY'} | X-Right: {'TRIG' if x_right else 'READY'}")
+            print(f"      Y-Top: {'TRIG' if y_top else 'READY'} | Y-Bottom: {'TRIG' if y_bottom else 'READY'}")
+            print(f"   Piston Sensors (sample):")
+            print(f"      Line Marker Up: {'TRIG' if line_marker_up else 'READY'} | Down: {'TRIG' if line_marker_down else 'READY'}")
+            print(f"   💡 Change a sensor wire now to see it update!\n")
 
     # ========== LIMIT SWITCHES ==========
 
