@@ -91,6 +91,17 @@ class RaspberryPiGPIO:
         print(f"\n{'='*60}")
         print("Raspberry Pi GPIO Configuration")
         print(f"{'='*60}")
+        print(f"GPIO Library: {'REAL RPi.GPIO' if GPIO_AVAILABLE else '⚠️  MOCK GPIO (NOT READING REAL PINS!)'}")
+        print(f"GPIO Type: {type(GPIO).__name__}")
+        print(f"GPIO Module: {GPIO.__class__.__module__ if hasattr(GPIO, '__class__') else 'N/A'}")
+
+        if not GPIO_AVAILABLE:
+            print(f"\n⚠️⚠️⚠️  WARNING  ⚠️⚠️⚠️")
+            print(f"MOCK GPIO IS BEING USED!")
+            print(f"Real hardware sensors WILL NOT BE READ!")
+            print(f"Make sure RPi.GPIO is installed: pip3 install RPi.GPIO")
+            print(f"⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️\n")
+
         print(f"Piston pins: {self.piston_pins}")
         print(f"Multiplexer config: {self.multiplexer_config}")
         print(f"Direct sensor pins: {self.direct_sensor_pins}")
@@ -308,14 +319,28 @@ class RaspberryPiGPIO:
             # Check if it's a direct sensor
             elif sensor_name in self.direct_sensor_pins:
                 pin = self.direct_sensor_pins[sensor_name]
+
+                # Read the GPIO pin - THIS IS THE CRITICAL READ
                 state = GPIO.input(pin)
-                # Debug: Print edge sensor states when they change
+
+                # Debug: Log ALL reads for edge sensors (not just changes)
                 if sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']:
                     if not hasattr(self, '_last_edge_states'):
                         self._last_edge_states = {}
+                        self._edge_read_count = {}
+
+                    # Count reads
+                    self._edge_read_count[sensor_name] = self._edge_read_count.get(sensor_name, 0) + 1
+
+                    # Log changes with read count
                     if self._last_edge_states.get(sensor_name) != state:
-                        print(f"🔍 EDGE SENSOR CHANGED: {sensor_name} = {'HIGH (TRIGGERED)' if state else 'LOW (READY)'} (pin {pin})")
+                        print(f"🔍 EDGE SENSOR CHANGED: {sensor_name} = {'HIGH (TRIGGERED)' if state else 'LOW (READY)'} (pin {pin}, read #{self._edge_read_count[sensor_name]})")
                         self._last_edge_states[sensor_name] = state
+
+                    # Every 50 reads, show we're still polling (even if no change)
+                    if self._edge_read_count[sensor_name] % 50 == 0:
+                        print(f"   ✓ Still polling {sensor_name}: {'TRIG' if state else 'READY'} (read #{self._edge_read_count[sensor_name]})")
+
                 return state  # HIGH = triggered (True), LOW = not triggered (False)
 
             else:
