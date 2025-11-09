@@ -148,12 +148,11 @@
     "raspberry_pi": {
       "gpio_mode": "BCM",
       "pistons": {
-        "line_marker_piston": 17,
-        "line_cutter_piston": 27,
-        "line_motor_piston_left": 22,
-        "line_motor_piston_right": 11,
-        "row_marker_piston": 23,
-        "row_cutter_piston": 24
+        "line_marker_piston": 3,
+        "line_cutter_piston": 14,
+        "line_motor_piston": 22,
+        "row_marker_piston": 15,
+        "row_cutter_piston": 10
       },
       "multiplexer": {
         "s0": 6,
@@ -177,10 +176,10 @@
         }
       },
       "direct_sensors": {
-        "x_left_edge": 20,
-        "x_right_edge": 21,
-        "y_top_edge": 19,
-        "y_bottom_edge": 26
+        "x_left_edge": 4,
+        "x_right_edge": 17,
+        "y_top_edge": 7,
+        "y_bottom_edge": 8
       }
     },
     "arduino_grbl": {

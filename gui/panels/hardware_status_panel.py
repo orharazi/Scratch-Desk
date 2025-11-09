@@ -108,8 +108,7 @@ class HardwareStatusPanel:
         row_offset += 1
         self._create_grid_item(grid_frame, 1, row_offset, "Marker", "lines_piston_marker", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 1, "Cutter", "lines_piston_cutter", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, "Motor Left", "lines_piston_motor_left", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 3, "Motor Right", "lines_piston_motor_right", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, "Motor", "lines_piston_motor", label_font, tiny_font)
 
         # ROWS Section
         self._create_section_header(grid_frame, 2, row, "✂️ ROWS", heading_font)
@@ -363,13 +362,9 @@ class HardwareStatusPanel:
             self._update_widget('lines_piston_cutter', line_cutter_piston_state,
                                self.piston_down_color if line_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
-            line_motor_left_piston_state = self.hardware.get_line_motor_piston_left_state().upper()
-            self._update_widget('lines_piston_motor_left', line_motor_left_piston_state,
-                               self.piston_down_color if line_motor_left_piston_state == 'DOWN' else self.piston_up_color)
-
-            line_motor_right_piston_state = self.hardware.get_line_motor_piston_right_state().upper()
-            self._update_widget('lines_piston_motor_right', line_motor_right_piston_state,
-                               self.piston_down_color if line_motor_right_piston_state == 'DOWN' else self.piston_up_color)
+            line_motor_piston_state = self.hardware.get_line_motor_piston_state().upper()
+            self._update_widget('lines_piston_motor', line_motor_piston_state,
+                               self.piston_down_color if line_motor_piston_state == 'DOWN' else self.piston_up_color)
 
             # ROWS SECTION - Tool Sensors (UP/DOWN sensors for each tool)
             # Color coded: READY (False)=blue, TRIGGERED (True)=red

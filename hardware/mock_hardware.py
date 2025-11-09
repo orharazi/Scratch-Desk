@@ -99,14 +99,10 @@ line_cutter_piston = "up"          # Piston control: "up" (default) or "down" (f
 line_cutter_up_sensor = True       # Sensor: True when piston is UP (default)
 line_cutter_down_sensor = False    # Sensor: True when piston is DOWN
 
-# Line Motor - TWO pistons (left + right), each with dual sensors
-line_motor_piston_left = "down"    # Left piston: "down" (default) or "up" (during upward Y movement)
-line_motor_left_up_sensor = False  # Sensor: True when left piston is UP
-line_motor_left_down_sensor = True # Sensor: True when left piston is DOWN (default)
-
-line_motor_piston_right = "down"   # Right piston: "down" (default) or "up" (during upward Y movement)
-line_motor_right_up_sensor = False # Sensor: True when right piston is UP
-line_motor_right_down_sensor = True # Sensor: True when right piston is DOWN (default)
+# Line Motor - Single piston (left and right connected to same port)
+line_motor_piston = "down"         # Piston control: "down" (default) or "up" (during upward Y movement)
+line_motor_up_sensor = False       # Sensor: True when piston is UP
+line_motor_down_sensor = True      # Sensor: True when piston is DOWN (default)
 
 # ROWS TOOLS (X-axis / vertical operations)
 # Row Marker - single piston with dual sensors
@@ -726,78 +722,35 @@ def line_cutter_piston_down():
 
 # Line motor piston control functions
 # Line motor dual pistons (left + right) control functions
-def line_motor_piston_left_up():
-    """Lift left line motor piston (raises left side of Y motor assembly)"""
-    global line_motor_piston_left, line_motor_left_up_sensor, line_motor_left_down_sensor
-    print("MOCK: line_motor_piston_left_up()")
-    if line_motor_piston_left != "up":
-        print("Raising left line motor piston - lifting left side of Y motor assembly")
-        time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_motor_piston_left = "up"
-        # Update sensors: up sensor ON, down sensor OFF
-        line_motor_left_up_sensor = True
-        line_motor_left_down_sensor = False
-        print("Left line motor piston UP (up_sensor=True, down_sensor=False)")
-    else:
-        print("Left line motor piston already UP")
-
-def line_motor_piston_left_down():
-    """Lower left line motor piston (lowers left side of Y motor assembly)"""
-    global line_motor_piston_left, line_motor_left_up_sensor, line_motor_left_down_sensor
-    print("MOCK: line_motor_piston_left_down()")
-    if line_motor_piston_left != "down":
-        print("Lowering left line motor piston - lowering left side of Y motor assembly")
-        time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_motor_piston_left = "down"
-        # Update sensors: up sensor OFF, down sensor ON
-        line_motor_left_up_sensor = False
-        line_motor_left_down_sensor = True
-        print("Left line motor piston DOWN (up_sensor=False, down_sensor=True)")
-    else:
-        print("Left line motor piston already DOWN")
-
-def line_motor_piston_right_up():
-    """Lift right line motor piston (raises right side of Y motor assembly)"""
-    global line_motor_piston_right, line_motor_right_up_sensor, line_motor_right_down_sensor
-    print("MOCK: line_motor_piston_right_up()")
-    if line_motor_piston_right != "up":
-        print("Raising right line motor piston - lifting right side of Y motor assembly")
-        time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_motor_piston_right = "up"
-        # Update sensors: up sensor ON, down sensor OFF
-        line_motor_right_up_sensor = True
-        line_motor_right_down_sensor = False
-        print("Right line motor piston UP (up_sensor=True, down_sensor=False)")
-    else:
-        print("Right line motor piston already UP")
-
-def line_motor_piston_right_down():
-    """Lower right line motor piston (lowers right side of Y motor assembly)"""
-    global line_motor_piston_right, line_motor_right_up_sensor, line_motor_right_down_sensor
-    print("MOCK: line_motor_piston_right_down()")
-    if line_motor_piston_right != "down":
-        print("Lowering right line motor piston - lowering right side of Y motor assembly")
-        time.sleep(timing_settings.get("tool_action_delay", 0.1))
-        line_motor_piston_right = "down"
-        # Update sensors: up sensor OFF, down sensor ON
-        line_motor_right_up_sensor = False
-        line_motor_right_down_sensor = True
-        print("Right line motor piston DOWN (up_sensor=False, down_sensor=True)")
-    else:
-        print("Right line motor piston already DOWN")
-
-# Convenience functions to control both pistons together
 def line_motor_piston_up():
-    """Lift both line motor pistons (raises entire Y motor assembly)"""
-    print("MOCK: line_motor_piston_up() - lifting BOTH pistons")
-    line_motor_piston_left_up()
-    line_motor_piston_right_up()
+    """Lift line motor piston (raises entire Y motor assembly)"""
+    global line_motor_piston, line_motor_up_sensor, line_motor_down_sensor
+    print("MOCK: line_motor_piston_up()")
+    if line_motor_piston != "up":
+        print("Raising line motor piston - lifting Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston = "up"
+        # Update sensors: up sensor ON, down sensor OFF
+        line_motor_up_sensor = True
+        line_motor_down_sensor = False
+        print("Line motor piston UP (up_sensor=True, down_sensor=False)")
+    else:
+        print("Line motor piston already UP")
 
 def line_motor_piston_down():
-    """Lower both line motor pistons (lowers entire Y motor assembly)"""
-    print("MOCK: line_motor_piston_down() - lowering BOTH pistons")
-    line_motor_piston_left_down()
-    line_motor_piston_right_down()
+    """Lower line motor piston (lowers entire Y motor assembly)"""
+    global line_motor_piston, line_motor_up_sensor, line_motor_down_sensor
+    print("MOCK: line_motor_piston_down()")
+    if line_motor_piston != "down":
+        print("Lowering line motor piston - lowering Y motor assembly")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        line_motor_piston = "down"
+        # Update sensors: up sensor OFF, down sensor ON
+        line_motor_up_sensor = False
+        line_motor_down_sensor = True
+        print("Line motor piston DOWN (up_sensor=False, down_sensor=True)")
+    else:
+        print("Line motor piston already DOWN")
 
 # Row marker piston control functions
 def row_marker_piston_up():
@@ -1040,30 +993,17 @@ def get_line_cutter_down_sensor():
     return line_cutter_down_sensor
 
 # Line Motor Left Piston getters
-def get_line_motor_piston_left_state():
-    """Get current line motor left piston state"""
-    return line_motor_piston_left
+def get_line_motor_piston_state():
+    """Get current line motor piston state"""
+    return line_motor_piston
 
-def get_line_motor_left_up_sensor():
-    """Get line motor left up sensor state"""
-    return line_motor_left_up_sensor
+def get_line_motor_up_sensor():
+    """Get line motor up sensor state"""
+    return line_motor_up_sensor
 
-def get_line_motor_left_down_sensor():
-    """Get line motor left down sensor state"""
-    return line_motor_left_down_sensor
-
-# Line Motor Right Piston getters
-def get_line_motor_piston_right_state():
-    """Get current line motor right piston state"""
-    return line_motor_piston_right
-
-def get_line_motor_right_up_sensor():
-    """Get line motor right up sensor state"""
-    return line_motor_right_up_sensor
-
-def get_line_motor_right_down_sensor():
-    """Get line motor right down sensor state"""
-    return line_motor_right_down_sensor
+def get_line_motor_down_sensor():
+    """Get line motor down sensor state"""
+    return line_motor_down_sensor
 
 # Row Marker getters
 def get_row_marker_piston_state():
@@ -1107,10 +1047,6 @@ def get_row_marker_state():
 def get_row_cutter_state():
     """Get current row cutter state (legacy - returns 'up' if up_sensor True, else 'down')"""
     return "up" if row_cutter_up_sensor else "down"
-
-def get_line_motor_piston_state():
-    """Get current line motor piston state (legacy - returns left piston state)"""
-    return "up" if line_motor_left_up_sensor else "down"
 
 # Edge sensor getters
 def get_x_left_edge():
@@ -1268,18 +1204,6 @@ class MockHardware:
     def line_motor_piston_up(self) -> bool:
         return line_motor_piston_up()
 
-    def line_motor_piston_left_down(self) -> bool:
-        return line_motor_piston_left_down()
-
-    def line_motor_piston_left_up(self) -> bool:
-        return line_motor_piston_left_up()
-
-    def line_motor_piston_right_down(self) -> bool:
-        return line_motor_piston_right_down()
-
-    def line_motor_piston_right_up(self) -> bool:
-        return line_motor_piston_right_up()
-
     def row_marker_piston_down(self) -> bool:
         return row_marker_piston_down()
 
@@ -1339,17 +1263,11 @@ class MockHardware:
     def get_line_cutter_down_sensor(self) -> bool:
         return get_line_cutter_down_sensor()
 
-    def get_line_motor_left_up_sensor(self) -> bool:
-        return get_line_motor_left_up_sensor()
+    def get_line_motor_up_sensor(self) -> bool:
+        return get_line_motor_up_sensor()
 
-    def get_line_motor_left_down_sensor(self) -> bool:
-        return get_line_motor_left_down_sensor()
-
-    def get_line_motor_right_up_sensor(self) -> bool:
-        return get_line_motor_right_up_sensor()
-
-    def get_line_motor_right_down_sensor(self) -> bool:
-        return get_line_motor_right_down_sensor()
+    def get_line_motor_down_sensor(self) -> bool:
+        return get_line_motor_down_sensor()
 
     def get_row_marker_up_sensor(self) -> bool:
         return get_row_marker_up_sensor()
@@ -1384,12 +1302,6 @@ class MockHardware:
 
     def get_line_motor_piston_state(self) -> str:
         return get_line_motor_piston_state()
-
-    def get_line_motor_piston_left_state(self) -> str:
-        return get_line_motor_piston_left_state()
-
-    def get_line_motor_piston_right_state(self) -> str:
-        return get_line_motor_piston_right_state()
 
     def get_row_marker_piston_state(self) -> str:
         return get_row_marker_piston_state()
