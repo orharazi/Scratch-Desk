@@ -824,14 +824,10 @@ def get_hardware_status():
         'line_cutter_piston': line_cutter_piston,
         'line_cutter_up_sensor': line_cutter_up_sensor,
         'line_cutter_down_sensor': line_cutter_down_sensor,
-        # Line motor left piston
-        'line_motor_piston_left': line_motor_piston_left,
-        'line_motor_left_up_sensor': line_motor_left_up_sensor,
-        'line_motor_left_down_sensor': line_motor_left_down_sensor,
-        # Line motor right piston
-        'line_motor_piston_right': line_motor_piston_right,
-        'line_motor_right_up_sensor': line_motor_right_up_sensor,
-        'line_motor_right_down_sensor': line_motor_right_down_sensor,
+        # Line motor piston
+        'line_motor_piston': line_motor_piston,
+        'line_motor_up_sensor': line_motor_up_sensor,
+        'line_motor_down_sensor': line_motor_down_sensor,
         # Row marker
         'row_marker_piston': row_marker_piston,
         'row_marker_up_sensor': row_marker_up_sensor,
