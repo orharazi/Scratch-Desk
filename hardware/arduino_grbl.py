@@ -244,8 +244,9 @@ class ArduinoGRBL:
         Returns:
             Response from GRBL, or None on error
         """
-        if not self.is_connected or not self.serial_connection:
-            print("Not connected to GRBL")
+        # Allow commands if serial connection exists (even if not fully connected yet)
+        if not self.serial_connection:
+            print("No serial connection available")
             return None
 
         if timeout is None:
@@ -261,6 +262,7 @@ class ArduinoGRBL:
                 # Read response
                 start_time = time.time()
                 response_lines = []
+                is_status_query = command == "?"
 
                 while time.time() - start_time < timeout:
                     if self.serial_connection.in_waiting > 0:
@@ -269,7 +271,12 @@ class ArduinoGRBL:
                             response_lines.append(line)
                             print(f"GRBL << {line}")
 
-                            # Check for completion indicators
+                            # Status queries return immediately with <...> format
+                            if is_status_query and line.startswith("<") and line.endswith(">"):
+                                response = "\n".join(response_lines)
+                                return response
+
+                            # Regular commands wait for ok or error
                             if "ok" in line.lower() or "error" in line.lower():
                                 response = "\n".join(response_lines)
                                 return response
