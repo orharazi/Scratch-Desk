@@ -268,6 +268,14 @@ class HardwareStatusPanel:
             # Get all hardware states
             hw_status = self.hardware.get_hardware_status()
 
+            # Check for hardware initialization errors
+            if 'error' in hw_status and not hw_status.get('is_initialized', True):
+                print(f"❌ HARDWARE ERROR: {hw_status['error']}")
+                # Show error in position displays
+                self._update_widget('x_position', "ERROR", "#FF0000")
+                self._update_widget('y_position', hw_status['error'][:20], "#FF0000")
+                return
+
             # Debug: Print that we're updating
             print(f"🔧 Hardware status update: X={hw_status.get('x_position', '?')}, Y={hw_status.get('y_position', '?')}")
 

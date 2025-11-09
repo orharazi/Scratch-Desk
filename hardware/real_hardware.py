@@ -34,12 +34,17 @@ class RealHardware:
         self.gpio: Optional[RaspberryPiGPIO] = None
         self.grbl: Optional[ArduinoGRBL] = None
         self.is_initialized = False
+        self.initialization_error = None
 
         print(f"\n{'='*60}")
         print("Real Hardware Interface Configuration")
         print(f"{'='*60}")
         print(f"Mode: REAL HARDWARE")
         print(f"{'='*60}\n")
+
+        # Attempt to initialize hardware
+        if not self.initialize():
+            self.initialization_error = "Failed to initialize hardware. Check connections and try again."
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from config/settings.json"""
@@ -61,29 +66,47 @@ class RealHardware:
             print("Hardware already initialized")
             return True
 
-        success = True
+        errors = []
 
         # Initialize Raspberry Pi GPIO
         print("\nInitializing Raspberry Pi GPIO...")
-        self.gpio = RaspberryPiGPIO(self.config_path)
-        if not self.gpio.initialize():
-            print("✗ Failed to initialize GPIO")
-            success = False
+        try:
+            self.gpio = RaspberryPiGPIO(self.config_path)
+            if not self.gpio.initialize():
+                error_msg = "GPIO initialization failed"
+                print(f"✗ {error_msg}")
+                errors.append(error_msg)
+            else:
+                print("✓ GPIO initialized successfully")
+        except Exception as e:
+            error_msg = f"GPIO error: {str(e)}"
+            print(f"✗ {error_msg}")
+            errors.append(error_msg)
 
         # Initialize Arduino GRBL
         print("\nInitializing Arduino GRBL...")
-        self.grbl = ArduinoGRBL(self.config_path)
-        if not self.grbl.connect():
-            print("✗ Failed to connect to GRBL")
-            success = False
+        try:
+            self.grbl = ArduinoGRBL(self.config_path)
+            if not self.grbl.connect():
+                error_msg = "GRBL connection failed - check Arduino port and connection"
+                print(f"✗ {error_msg}")
+                errors.append(error_msg)
+            else:
+                print("✓ GRBL connected successfully")
+        except Exception as e:
+            error_msg = f"GRBL error: {str(e)}"
+            print(f"✗ {error_msg}")
+            errors.append(error_msg)
 
-        if success:
+        if not errors:
             self.is_initialized = True
+            self.initialization_error = None
             print("\n✓ All hardware initialized successfully\n")
+            return True
         else:
-            print("\n✗ Hardware initialization failed\n")
-
-        return success
+            self.initialization_error = "; ".join(errors)
+            print(f"\n✗ Hardware initialization failed: {self.initialization_error}\n")
+            return False
 
     # ========== MOTOR CONTROL (via GRBL) ==========
 
@@ -724,20 +747,54 @@ class RealHardware:
     # ========== HARDWARE STATUS ==========
 
     def get_hardware_status(self):
-        """Get complete hardware status dictionary"""
+        """Get complete hardware status dictionary with all sensors"""
+        if not self.is_initialized or not self.gpio:
+            return {
+                'error': self.initialization_error or 'Hardware not initialized',
+                'is_initialized': False,
+                'x_position': 0,
+                'y_position': 0
+            }
+
         return {
+            # Motor positions
             'x_position': self.get_current_x(),
             'y_position': self.get_current_y(),
-            'line_marker': self.get_line_marker_state(),
-            'line_cutter': self.get_line_cutter_state(),
+
+            # Tool piston states
+            'line_marker_piston': self.get_line_marker_state(),
+            'line_cutter_piston': self.get_line_cutter_state(),
             'line_motor_piston': self.get_line_motor_piston_state(),
-            'row_marker': self.get_row_marker_state(),
-            'row_cutter': self.get_row_cutter_state(),
-            'door_switch': self.get_door_switch(),
+            'row_marker_piston': self.get_row_marker_state(),
+            'row_cutter_piston': self.get_row_cutter_state(),
+
+            # Tool sensors - Lines
+            'line_marker_up_sensor': self.gpio.get_line_marker_up_sensor() if self.gpio else False,
+            'line_marker_down_sensor': self.gpio.get_line_marker_down_sensor() if self.gpio else False,
+            'line_cutter_up_sensor': self.gpio.get_line_cutter_up_sensor() if self.gpio else False,
+            'line_cutter_down_sensor': self.gpio.get_line_cutter_down_sensor() if self.gpio else False,
+            'line_motor_left_up_sensor': self.gpio.get_line_motor_left_up_sensor() if self.gpio else False,
+            'line_motor_left_down_sensor': self.gpio.get_line_motor_left_down_sensor() if self.gpio else False,
+            'line_motor_right_up_sensor': self.gpio.get_line_motor_right_up_sensor() if self.gpio else False,
+            'line_motor_right_down_sensor': self.gpio.get_line_motor_right_down_sensor() if self.gpio else False,
+
+            # Tool sensors - Rows
+            'row_marker_up_sensor': self.gpio.get_row_marker_up_sensor() if self.gpio else False,
+            'row_marker_down_sensor': self.gpio.get_row_marker_down_sensor() if self.gpio else False,
+            'row_cutter_up_sensor': self.gpio.get_row_cutter_up_sensor() if self.gpio else False,
+            'row_cutter_down_sensor': self.gpio.get_row_cutter_down_sensor() if self.gpio else False,
+
+            # Edge sensors
             'x_left_edge': self.get_x_left_edge(),
             'x_right_edge': self.get_x_right_edge(),
             'y_top_edge': self.get_y_top_edge(),
-            'y_bottom_edge': self.get_y_bottom_edge()
+            'y_bottom_edge': self.get_y_bottom_edge(),
+
+            # Limit switches
+            'row_marker_limit_switch': self.get_door_switch(),
+
+            # Status
+            'is_initialized': self.is_initialized
         }
 
     def reset_hardware(self):
