@@ -1,0 +1,606 @@
+{
+  "command_categories": [
+    {
+      "id": "motion",
+      "name": "Motion Commands",
+      "description": "Commands for moving the machine",
+      "icon": "move",
+      "commands": [
+        {
+          "code": "G0",
+          "name": "Rapid Move",
+          "description": "Fast positioning (no cutting)",
+          "parameters": ["X", "Y", "Z"],
+          "template": "G0 X{x} Y{y}",
+          "color": "#3498DB"
+        },
+        {
+          "code": "G1",
+          "name": "Linear Move",
+          "description": "Controlled movement at feed rate",
+          "parameters": ["X", "Y", "Z", "F"],
+          "template": "G1 X{x} Y{y} F{f}",
+          "color": "#2ECC71"
+        },
+        {
+          "code": "G2",
+          "name": "Arc CW",
+          "description": "Clockwise circular arc",
+          "parameters": ["X", "Y", "I", "J", "R", "F"],
+          "template": "G2 X{x} Y{y} I{i} J{j} F{f}",
+          "color": "#9B59B6"
+        },
+        {
+          "code": "G3",
+          "name": "Arc CCW",
+          "description": "Counter-clockwise arc",
+          "parameters": ["X", "Y", "I", "J", "R", "F"],
+          "template": "G3 X{x} Y{y} I{i} J{j} F{f}",
+          "color": "#9B59B6"
+        }
+      ]
+    },
+    {
+      "id": "coordinate",
+      "name": "Coordinate Systems",
+      "description": "Work coordinate and positioning",
+      "icon": "crosshair",
+      "commands": [
+        {
+          "code": "G54",
+          "name": "WCS 1",
+          "description": "Work coordinate system 1",
+          "parameters": [],
+          "template": "G54",
+          "color": "#E67E22"
+        },
+        {
+          "code": "G55",
+          "name": "WCS 2",
+          "description": "Work coordinate system 2",
+          "parameters": [],
+          "template": "G55",
+          "color": "#E67E22"
+        },
+        {
+          "code": "G10_L20",
+          "name": "Set Zero",
+          "description": "Set current position as zero",
+          "parameters": ["P", "X", "Y", "Z"],
+          "template": "G10 L20 P1 X0 Y0",
+          "color": "#E74C3C"
+        },
+        {
+          "code": "G92",
+          "name": "Temp Offset",
+          "description": "Temporary coordinate offset",
+          "parameters": ["X", "Y", "Z"],
+          "template": "G92 X0 Y0",
+          "color": "#E74C3C"
+        }
+      ]
+    },
+    {
+      "id": "mode",
+      "name": "Distance & Feed Modes",
+      "description": "Distance and feed rate modes",
+      "icon": "settings",
+      "commands": [
+        {
+          "code": "G90",
+          "name": "Absolute",
+          "description": "Absolute positioning mode",
+          "parameters": [],
+          "template": "G90",
+          "color": "#16A085"
+        },
+        {
+          "code": "G91",
+          "name": "Incremental",
+          "description": "Relative positioning mode",
+          "parameters": [],
+          "template": "G91",
+          "color": "#16A085"
+        },
+        {
+          "code": "G94",
+          "name": "Feed/Min",
+          "description": "Feed rate per minute (default)",
+          "parameters": [],
+          "template": "G94",
+          "color": "#16A085"
+        }
+      ]
+    },
+    {
+      "id": "units",
+      "name": "Units & Plane",
+      "description": "Unit and plane selection",
+      "icon": "ruler",
+      "commands": [
+        {
+          "code": "G20",
+          "name": "Inches",
+          "description": "Use inch units",
+          "parameters": [],
+          "template": "G20",
+          "color": "#27AE60"
+        },
+        {
+          "code": "G21",
+          "name": "Millimeters",
+          "description": "Use millimeter units",
+          "parameters": [],
+          "template": "G21",
+          "color": "#27AE60"
+        },
+        {
+          "code": "G17",
+          "name": "XY Plane",
+          "description": "XY plane for arcs",
+          "parameters": [],
+          "template": "G17",
+          "color": "#27AE60"
+        }
+      ]
+    },
+    {
+      "id": "spindle",
+      "name": "Spindle Control",
+      "description": "Tool spindle commands",
+      "icon": "rotate",
+      "commands": [
+        {
+          "code": "M3",
+          "name": "Spindle CW",
+          "description": "Start spindle clockwise",
+          "parameters": ["S"],
+          "template": "M3 S{s}",
+          "color": "#2980B9"
+        },
+        {
+          "code": "M4",
+          "name": "Spindle CCW",
+          "description": "Start spindle counter-clockwise",
+          "parameters": ["S"],
+          "template": "M4 S{s}",
+          "color": "#2980B9"
+        },
+        {
+          "code": "M5",
+          "name": "Spindle Off",
+          "description": "Stop spindle",
+          "parameters": [],
+          "template": "M5",
+          "color": "#C0392B"
+        }
+      ]
+    },
+    {
+      "id": "coolant",
+      "name": "Coolant Control",
+      "description": "Coolant system commands",
+      "icon": "droplet",
+      "commands": [
+        {
+          "code": "M7",
+          "name": "Mist On",
+          "description": "Enable mist coolant",
+          "parameters": [],
+          "template": "M7",
+          "color": "#3498DB"
+        },
+        {
+          "code": "M8",
+          "name": "Flood On",
+          "description": "Enable flood coolant",
+          "parameters": [],
+          "template": "M8",
+          "color": "#3498DB"
+        },
+        {
+          "code": "M9",
+          "name": "Coolant Off",
+          "description": "Disable all coolant",
+          "parameters": [],
+          "template": "M9",
+          "color": "#95A5A6"
+        }
+      ]
+    },
+    {
+      "id": "program",
+      "name": "Program Control",
+      "description": "Program flow control",
+      "icon": "play",
+      "commands": [
+        {
+          "code": "M0",
+          "name": "Pause",
+          "description": "Program pause",
+          "parameters": [],
+          "template": "M0",
+          "color": "#F39C12"
+        },
+        {
+          "code": "M2",
+          "name": "End",
+          "description": "Program end",
+          "parameters": [],
+          "template": "M2",
+          "color": "#E74C3C"
+        },
+        {
+          "code": "G4",
+          "name": "Dwell",
+          "description": "Pause for time",
+          "parameters": ["P"],
+          "template": "G4 P{p}",
+          "color": "#F39C12"
+        }
+      ]
+    },
+    {
+      "id": "system",
+      "name": "GRBL System",
+      "description": "GRBL system commands",
+      "icon": "system",
+      "commands": [
+        {
+          "code": "$H",
+          "name": "Home",
+          "description": "Run homing cycle",
+          "parameters": [],
+          "template": "$H",
+          "color": "#E67E22",
+          "important": true
+        },
+        {
+          "code": "$X",
+          "name": "Unlock",
+          "description": "Clear alarm lock",
+          "parameters": [],
+          "template": "$X",
+          "color": "#E74C3C",
+          "important": true
+        },
+        {
+          "code": "$$",
+          "name": "View Settings",
+          "description": "Display all settings",
+          "parameters": [],
+          "template": "$$",
+          "color": "#95A5A6"
+        },
+        {
+          "code": "$#",
+          "name": "View Offsets",
+          "description": "Display coordinate offsets",
+          "parameters": [],
+          "template": "$#",
+          "color": "#95A5A6"
+        },
+        {
+          "code": "$G",
+          "name": "View State",
+          "description": "Display parser state",
+          "parameters": [],
+          "template": "$G",
+          "color": "#95A5A6"
+        },
+        {
+          "code": "$I",
+          "name": "Version",
+          "description": "Display GRBL version",
+          "parameters": [],
+          "template": "$I",
+          "color": "#95A5A6"
+        }
+      ]
+    },
+    {
+      "id": "realtime",
+      "name": "Realtime Control",
+      "description": "Immediate control commands",
+      "icon": "lightning",
+      "commands": [
+        {
+          "code": "?",
+          "name": "Status",
+          "description": "Query machine status",
+          "parameters": [],
+          "template": "?",
+          "char": "?",
+          "color": "#3498DB",
+          "important": true
+        },
+        {
+          "code": "!",
+          "name": "Feed Hold",
+          "description": "Pause all motion",
+          "parameters": [],
+          "template": "!",
+          "char": "!",
+          "color": "#E74C3C",
+          "important": true
+        },
+        {
+          "code": "~",
+          "name": "Resume",
+          "description": "Resume from hold",
+          "parameters": [],
+          "template": "~",
+          "char": "~",
+          "color": "#2ECC71",
+          "important": true
+        },
+        {
+          "code": "CTRL_X",
+          "name": "Soft Reset",
+          "description": "Emergency reset",
+          "parameters": [],
+          "template": "\\x18",
+          "char": "\\x18",
+          "hex": "0x18",
+          "color": "#C0392B",
+          "important": true
+        }
+      ]
+    },
+    {
+      "id": "jog",
+      "name": "Jogging",
+      "description": "Manual jogging commands",
+      "icon": "arrows",
+      "commands": [
+        {
+          "code": "JOG_X_POS",
+          "name": "X+",
+          "description": "Jog X positive",
+          "parameters": ["distance", "feed"],
+          "template": "$J=G91 X{distance} F{feed}",
+          "color": "#3498DB"
+        },
+        {
+          "code": "JOG_X_NEG",
+          "name": "X-",
+          "description": "Jog X negative",
+          "parameters": ["distance", "feed"],
+          "template": "$J=G91 X-{distance} F{feed}",
+          "color": "#3498DB"
+        },
+        {
+          "code": "JOG_Y_POS",
+          "name": "Y+",
+          "description": "Jog Y positive",
+          "parameters": ["distance", "feed"],
+          "template": "$J=G91 Y{distance} F{feed}",
+          "color": "#2ECC71"
+        },
+        {
+          "code": "JOG_Y_NEG",
+          "name": "Y-",
+          "description": "Jog Y negative",
+          "parameters": ["distance", "feed"],
+          "template": "$J=G91 Y-{distance} F{feed}",
+          "color": "#2ECC71"
+        },
+        {
+          "code": "JOG_CANCEL",
+          "name": "Cancel Jog",
+          "description": "Cancel all jogging",
+          "parameters": [],
+          "template": "\\x85",
+          "char": "\\x85",
+          "hex": "0x85",
+          "color": "#E74C3C"
+        }
+      ]
+    }
+  ],
+  "quick_actions": [
+    {
+      "id": "home",
+      "name": "Home Machine",
+      "icon": "home",
+      "command": "$H",
+      "description": "Home all axes",
+      "color": "#E67E22",
+      "shortcut": "H"
+    },
+    {
+      "id": "unlock",
+      "name": "Unlock",
+      "icon": "unlock",
+      "command": "$X",
+      "description": "Clear alarm",
+      "color": "#E74C3C",
+      "shortcut": "U"
+    },
+    {
+      "id": "status",
+      "name": "Status",
+      "icon": "info",
+      "command": "?",
+      "description": "Query status",
+      "color": "#3498DB",
+      "shortcut": "S"
+    },
+    {
+      "id": "zero",
+      "name": "Set Zero",
+      "icon": "target",
+      "command": "G10 L20 P1 X0 Y0",
+      "description": "Zero at current position",
+      "color": "#2ECC71",
+      "shortcut": "Z"
+    },
+    {
+      "id": "go_zero",
+      "name": "Go to Zero",
+      "icon": "compass",
+      "command": "G90 G0 X0 Y0",
+      "description": "Move to work zero",
+      "color": "#9B59B6",
+      "shortcut": "0"
+    }
+  ],
+  "preset_positions": [
+    {
+      "id": "origin",
+      "name": "Origin",
+      "x": 0,
+      "y": 0,
+      "description": "Work coordinate origin"
+    },
+    {
+      "id": "center",
+      "name": "Center",
+      "x": 50,
+      "y": 35,
+      "description": "Center of work area"
+    },
+    {
+      "id": "top_left",
+      "name": "Top Left",
+      "x": 0,
+      "y": 0,
+      "description": "Top left corner"
+    },
+    {
+      "id": "top_right",
+      "name": "Top Right",
+      "x": 100,
+      "y": 0,
+      "description": "Top right corner"
+    },
+    {
+      "id": "bottom_left",
+      "name": "Bottom Left",
+      "x": 0,
+      "y": 70,
+      "description": "Bottom left corner"
+    },
+    {
+      "id": "bottom_right",
+      "name": "Bottom Right",
+      "x": 100,
+      "y": 70,
+      "description": "Bottom right corner"
+    }
+  ],
+  "jog_presets": [
+    {
+      "name": "0.1mm",
+      "value": 0.01,
+      "units": "cm",
+      "description": "Fine adjustment"
+    },
+    {
+      "name": "1mm",
+      "value": 0.1,
+      "units": "cm",
+      "description": "Small step"
+    },
+    {
+      "name": "10mm",
+      "value": 1.0,
+      "units": "cm",
+      "description": "Medium step"
+    },
+    {
+      "name": "100mm",
+      "value": 10.0,
+      "units": "cm",
+      "description": "Large step"
+    }
+  ],
+  "feed_rate_presets": [
+    {
+      "name": "Slow",
+      "value": 500,
+      "units": "mm/min",
+      "description": "Precise movements"
+    },
+    {
+      "name": "Normal",
+      "value": 1000,
+      "units": "mm/min",
+      "description": "Default speed"
+    },
+    {
+      "name": "Fast",
+      "value": 2000,
+      "units": "mm/min",
+      "description": "Quick positioning"
+    }
+  ],
+  "initialization_sequence": {
+    "name": "Initialize Machine",
+    "description": "Standard initialization sequence",
+    "commands": [
+      {"command": "G21", "description": "Set millimeters"},
+      {"command": "G90", "description": "Absolute positioning"},
+      {"command": "G54", "description": "Work coordinate system 1"},
+      {"command": "G17", "description": "XY plane"}
+    ]
+  },
+  "grbl_settings": {
+    "steps_per_mm": {
+      "x": {"param": "$100", "default": 250.0, "description": "X steps per mm"},
+      "y": {"param": "$101", "default": 250.0, "description": "Y steps per mm"},
+      "z": {"param": "$102", "default": 250.0, "description": "Z steps per mm"}
+    },
+    "max_rate": {
+      "x": {"param": "$110", "default": 1000.0, "description": "X max rate mm/min"},
+      "y": {"param": "$111", "default": 1000.0, "description": "Y max rate mm/min"},
+      "z": {"param": "$112", "default": 1000.0, "description": "Z max rate mm/min"}
+    },
+    "acceleration": {
+      "x": {"param": "$120", "default": 10.0, "description": "X acceleration mm/sec²"},
+      "y": {"param": "$121", "default": 10.0, "description": "Y acceleration mm/sec²"},
+      "z": {"param": "$122", "default": 10.0, "description": "Z acceleration mm/sec²"}
+    },
+    "max_travel": {
+      "x": {"param": "$130", "default": 200.0, "description": "X max travel mm"},
+      "y": {"param": "$131", "default": 200.0, "description": "Y max travel mm"},
+      "z": {"param": "$132", "default": 200.0, "description": "Z max travel mm"}
+    },
+    "other": {
+      "homing_enable": {"param": "$22", "default": 0, "description": "Homing cycle enable"},
+      "soft_limits": {"param": "$20", "default": 0, "description": "Soft limits enable"},
+      "hard_limits": {"param": "$21", "default": 0, "description": "Hard limits enable"}
+    }
+  },
+  "machine_states": [
+    {"state": "Idle", "color": "#2ECC71", "description": "Ready for commands"},
+    {"state": "Run", "color": "#3498DB", "description": "Executing motion"},
+    {"state": "Hold", "color": "#F39C12", "description": "Feed hold active"},
+    {"state": "Alarm", "color": "#E74C3C", "description": "Alarm lock"},
+    {"state": "Home", "color": "#9B59B6", "description": "Homing cycle"},
+    {"state": "Check", "color": "#95A5A6", "description": "Check mode"}
+  ],
+  "error_codes": [
+    {"code": 1, "message": "G-code words repeated", "severity": "error"},
+    {"code": 2, "message": "Bad number format", "severity": "error"},
+    {"code": 3, "message": "Invalid $ command", "severity": "error"},
+    {"code": 9, "message": "G-code not supported", "severity": "error"},
+    {"code": 20, "message": "Soft limit triggered", "severity": "alarm"},
+    {"code": 21, "message": "Line overflow", "severity": "error"}
+  ],
+  "alarm_codes": [
+    {"code": 1, "message": "Hard limit triggered", "action": "Check limit switches, unlock with $X"},
+    {"code": 2, "message": "Soft limit triggered", "action": "Move away from limit, unlock with $X"},
+    {"code": 3, "message": "Abort during cycle", "action": "Normal after soft reset"},
+    {"code": 9, "message": "Homing not enabled", "action": "Enable $22=1 or skip homing"}
+  ],
+  "connection_config": {
+    "baud_rate": 115200,
+    "data_bits": 8,
+    "parity": "none",
+    "stop_bits": 1,
+    "flow_control": "none",
+    "line_ending": "\\n",
+    "timeout": 2.0
+  }
+}

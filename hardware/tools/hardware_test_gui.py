@@ -298,6 +298,41 @@ class UltimateHardwareTestGUI:
         ttk.Radiobutton(speed_frame, text="Normal", variable=self.speed_var, value="normal").pack(side=tk.LEFT, padx=5)
         ttk.Radiobutton(speed_frame, text="Fast", variable=self.speed_var, value="fast").pack(side=tk.LEFT, padx=5)
 
+        # Limit switches
+        limit_frame = ttk.LabelFrame(right_frame, text="Limit Switches (Live)", padding="10")
+        limit_frame.pack(fill="x", pady=5)
+
+        limit_switches = [
+            ("Top Limit", "top_limit_switch"),
+            ("Bottom Limit", "bottom_limit_switch"),
+            ("Left Limit", "left_limit_switch"),
+            ("Right Limit", "right_limit_switch"),
+            ("Rows Limit", "rows_limit_switch")
+        ]
+
+        for i, (name, switch_id) in enumerate(limit_switches):
+            # Switch name
+            ttk.Label(limit_frame, text=name, width=13).grid(row=i, column=0, sticky="w", pady=2)
+
+            # Port info
+            port_info = self.port_mappings.get(switch_id, {})
+            port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
+            ttk.Label(limit_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=i, column=1, sticky="w", pady=2)
+
+            # Connection indicator
+            conn_indicator = tk.Label(limit_frame, text="●", font=("Arial", 10), fg="#95A5A6")
+            conn_indicator.grid(row=i, column=2, padx=2, pady=2)
+            self.sensor_connection_widgets[switch_id] = conn_indicator
+
+            # State label
+            state_label = ttk.Label(limit_frame, text="OPEN", width=10,
+                                   relief=tk.SUNKEN, anchor=tk.CENTER,
+                                   background="#95A5A6", foreground="white",
+                                   font=("Arial", 8, "bold"))
+            state_label.grid(row=i, column=3, padx=5, pady=2)
+
+            self.sensor_widgets[switch_id] = state_label
+
     def create_pistons_tab(self):
         """Create pistons and sensors control tab"""
         # Configure grid
@@ -431,8 +466,8 @@ class UltimateHardwareTestGUI:
                 self.sensor_widgets[sensor_id] = state_label
                 row += 1
 
-        # Edge sensors
-        edge_frame = ttk.LabelFrame(right_frame, text="Edge Detection Sensors", padding="10")
+        # Edge switches
+        edge_frame = ttk.LabelFrame(right_frame, text="Edge Switches", padding="10")
         edge_frame.pack(fill="x", pady=5)
 
         edge_sensors = [
@@ -464,41 +499,6 @@ class UltimateHardwareTestGUI:
             state_label.grid(row=i, column=3, padx=5, pady=2)
 
             self.sensor_widgets[sensor_id] = state_label
-
-        # Limit switches
-        limit_frame = ttk.LabelFrame(right_frame, text="Limit Switches (Live)", padding="10")
-        limit_frame.pack(fill="x", pady=5)
-
-        limit_switches = [
-            ("Top Limit", "top_limit_switch"),
-            ("Bottom Limit", "bottom_limit_switch"),
-            ("Left Limit", "left_limit_switch"),
-            ("Right Limit", "right_limit_switch"),
-            ("Rows Limit", "rows_limit_switch")
-        ]
-
-        for i, (name, switch_id) in enumerate(limit_switches):
-            # Switch name
-            ttk.Label(limit_frame, text=name, width=13).grid(row=i, column=0, sticky="w", pady=2)
-
-            # Port info
-            port_info = self.port_mappings.get(switch_id, {})
-            port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
-            ttk.Label(limit_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=i, column=1, sticky="w", pady=2)
-
-            # Connection indicator
-            conn_indicator = tk.Label(limit_frame, text="●", font=("Arial", 10), fg="#95A5A6")
-            conn_indicator.grid(row=i, column=2, padx=2, pady=2)
-            self.sensor_connection_widgets[switch_id] = conn_indicator
-
-            # State label
-            state_label = ttk.Label(limit_frame, text="OPEN", width=10,
-                                   relief=tk.SUNKEN, anchor=tk.CENTER,
-                                   background="#95A5A6", foreground="white",
-                                   font=("Arial", 8, "bold"))
-            state_label.grid(row=i, column=3, padx=5, pady=2)
-
-            self.sensor_widgets[switch_id] = state_label
 
     def create_grbl_tab(self):
         """Create GRBL settings management tab"""
@@ -593,12 +593,61 @@ class UltimateHardwareTestGUI:
             self.grbl_entries[param] = entry
 
         # Command console on right
-        console_frame = ttk.LabelFrame(self.grbl_tab, text="Direct GRBL Commands", padding="10")
+        console_frame = ttk.LabelFrame(self.grbl_tab, text="G-code Commands & Console", padding="10")
         console_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
+
+        # Quick G-code commands
+        quick_commands_frame = ttk.LabelFrame(console_frame, text="Quick Commands", padding="5")
+        quick_commands_frame.pack(fill="x", pady=(0, 10))
+
+        # Motion commands
+        motion_frame = ttk.Frame(quick_commands_frame)
+        motion_frame.pack(fill="x", pady=2)
+        ttk.Label(motion_frame, text="Motion:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(motion_frame, text="G0 (Rapid)", width=12, command=lambda: self.insert_command("G0 X0 Y0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(motion_frame, text="G1 (Linear)", width=12, command=lambda: self.insert_command("G1 X0 Y0 F1000")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(motion_frame, text="G2 (Arc CW)", width=12, command=lambda: self.insert_command("G2 X10 Y10 I5 J0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(motion_frame, text="G3 (Arc CCW)", width=12, command=lambda: self.insert_command("G3 X10 Y10 I5 J0")).pack(side=tk.LEFT, padx=2)
+
+        # Mode commands
+        mode_frame = ttk.Frame(quick_commands_frame)
+        mode_frame.pack(fill="x", pady=2)
+        ttk.Label(mode_frame, text="Modes:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(mode_frame, text="G90 (Absolute)", width=14, command=lambda: self.insert_command("G90")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mode_frame, text="G91 (Relative)", width=14, command=lambda: self.insert_command("G91")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mode_frame, text="G21 (Metric)", width=13, command=lambda: self.insert_command("G21")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mode_frame, text="G20 (Inches)", width=13, command=lambda: self.insert_command("G20")).pack(side=tk.LEFT, padx=2)
+
+        # Coordinate commands
+        coord_frame = ttk.Frame(quick_commands_frame)
+        coord_frame.pack(fill="x", pady=2)
+        ttk.Label(coord_frame, text="Coords:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(coord_frame, text="G54 (WCS 1)", width=12, command=lambda: self.insert_command("G54")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(coord_frame, text="G92 X0 Y0", width=12, command=lambda: self.insert_command("G92 X0 Y0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(coord_frame, text="G10 Set WCS", width=12, command=lambda: self.insert_command("G10 L20 P1 X0 Y0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(coord_frame, text="G28 (Home)", width=12, command=lambda: self.insert_command("G28")).pack(side=tk.LEFT, padx=2)
+
+        # Program control
+        prog_frame = ttk.Frame(quick_commands_frame)
+        prog_frame.pack(fill="x", pady=2)
+        ttk.Label(prog_frame, text="Program:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(prog_frame, text="M0 (Pause)", width=11, command=lambda: self.insert_command("M0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(prog_frame, text="M2 (End)", width=11, command=lambda: self.insert_command("M2")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(prog_frame, text="M30 (End)", width=11, command=lambda: self.insert_command("M30")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(prog_frame, text="G4 P1 (Dwell)", width=13, command=lambda: self.insert_command("G4 P1.0")).pack(side=tk.LEFT, padx=2)
+
+        # Status/Query
+        status_frame = ttk.Frame(quick_commands_frame)
+        status_frame.pack(fill="x", pady=2)
+        ttk.Label(status_frame, text="Query:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(status_frame, text="? (Status)", width=11, command=lambda: self.insert_command("?")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(status_frame, text="$G (State)", width=11, command=lambda: self.insert_command("$G")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(status_frame, text="$# (Offsets)", width=11, command=lambda: self.insert_command("$#")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(status_frame, text="$I (Info)", width=13, command=lambda: self.insert_command("$I")).pack(side=tk.LEFT, padx=2)
 
         # Command input
         input_frame = ttk.Frame(console_frame)
-        input_frame.pack(fill="x", pady=(0, 5))
+        input_frame.pack(fill="x", pady=(10, 5))
 
         ttk.Label(input_frame, text="Command:").pack(side=tk.LEFT, padx=(0, 5))
         self.grbl_command_entry = ttk.Entry(input_frame)
@@ -609,7 +658,7 @@ class UltimateHardwareTestGUI:
 
         # Response display
         ttk.Label(console_frame, text="Response:").pack(anchor="w", pady=(5, 0))
-        self.grbl_response_text = scrolledtext.ScrolledText(console_frame, height=20, width=40,
+        self.grbl_response_text = scrolledtext.ScrolledText(console_frame, height=12, width=40,
                                                            font=("Courier", 9))
         self.grbl_response_text.pack(fill="both", expand=True)
 
@@ -1217,6 +1266,14 @@ class UltimateHardwareTestGUI:
 
         except Exception as e:
             self.log("ERROR", f"Error homing GRBL: {str(e)}")
+
+    def insert_command(self, command):
+        """Insert a command template into the command entry"""
+        self.grbl_command_entry.delete(0, tk.END)
+        self.grbl_command_entry.insert(0, command)
+        self.grbl_command_entry.focus_set()
+        # Position cursor at end
+        self.grbl_command_entry.icursor(tk.END)
 
     def send_grbl_command(self):
         """Send direct GRBL command"""
