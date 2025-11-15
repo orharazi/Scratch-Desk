@@ -3,7 +3,7 @@
 import threading
 import time
 import json
-from hardware.hardware_factory import get_hardware_interface
+from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.safety_system import SafetyViolation, check_step_safety
 
 # Load settings

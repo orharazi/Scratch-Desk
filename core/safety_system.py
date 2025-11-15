@@ -5,7 +5,7 @@ Safety System for CNC Scratch Desk Control
 Prevents dangerous operations that could damage the hardware
 """
 
-from hardware.hardware_factory import get_hardware_interface
+from hardware.interfaces.hardware_factory import get_hardware_interface
 
 class SafetyViolation(Exception):
     """Exception raised when a safety condition is violated"""

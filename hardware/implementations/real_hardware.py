@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 
 """
-Unified Hardware Interface
-===========================
+Real Hardware Implementation
+=============================
 
 Combines Raspberry Pi GPIO and Arduino GRBL into single interface.
-Automatically switches between real hardware and mock based on settings.json.
+This class contains ONLY real hardware implementation.
 """
 
 import json
 from typing import Optional, Dict
-from hardware.raspberry_pi_gpio import RaspberryPiGPIO
-from hardware.arduino_grbl import ArduinoGRBL
+from hardware.implementations.raspberry_pi_gpio import RaspberryPiGPIO
+from hardware.implementations.arduino_grbl import ArduinoGRBL
 
 
-class HardwareInterface:
+class RealHardware:
     """
-    Unified interface for all hardware control
+    Real Hardware Implementation
     Manages both Raspberry Pi GPIO and Arduino GRBL
     """
 
@@ -30,19 +30,21 @@ class HardwareInterface:
         self.config_path = config_path
         self.config = self._load_config(config_path)
 
-        # Check if real hardware should be used
-        self.use_real_hardware = self.config.get("hardware_config", {}).get("use_real_hardware", False)
-
         # Initialize components
         self.gpio: Optional[RaspberryPiGPIO] = None
         self.grbl: Optional[ArduinoGRBL] = None
         self.is_initialized = False
+        self.initialization_error = None
 
         print(f"\n{'='*60}")
-        print("Hardware Interface Configuration")
+        print("Real Hardware Interface Configuration")
         print(f"{'='*60}")
-        print(f"Mode: {'REAL HARDWARE' if self.use_real_hardware else 'MOCK/SIMULATION'}")
+        print(f"Mode: REAL HARDWARE")
         print(f"{'='*60}\n")
+
+        # Attempt to initialize hardware
+        if not self.initialize():
+            self.initialization_error = "Failed to initialize hardware. Check connections and try again."
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from config/settings.json"""
@@ -64,35 +66,47 @@ class HardwareInterface:
             print("Hardware already initialized")
             return True
 
-        if not self.use_real_hardware:
-            print("⚠ Running in MOCK mode - no real hardware will be used")
-            print("  To enable real hardware, set 'use_real_hardware': true in settings.json")
-            self.is_initialized = True
-            return True
-
-        success = True
+        errors = []
 
         # Initialize Raspberry Pi GPIO
         print("\nInitializing Raspberry Pi GPIO...")
-        self.gpio = RaspberryPiGPIO(self.config_path)
-        if not self.gpio.initialize():
-            print("✗ Failed to initialize GPIO")
-            success = False
+        try:
+            self.gpio = RaspberryPiGPIO(self.config_path)
+            if not self.gpio.initialize():
+                error_msg = "GPIO initialization failed"
+                print(f"✗ {error_msg}")
+                errors.append(error_msg)
+            else:
+                print("✓ GPIO initialized successfully")
+        except Exception as e:
+            error_msg = f"GPIO error: {str(e)}"
+            print(f"✗ {error_msg}")
+            errors.append(error_msg)
 
         # Initialize Arduino GRBL
         print("\nInitializing Arduino GRBL...")
-        self.grbl = ArduinoGRBL(self.config_path)
-        if not self.grbl.connect():
-            print("✗ Failed to connect to GRBL")
-            success = False
+        try:
+            self.grbl = ArduinoGRBL(self.config_path)
+            if not self.grbl.connect():
+                error_msg = "GRBL connection failed - check Arduino port and connection"
+                print(f"✗ {error_msg}")
+                errors.append(error_msg)
+            else:
+                print("✓ GRBL connected successfully")
+        except Exception as e:
+            error_msg = f"GRBL error: {str(e)}"
+            print(f"✗ {error_msg}")
+            errors.append(error_msg)
 
-        if success:
+        if not errors:
             self.is_initialized = True
+            self.initialization_error = None
             print("\n✓ All hardware initialized successfully\n")
+            return True
         else:
-            print("\n✗ Hardware initialization failed\n")
-
-        return success
+            self.initialization_error = "; ".join(errors)
+            print(f"\n✗ Hardware initialization failed: {self.initialization_error}\n")
+            return False
 
     # ========== MOTOR CONTROL (via GRBL) ==========
 
@@ -106,10 +120,6 @@ class HardwareInterface:
         Returns:
             True if successful, False otherwise
         """
-        if not self.use_real_hardware:
-            print(f"MOCK: move_x({position:.2f}cm)")
-            return True
-
         if not self.is_initialized or not self.grbl:
             print("Hardware not initialized")
             return False
@@ -127,10 +137,6 @@ class HardwareInterface:
         Returns:
             True if successful, False otherwise
         """
-        if not self.use_real_hardware:
-            print(f"MOCK: move_y({position:.2f}cm)")
-            return True
-
         if not self.is_initialized or not self.grbl:
             print("Hardware not initialized")
             return False
@@ -149,10 +155,6 @@ class HardwareInterface:
         Returns:
             True if successful, False otherwise
         """
-        if not self.use_real_hardware:
-            print(f"MOCK: move_to(x={x:.2f}cm, y={y:.2f}cm)")
-            return True
-
         if not self.is_initialized or not self.grbl:
             print("Hardware not initialized")
             return False
@@ -166,10 +168,6 @@ class HardwareInterface:
         Returns:
             True if successful, False otherwise
         """
-        if not self.use_real_hardware:
-            print("MOCK: home_motors()")
-            return True
-
         if not self.is_initialized or not self.grbl:
             print("Hardware not initialized")
             return False
@@ -180,10 +178,6 @@ class HardwareInterface:
 
     def line_marker_piston_down(self) -> bool:
         """Lower line marker piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_marker_piston_down()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -192,10 +186,6 @@ class HardwareInterface:
 
     def line_marker_piston_up(self) -> bool:
         """Raise line marker piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_marker_piston_up()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -204,10 +194,6 @@ class HardwareInterface:
 
     def line_cutter_piston_down(self) -> bool:
         """Lower line cutter piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_cutter_piston_down()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -216,10 +202,6 @@ class HardwareInterface:
 
     def line_cutter_piston_up(self) -> bool:
         """Raise line cutter piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_cutter_piston_up()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -227,11 +209,7 @@ class HardwareInterface:
         return self.gpio.piston_up("line_cutter_piston")
 
     def line_motor_piston_down(self) -> bool:
-        """Lower BOTH line motor pistons (left and right)"""
-        if not self.use_real_hardware:
-            print("MOCK: line_motor_piston_down()")
-            return True
-
+        """Lower line motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -239,71 +217,15 @@ class HardwareInterface:
         return self.gpio.line_motor_piston_down()
 
     def line_motor_piston_up(self) -> bool:
-        """Raise BOTH line motor pistons (left and right)"""
-        if not self.use_real_hardware:
-            print("MOCK: line_motor_piston_up()")
-            return True
-
+        """Raise line motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
 
         return self.gpio.line_motor_piston_up()
 
-    def line_motor_piston_left_down(self) -> bool:
-        """Lower line motor LEFT piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_motor_piston_left_down()")
-            return True
-
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_left_down()
-
-    def line_motor_piston_left_up(self) -> bool:
-        """Raise line motor LEFT piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_motor_piston_left_up()")
-            return True
-
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_left_up()
-
-    def line_motor_piston_right_down(self) -> bool:
-        """Lower line motor RIGHT piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_motor_piston_right_down()")
-            return True
-
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_right_down()
-
-    def line_motor_piston_right_up(self) -> bool:
-        """Raise line motor RIGHT piston"""
-        if not self.use_real_hardware:
-            print("MOCK: line_motor_piston_right_up()")
-            return True
-
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_right_up()
-
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
-        if not self.use_real_hardware:
-            print("MOCK: row_marker_piston_down()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -312,10 +234,6 @@ class HardwareInterface:
 
     def row_marker_piston_up(self) -> bool:
         """Raise row marker piston"""
-        if not self.use_real_hardware:
-            print("MOCK: row_marker_piston_up()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -324,10 +242,6 @@ class HardwareInterface:
 
     def row_cutter_piston_down(self) -> bool:
         """Lower row cutter piston"""
-        if not self.use_real_hardware:
-            print("MOCK: row_cutter_piston_down()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -336,10 +250,6 @@ class HardwareInterface:
 
     def row_cutter_piston_up(self) -> bool:
         """Raise row cutter piston"""
-        if not self.use_real_hardware:
-            print("MOCK: row_cutter_piston_up()")
-            return True
-
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -351,9 +261,6 @@ class HardwareInterface:
     # Line Marker Sensors
     def get_line_marker_up_sensor(self) -> bool:
         """Read line marker UP sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -362,9 +269,6 @@ class HardwareInterface:
 
     def get_line_marker_down_sensor(self) -> bool:
         """Read line marker DOWN sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -374,9 +278,6 @@ class HardwareInterface:
     # Line Cutter Sensors
     def get_line_cutter_up_sensor(self) -> bool:
         """Read line cutter UP sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -385,9 +286,6 @@ class HardwareInterface:
 
     def get_line_cutter_down_sensor(self) -> bool:
         """Read line cutter DOWN sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -397,9 +295,6 @@ class HardwareInterface:
     # Line Motor Left Piston Sensors
     def get_line_motor_left_up_sensor(self) -> bool:
         """Read line motor LEFT piston UP sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -408,9 +303,6 @@ class HardwareInterface:
 
     def get_line_motor_left_down_sensor(self) -> bool:
         """Read line motor LEFT piston DOWN sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -420,9 +312,6 @@ class HardwareInterface:
     # Line Motor Right Piston Sensors
     def get_line_motor_right_up_sensor(self) -> bool:
         """Read line motor RIGHT piston UP sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -431,9 +320,6 @@ class HardwareInterface:
 
     def get_line_motor_right_down_sensor(self) -> bool:
         """Read line motor RIGHT piston DOWN sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -443,9 +329,6 @@ class HardwareInterface:
     # Row Marker Sensors
     def get_row_marker_up_sensor(self) -> bool:
         """Read row marker UP sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -454,9 +337,6 @@ class HardwareInterface:
 
     def get_row_marker_down_sensor(self) -> bool:
         """Read row marker DOWN sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -466,9 +346,6 @@ class HardwareInterface:
     # Row Cutter Sensors
     def get_row_cutter_up_sensor(self) -> bool:
         """Read row cutter UP sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -477,9 +354,6 @@ class HardwareInterface:
 
     def get_row_cutter_down_sensor(self) -> bool:
         """Read row cutter DOWN sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -490,9 +364,6 @@ class HardwareInterface:
 
     def get_x_left_edge_sensor(self) -> bool:
         """Read X-axis LEFT edge sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -501,9 +372,6 @@ class HardwareInterface:
 
     def get_x_right_edge_sensor(self) -> bool:
         """Read X-axis RIGHT edge sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -512,9 +380,6 @@ class HardwareInterface:
 
     def get_y_top_edge_sensor(self) -> bool:
         """Read Y-axis TOP edge sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -523,9 +388,6 @@ class HardwareInterface:
 
     def get_y_bottom_edge_sensor(self) -> bool:
         """Read Y-axis BOTTOM edge sensor state"""
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.gpio:
             return False
 
@@ -555,9 +417,6 @@ class HardwareInterface:
         Returns:
             True if door is closed, False if open
         """
-        if not self.use_real_hardware:
-            return False
-
         if not self.is_initialized or not self.grbl:
             return False
 
@@ -576,10 +435,6 @@ class HardwareInterface:
 
     def emergency_stop(self) -> bool:
         """Emergency stop all motors"""
-        if not self.use_real_hardware:
-            print("MOCK: emergency_stop()")
-            return True
-
         if not self.is_initialized or not self.grbl:
             return False
 
@@ -587,10 +442,6 @@ class HardwareInterface:
 
     def resume_operation(self) -> bool:
         """Resume operation after emergency stop"""
-        if not self.use_real_hardware:
-            print("MOCK: resume_operation()")
-            return True
-
         if not self.is_initialized or not self.grbl:
             return False
 
@@ -600,11 +451,6 @@ class HardwareInterface:
 
     def get_current_x(self) -> float:
         """Get current X motor position in cm"""
-        if not self.use_real_hardware:
-            # In mock mode, import from mock_hardware
-            from core.mock_hardware import get_current_x as mock_get_x
-            return mock_get_x()
-
         if not self.is_initialized or not self.grbl:
             return 0.0
 
@@ -612,11 +458,6 @@ class HardwareInterface:
 
     def get_current_y(self) -> float:
         """Get current Y motor position in cm"""
-        if not self.use_real_hardware:
-            # In mock mode, import from mock_hardware
-            from core.mock_hardware import get_current_y as mock_get_y
-            return mock_get_y()
-
         if not self.is_initialized or not self.grbl:
             return 0.0
 
@@ -675,14 +516,7 @@ class HardwareInterface:
         # First lift tools
         tools_lifted = self.lift_line_tools()
         # Then move to max Y position (top)
-        if self.use_real_hardware:
-            # Get max Y from settings
-            max_y = self.config.get("hardware_limits", {}).get("max_y_position", 100.0)
-        else:
-            from core.mock_hardware import load_settings
-            settings = load_settings()
-            max_y = settings.get("hardware_limits", {}).get("max_y_position", 100.0)
-
+        max_y = self.config.get("hardware_limits", {}).get("max_y_position", 100.0)
         moved = self.move_y(max_y)
         return tools_lifted and moved
 
@@ -741,40 +575,19 @@ class HardwareInterface:
         return self.get_line_cutter_state()
 
     def get_line_motor_piston_state(self) -> str:
-        """Get line motor piston state (combined left+right)"""
+        """Get line motor piston state (both sides move together, check both sensors)"""
         left_up = self.get_line_motor_left_up_sensor()
         left_down = self.get_line_motor_left_down_sensor()
         right_up = self.get_line_motor_right_up_sensor()
         right_down = self.get_line_motor_right_down_sensor()
 
+        # Both sides should be in same state (single piston control)
         if left_up and right_up:
             return "up"
         elif left_down and right_down:
             return "down"
         else:
-            return "unknown"
-
-    def get_line_motor_piston_left_state(self) -> str:
-        """Get line motor LEFT piston state"""
-        up = self.get_line_motor_left_up_sensor()
-        down = self.get_line_motor_left_down_sensor()
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        else:
-            return "unknown"
-
-    def get_line_motor_piston_right_state(self) -> str:
-        """Get line motor RIGHT piston state"""
-        up = self.get_line_motor_right_up_sensor()
-        down = self.get_line_motor_right_down_sensor()
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        else:
-            return "unknown"
+            return "unknown"  # Mismatch - possible sensor error
 
     def get_row_marker_piston_state(self) -> str:
         """Get row marker piston state"""
@@ -788,30 +601,18 @@ class HardwareInterface:
 
     def get_x_left_edge(self) -> bool:
         """Get X left edge sensor state"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_x_left_edge as mock_get
-            return mock_get()
         return self.get_x_left_edge_sensor()
 
     def get_x_right_edge(self) -> bool:
         """Get X right edge sensor state"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_x_right_edge as mock_get
-            return mock_get()
         return self.get_x_right_edge_sensor()
 
     def get_y_top_edge(self) -> bool:
         """Get Y top edge sensor state"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_y_top_edge as mock_get
-            return mock_get()
         return self.get_y_top_edge_sensor()
 
     def get_y_bottom_edge(self) -> bool:
         """Get Y bottom edge sensor state"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_y_bottom_edge as mock_get
-            return mock_get()
         return self.get_y_bottom_edge_sensor()
 
     # ========== LIMIT SWITCH METHODS ==========
@@ -820,11 +621,6 @@ class HardwareInterface:
         """Get limit switch state by name"""
         if switch_name == "rows_door" or switch_name == "door":
             return self.get_door_switch()
-
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_limit_switch_state as mock_get
-            return mock_get(switch_name)
-
         return False
 
     def get_row_motor_limit_switch(self) -> bool:
@@ -832,133 +628,139 @@ class HardwareInterface:
         return self.get_door_switch()
 
     def set_limit_switch_state(self, switch_name: str, state: bool):
-        """Set limit switch state (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import set_limit_switch_state as mock_set
-            mock_set(switch_name, state)
+        """Set limit switch state (not supported in real hardware mode)"""
+        pass
 
     def set_row_marker_limit_switch(self, state: bool):
-        """Set row marker limit switch state (mock mode only)"""
-        self.set_limit_switch_state("rows_door", state)
+        """Set row marker limit switch state (not supported in real hardware mode)"""
+        pass
 
     def toggle_limit_switch(self, switch_name: str):
-        """Toggle limit switch state (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import toggle_limit_switch as mock_toggle
-            mock_toggle(switch_name)
+        """Toggle limit switch state (not supported in real hardware mode)"""
+        pass
 
     def toggle_row_marker_limit_switch(self):
-        """Toggle row marker limit switch (mock mode only)"""
-        self.toggle_limit_switch("rows_door")
+        """Toggle row marker limit switch (not supported in real hardware mode)"""
+        pass
 
-    # ========== SENSOR TRIGGER METHODS (mock mode only) ==========
+    # ========== SENSOR TRIGGER METHODS (not supported in real hardware mode) ==========
 
     def trigger_x_left_sensor(self):
-        """Trigger X left sensor (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import trigger_x_left_sensor as mock_trigger
-            mock_trigger()
+        """Trigger X left sensor (not supported in real hardware mode)"""
+        pass
 
     def trigger_x_right_sensor(self):
-        """Trigger X right sensor (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import trigger_x_right_sensor as mock_trigger
-            mock_trigger()
+        """Trigger X right sensor (not supported in real hardware mode)"""
+        pass
 
     def trigger_y_top_sensor(self):
-        """Trigger Y top sensor (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import trigger_y_top_sensor as mock_trigger
-            mock_trigger()
+        """Trigger Y top sensor (not supported in real hardware mode)"""
+        pass
 
     def trigger_y_bottom_sensor(self):
-        """Trigger Y bottom sensor (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import trigger_y_bottom_sensor as mock_trigger
-            mock_trigger()
+        """Trigger Y bottom sensor (not supported in real hardware mode)"""
+        pass
 
     def get_sensor_trigger_states(self):
-        """Get sensor trigger states (mock mode only)"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_sensor_trigger_states as mock_get
-            return mock_get()
+        """Get sensor trigger states (not supported in real hardware mode)"""
         return {}
 
     # ========== WAIT FOR SENSOR METHODS ==========
 
     def wait_for_x_sensor(self):
-        """Wait for X sensor trigger"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import wait_for_x_sensor as mock_wait
-            mock_wait()
+        """Wait for X sensor trigger (not supported in real hardware mode)"""
+        pass
 
     def wait_for_y_sensor(self):
-        """Wait for Y sensor trigger"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import wait_for_y_sensor as mock_wait
-            mock_wait()
+        """Wait for Y sensor trigger (not supported in real hardware mode)"""
+        pass
 
     def wait_for_x_left_sensor(self):
-        """Wait for X left sensor trigger"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import wait_for_x_left_sensor as mock_wait
-            mock_wait()
+        """Wait for X left sensor trigger (not supported in real hardware mode)"""
+        pass
 
     def wait_for_x_right_sensor(self):
-        """Wait for X right sensor trigger"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import wait_for_x_right_sensor as mock_wait
-            mock_wait()
+        """Wait for X right sensor trigger (not supported in real hardware mode)"""
+        pass
 
     def wait_for_y_top_sensor(self):
-        """Wait for Y top sensor trigger"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import wait_for_y_top_sensor as mock_wait
-            mock_wait()
+        """Wait for Y top sensor trigger (not supported in real hardware mode)"""
+        pass
 
     def wait_for_y_bottom_sensor(self):
-        """Wait for Y bottom sensor trigger"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import wait_for_y_bottom_sensor as mock_wait
-            mock_wait()
+        """Wait for Y bottom sensor trigger (not supported in real hardware mode)"""
+        pass
 
     # ========== HARDWARE STATUS ==========
 
     def get_hardware_status(self):
-        """Get complete hardware status dictionary"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import get_hardware_status as mock_get
-            return mock_get()
+        """Get complete hardware status dictionary with all sensors"""
+        if not self.is_initialized or not self.gpio:
+            return {
+                'error': self.initialization_error or 'Hardware not initialized',
+                'is_initialized': False,
+                'x_position': 0,
+                'y_position': 0
+            }
 
-        # Build status from real hardware
         return {
+            # Motor positions
             'x_position': self.get_current_x(),
             'y_position': self.get_current_y(),
-            'line_marker': self.get_line_marker_state(),
-            'line_cutter': self.get_line_cutter_state(),
+
+            # Tool piston states
+            'line_marker_piston': self.get_line_marker_state(),
+            'line_cutter_piston': self.get_line_cutter_state(),
             'line_motor_piston': self.get_line_motor_piston_state(),
-            'row_marker': self.get_row_marker_state(),
-            'row_cutter': self.get_row_cutter_state(),
-            'door_switch': self.get_door_switch(),
+            'row_marker_piston': self.get_row_marker_state(),
+            'row_cutter_piston': self.get_row_cutter_state(),
+
+            # Tool sensors - Lines
+            'line_marker_up_sensor': self.gpio.get_line_marker_up_sensor() if self.gpio else False,
+            'line_marker_down_sensor': self.gpio.get_line_marker_down_sensor() if self.gpio else False,
+            'line_cutter_up_sensor': self.gpio.get_line_cutter_up_sensor() if self.gpio else False,
+            'line_cutter_down_sensor': self.gpio.get_line_cutter_down_sensor() if self.gpio else False,
+            'line_motor_left_up_sensor': self.gpio.get_line_motor_left_up_sensor() if self.gpio else False,
+            'line_motor_left_down_sensor': self.gpio.get_line_motor_left_down_sensor() if self.gpio else False,
+            'line_motor_right_up_sensor': self.gpio.get_line_motor_right_up_sensor() if self.gpio else False,
+            'line_motor_right_down_sensor': self.gpio.get_line_motor_right_down_sensor() if self.gpio else False,
+
+            # Tool sensors - Rows
+            'row_marker_up_sensor': self.gpio.get_row_marker_up_sensor() if self.gpio else False,
+            'row_marker_down_sensor': self.gpio.get_row_marker_down_sensor() if self.gpio else False,
+            'row_cutter_up_sensor': self.gpio.get_row_cutter_up_sensor() if self.gpio else False,
+            'row_cutter_down_sensor': self.gpio.get_row_cutter_down_sensor() if self.gpio else False,
+
+            # Edge sensors
             'x_left_edge': self.get_x_left_edge(),
             'x_right_edge': self.get_x_right_edge(),
             'y_top_edge': self.get_y_top_edge(),
-            'y_bottom_edge': self.get_y_bottom_edge()
+            'y_bottom_edge': self.get_y_bottom_edge(),
+
+            # Limit switches
+            'row_marker_limit_switch': self.get_door_switch(),
+
+            # Status
+            'is_initialized': self.is_initialized
         }
 
     def reset_hardware(self):
         """Reset hardware to initial state"""
-        if not self.use_real_hardware:
-            from core.mock_hardware import reset_hardware as mock_reset
-            mock_reset()
-            return
-
-        # Reset real hardware
         if self.is_initialized:
             # Home motors
             self.home_motors()
             # Raise all tools
             self.lift_line_tools()
+
+    # ========== MOCK-SPECIFIC METHODS (no-op for real hardware) ==========
+
+    def set_execution_engine_reference(self, engine):
+        """Set execution engine reference (only used by mock hardware for sensor waiting)"""
+        pass
+
+    def flush_all_sensor_buffers(self):
+        """Flush sensor buffers (only used by mock hardware)"""
+        pass
 
     # ========== CLEANUP ==========
 
@@ -966,11 +768,10 @@ class HardwareInterface:
         """Shutdown and cleanup all hardware"""
         print("\nShutting down hardware...")
 
-        if self.use_real_hardware:
-            if self.grbl:
-                self.grbl.disconnect()
-            if self.gpio:
-                self.gpio.cleanup()
+        if self.grbl:
+            self.grbl.disconnect()
+        if self.gpio:
+            self.gpio.cleanup()
 
         self.is_initialized = False
         print("✓ Hardware shutdown complete\n")
@@ -979,11 +780,11 @@ class HardwareInterface:
 if __name__ == "__main__":
     """Test hardware interface"""
     print("\n" + "="*60)
-    print("Unified Hardware Interface Test")
+    print("Real Hardware Interface Test")
     print("="*60 + "\n")
 
     # Create hardware interface
-    hardware = HardwareInterface()
+    hardware = RealHardware()
 
     # Initialize
     if hardware.initialize():

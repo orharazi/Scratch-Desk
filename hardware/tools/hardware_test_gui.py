@@ -18,10 +18,10 @@ from tkinter import ttk, messagebox
 import threading
 import time
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path (go up two levels from tools/ to project root)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from hardware.hardware_interface import HardwareInterface
+from hardware.interfaces.hardware_factory import get_hardware_interface
 
 
 class HardwareTestGUI:
@@ -30,9 +30,9 @@ class HardwareTestGUI:
         self.root.title("Hardware Connection Test Interface")
         self.root.geometry("1200x800")
 
-        # Initialize hardware
-        self.hardware = HardwareInterface()
-        self.is_connected = False
+        # Initialize hardware using factory
+        self.hardware = get_hardware_interface()
+        self.is_connected = True  # Factory already initializes hardware
         self.monitor_running = False
 
         # Create UI

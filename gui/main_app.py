@@ -11,7 +11,7 @@ import json
 from core.csv_parser import CSVParser
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.execution_engine import ExecutionEngine
-from hardware.hardware_factory import get_hardware_interface
+from hardware.interfaces.hardware_factory import get_hardware_interface
 
 # Import GUI components
 from gui.panels.left_panel import LeftPanel

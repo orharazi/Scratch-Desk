@@ -45,11 +45,11 @@ def create_hardware_interface(config_path: str = "config/settings.json"):
 
     if use_real_hardware:
         # Import and return real hardware interface
-        from hardware.real_hardware import RealHardware
+        from hardware.implementations.real_hardware import RealHardware
         return RealHardware(config_path)
     else:
         # Import and return mock hardware interface
-        from hardware.mock_hardware import MockHardware
+        from hardware.implementations.mock_hardware import MockHardware
         return MockHardware(config_path)
 
 

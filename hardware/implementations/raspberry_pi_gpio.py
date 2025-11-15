@@ -12,7 +12,7 @@ import json
 import time
 import threading
 from typing import Dict, Optional
-from hardware.multiplexer import CD74HC4067Multiplexer
+from hardware.implementations.multiplexer import CD74HC4067Multiplexer
 
 # Try to import RPi.GPIO, fall back to mock if not available
 try:
