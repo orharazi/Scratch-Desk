@@ -62,6 +62,12 @@ class UltimateHardwareTestGUI:
         # Load port mappings from config
         self.port_mappings = self.load_port_mappings()
 
+        # Initialize widget dictionaries
+        self.sensor_widgets = {}
+        self.sensor_connection_widgets = {}
+        self.piston_widgets = {}
+        self.piston_connection_widgets = {}
+
         # Create UI
         self.create_ui()
 
@@ -346,8 +352,6 @@ class UltimateHardwareTestGUI:
         piston_frame = ttk.LabelFrame(left_frame, text="Piston Control", padding="10")
         piston_frame.pack(fill="both", expand=True)
 
-        self.piston_widgets = {}
-        self.piston_connection_widgets = {}
         self.piston_methods = {
             "line_marker": ("Line Marker", "line_marker_piston"),
             "line_cutter": ("Line Cutter", "line_cutter_piston"),
@@ -406,9 +410,6 @@ class UltimateHardwareTestGUI:
         # Tool sensors
         sensor_frame = ttk.LabelFrame(right_frame, text="Tool Position Sensors (Live)", padding="10")
         sensor_frame.pack(fill="both", expand=True, pady=(0, 5))
-
-        self.sensor_widgets = {}
-        self.sensor_connection_widgets = {}
 
         # Create sensor display with grouping
         sensor_groups = [
