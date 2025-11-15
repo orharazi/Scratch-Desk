@@ -351,10 +351,10 @@ class UltimateHardwareTestGUI:
         edge_frame.pack(fill="x", pady=5)
 
         edge_sensors = [
-            ("X Left Edge", "x_left_edge"),
-            ("X Right Edge", "x_right_edge"),
-            ("Y Top Edge", "y_top_edge"),
-            ("Y Bottom Edge", "y_bottom_edge")
+            ("X Left Edge", "x_left_edge_sensor"),
+            ("X Right Edge", "x_right_edge_sensor"),
+            ("Y Top Edge", "y_top_edge_sensor"),
+            ("Y Bottom Edge", "y_bottom_edge_sensor")
         ]
 
         for i, (name, sensor_id) in enumerate(edge_sensors):
@@ -367,6 +367,29 @@ class UltimateHardwareTestGUI:
             state_label.grid(row=i, column=1, padx=5, pady=2)
 
             self.sensor_widgets[sensor_id] = state_label
+
+        # Limit switches
+        limit_frame = ttk.LabelFrame(right_frame, text="Limit Switches (Live)", padding="10")
+        limit_frame.pack(fill="x", pady=5)
+
+        limit_switches = [
+            ("Top Limit", "top_limit_switch"),
+            ("Bottom Limit", "bottom_limit_switch"),
+            ("Left Limit", "left_limit_switch"),
+            ("Right Limit", "right_limit_switch"),
+            ("Rows Limit", "rows_limit_switch")
+        ]
+
+        for i, (name, switch_id) in enumerate(limit_switches):
+            ttk.Label(limit_frame, text=name, width=15).grid(row=i, column=0, sticky="w", pady=2)
+
+            state_label = ttk.Label(limit_frame, text="OPEN", width=12,
+                                   relief=tk.SUNKEN, anchor=tk.CENTER,
+                                   background="#95A5A6", foreground="white",
+                                   font=("Arial", 9, "bold"))
+            state_label.grid(row=i, column=1, padx=5, pady=2)
+
+            self.sensor_widgets[switch_id] = state_label
 
     def create_grbl_tab(self):
         """Create GRBL settings management tab"""
@@ -696,16 +719,25 @@ class UltimateHardwareTestGUI:
                         self.motor_status_label.config(text=state, foreground=color)
 
                 # Update sensors
-                if self.is_connected and hasattr(self.hardware, 'gpio'):
-                    # Update tool sensors
+                if self.is_connected:
+                    # Update tool sensors and limit switches
                     for sensor_id, widget in self.sensor_widgets.items():
                         getter_method = f"get_{sensor_id}"
                         if hasattr(self.hardware, getter_method):
                             state = getattr(self.hardware, getter_method)()
-                            if state:
-                                widget.config(text="ACTIVE", background="#27AE60")
+
+                            # Different display for limit switches
+                            if "limit_switch" in sensor_id:
+                                if state:
+                                    widget.config(text="CLOSED", background="#E74C3C", foreground="white")  # Red when triggered
+                                else:
+                                    widget.config(text="OPEN", background="#95A5A6", foreground="white")  # Gray when open
                             else:
-                                widget.config(text="INACTIVE", background="#95A5A6")
+                                # Regular sensors
+                                if state:
+                                    widget.config(text="ACTIVE", background="#27AE60", foreground="white")  # Green
+                                else:
+                                    widget.config(text="INACTIVE", background="#95A5A6", foreground="white")  # Gray
 
                 time.sleep(0.1)  # Update 10 times per second
 
