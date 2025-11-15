@@ -176,8 +176,7 @@ class HardwareTestGUI:
         pistons = [
             ("Line Marker", "line_marker_piston"),
             ("Line Cutter", "line_cutter_piston"),
-            ("Line Motor Left", "line_motor_piston_left"),
-            ("Line Motor Right", "line_motor_piston_right"),
+            ("Line Motor (Both)", "line_motor_piston"),
             ("Row Marker", "row_marker_piston"),
             ("Row Cutter", "row_cutter_piston")
         ]

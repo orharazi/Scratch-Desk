@@ -167,8 +167,8 @@ def reset_hardware():
     global current_x_position, current_y_position
     global line_marker_piston, line_marker_up_sensor, line_marker_down_sensor
     global line_cutter_piston, line_cutter_up_sensor, line_cutter_down_sensor
-    global line_motor_piston_left, line_motor_left_up_sensor, line_motor_left_down_sensor
-    global line_motor_piston_right, line_motor_right_up_sensor, line_motor_right_down_sensor
+    global line_motor_piston, line_motor_left_up_sensor, line_motor_left_down_sensor
+    global line_motor_right_up_sensor, line_motor_right_down_sensor
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     global limit_switch_states
@@ -187,13 +187,10 @@ def reset_hardware():
     line_cutter_up_sensor = True
     line_cutter_down_sensor = False
 
-    # Line motor left piston - default DOWN
-    line_motor_piston_left = "down"
+    # Line motor piston (shared control) - default DOWN
+    line_motor_piston = "down"
     line_motor_left_up_sensor = False
     line_motor_left_down_sensor = True
-
-    # Line motor right piston - default DOWN
-    line_motor_piston_right = "down"
     line_motor_right_up_sensor = False
     line_motor_right_down_sensor = True
 
@@ -864,14 +861,12 @@ def print_hardware_status():
     print(f"  Piston: {line_cutter_piston}")
     print(f"  Up Sensor: {line_cutter_up_sensor}")
     print(f"  Down Sensor: {line_cutter_down_sensor}")
-    print(f"\nLine Motor Left Piston:")
-    print(f"  Piston: {line_motor_piston_left}")
-    print(f"  Up Sensor: {line_motor_left_up_sensor}")
-    print(f"  Down Sensor: {line_motor_left_down_sensor}")
-    print(f"\nLine Motor Right Piston:")
-    print(f"  Piston: {line_motor_piston_right}")
-    print(f"  Up Sensor: {line_motor_right_up_sensor}")
-    print(f"  Down Sensor: {line_motor_right_down_sensor}")
+    print(f"\nLine Motor Piston (Shared Control):")
+    print(f"  Piston: {line_motor_piston}")
+    print(f"  Left Up Sensor: {line_motor_left_up_sensor}")
+    print(f"  Left Down Sensor: {line_motor_left_down_sensor}")
+    print(f"  Right Up Sensor: {line_motor_right_up_sensor}")
+    print(f"  Right Down Sensor: {line_motor_right_down_sensor}")
     print(f"\nRow Marker:")
     print(f"  Piston: {row_marker_piston}")
     print(f"  Up Sensor: {row_marker_up_sensor}")

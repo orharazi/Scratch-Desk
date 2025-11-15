@@ -271,35 +271,15 @@ class RaspberryPiGPIO:
         """Extend piston (set to DOWN position)"""
         return self.set_piston(piston_name, "down")
 
-    # ========== DUAL LINE MOTOR PISTON CONTROL ==========
-
-    def line_motor_piston_left_up(self) -> bool:
-        """Retract line motor LEFT piston"""
-        return self.piston_up("line_motor_piston_left")
-
-    def line_motor_piston_left_down(self) -> bool:
-        """Extend line motor LEFT piston"""
-        return self.piston_down("line_motor_piston_left")
-
-    def line_motor_piston_right_up(self) -> bool:
-        """Retract line motor RIGHT piston"""
-        return self.piston_up("line_motor_piston_right")
-
-    def line_motor_piston_right_down(self) -> bool:
-        """Extend line motor RIGHT piston"""
-        return self.piston_down("line_motor_piston_right")
+    # ========== LINE MOTOR PISTON CONTROL (Single GPIO for both sides) ==========
 
     def line_motor_piston_up(self) -> bool:
-        """Retract BOTH line motor pistons (left and right)"""
-        left_ok = self.line_motor_piston_left_up()
-        right_ok = self.line_motor_piston_right_up()
-        return left_ok and right_ok
+        """Retract line motor piston (both sides move together - single GPIO control)"""
+        return self.piston_up("line_motor_piston")
 
     def line_motor_piston_down(self) -> bool:
-        """Extend BOTH line motor pistons (left and right)"""
-        left_ok = self.line_motor_piston_left_down()
-        right_ok = self.line_motor_piston_right_down()
-        return left_ok and right_ok
+        """Extend line motor piston (both sides move together - single GPIO control)"""
+        return self.piston_down("line_motor_piston")
 
     # ========== SENSOR READING METHODS ==========
 

@@ -209,7 +209,7 @@ class RealHardware:
         return self.gpio.piston_up("line_cutter_piston")
 
     def line_motor_piston_down(self) -> bool:
-        """Lower BOTH line motor pistons (left and right)"""
+        """Lower line motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
@@ -217,44 +217,12 @@ class RealHardware:
         return self.gpio.line_motor_piston_down()
 
     def line_motor_piston_up(self) -> bool:
-        """Raise BOTH line motor pistons (left and right)"""
+        """Raise line motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
             print("Hardware not initialized")
             return False
 
         return self.gpio.line_motor_piston_up()
-
-    def line_motor_piston_left_down(self) -> bool:
-        """Lower line motor LEFT piston"""
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_left_down()
-
-    def line_motor_piston_left_up(self) -> bool:
-        """Raise line motor LEFT piston"""
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_left_up()
-
-    def line_motor_piston_right_down(self) -> bool:
-        """Lower line motor RIGHT piston"""
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_right_down()
-
-    def line_motor_piston_right_up(self) -> bool:
-        """Raise line motor RIGHT piston"""
-        if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
-            return False
-
-        return self.gpio.line_motor_piston_right_up()
 
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
@@ -607,40 +575,19 @@ class RealHardware:
         return self.get_line_cutter_state()
 
     def get_line_motor_piston_state(self) -> str:
-        """Get line motor piston state (combined left+right)"""
+        """Get line motor piston state (both sides move together, check both sensors)"""
         left_up = self.get_line_motor_left_up_sensor()
         left_down = self.get_line_motor_left_down_sensor()
         right_up = self.get_line_motor_right_up_sensor()
         right_down = self.get_line_motor_right_down_sensor()
 
+        # Both sides should be in same state (single piston control)
         if left_up and right_up:
             return "up"
         elif left_down and right_down:
             return "down"
         else:
-            return "unknown"
-
-    def get_line_motor_piston_left_state(self) -> str:
-        """Get line motor LEFT piston state"""
-        up = self.get_line_motor_left_up_sensor()
-        down = self.get_line_motor_left_down_sensor()
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        else:
-            return "unknown"
-
-    def get_line_motor_piston_right_state(self) -> str:
-        """Get line motor RIGHT piston state"""
-        up = self.get_line_motor_right_up_sensor()
-        down = self.get_line_motor_right_down_sensor()
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        else:
-            return "unknown"
+            return "unknown"  # Mismatch - possible sensor error
 
     def get_row_marker_piston_state(self) -> str:
         """Get row marker piston state"""
