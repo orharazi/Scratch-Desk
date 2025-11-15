@@ -823,7 +823,7 @@ class RightPanel:
     def update_test_controls_state(self):
         """Enable/disable test controls based on hardware mode"""
         # Check if we're using real hardware by checking the class type
-        from hardware.real_hardware import RealHardware
+        from hardware.implementations.real.real_hardware import RealHardware
         is_real_hardware = isinstance(self.hardware, RealHardware)
 
         if is_real_hardware:
