@@ -47,6 +47,10 @@ class UltimateHardwareTestGUI:
         self.command_queue = queue.Queue()
         self.log_queue = queue.Queue()
 
+        # Port selection
+        self.available_ports = []
+        self.selected_port = tk.StringVar(value="Auto-detect")
+
         # Position tracking
         self.current_x = 0.0
         self.current_y = 0.0
@@ -114,9 +118,20 @@ class UltimateHardwareTestGUI:
         self.grbl_status_label = ttk.Label(conn_frame, text="Not Connected", foreground="red", font=("Arial", 10))
         self.grbl_status_label.grid(row=0, column=3, padx=5)
 
+        # Port selection dropdown
+        ttk.Label(conn_frame, text="Port:", font=("Arial", 10, "bold")).grid(row=0, column=4, padx=(20, 5))
+        self.port_combo = ttk.Combobox(conn_frame, textvariable=self.selected_port, state="readonly", width=20)
+        self.port_combo.grid(row=0, column=5, padx=5)
+
+        # Refresh ports button
+        ttk.Button(conn_frame, text="🔄", width=3, command=self.scan_ports).grid(row=0, column=6, padx=2)
+
         # Connect/Disconnect button
         self.connect_btn = ttk.Button(conn_frame, text="Connect Hardware", command=self.toggle_connection)
-        self.connect_btn.grid(row=0, column=4, padx=20)
+        self.connect_btn.grid(row=0, column=7, padx=20)
+
+        # Scan ports on startup
+        self.scan_ports()
 
         # Mode indicator
         mode_frame = ttk.Frame(top_frame)
@@ -603,6 +618,31 @@ class UltimateHardwareTestGUI:
                 print(f"Log processor error: {e}")
                 time.sleep(0.1)
 
+    def scan_ports(self):
+        """Scan for available serial ports"""
+        try:
+            import serial.tools.list_ports
+
+            ports = serial.tools.list_ports.comports()
+            self.available_ports = ["Auto-detect"]
+
+            for port in ports:
+                port_name = f"{port.device} - {port.description}"
+                self.available_ports.append(port_name)
+
+            # Update combobox
+            self.port_combo['values'] = self.available_ports
+
+            if len(self.available_ports) > 1:
+                self.log("INFO", f"Found {len(self.available_ports)-1} serial port(s)")
+            else:
+                self.log("WARNING", "No serial ports found")
+
+        except Exception as e:
+            self.log("ERROR", f"Error scanning ports: {str(e)}")
+            self.available_ports = ["Auto-detect"]
+            self.port_combo['values'] = self.available_ports
+
     def auto_initialize(self):
         """Auto-initialize hardware on startup"""
         self.log("INFO", "Auto-initializing hardware...")
@@ -619,6 +659,30 @@ class UltimateHardwareTestGUI:
         """Connect to hardware"""
         try:
             self.log("INFO", "Connecting to hardware...")
+
+            # Get selected port
+            selected = self.selected_port.get()
+            if selected and selected != "Auto-detect":
+                # Extract just the port device (e.g., "/dev/ttyACM0" from "/dev/ttyACM0 - Arduino...")
+                port_device = selected.split(" - ")[0]
+                self.log("INFO", f"Using selected port: {port_device}")
+
+                # Load config and temporarily override port if specified
+                import json
+                try:
+                    with open('config/settings.json', 'r') as f:
+                        config = json.load(f)
+                    # Override the serial port in config
+                    if 'grbl' in config:
+                        config['grbl']['serial_port'] = port_device
+                        # Save temporarily
+                        with open('config/settings.json', 'w') as f:
+                            json.dump(config, f, indent=4)
+                        self.log("INFO", f"Configured GRBL port: {port_device}")
+                except Exception as e:
+                    self.log("WARNING", f"Could not update port in config: {e}")
+            else:
+                self.log("INFO", "Using auto-detect mode")
 
             # Get hardware interface
             self.hardware = get_hardware_interface()
