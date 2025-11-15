@@ -323,7 +323,7 @@ class UltimateHardwareTestGUI:
             # Port info
             port_info = self.port_mappings.get(switch_id, {})
             port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
-            ttk.Label(limit_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=i, column=1, sticky="w", pady=2)
+            ttk.Label(limit_frame, text=f"[{port_text}]", font=("Courier", 9, "bold"), foreground="#555555").grid(row=i, column=1, sticky="w", pady=2)
 
             # Connection indicator
             conn_indicator = tk.Label(limit_frame, text="●", font=("Arial", 10), fg="#95A5A6")
@@ -371,7 +371,7 @@ class UltimateHardwareTestGUI:
             port_info = self.port_mappings.get(method_base, {})
             if port_info:
                 port_text = f" [{port_info.get('port', 'N/A')}]"
-                ttk.Label(name_frame, text=port_text, font=("Courier", 8), foreground="gray").pack(side=tk.LEFT, padx=5)
+                ttk.Label(name_frame, text=port_text, font=("Courier", 10, "bold"), foreground="#555555").pack(side=tk.LEFT, padx=5)
 
             # Connection indicator
             conn_indicator = tk.Label(piston_frame, text="●", font=("Arial", 12),
@@ -450,7 +450,7 @@ class UltimateHardwareTestGUI:
                 # Port info
                 port_info = self.port_mappings.get(sensor_id, {})
                 port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
-                ttk.Label(sensor_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=row, column=1, sticky="w", pady=2)
+                ttk.Label(sensor_frame, text=f"[{port_text}]", font=("Courier", 9, "bold"), foreground="#555555").grid(row=row, column=1, sticky="w", pady=2)
 
                 # Connection indicator
                 conn_indicator = tk.Label(sensor_frame, text="●", font=("Arial", 10), fg="#95A5A6")
@@ -485,7 +485,7 @@ class UltimateHardwareTestGUI:
             # Port info
             port_info = self.port_mappings.get(sensor_id, {})
             port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
-            ttk.Label(edge_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=i, column=1, sticky="w", pady=2)
+            ttk.Label(edge_frame, text=f"[{port_text}]", font=("Courier", 9, "bold"), foreground="#555555").grid(row=i, column=1, sticky="w", pady=2)
 
             # Connection indicator
             conn_indicator = tk.Label(edge_frame, text="●", font=("Arial", 10), fg="#95A5A6")
