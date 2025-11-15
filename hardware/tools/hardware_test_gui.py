@@ -59,6 +59,9 @@ class UltimateHardwareTestGUI:
         # GRBL settings cache
         self.grbl_settings = {}
 
+        # Load port mappings from config
+        self.port_mappings = self.load_port_mappings()
+
         # Create UI
         self.create_ui()
 
@@ -72,6 +75,44 @@ class UltimateHardwareTestGUI:
 
         # Auto-initialize hardware on startup
         self.root.after(100, self.auto_initialize)
+
+    def load_port_mappings(self):
+        """Load GPIO port mappings from config"""
+        try:
+            import json
+            with open('config/settings.json', 'r') as f:
+                config = json.load(f)
+
+            rpi_config = config.get('hardware_config', {}).get('raspberry_pi', {})
+
+            mappings = {}
+
+            # Pistons
+            pistons = rpi_config.get('pistons', {})
+            for name, pin in pistons.items():
+                mappings[name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
+
+            # Multiplexer sensors
+            mux_channels = rpi_config.get('multiplexer', {}).get('channels', {})
+            for name, channel in mux_channels.items():
+                mappings[name] = {'type': 'MUX', 'port': f'MUX-CH{channel}', 'pin': channel}
+
+            # Direct sensors
+            direct_sensors = rpi_config.get('direct_sensors', {})
+            for name, pin in direct_sensors.items():
+                # Map to the sensor name format used in UI
+                sensor_name = f"{name}_sensor"
+                mappings[sensor_name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
+
+            # Limit switches (placeholder - may not be in config yet)
+            limit_switches = rpi_config.get('limit_switches', {})
+            for name, pin in limit_switches.items():
+                mappings[name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
+
+            return mappings
+        except Exception as e:
+            print(f"Error loading port mappings: {e}")
+            return {}
 
     def create_ui(self):
         """Create the main user interface with tabs"""
@@ -271,6 +312,7 @@ class UltimateHardwareTestGUI:
         piston_frame.pack(fill="both", expand=True)
 
         self.piston_widgets = {}
+        self.piston_connection_widgets = {}
         self.piston_methods = {
             "line_marker": ("Line Marker", "line_marker_piston"),
             "line_cutter": ("Line Cutter", "line_cutter_piston"),
@@ -280,12 +322,27 @@ class UltimateHardwareTestGUI:
         }
 
         for i, (key, (name, method_base)) in enumerate(self.piston_methods.items()):
-            # Piston name
-            ttk.Label(piston_frame, text=name, width=20, font=("Arial", 10, "bold")).grid(row=i, column=0, sticky="w", pady=5)
+            # Piston name with port info
+            name_frame = ttk.Frame(piston_frame)
+            name_frame.grid(row=i, column=0, sticky="w", pady=5)
+
+            ttk.Label(name_frame, text=name, font=("Arial", 10, "bold")).pack(side=tk.LEFT)
+
+            # Port information
+            port_info = self.port_mappings.get(method_base, {})
+            if port_info:
+                port_text = f" [{port_info.get('port', 'N/A')}]"
+                ttk.Label(name_frame, text=port_text, font=("Courier", 8), foreground="gray").pack(side=tk.LEFT, padx=5)
+
+            # Connection indicator
+            conn_indicator = tk.Label(piston_frame, text="●", font=("Arial", 12),
+                                     fg="#95A5A6")  # Gray by default
+            conn_indicator.grid(row=i, column=1, padx=5, pady=5)
+            self.piston_connection_widgets[key] = conn_indicator
 
             # State indicator
             state_frame = ttk.Frame(piston_frame)
-            state_frame.grid(row=i, column=1, padx=10, pady=5)
+            state_frame.grid(row=i, column=2, padx=10, pady=5)
 
             state_label = ttk.Label(state_frame, text="UNKNOWN", width=10,
                                    relief=tk.SUNKEN, anchor=tk.CENTER,
@@ -295,7 +352,7 @@ class UltimateHardwareTestGUI:
 
             # Control buttons
             btn_frame = ttk.Frame(piston_frame)
-            btn_frame.grid(row=i, column=2, pady=5)
+            btn_frame.grid(row=i, column=3, pady=5)
 
             up_btn = ttk.Button(btn_frame, text="↑ UP", width=10,
                               command=lambda k=key: self.piston_up(k))
@@ -316,6 +373,7 @@ class UltimateHardwareTestGUI:
         sensor_frame.pack(fill="both", expand=True, pady=(0, 5))
 
         self.sensor_widgets = {}
+        self.sensor_connection_widgets = {}
 
         # Create sensor display with grouping
         sensor_groups = [
@@ -346,17 +404,29 @@ class UltimateHardwareTestGUI:
         row = 0
         for group_name, sensors in sensor_groups:
             # Group header
-            ttk.Label(sensor_frame, text=group_name, font=("Arial", 10, "bold")).grid(row=row, column=0, columnspan=2, sticky="w", pady=(5, 0))
+            ttk.Label(sensor_frame, text=group_name, font=("Arial", 10, "bold")).grid(row=row, column=0, columnspan=4, sticky="w", pady=(5, 0))
             row += 1
 
             for sensor_name, sensor_id in sensors:
-                ttk.Label(sensor_frame, text=f"  {sensor_name}:", width=20).grid(row=row, column=0, sticky="w", pady=2)
+                # Sensor name
+                ttk.Label(sensor_frame, text=f"  {sensor_name}:", width=15).grid(row=row, column=0, sticky="w", pady=2)
 
-                state_label = ttk.Label(sensor_frame, text="INACTIVE", width=12,
+                # Port info
+                port_info = self.port_mappings.get(sensor_id, {})
+                port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
+                ttk.Label(sensor_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=row, column=1, sticky="w", pady=2)
+
+                # Connection indicator
+                conn_indicator = tk.Label(sensor_frame, text="●", font=("Arial", 10), fg="#95A5A6")
+                conn_indicator.grid(row=row, column=2, padx=2, pady=2)
+                self.sensor_connection_widgets[sensor_id] = conn_indicator
+
+                # State label
+                state_label = ttk.Label(sensor_frame, text="INACTIVE", width=10,
                                        relief=tk.SUNKEN, anchor=tk.CENTER,
                                        background="#95A5A6", foreground="white",
-                                       font=("Arial", 9, "bold"))
-                state_label.grid(row=row, column=1, padx=5, pady=2)
+                                       font=("Arial", 8, "bold"))
+                state_label.grid(row=row, column=3, padx=5, pady=2)
 
                 self.sensor_widgets[sensor_id] = state_label
                 row += 1
@@ -373,13 +443,25 @@ class UltimateHardwareTestGUI:
         ]
 
         for i, (name, sensor_id) in enumerate(edge_sensors):
-            ttk.Label(edge_frame, text=name, width=15).grid(row=i, column=0, sticky="w", pady=2)
+            # Sensor name
+            ttk.Label(edge_frame, text=name, width=13).grid(row=i, column=0, sticky="w", pady=2)
 
-            state_label = ttk.Label(edge_frame, text="INACTIVE", width=12,
+            # Port info
+            port_info = self.port_mappings.get(sensor_id, {})
+            port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
+            ttk.Label(edge_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=i, column=1, sticky="w", pady=2)
+
+            # Connection indicator
+            conn_indicator = tk.Label(edge_frame, text="●", font=("Arial", 10), fg="#95A5A6")
+            conn_indicator.grid(row=i, column=2, padx=2, pady=2)
+            self.sensor_connection_widgets[sensor_id] = conn_indicator
+
+            # State label
+            state_label = ttk.Label(edge_frame, text="INACTIVE", width=10,
                                    relief=tk.SUNKEN, anchor=tk.CENTER,
                                    background="#95A5A6", foreground="white",
-                                   font=("Arial", 9, "bold"))
-            state_label.grid(row=i, column=1, padx=5, pady=2)
+                                   font=("Arial", 8, "bold"))
+            state_label.grid(row=i, column=3, padx=5, pady=2)
 
             self.sensor_widgets[sensor_id] = state_label
 
@@ -396,13 +478,25 @@ class UltimateHardwareTestGUI:
         ]
 
         for i, (name, switch_id) in enumerate(limit_switches):
-            ttk.Label(limit_frame, text=name, width=15).grid(row=i, column=0, sticky="w", pady=2)
+            # Switch name
+            ttk.Label(limit_frame, text=name, width=13).grid(row=i, column=0, sticky="w", pady=2)
 
-            state_label = ttk.Label(limit_frame, text="OPEN", width=12,
+            # Port info
+            port_info = self.port_mappings.get(switch_id, {})
+            port_text = port_info.get('port', 'N/A') if port_info else 'N/A'
+            ttk.Label(limit_frame, text=f"[{port_text}]", font=("Courier", 7), foreground="gray").grid(row=i, column=1, sticky="w", pady=2)
+
+            # Connection indicator
+            conn_indicator = tk.Label(limit_frame, text="●", font=("Arial", 10), fg="#95A5A6")
+            conn_indicator.grid(row=i, column=2, padx=2, pady=2)
+            self.sensor_connection_widgets[switch_id] = conn_indicator
+
+            # State label
+            state_label = ttk.Label(limit_frame, text="OPEN", width=10,
                                    relief=tk.SUNKEN, anchor=tk.CENTER,
                                    background="#95A5A6", foreground="white",
-                                   font=("Arial", 9, "bold"))
-            state_label.grid(row=i, column=1, padx=5, pady=2)
+                                   font=("Arial", 8, "bold"))
+            state_label.grid(row=i, column=3, padx=5, pady=2)
 
             self.sensor_widgets[switch_id] = state_label
 
@@ -782,26 +876,54 @@ class UltimateHardwareTestGUI:
                         color = "green" if state == "Idle" else "orange" if state == "Run" else "red"
                         self.motor_status_label.config(text=state, foreground=color)
 
-                # Update sensors
+                # Update sensors and connection indicators
                 if self.is_connected:
                     # Update tool sensors and limit switches
                     for sensor_id, widget in self.sensor_widgets.items():
                         getter_method = f"get_{sensor_id}"
                         if hasattr(self.hardware, getter_method):
-                            state = getattr(self.hardware, getter_method)()
+                            try:
+                                state = getattr(self.hardware, getter_method)()
 
-                            # Different display for limit switches
-                            if "limit_switch" in sensor_id:
-                                if state:
-                                    widget.config(text="CLOSED", background="#E74C3C", foreground="white")  # Red when triggered
+                                # Update connection indicator (green if method works)
+                                if sensor_id in self.sensor_connection_widgets:
+                                    self.sensor_connection_widgets[sensor_id].config(fg="#27AE60")  # Green
+
+                                # Different display for limit switches
+                                if "limit_switch" in sensor_id:
+                                    if state:
+                                        widget.config(text="CLOSED", background="#E74C3C", foreground="white")  # Red when triggered
+                                    else:
+                                        widget.config(text="OPEN", background="#95A5A6", foreground="white")  # Gray when open
                                 else:
-                                    widget.config(text="OPEN", background="#95A5A6", foreground="white")  # Gray when open
-                            else:
-                                # Regular sensors
-                                if state:
-                                    widget.config(text="ACTIVE", background="#27AE60", foreground="white")  # Green
-                                else:
-                                    widget.config(text="INACTIVE", background="#95A5A6", foreground="white")  # Gray
+                                    # Regular sensors
+                                    if state:
+                                        widget.config(text="ACTIVE", background="#27AE60", foreground="white")  # Green
+                                    else:
+                                        widget.config(text="INACTIVE", background="#95A5A6", foreground="white")  # Gray
+                            except:
+                                # Connection failed
+                                if sensor_id in self.sensor_connection_widgets:
+                                    self.sensor_connection_widgets[sensor_id].config(fg="#E74C3C")  # Red for error
+                        else:
+                            # Method not found - no connection
+                            if sensor_id in self.sensor_connection_widgets:
+                                self.sensor_connection_widgets[sensor_id].config(fg="#95A5A6")  # Gray
+
+                    # Update piston connection indicators
+                    for piston_key, (name, method_base) in self.piston_methods.items():
+                        # Check if piston control methods exist
+                        if piston_key == "line_motor":
+                            up_method = "line_motor_piston_up"
+                            down_method = "line_motor_piston_down"
+                        else:
+                            up_method = f"{method_base}_up"
+                            down_method = f"{method_base}_down"
+
+                        if hasattr(self.hardware, up_method) and hasattr(self.hardware, down_method):
+                            self.piston_connection_widgets[piston_key].config(fg="#27AE60")  # Green - connected
+                        else:
+                            self.piston_connection_widgets[piston_key].config(fg="#95A5A6")  # Gray - not found
 
                 time.sleep(0.1)  # Update 10 times per second
 
