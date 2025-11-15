@@ -10,8 +10,8 @@ This class contains ONLY real hardware implementation.
 
 import json
 from typing import Optional, Dict
-from hardware.implementations.raspberry_pi_gpio import RaspberryPiGPIO
-from hardware.implementations.arduino_grbl import ArduinoGRBL
+from hardware.implementations.real.raspberry_pi.raspberry_pi_gpio import RaspberryPiGPIO
+from hardware.implementations.real.arduino_grbl.arduino_grbl import ArduinoGRBL
 
 
 class RealHardware:
