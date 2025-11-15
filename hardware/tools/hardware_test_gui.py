@@ -405,39 +405,46 @@ class UltimateHardwareTestGUI:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Key settings to edit
+        # Key settings to edit - in ascending order with default values
         self.grbl_entries = {}
         key_settings = [
-            ("$100", "X steps/mm", "Steps per mm for X axis"),
-            ("$101", "Y steps/mm", "Steps per mm for Y axis"),
-            ("$110", "X Max rate", "Maximum rate for X axis (mm/min)"),
-            ("$111", "Y Max rate", "Maximum rate for Y axis (mm/min)"),
-            ("$120", "X Acceleration", "X axis acceleration (mm/sec²)"),
-            ("$121", "Y Acceleration", "Y axis acceleration (mm/sec²)"),
-            ("$130", "X Max travel", "Maximum travel for X axis (mm)"),
-            ("$131", "Y Max travel", "Maximum travel for Y axis (mm)"),
-            ("$0", "Step pulse", "Step pulse time (microseconds)"),
-            ("$1", "Step idle delay", "Step idle delay (milliseconds)"),
-            ("$2", "Step port invert", "Step port invert mask"),
-            ("$3", "Direction port invert", "Direction port invert mask"),
-            ("$4", "Step enable invert", "Step enable invert (boolean)"),
-            ("$5", "Limit pins invert", "Limit pins invert (boolean)"),
-            ("$6", "Probe pin invert", "Probe pin invert (boolean)"),
-            ("$10", "Status report", "Status report mask"),
-            ("$11", "Junction deviation", "Junction deviation (mm)"),
-            ("$12", "Arc tolerance", "Arc tolerance (mm)"),
-            ("$13", "Report inches", "Report in inches (boolean)"),
-            ("$20", "Soft limits", "Soft limits enable (boolean)"),
-            ("$21", "Hard limits", "Hard limits enable (boolean)"),
-            ("$22", "Homing cycle", "Homing cycle enable (boolean)"),
-            ("$23", "Homing dir invert", "Homing direction invert mask"),
-            ("$24", "Homing feed", "Homing feed rate (mm/min)"),
-            ("$25", "Homing seek", "Homing seek rate (mm/min)"),
-            ("$26", "Homing debounce", "Homing debounce (milliseconds)"),
-            ("$27", "Homing pull-off", "Homing pull-off distance (mm)")
+            ("$0", "Step pulse", "Step pulse time (microseconds)", "10"),
+            ("$1", "Step idle delay", "Step idle delay (milliseconds)", "25"),
+            ("$2", "Step port invert", "Step port invert mask", "0"),
+            ("$3", "Direction port invert", "Direction port invert mask", "0"),
+            ("$4", "Step enable invert", "Step enable invert (boolean)", "0"),
+            ("$5", "Limit pins invert", "Limit pins invert (boolean)", "0"),
+            ("$6", "Probe pin invert", "Probe pin invert (boolean)", "0"),
+            ("$10", "Status report", "Status report mask", "1"),
+            ("$11", "Junction deviation", "Junction deviation (mm)", "0.010"),
+            ("$12", "Arc tolerance", "Arc tolerance (mm)", "0.002"),
+            ("$13", "Report inches", "Report in inches (boolean)", "0"),
+            ("$20", "Soft limits", "Soft limits enable (boolean)", "0"),
+            ("$21", "Hard limits", "Hard limits enable (boolean)", "0"),
+            ("$22", "Homing cycle", "Homing cycle enable (boolean)", "0"),
+            ("$23", "Homing dir invert", "Homing direction invert mask", "0"),
+            ("$24", "Homing feed", "Homing feed rate (mm/min)", "25.0"),
+            ("$25", "Homing seek", "Homing seek rate (mm/min)", "500.0"),
+            ("$26", "Homing debounce", "Homing debounce (milliseconds)", "250"),
+            ("$27", "Homing pull-off", "Homing pull-off distance (mm)", "1.0"),
+            ("$30", "Max spindle speed", "Maximum spindle speed (RPM)", "1000"),
+            ("$31", "Min spindle speed", "Minimum spindle speed (RPM)", "0"),
+            ("$32", "Laser mode", "Laser mode enable (boolean)", "0"),
+            ("$100", "X steps/mm", "Steps per mm for X axis", "250.0"),
+            ("$101", "Y steps/mm", "Steps per mm for Y axis", "250.0"),
+            ("$102", "Z steps/mm", "Steps per mm for Z axis", "250.0"),
+            ("$110", "X Max rate", "Maximum rate for X axis (mm/min)", "500.0"),
+            ("$111", "Y Max rate", "Maximum rate for Y axis (mm/min)", "500.0"),
+            ("$112", "Z Max rate", "Maximum rate for Z axis (mm/min)", "500.0"),
+            ("$120", "X Acceleration", "X axis acceleration (mm/sec²)", "10.0"),
+            ("$121", "Y Acceleration", "Y axis acceleration (mm/sec²)", "10.0"),
+            ("$122", "Z Acceleration", "Z axis acceleration (mm/sec²)", "10.0"),
+            ("$130", "X Max travel", "Maximum travel for X axis (mm)", "200.0"),
+            ("$131", "Y Max travel", "Maximum travel for Y axis (mm)", "200.0"),
+            ("$132", "Z Max travel", "Maximum travel for Z axis (mm)", "200.0")
         ]
 
-        for i, (param, name, tooltip) in enumerate(key_settings):
+        for i, (param, name, tooltip, default) in enumerate(key_settings):
             row_frame = ttk.Frame(scrollable_frame)
             row_frame.grid(row=i, column=0, sticky="ew", pady=2)
 
@@ -445,6 +452,7 @@ class UltimateHardwareTestGUI:
             ttk.Label(row_frame, text=name, width=20).pack(side=tk.LEFT, padx=5)
 
             entry = ttk.Entry(row_frame, width=15)
+            entry.insert(0, default)  # Set default value
             entry.pack(side=tk.LEFT, padx=5)
 
             # Add tooltip
