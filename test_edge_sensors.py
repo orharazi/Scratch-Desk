@@ -11,42 +11,42 @@ import time
 sys.path.insert(0, '/home/orharazi/Scratch-Desk')
 
 from hardware.implementations.real.real_hardware import RealHardware
-from hardware.tools.utils import get_logger
+from core.logger import get_logger
 
 def test_edge_sensors():
     """Test edge sensor detection with detailed logging"""
 
     logger = get_logger()
-    logger.info("="*80)
-    logger.info("EDGE SENSOR DIAGNOSTIC TEST")
-    logger.info("="*80)
+    logger.info("="*80, category="hardware")
+    logger.info("EDGE SENSOR DIAGNOSTIC TEST", category="hardware")
+    logger.info("="*80, category="hardware")
 
     # Initialize hardware
-    logger.info("Initializing hardware...")
+    logger.info("Initializing hardware...", category="hardware")
     hardware = RealHardware()
 
     if not hardware.initialize():
-        logger.error("Failed to initialize hardware!")
+        logger.error("Failed to initialize hardware!", category="hardware")
         return False
 
-    logger.success("Hardware initialized successfully!")
-    logger.info("="*80)
+    logger.success("Hardware initialized successfully!", category="hardware")
+    logger.info("="*80, category="hardware")
 
     # Test configuration
-    logger.info("EDGE SENSOR CONFIGURATION:")
-    logger.info("  - x_left_edge: GPIO pin 4")
-    logger.info("  - x_right_edge: GPIO pin 17")
-    logger.info("  - y_top_edge: GPIO pin 7")
-    logger.info("  - y_bottom_edge: GPIO pin 8")
-    logger.info("  - Pull resistor: PULL-DOWN (expects HIGH when triggered)")
-    logger.info("="*80)
+    logger.info("EDGE SENSOR CONFIGURATION:", category="hardware")
+    logger.info("  - x_left_edge: GPIO pin 4", category="hardware")
+    logger.info("  - x_right_edge: GPIO pin 17", category="hardware")
+    logger.info("  - y_top_edge: GPIO pin 7", category="hardware")
+    logger.info("  - y_bottom_edge: GPIO pin 8", category="hardware")
+    logger.info("  - Pull resistor: PULL-DOWN (expects HIGH when triggered)", category="hardware")
+    logger.info("="*80, category="hardware")
 
-    logger.info("Starting edge sensor monitoring...")
-    logger.info("INSTRUCTIONS:")
-    logger.info("  1. Manually trigger each edge sensor on the machine")
-    logger.info("  2. Watch for state changes in the logs")
-    logger.info("  3. Press Ctrl+C to stop")
-    logger.info("")
+    logger.info("Starting edge sensor monitoring...", category="hardware")
+    logger.info("INSTRUCTIONS:", category="hardware")
+    logger.info("  1. Manually trigger each edge sensor on the machine", category="hardware")
+    logger.info("  2. Watch for state changes in the logs", category="hardware")
+    logger.info("  3. Press Ctrl+C to stop", category="hardware")
+    logger.info("", category="hardware")
 
     # Monitor edge sensors
     last_states = {
@@ -77,13 +77,13 @@ def test_edge_sensors():
 
                 if last_state is not None and current_state != last_state:
                     # State changed!
-                    logger.warning("="*60)
-                    logger.warning(f"🚨 EDGE SENSOR CHANGE DETECTED! 🚨")
-                    logger.warning(f"   Sensor: {sensor_name.upper()}")
-                    logger.warning(f"   Changed from: {'TRIGGERED' if last_state else 'READY'}")
-                    logger.warning(f"   Changed to: {'TRIGGERED' if current_state else 'READY'}")
-                    logger.warning(f"   Poll count: {poll_count}")
-                    logger.warning("="*60)
+                    logger.warning("="*60, category="hardware")
+                    logger.warning(f"🚨 EDGE SENSOR CHANGE DETECTED! 🚨", category="hardware")
+                    logger.warning(f"   Sensor: {sensor_name.upper()}", category="hardware")
+                    logger.warning(f"   Changed from: {'TRIGGERED' if last_state else 'READY'}", category="hardware")
+                    logger.warning(f"   Changed to: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
+                    logger.warning(f"   Poll count: {poll_count}", category="hardware")
+                    logger.warning("="*60, category="hardware")
 
                 last_states[sensor_name] = current_state
 
@@ -91,20 +91,20 @@ def test_edge_sensors():
             current_time = time.time()
             if current_time - last_status_time > 3.0:
                 last_status_time = current_time
-                logger.info("Current Edge Sensor States:")
-                logger.info(f"  X-Left: {'TRIGGERED' if current_states['x_left_edge'] else 'READY'} | X-Right: {'TRIGGERED' if current_states['x_right_edge'] else 'READY'}")
-                logger.info(f"  Y-Top: {'TRIGGERED' if current_states['y_top_edge'] else 'READY'} | Y-Bottom: {'TRIGGERED' if current_states['y_bottom_edge'] else 'READY'}")
-                logger.info(f"  (Polls: {poll_count}, waiting for changes...)")
+                logger.info("Current Edge Sensor States:", category="hardware")
+                logger.info(f"  X-Left: {'TRIGGERED' if current_states['x_left_edge'] else 'READY'} | X-Right: {'TRIGGERED' if current_states['x_right_edge'] else 'READY'}", category="hardware")
+                logger.info(f"  Y-Top: {'TRIGGERED' if current_states['y_top_edge'] else 'READY'} | Y-Bottom: {'TRIGGERED' if current_states['y_bottom_edge'] else 'READY'}", category="hardware")
+                logger.info(f"  (Polls: {poll_count}, waiting for changes...)", category="hardware")
 
             # Small delay to avoid overwhelming the system
             time.sleep(0.025)  # 25ms = 40Hz polling
 
     except KeyboardInterrupt:
-        logger.info("\nStopping edge sensor test...")
+        logger.info("\nStopping edge sensor test...", category="hardware")
 
     # Cleanup
-    hardware.cleanup()
-    logger.success("Edge sensor test completed")
+    hardware.shutdown()
+    logger.success("Edge sensor test completed", category="hardware")
     return True
 
 if __name__ == "__main__":
