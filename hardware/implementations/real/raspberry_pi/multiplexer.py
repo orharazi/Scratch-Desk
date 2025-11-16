@@ -84,8 +84,8 @@ class CD74HC4067Multiplexer:
         self.GPIO.output(self.s2, self.GPIO.HIGH if (channel & 0b0100) else self.GPIO.LOW)
         self.GPIO.output(self.s3, self.GPIO.HIGH if (channel & 0b1000) else self.GPIO.LOW)
 
-        # Small delay to allow multiplexer to settle
-        time.sleep(0.002)  # 2 milliseconds - more stable
+        # Delay to allow multiplexer to settle after channel selection
+        time.sleep(0.005)  # 5 milliseconds - eliminates crosstalk
 
     def read_channel(self, channel):
         """
@@ -99,8 +99,8 @@ class CD74HC4067Multiplexer:
         """
         self.select_channel(channel)
 
-        # Small delay to allow signal to stabilize
-        time.sleep(0.002)  # 2 milliseconds - more stable
+        # Additional delay to allow signal to fully stabilize after channel switch
+        time.sleep(0.005)  # 5 milliseconds - ensures stable read
 
         # Read digital value from SIG pin
         value = self.GPIO.input(self.sig)

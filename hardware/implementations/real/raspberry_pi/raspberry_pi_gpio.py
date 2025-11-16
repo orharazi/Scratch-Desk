@@ -307,6 +307,11 @@ class RaspberryPiGPIO:
         """
         import time
 
+        # Multiplexer needs MORE samples and LONGER delays due to channel switching noise
+        if is_multiplexer:
+            samples = 7  # Require 7 consistent reads for MUX (instead of 3)
+            delay = 0.003  # 3ms between samples for MUX (instead of 1ms)
+
         readings = []
         for i in range(samples):
             if is_multiplexer and self.multiplexer:
