@@ -169,6 +169,14 @@ def _translate_description_to_hebrew(description):
             elif 'close line marker' in desc_lower:
                 return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): סגור סמן קווים"
 
+    # Pattern: "Move to cut between sections X and Y: Z cm"
+    if 'move to cut between sections' in desc_lower:
+        import re
+        match = re.search(r'sections (\d+) and (\d+): ([\d.]+)cm', description)
+        if match:
+            s1, s2, pos = match.groups()
+            return f"עבור לחיתוך בין חלקים {s1} ו-{s2}: {pos}ס״מ"
+
     # Pattern: "Cut between sections X and Y: ..."
     if 'cut between sections' in desc_lower:
         import re
@@ -184,7 +192,7 @@ def _translate_description_to_hebrew(description):
             elif 'close line cutter' in desc_lower:
                 return f"חיתוך בין חלקים {s1} ו-{s2}: סגור חותך קווים"
             elif ': move to' in desc_lower:
-                match2 = re.search(r': ([\d.]+)cm', description)
+                match2 = re.search(r'to ([\d.]+)cm', description)
                 if match2:
                     pos = match2.group(1)
                     return f"עבור לחיתוך בין חלקים {s1} ו-{s2}: {pos}ס״מ"
@@ -200,7 +208,7 @@ def _translate_description_to_hebrew(description):
     # Pattern: "Cut RIGHT paper edge: Move to X cm"
     if 'cut right paper edge: move to' in desc_lower:
         import re
-        match = re.search(r': ([\d.]+)cm', description)
+        match = re.search(r'to ([\d.]+)cm', description)
         if match:
             pos = match.group(1)
             return f"חיתוך קצה ימני: עבור ל-{pos}ס״מ (רוחב בפועל)"
@@ -208,7 +216,7 @@ def _translate_description_to_hebrew(description):
     # Pattern: "Cut LEFT paper edge: Move to X cm"
     if 'cut left paper edge: move to' in desc_lower:
         import re
-        match = re.search(r': ([\d.]+)cm', description)
+        match = re.search(r'to ([\d.]+)cm', description)
         if match:
             pos = match.group(1)
             return f"חיתוך קצה שמאלי: עבור ל-{pos}ס״מ (גבול נייר בפועל)"
@@ -245,6 +253,14 @@ def _translate_description_to_hebrew(description):
                 return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y תחתון (קצה שמאלי)"
             elif 'close row marker (left edge)' in desc_lower:
                 return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן שורות (קצה שמאלי)"
+
+    # Pattern: "Move to cut between row sections X and Y: Z cm"
+    if 'move to cut between row sections' in desc_lower:
+        import re
+        match = re.search(r'sections (\d+) and (\d+): ([\d.]+)cm', description)
+        if match:
+            s1, s2, pos = match.groups()
+            return f"עבור לחיתוך בין חלקי שורות {s1} ו-{s2}: {pos}ס״מ"
 
     # Pattern: "Cut between row sections X and Y: ..."
     if 'cut between row sections' in desc_lower:
