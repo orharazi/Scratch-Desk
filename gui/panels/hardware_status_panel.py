@@ -444,17 +444,36 @@ class HardwareStatusPanel:
                     color = '#E67E22'  # Orange
                 elif hasattr(self.main_app, 'canvas_manager'):
                     mode = self.main_app.canvas_manager.motor_operation_mode.upper()
+
+                    # Get current step Hebrew operation title if available
+                    current_step = None
+                    if hasattr(self.main_app, 'steps') and hasattr(engine, 'current_step_index'):
+                        if 0 <= engine.current_step_index < len(self.main_app.steps):
+                            current_step = self.main_app.steps[engine.current_step_index]
+
                     if mode == 'LINES':
                         status = t("LINES")
-                        explanation = t("Marking lines")
+                        # Use Hebrew operation title if available, otherwise fallback
+                        if current_step and 'hebOperationTitle' in current_step:
+                            explanation = current_step['hebOperationTitle']
+                        else:
+                            explanation = t("Marking lines")
                         color = '#3498DB'  # Blue
                     elif mode == 'ROWS':
                         status = t("ROWS")
-                        explanation = t("Cutting rows")
+                        # Use Hebrew operation title if available, otherwise fallback
+                        if current_step and 'hebOperationTitle' in current_step:
+                            explanation = current_step['hebOperationTitle']
+                        else:
+                            explanation = t("Cutting rows")
                         color = '#E74C3C'  # Red
                     else:
                         status = t("IDLE")
-                        explanation = t("System ready")
+                        # Use Hebrew operation title if available during idle operations
+                        if current_step and 'hebOperationTitle' in current_step:
+                            explanation = current_step['hebOperationTitle']
+                        else:
+                            explanation = t("System ready")
                         color = '#95A5A6'
                 else:
                     status = t("IDLE")
