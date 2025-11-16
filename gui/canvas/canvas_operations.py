@@ -2,6 +2,7 @@ import tkinter as tk
 import re
 import json
 from core.logger import get_logger
+from core.translations import t
 
 # Load settings
 def load_settings():
@@ -518,34 +519,44 @@ class CanvasOperations:
         self.refresh_work_lines_colors()
     
     def track_operation_from_step(self, step_description):
-        """Track operation progress from step descriptions"""
+        """Track operation progress from step descriptions
+
+        Note: Checks both English and Hebrew keywords to work with translated descriptions
+        """
         if not step_description:
             return
 
         step_desc = step_description.lower()
 
-        # Track line operations - match "Mark line X" pattern in step descriptions
+        # Track line operations - match "Mark line X" or "סמן קו X" pattern in step descriptions
         # ONLY change color on sensor/tool actions, NOT on move operations
-        line_match = re.search(r'mark line\s*(\d+)', step_desc, re.IGNORECASE)
+        line_match = re.search(r'(?:mark line|סמן קו)\s*(\d+)', step_desc, re.IGNORECASE)
         if line_match:
             line_num = int(line_match.group(1))
 
             # Change to in_progress ONLY when waiting for LEFT sensor (user needs to trigger)
-            if 'wait for left x sensor' in step_desc or 'wait left x sensor' in step_desc:
+            # Check both English and Hebrew keywords
+            if any(keyword in step_desc for keyword in [
+                'wait for left x sensor', 'wait left x sensor',  # English
+                'המתן לחיישן x שמאלי'  # Hebrew: wait for LEFT X sensor
+            ]):
                 self.update_operation_state('lines', line_num, 'in_progress')
                 self.logger.debug(f" Line {line_num} → IN PROGRESS (waiting for LEFT sensor)", category="gui")
             # Change to completed ONLY when closing the marker
-            elif 'close line marker' in step_desc:
+            elif any(keyword in step_desc for keyword in [
+                'close line marker',  # English
+                'סגור סמן קווים'  # Hebrew: close line marker
+            ]):
                 self.update_operation_state('lines', line_num, 'completed')
                 self.logger.info(f" Line {line_num} → COMPLETED (marker closed)", category="gui")
 
-        # Track row operations - match "RTL Page X" with edge detection
+        # Track row operations - match "RTL Page X" or "עמוד RTL X" with edge detection
         # RTL pages are processed with sections RTL and pages RTL within sections
         # Need to convert RTL page number to canvas page position
         # ONLY change color on sensor/tool actions, NOT on move operations
         # ONLY track row MARKING operations, not cutting operations
-        rtl_page_match = re.search(r'rtl page\s*(\d+)', step_desc, re.IGNORECASE)
-        if rtl_page_match and 'row marker' in step_desc:  # Only for row marking, not cutting
+        rtl_page_match = re.search(r'(?:rtl page|עמוד rtl)\s*(\d+)', step_desc, re.IGNORECASE)
+        if rtl_page_match and any(keyword in step_desc for keyword in ['row marker', 'סמן שורות']):  # Only for row marking, not cutting
             rtl_page_num = int(rtl_page_match.group(1))
 
             # Calculate total pages to convert RTL numbering to canvas position
@@ -584,10 +595,10 @@ class CanvasOperations:
                 # Canvas draws pages LTR: page 0, page 1, page 2, ...
                 # Each page has 2 edges: left edge (odd row) and right edge (even row)
                 row_num = None
-                if 'right edge' in step_desc:
+                if any(keyword in step_desc for keyword in ['right edge', 'קצה ימני']):
                     # RIGHT edge = even row number
                     row_num = canvas_page_num * 2 + 2
-                elif 'left edge' in step_desc:
+                elif any(keyword in step_desc for keyword in ['left edge', 'קצה שמאלי']):
                     # LEFT edge = odd row number
                     row_num = canvas_page_num * 2 + 1
 
@@ -595,34 +606,40 @@ class CanvasOperations:
                     row_key = f'row_{row_num}'
 
                     # Change to in_progress when OPENING the row marker (marking starts)
-                    if 'open row marker' in step_desc:
+                    if any(keyword in step_desc for keyword in [
+                        'open row marker',  # English
+                        'פתח סמן שורות'  # Hebrew: open row marker
+                    ]):
                         self.update_operation_state('rows', row_key, 'in_progress')
                         self.logger.debug(f" Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → IN PROGRESS", category="gui")
                     # Change to completed when closing the row marker (marking finishes)
-                    elif 'close row marker' in step_desc:
+                    elif any(keyword in step_desc for keyword in [
+                        'close row marker',  # English
+                        'סגור סמן שורות'  # Hebrew: close row marker
+                    ]):
                         self.update_operation_state('rows', row_key, 'completed')
                         self.logger.info(f" Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → COMPLETED", category="gui")
 
         # Track cut edge operations - ONLY for actual cutting operations
         # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
         # This excludes "row marker (RIGHT edge)" because it doesn't have "cut right"
-        if 'row marker' not in step_desc:  # Extra safety: exclude row marking steps
-            # Track intermediate LINE section cuts (e.g., "Cut between sections 1 and 2")
-            section_cut_match = re.search(r'cut between sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
+        if not any(keyword in step_desc for keyword in ['row marker', 'סמן שורות']):  # Extra safety: exclude row marking steps
+            # Track intermediate LINE section cuts (e.g., "Cut between sections 1 and 2" or "חיתוך בין חלקים")
+            section_cut_match = re.search(r'(?:cut between sections|חיתוך בין חלקים)\s+(\d+)\s+(?:and|ו-)\s*(\d+)', step_desc, re.IGNORECASE)
             if section_cut_match:
                 section_1 = section_cut_match.group(1)
                 section_2 = section_cut_match.group(2)
                 cut_name = f"section_{section_1}_{section_2}"
 
-                if any(keyword in step_desc for keyword in ['close', 'finished']):
+                if any(keyword in step_desc for keyword in ['close', 'finished', 'סגור', 'הושלם']):
                     self.update_operation_state('cuts', cut_name, 'completed')
                     self.logger.info(f" Line section cut {section_1}-{section_2} → COMPLETED", category="gui")
-                elif any(keyword in step_desc for keyword in ['open']):
+                elif any(keyword in step_desc for keyword in ['open', 'פתח']):
                     self.update_operation_state('cuts', cut_name, 'in_progress')
                     self.logger.debug(f" Line section cut {section_1}-{section_2} → IN PROGRESS", category="gui")
 
-            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2" or "5 and 4")
-            row_section_cut_match = re.search(r'cut between row sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
+            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2" or "חיתוך בין חלקי שורות")
+            row_section_cut_match = re.search(r'(?:cut between row sections|חיתוך בין חלקי שורות)\s+(\d+)\s+(?:and|ו-)\s*(\d+)', step_desc, re.IGNORECASE)
             if row_section_cut_match:
                 section_1 = int(row_section_cut_match.group(1))
                 section_2 = int(row_section_cut_match.group(2))
@@ -631,21 +648,28 @@ class CanvasOperations:
                 higher_section = max(section_1, section_2)
                 cut_name = f"row_section_{lower_section}_{higher_section}"
 
-                if any(keyword in step_desc for keyword in ['close', 'finished']):
+                if any(keyword in step_desc for keyword in ['close', 'finished', 'סגור', 'הושלם']):
                     self.update_operation_state('cuts', cut_name, 'completed')
                     self.logger.info(f" Row section cut {lower_section}-{higher_section} → COMPLETED", category="gui")
-                elif any(keyword in step_desc for keyword in ['open']):
+                elif any(keyword in step_desc for keyword in ['open', 'פתח']):
                     self.update_operation_state('cuts', cut_name, 'in_progress')
                     self.logger.debug(f" Row section cut {lower_section}-{higher_section} → IN PROGRESS", category="gui")
 
-            # Track outer edge cuts
-            for cut_name in ['top', 'bottom', 'left', 'right']:
-                # Match "cut X edge" pattern (works for both "cut top edge" and "cut right paper edge")
-                if f'cut {cut_name}' in step_desc and 'edge' in step_desc:
-                    if any(keyword in step_desc for keyword in ['complete', 'close', 'finished']):
+            # Track outer edge cuts (top/bottom/left/right and Hebrew equivalents)
+            cut_patterns = [
+                ('top', ['cut top', 'חיתוך קצה עליון']),
+                ('bottom', ['cut bottom', 'חיתוך קצה תחתון']),
+                ('left', ['cut left', 'חיתוך קצה.*שמאלי']),
+                ('right', ['cut right', 'חיתוך קצה.*ימני'])
+            ]
+
+            for cut_name, patterns in cut_patterns:
+                # Check if any pattern matches and 'edge'/'קצה' is present
+                if any(pattern in step_desc for pattern in patterns) and any(edge_word in step_desc for edge_word in ['edge', 'קצה']):
+                    if any(keyword in step_desc for keyword in ['complete', 'close', 'finished', 'סגור', 'הושלם']):
                         self.update_operation_state('cuts', cut_name, 'completed')
                         self.logger.info(f" {cut_name.title()} cut edge → COMPLETED", category="gui")
-                    elif any(keyword in step_desc for keyword in ['cutting', 'open']):
+                    elif any(keyword in step_desc for keyword in ['cutting', 'open', 'פתח']):
                         self.update_operation_state('cuts', cut_name, 'in_progress')
                         self.logger.debug(f" {cut_name.title()} cut edge → IN PROGRESS", category="gui")
     
