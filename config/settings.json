@@ -161,7 +161,7 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": true,
+    "use_real_hardware": false,
     "start_with_grbl": false,
     "raspberry_pi": {
       "gpio_mode": "BCM",
