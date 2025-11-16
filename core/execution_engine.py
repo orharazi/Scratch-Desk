@@ -353,6 +353,8 @@ class ExecutionEngine:
                 # Notify step execution started (for operation tracking)
                 self._update_status("step_executing", {
                     'description': step.get('description', ''),
+                    'hebDescription': step.get('hebDescription', step.get('description', '')),
+                    'hebOperationTitle': step.get('hebOperationTitle', ''),
                     'step_index': self.current_step_index,
                     'total_steps': len(self.steps)
                 })
