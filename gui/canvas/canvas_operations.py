@@ -1,6 +1,7 @@
 import tkinter as tk
 import re
 import json
+from core.logger import get_logger
 
 # Load settings
 def load_settings():
@@ -21,6 +22,7 @@ class CanvasOperations:
     def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
         self.canvas_manager = canvas_manager
+        self.logger = get_logger()
         # Access hardware through canvas_manager
         self.hardware = canvas_manager.hardware
         self.canvas_objects = main_app.canvas_objects
@@ -33,7 +35,7 @@ class CanvasOperations:
         # Check if canvas is ready (center_panel has initialized it)
         if hasattr(self.main_app, 'center_panel') and hasattr(self.main_app.center_panel, '_canvas_initialized'):
             if not self.main_app.center_panel._canvas_initialized:
-                print("⚠️ update_canvas_paper_area() called before canvas initialization - will retry after init")
+                self.logger.debug(" update_canvas_paper_area() called before canvas initialization - will retry after init", category="gui")
                 # Schedule retry after canvas is initialized
                 self.main_app.root.after(100, self.update_canvas_paper_area)
                 return
@@ -57,7 +59,7 @@ class CanvasOperations:
         paper_width = p.width * p.repeat_rows
         paper_height = p.high * p.repeat_lines
         
-        print(f"🖼️ CANVAS UPDATE: Showing ACTUAL paper size {paper_width}×{paper_height}cm (repeats: {p.repeat_rows}×{p.repeat_lines})")
+        self.logger.debug(f"🖼 CANVAS UPDATE: Showing ACTUAL paper size {paper_width}×{paper_height}cm (repeats: {p.repeat_rows}×{p.repeat_lines})", category="gui")
         
         # Convert to canvas coordinates using settings
         sim_settings = self.main_app.settings.get("simulation", {})
@@ -132,13 +134,13 @@ class CanvasOperations:
             "completed": "#AA00AA"
         })
 
-        print(f"📏 DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm")
-        print(f"🎨 Mark colors: {mark_colors}")
-        print(f"🎨 Cuts colors: {cuts_colors}")
+        self.logger.debug(f" DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm", category="gui")
+        self.logger.debug(f"🎨 Mark colors: {mark_colors}", category="gui")
+        self.logger.debug(f"🎨 Cuts colors: {cuts_colors}", category="gui")
         
         # CORRECTED REPEAT VISUALIZATION: Process each repeated section individually
         # Each section has its own margins - match step generator logic exactly
-        print(f"🖼️ CANVAS REPEAT: {program.repeat_lines} sections of {program.high}cm each")
+        self.logger.debug(f"🖼 CANVAS REPEAT: {program.repeat_lines} sections of {program.high}cm each", category="gui")
         
         # Process each repeated section from top to bottom
         overall_line_num = 0
@@ -156,7 +158,7 @@ class CanvasOperations:
             else:
                 line_spacing_section = 0
             
-            print(f"   Canvas Section {section_num + 1}: lines from {first_line_y_section:.1f} to {last_line_y_section:.1f}cm")
+            self.logger.debug(f" Canvas Section {section_num + 1}: lines from {first_line_y_section:.1f} to {last_line_y_section:.1f}cm", category="gui")
             
             # Draw all lines in this section
             for line_in_section in range(program.number_of_lines):
@@ -206,7 +208,7 @@ class CanvasOperations:
         # Calculate TOTAL pages across all repeated sections
         total_pages = program.number_of_pages * program.repeat_rows
 
-        print(f"📄 DRAWING PAGES: {total_pages} total pages ({program.number_of_pages} per section × {program.repeat_rows} sections)")
+        self.logger.debug(f"📄 DRAWING PAGES: {total_pages} total pages ({program.number_of_pages} per section × {program.repeat_rows} sections)", category="gui")
 
         # Draw each page's start and end marks (across entire repeated area)
         page_mark_id = 1  # For tracking state
@@ -510,7 +512,7 @@ class CanvasOperations:
             self.main_app.operation_states[operation_type] = {}
         
         self.main_app.operation_states[operation_type][operation_id] = new_state
-        print(f"🔄 STATE UPDATE: {operation_type}.{operation_id} = {new_state}")
+        self.logger.debug(f" STATE UPDATE: {operation_type}.{operation_id} = {new_state}", category="gui")
         
         # Update canvas colors immediately
         self.refresh_work_lines_colors()
@@ -531,11 +533,11 @@ class CanvasOperations:
             # Change to in_progress ONLY when waiting for LEFT sensor (user needs to trigger)
             if 'wait for left x sensor' in step_desc or 'wait left x sensor' in step_desc:
                 self.update_operation_state('lines', line_num, 'in_progress')
-                print(f"🔄 Line {line_num} → IN PROGRESS (waiting for LEFT sensor)")
+                self.logger.debug(f" Line {line_num} → IN PROGRESS (waiting for LEFT sensor)", category="gui")
             # Change to completed ONLY when closing the marker
             elif 'close line marker' in step_desc:
                 self.update_operation_state('lines', line_num, 'completed')
-                print(f"✅ Line {line_num} → COMPLETED (marker closed)")
+                self.logger.info(f" Line {line_num} → COMPLETED (marker closed)", category="gui")
 
         # Track row operations - match "RTL Page X" with edge detection
         # RTL pages are processed with sections RTL and pages RTL within sections
@@ -576,7 +578,7 @@ class CanvasOperations:
                 # Canvas page number (LTR): section * pages_per_section + page
                 canvas_page_num = physical_section_index * pages_per_section + physical_page_in_section
 
-                print(f"🔍 RTL→Canvas conversion: RTL Page {rtl_page_num} → exec_section={execution_section}, page_in_section={page_in_section} → physical_section={physical_section_index}, physical_page={physical_page_in_section} → canvas_page={canvas_page_num}")
+                self.logger.debug(f" RTL→Canvas conversion: RTL Page {rtl_page_num} → exec_section={execution_section}, page_in_section={page_in_section} → physical_section={physical_section_index}, physical_page={physical_page_in_section} → canvas_page={canvas_page_num}", category="gui")
 
                 # Calculate row number based on canvas page position
                 # Canvas draws pages LTR: page 0, page 1, page 2, ...
@@ -595,11 +597,11 @@ class CanvasOperations:
                     # Change to in_progress when OPENING the row marker (marking starts)
                     if 'open row marker' in step_desc:
                         self.update_operation_state('rows', row_key, 'in_progress')
-                        print(f"🔄 Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → IN PROGRESS")
+                        self.logger.debug(f" Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → IN PROGRESS", category="gui")
                     # Change to completed when closing the row marker (marking finishes)
                     elif 'close row marker' in step_desc:
                         self.update_operation_state('rows', row_key, 'completed')
-                        print(f"✅ Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → COMPLETED")
+                        self.logger.info(f" Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → COMPLETED", category="gui")
 
         # Track cut edge operations - ONLY for actual cutting operations
         # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
@@ -614,10 +616,10 @@ class CanvasOperations:
 
                 if any(keyword in step_desc for keyword in ['close', 'finished']):
                     self.update_operation_state('cuts', cut_name, 'completed')
-                    print(f"✅ Line section cut {section_1}-{section_2} → COMPLETED")
+                    self.logger.info(f" Line section cut {section_1}-{section_2} → COMPLETED", category="gui")
                 elif any(keyword in step_desc for keyword in ['open']):
                     self.update_operation_state('cuts', cut_name, 'in_progress')
-                    print(f"🔄 Line section cut {section_1}-{section_2} → IN PROGRESS")
+                    self.logger.debug(f" Line section cut {section_1}-{section_2} → IN PROGRESS", category="gui")
 
             # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2" or "5 and 4")
             row_section_cut_match = re.search(r'cut between row sections\s+(\d+)\s+and\s+(\d+)', step_desc, re.IGNORECASE)
@@ -631,10 +633,10 @@ class CanvasOperations:
 
                 if any(keyword in step_desc for keyword in ['close', 'finished']):
                     self.update_operation_state('cuts', cut_name, 'completed')
-                    print(f"✅ Row section cut {lower_section}-{higher_section} → COMPLETED")
+                    self.logger.info(f" Row section cut {lower_section}-{higher_section} → COMPLETED", category="gui")
                 elif any(keyword in step_desc for keyword in ['open']):
                     self.update_operation_state('cuts', cut_name, 'in_progress')
-                    print(f"🔄 Row section cut {lower_section}-{higher_section} → IN PROGRESS")
+                    self.logger.debug(f" Row section cut {lower_section}-{higher_section} → IN PROGRESS", category="gui")
 
             # Track outer edge cuts
             for cut_name in ['top', 'bottom', 'left', 'right']:
@@ -642,10 +644,10 @@ class CanvasOperations:
                 if f'cut {cut_name}' in step_desc and 'edge' in step_desc:
                     if any(keyword in step_desc for keyword in ['complete', 'close', 'finished']):
                         self.update_operation_state('cuts', cut_name, 'completed')
-                        print(f"✅ {cut_name.title()} cut edge → COMPLETED")
+                        self.logger.info(f" {cut_name.title()} cut edge → COMPLETED", category="gui")
                     elif any(keyword in step_desc for keyword in ['cutting', 'open']):
                         self.update_operation_state('cuts', cut_name, 'in_progress')
-                        print(f"🔄 {cut_name.title()} cut edge → IN PROGRESS")
+                        self.logger.debug(f" {cut_name.title()} cut edge → IN PROGRESS", category="gui")
     
     def refresh_work_lines_colors(self):
         """Refresh colors of work lines based on current operation states"""
@@ -781,4 +783,4 @@ class CanvasOperations:
         
         # Add keybinding for testing color changes
         self.main_app.root.bind('<Control-t>', lambda e: self.test_color_changes())
-        print("🔧 DEBUG: Added Ctrl+T to test color changes")
+        self.logger.debug(" DEBUG: Added Ctrl+T to test color changes", category="gui")

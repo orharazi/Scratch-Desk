@@ -1,5 +1,6 @@
 import tkinter as tk
 import json
+from core.logger import get_logger
 
 
 class HardwareStatusPanel:
@@ -8,6 +9,7 @@ class HardwareStatusPanel:
     def __init__(self, main_app, parent_frame):
         self.main_app = main_app
         self.parent_frame = parent_frame
+        self.logger = get_logger()
         # Access hardware through main_app
         self.hardware = main_app.hardware
         self.status_widgets = {}  # {key: {'label': tk.Label, 'frame': tk.Frame}}
@@ -175,7 +177,7 @@ class HardwareStatusPanel:
         status_label.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
 
         # Debug: Print widget creation
-        print(f"Created widget: {status_key}")
+        self.logger.debug(f"Created widget: {status_key}", category="gui")
 
         # Store references
         self.status_widgets[status_key] = {
@@ -270,14 +272,14 @@ class HardwareStatusPanel:
 
             # Check for hardware initialization errors
             if 'error' in hw_status and not hw_status.get('is_initialized', True):
-                print(f"❌ HARDWARE ERROR: {hw_status['error']}")
+                self.logger.error(f" HARDWARE ERROR: {hw_status['error']}", category="gui")
                 # Show error in position displays
                 self._update_widget('x_position', "ERROR", "#FF0000")
                 self._update_widget('y_position', hw_status['error'][:20], "#FF0000")
                 return
 
             # Debug: Print that we're updating
-            print(f"🔧 Hardware status update: X={hw_status.get('x_position', '?')}, Y={hw_status.get('y_position', '?')}")
+            self.logger.debug(f" Hardware status update: X={hw_status.get('x_position', '?')}, Y={hw_status.get('y_position', '?')}", category="gui")
 
             # Motor positions
             self._update_widget('x_position', f"{hw_status['x_position']:.1f}", self.colors.get("motor_x", "#E74C3C"))
@@ -425,7 +427,7 @@ class HardwareStatusPanel:
             self._update_operation_mode()
 
         except Exception as e:
-            print(f"❌ ERROR in update_hardware_status: {e}")
+            self.logger.error(f" ERROR in update_hardware_status: {e}", category="gui")
             import traceback
             traceback.print_exc()
 

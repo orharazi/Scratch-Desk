@@ -27,6 +27,7 @@ import re
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
+from core.logger import get_logger
 
 
 class UltimateHardwareTestGUI:
@@ -46,6 +47,9 @@ class UltimateHardwareTestGUI:
         self.grbl_connected = False
         self.command_queue = queue.Queue()
         self.log_queue = queue.Queue()
+
+        # Initialize centralized logger
+        self.logger = get_logger()
 
         # Port selection
         self.available_ports = []
@@ -117,6 +121,7 @@ class UltimateHardwareTestGUI:
 
             return mappings
         except Exception as e:
+            # Note: logger not yet initialized when this runs, use print
             print(f"Error loading port mappings: {e}")
             return {}
 
@@ -759,6 +764,7 @@ class UltimateHardwareTestGUI:
 
                 time.sleep(0.01)
             except Exception as e:
+                # Note: Keep as print to avoid recursion with log processor
                 print(f"Log processor error: {e}")
                 time.sleep(0.1)
 

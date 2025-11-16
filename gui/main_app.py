@@ -21,6 +21,7 @@ from gui.panels.hardware_status_panel import HardwareStatusPanel
 from gui.panels.hardware_settings_panel import HardwareSettingsPanel
 from gui.canvas.canvas_manager import CanvasManager
 from gui.execution.execution_controller import ExecutionController
+from core.logger import get_logger
 
 
 class ScratchDeskGUI:
@@ -32,6 +33,7 @@ class ScratchDeskGUI:
         self.root.geometry("1500x1000")
         self.root.minsize(1400, 950)
         self.root.resizable(True, True)
+        self.logger = get_logger()
 
         # Try to maximize window if possible
         try:
@@ -204,7 +206,7 @@ class ScratchDeskGUI:
         self.hardware_status_panel = HardwareStatusPanel(self, center_bottom_frame)
 
         # NOW finalize canvas setup after all panels are created and laid out
-        print("📦 All panels created, calling finalize_canvas_setup()")
+        self.logger.debug("All panels created, calling finalize_canvas_setup()", category="gui")
         self.center_panel.finalize_canvas_setup()
     
     def schedule_position_update(self):

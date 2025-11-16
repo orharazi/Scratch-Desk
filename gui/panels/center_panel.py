@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from core.logger import get_logger
 
 
 class CenterPanel:
@@ -8,6 +9,7 @@ class CenterPanel:
     def __init__(self, main_app, parent_frame):
         self.main_app = main_app
         self.parent_frame = parent_frame
+        self.logger = get_logger()
         
         self.create_widgets()
     
@@ -51,39 +53,39 @@ class CenterPanel:
 
     def finalize_canvas_setup(self):
         """Called after all panels are created - wait for window to be fully visible"""
-        print("🎯 finalize_canvas_setup() called - waiting for window visibility")
+        self.logger.debug(" finalize_canvas_setup() called - waiting for window visibility", category="gui")
 
         def wait_for_window_visible():
             # Check if window is fully visible/mapped
             if self.main_app.root.winfo_viewable():
-                print("   ✅ Window is visible - getting canvas dimensions")
+                self.logger.debug(" Window is visible - getting canvas dimensions", category="gui")
                 # Get canvas dimensions
                 width = self.main_app.canvas.winfo_width()
                 height = self.main_app.canvas.winfo_height()
-                print(f"   📐 Canvas dimensions: {width}x{height}")
+                self.logger.debug(f" Canvas dimensions: {width}x{height}", category="gui")
 
                 # If we have good dimensions, initialize now
                 # Lower threshold to accommodate various screen sizes
                 if width > 1 and height > 200:
-                    print("   ✅ Good dimensions - initializing canvas")
+                    self.logger.debug(" Good dimensions - initializing canvas", category="gui")
                     self._canvas_initialized = True
                     self._update_canvas_scaling(width, height)
                     self.main_app.canvas_manager.setup_canvas()
-                    print(f"   ✅ Canvas initialized with scale={self.main_app.scale_x:.2f}")
+                    self.logger.debug(f" Canvas initialized with scale={self.main_app.scale_x:.2f}", category="gui")
 
                     # Create Work Operations Status overlay AFTER canvas is fully initialized
                     self.create_work_operations_overlay()
-                    print("   ✅ Work Operations Status overlay created")
+                    self.logger.debug(" Work Operations Status overlay created", category="gui")
 
                     # Enable Configure events for future window resizes
                     self._ignore_configure_events = False
                 else:
                     # Dimensions not ready yet, try again
-                    print(f"   ⚠️ Dimensions not ready - checking again in 50ms")
+                    self.logger.debug(f" Dimensions not ready - checking again in 50ms", category="gui")
                     self.main_app.root.after(50, wait_for_window_visible)
             else:
                 # Window not visible yet, check again
-                print("   ⏳ Window not visible yet - checking again in 50ms")
+                self.logger.debug(" Window not visible yet - checking again in 50ms", category="gui")
                 self.main_app.root.after(50, wait_for_window_visible)
 
         # Start checking for window visibility
@@ -319,7 +321,7 @@ class CenterPanel:
         # Raise overlay to ensure it's on top of all other canvas objects
         self.main_app.canvas.tag_raise('work_ops_overlay')
 
-        print("✅ Work Operations Status overlay created and raised to top")
+        self.logger.debug(" Work Operations Status overlay created and raised to top", category="gui")
 
     def _on_canvas_resize(self, event):
         """Handle canvas resize events - both initial setup and user-initiated resizes"""
@@ -334,11 +336,11 @@ class CenterPanel:
 
         # Handle initial canvas setup (first time we get good dimensions)
         if not self._canvas_initialized:
-            print(f"📐 Initial canvas setup with dimensions: {event.width}x{event.height}")
+            self.logger.debug(f" Initial canvas setup with dimensions: {event.width}x{event.height}", category="gui")
             self._canvas_initialized = True
             self._update_canvas_scaling(event.width, event.height)
             self.main_app.canvas_manager.setup_canvas()
-            print(f"   ✅ Canvas initialized with scale={self.main_app.scale_x:.2f}")
+            self.logger.debug(f" Canvas initialized with scale={self.main_app.scale_x:.2f}", category="gui")
             return
 
         # Handle subsequent window resizes with debounce
@@ -425,11 +427,11 @@ class CenterPanel:
         if extra_height > 0:
             self.main_app.offset_y += extra_height / 2
 
-        print(f"📐 CANVAS SCALING: width={width}, height={height}")
-        print(f"   Margins: L={margin_left}, R={margin_right}, T={margin_top}, B={margin_bottom}")
-        print(f"   Available: {available_width}x{available_height}")
-        print(f"   Workspace: {max_x_cm}x{max_y_cm}cm")
-        print(f"   Scale: {scale:.2f} (min={min_scale})")
-        print(f"   Workspace pixels: {workspace_width:.1f}x{workspace_height:.1f}")
-        print(f"   Offsets: X={self.main_app.offset_x:.1f}, Y={self.main_app.offset_y:.1f}")
-        print(f"   Workspace bottom Y: {self.main_app.offset_y + workspace_height:.1f} (canvas height={height})")
+        self.logger.debug(f" CANVAS SCALING: width={width}, height={height}", category="gui")
+        self.logger.debug(f" Margins: L={margin_left}, R={margin_right}, T={margin_top}, B={margin_bottom}", category="gui")
+        self.logger.debug(f" Available: {available_width}x{available_height}", category="gui")
+        self.logger.debug(f" Workspace: {max_x_cm}x{max_y_cm}cm", category="gui")
+        self.logger.debug(f" Scale: {scale:.2f} (min={min_scale})", category="gui")
+        self.logger.debug(f" Workspace pixels: {workspace_width:.1f}x{workspace_height:.1f}", category="gui")
+        self.logger.debug(f" Offsets: X={self.main_app.offset_x:.1f}, Y={self.main_app.offset_y:.1f}", category="gui")
+        self.logger.debug(f" Workspace bottom Y: {self.main_app.offset_y + workspace_height:.1f} (canvas height={height})", category="gui")

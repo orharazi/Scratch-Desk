@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from core.logger import get_logger
 
 
 class LeftPanel:
@@ -9,6 +10,7 @@ class LeftPanel:
         self.main_app = main_app
         self.parent_frame = parent_frame
         self.program_fields = {}
+        self.logger = get_logger()
         
         self.create_widgets()
     

@@ -1,4 +1,5 @@
 import tkinter as tk
+from core.logger import get_logger
 
 
 class CanvasSetup:
@@ -8,6 +9,7 @@ class CanvasSetup:
         self.main_app = main_app
         self.canvas_manager = canvas_manager
         self.canvas_objects = main_app.canvas_objects
+        self.logger = get_logger()
         # Access hardware through canvas_manager
         self.hardware = canvas_manager.hardware
     
@@ -16,7 +18,7 @@ class CanvasSetup:
         # Check if canvas is ready (center_panel has initialized it)
         if hasattr(self.main_app, 'center_panel') and hasattr(self.main_app.center_panel, '_canvas_initialized'):
             if not self.main_app.center_panel._canvas_initialized:
-                print("⚠️ setup_canvas() called before canvas initialization - skipping")
+                self.logger.debug(" setup_canvas() called before canvas initialization - skipping", category="gui")
                 return
 
         # Get settings or use defaults

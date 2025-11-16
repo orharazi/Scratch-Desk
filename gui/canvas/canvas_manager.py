@@ -1,5 +1,6 @@
 import tkinter as tk
 import re
+from core.logger import get_logger
 
 from .canvas_setup import CanvasSetup
 from .canvas_sensors import CanvasSensors
@@ -13,6 +14,7 @@ class CanvasManager:
 
     def __init__(self, main_app):
         self.main_app = main_app
+        self.logger = get_logger()
         # Access hardware through main_app
         self.hardware = main_app.hardware
         # Use main app's canvas_objects for consistency
@@ -47,9 +49,9 @@ class CanvasManager:
         """Set the motor operation mode for proper visualization"""
         if mode in ["idle", "lines", "rows"]:
             self.motor_operation_mode = mode
-            print(f"Motor visualization mode: {mode}")
+            self.logger.debug(f"Motor visualization mode: {mode}", category="gui")
         else:
-            print(f"Invalid motor mode: {mode}")
+            self.logger.debug(f"Invalid motor mode: {mode}", category="gui")
     
     def update_lines_motor_position(self, y_position):
         """Update lines motor position (Y-axis) during lines operations"""
@@ -88,7 +90,7 @@ class CanvasManager:
         ]):
             self.set_motor_operation_mode("idle")
 
-        print(f"🔍 detect_operation_mode_from_step: '{step_desc[:50]}...' → mode = {self.motor_operation_mode}")
+        self.logger.debug(f" detect_operation_mode_from_step: '{step_desc[:50]}...' → mode = {self.motor_operation_mode}", category="gui")
     
     # === SETUP METHODS ===
     def setup_canvas(self):

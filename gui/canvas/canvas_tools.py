@@ -1,5 +1,6 @@
 import tkinter as tk
 import re
+from core.logger import get_logger
 
 
 class CanvasTools:
@@ -9,6 +10,7 @@ class CanvasTools:
         self.main_app = main_app
         self.canvas_manager = canvas_manager
         self.canvas_objects = main_app.canvas_objects
+        self.logger = get_logger()
         # Access hardware through canvas_manager
         self.hardware = canvas_manager.hardware
     
@@ -29,14 +31,14 @@ class CanvasTools:
                 if 'line_marker' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['line_marker'], 
                                                    text="Line Marker: DOWN", fill='red')
-                print("🔴 Line Marker: DOWN (marking)")
+                self.logger.debug(" Line Marker: DOWN (marking)", category="gui")
                 
             elif 'close line marker' in step_desc:
                 # Line marker closing (going up)
                 if 'line_marker' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['line_marker'], 
                                                    text="Line Marker: UP", fill='green')
-                print("🟢 Line Marker: UP (raised)")
+                self.logger.debug(" Line Marker: UP (raised)", category="gui")
         
         # Line cutter tool actions
         elif 'line cutter' in step_desc:
@@ -45,14 +47,14 @@ class CanvasTools:
                 if 'line_cutter' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['line_cutter'], 
                                                    text="Line Cutter: DOWN", fill='red')
-                print("🔴 Line Cutter: DOWN (cutting)")
+                self.logger.debug(" Line Cutter: DOWN (cutting)", category="gui")
                 
             elif 'close line cutter' in step_desc:
                 # Line cutter closing (going up)
                 if 'line_cutter' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['line_cutter'], 
                                                    text="Line Cutter: UP", fill='green')
-                print("🟢 Line Cutter: UP (raised)")
+                self.logger.debug(" Line Cutter: UP (raised)", category="gui")
         
         # Row marker tool actions
         elif 'row marker' in step_desc:
@@ -61,14 +63,14 @@ class CanvasTools:
                 if 'row_marker' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['row_marker'], 
                                                    text="Row Marker: DOWN", fill='red')
-                print("🔴 Row Marker: DOWN (marking)")
+                self.logger.debug(" Row Marker: DOWN (marking)", category="gui")
                 
             elif 'close row marker' in step_desc:
                 # Row marker closing (going up)
                 if 'row_marker' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['row_marker'], 
                                                    text="Row Marker: UP", fill='green')
-                print("🟢 Row Marker: UP (raised)")
+                self.logger.debug(" Row Marker: UP (raised)", category="gui")
         
         # Row cutter tool actions
         elif 'row cutter' in step_desc:
@@ -77,23 +79,23 @@ class CanvasTools:
                 if 'row_cutter' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['row_cutter'], 
                                                    text="Row Cutter: DOWN", fill='red')
-                print("🔴 Row Cutter: DOWN (cutting)")
+                self.logger.debug(" Row Cutter: DOWN (cutting)", category="gui")
                 
             elif 'close row cutter' in step_desc:
                 # Row cutter closing (going up)
                 if 'row_cutter' in self.canvas_objects:
                     self.main_app.canvas.itemconfig(self.canvas_objects['row_cutter'], 
                                                    text="Row Cutter: UP", fill='green')
-                print("🟢 Row Cutter: UP (raised)")
+                self.logger.debug(" Row Cutter: UP (raised)", category="gui")
         
-        print(f"Tool status updated from step: {step_description}")
+        self.logger.debug(f"Tool status updated from step: {step_description}", category="gui")
     
     def update_tool_status(self, tool_name, status, color):
         """Update specific tool status indicator"""
         tool_key = f"{tool_name}_status"
         if tool_key in self.canvas_objects:
             self.main_app.canvas.itemconfig(self.canvas_objects[tool_key], fill=color)
-            print(f"🔧 {tool_name.upper()} {status.upper()}: {color}")
+            self.logger.debug(f" {tool_name.upper()} {status.upper()}: {color}", category="gui")
     
     def ensure_all_tools_up(self):
         """Ensure all tool indicators show UP state during motor movements with original logic"""
@@ -114,7 +116,7 @@ class CanvasTools:
             self.main_app.canvas.itemconfig(self.canvas_objects['row_cutter'], 
                                            text="Row Cutter: UP", fill='green')
         
-        print("🔧 ALL TOOLS UP: Safety position")
+        self.logger.debug(" ALL TOOLS UP: Safety position", category="gui")
     
     def refresh_tool_status_display(self):
         """Refresh tool status display from hardware status"""
@@ -134,6 +136,6 @@ class CanvasTools:
                 self.update_tool_status("cutter", "up", "gray")
                 
         except Exception as e:
-            print(f"Error refreshing tool status: {e}")
+            self.logger.error(f"Error refreshing tool status: {e}", category="gui")
             # Default to safe state
             self.ensure_all_tools_up()

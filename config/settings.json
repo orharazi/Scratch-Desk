@@ -17,6 +17,22 @@
     "canvas_margin_bottom": 50,
     "canvas_min_scale": 3.5
   },
+  "logging": {
+    "level": "INFO",
+    "show_timestamps": true,
+    "show_thread_names": false,
+    "console_output": true,
+    "file_output": false,
+    "file_path": "logs/scratch_desk.log",
+    "use_colors": true,
+    "use_icons": true,
+    "categories": {
+      "hardware": "INFO",
+      "execution": "INFO",
+      "gui": "WARNING",
+      "grbl": "INFO"
+    }
+  },
   "simulation": {
     "show_grid": true,
     "grid_spacing": 20,

@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
+from core.logger import get_logger
 
 
 class RightPanel:
@@ -11,6 +12,7 @@ class RightPanel:
         self.parent_frame = parent_frame
         # Access hardware through main_app
         self.hardware = main_app.hardware
+        self.logger = get_logger()
 
         # Responsive font sizing based on window width
         self.update_font_sizes()
@@ -681,7 +683,7 @@ class RightPanel:
         self.pause_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.DISABLED)
         
-        print("🔄 Complete system reset - All components restored to initial state")
+        self.logger.info("Complete system reset - All components restored to initial state", category="gui")
     
     def trigger_x_left(self):
         """Trigger X left sensor - only sets event, does NOT move motors or canvas"""
@@ -730,7 +732,7 @@ class RightPanel:
     def toggle_ls(self, switch_name):
         """Toggle a limit switch"""
         state = self.hardware.toggle_limit_switch(switch_name)
-        print(f"Limit switch {switch_name} toggled: {'ON' if state else 'OFF'}")
+        self.logger.debug(f"Limit switch {switch_name} toggled: {'ON' if state else 'OFF'}", category="gui")
 
         # Force canvas position update to refresh indicators
         if hasattr(self.main_app, 'canvas_manager'):
@@ -829,11 +831,11 @@ class RightPanel:
         if is_real_hardware:
             # Disable all test controls on real hardware
             self._set_frame_state(self.test_controls_frame, tk.DISABLED)
-            print("🔒 Test controls DISABLED - Real hardware mode active")
+            self.logger.info("Test controls DISABLED - Real hardware mode active", category="gui")
         else:
             # Enable test controls in simulation mode
             self._set_frame_state(self.test_controls_frame, tk.NORMAL)
-            print("🔓 Test controls ENABLED - Simulation mode active")
+            self.logger.info("Test controls ENABLED - Simulation mode active", category="gui")
 
     def _set_frame_state(self, frame, state):
         """Recursively set state of all widgets in a frame"""

@@ -2,6 +2,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import messagebox
+from core.logger import get_logger
 
 
 class ExecutionController:
@@ -10,6 +11,7 @@ class ExecutionController:
     def __init__(self, main_app):
         self.main_app = main_app
         self.transition_dialog = None
+        self.logger = get_logger()
     
     def on_execution_status(self, status, info=None):
         """Handle execution status updates"""
@@ -39,10 +41,10 @@ class ExecutionController:
 
                     # Force immediate position update for all move operations
                     if 'move' in step_info.lower():
-                        print(f"🔄 MOVE DETECTED - Forcing position update: {step_info}")
+                        self.logger.debug(f" MOVE DETECTED - Forcing position update: {step_info}", category="gui")
                         # ALWAYS clear sensor override when starting a move operation
                         if hasattr(self.main_app.canvas_manager, 'sensor_override_active') and self.main_app.canvas_manager.sensor_override_active:
-                            print(f"🔓 Clearing sensor override before move")
+                            self.logger.debug(f" Clearing sensor override before move", category="gui")
                             self.main_app.canvas_manager.sensor_override_active = False
                             # Cancel any pending sensor override timer
                             if hasattr(self.main_app.canvas_manager, 'sensor_override_timer') and self.main_app.canvas_manager.sensor_override_timer:
@@ -51,7 +53,7 @@ class ExecutionController:
                         # Force multiple position updates to ensure canvas refreshes
                         self.main_app.canvas_manager.update_position_display()
                         self.main_app.canvas_manager.canvas_position.update_position_display()
-                        print(f"✅ Position display updated for move operation")
+                        self.logger.debug(f" Position display updated for move operation", category="gui")
 
             elif status == 'step_completed':
                 # Force position update after each step completion for all position-related operations
@@ -66,11 +68,11 @@ class ExecutionController:
 
                     # Force position update for move operations
                     if 'move' in step_info.lower():
-                        print(f"🔄 MOVE COMPLETED - Forcing position update: {step_info}")
+                        self.logger.info(f" MOVE COMPLETED - Forcing position update: {step_info}", category="gui")
                         self.main_app.canvas_manager.update_position_display()
                         if hasattr(self.main_app.canvas_manager, 'canvas_position'):
                             self.main_app.canvas_manager.canvas_position.update_position_display()
-                        print(f"✅ Position display updated after move completion")
+                        self.logger.debug(f" Position display updated after move completion", category="gui")
                     # Update for sensor operations that might change position
                     elif any(keyword in step_info.lower() for keyword in ['init', 'sensor', 'cut', 'mark']):
                         self.main_app.canvas_manager.update_position_display()
@@ -81,18 +83,18 @@ class ExecutionController:
                     
                     # Special handling for line completion - ensure automatic move to next line
                     if 'close line marker' in step_info.lower() and 'lines' in step_info.lower():
-                        print(f"🚀 LINE MARKING COMPLETED: {step_info}")
-                        print(f"    Current step: {self.main_app.execution_engine.current_step_index}/{len(self.main_app.steps)}")
+                        self.logger.info(f" LINE MARKING COMPLETED: {step_info}", category="gui")
+                        self.logger.debug(f" Current step: {self.main_app.execution_engine.current_step_index}/{len(self.main_app.steps)}", category="gui")
                         
                         # Check what the next step is
                         if (self.main_app.execution_engine.current_step_index < len(self.main_app.steps)):
                             next_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
-                            print(f"    Next step: {next_step.get('operation', 'unknown')} - {next_step.get('description', 'no description')}")
+                            self.logger.debug(f" Next step: {next_step.get('operation', 'unknown')} - {next_step.get('description', 'no description')}", category="gui")
                             
                             # If next step is a move operation, it should execute automatically
                             if next_step.get('operation') == 'move_y':
-                                print(f"    ✅ Next step is Y movement - will execute automatically")
-                                print(f"    🎯 Line marking sequence complete - ready for automatic move to next line")
+                                self.logger.debug(f" Next step is Y movement - will execute automatically", category="gui")
+                                self.logger.info(f" Line marking sequence complete - ready for automatic move to next line", category="gui")
                         
                         # Force position update to ensure we're ready for the next move
                         self.main_app.canvas_manager.update_position_display()
@@ -209,8 +211,8 @@ class ExecutionController:
                 to_op = info.get('to_operation', '').title()
                 message = info.get('message', '')
                 
-                print(f"🔔 TRANSITION ALERT: {from_op} → {to_op}")
-                print(f"🔔 TRANSITION MESSAGE: {message}")
+                self.logger.warning(f" TRANSITION ALERT: {from_op} → {to_op}", category="gui")
+                self.logger.debug(f" TRANSITION MESSAGE: {message}", category="gui")
                 
                 # Show non-blocking transition dialog
                 self.show_transition_dialog(from_op, to_op, message)
@@ -241,12 +243,12 @@ class ExecutionController:
                 # Auto-dismiss the transition dialog
                 if hasattr(self, 'transition_dialog') and self.transition_dialog:
                     try:
-                        print("🔄 TRANSITION: Auto-closing transition dialog")
+                        self.logger.debug(" TRANSITION: Auto-closing transition dialog", category="gui")
                         self.transition_dialog.destroy()
                         self.transition_dialog = None
-                        print("✅ TRANSITION: Dialog closed successfully")
+                        self.logger.info(" TRANSITION: Dialog closed successfully", category="gui")
                     except Exception as e:
-                        print(f"⚠️  Error closing transition dialog: {e}")
+                        self.logger.error(f" Error closing transition dialog: {e}", category="gui")
                 
                 # Update GUI status to show rows operations starting
                 self.main_app.operation_label.config(
@@ -260,7 +262,7 @@ class ExecutionController:
                     text=f"{current_progress:.1f}% - Continuing execution"
                 )
                 
-                print("✅ TRANSITION COMPLETE: GUI updated for rows operations")
+                self.logger.info(" TRANSITION COMPLETE: GUI updated for rows operations", category="gui")
             
             elif status == 'stopped' or status == 'error':
                 # Keep current progress but update text
@@ -329,16 +331,16 @@ The system will remain stopped until you manually address this issue."""
             messagebox.showerror(alert_title, alert_message)
             
             # Log to console as well
-            print(f"\n{'='*60}")
-            print(f"🚨 SAFETY VIOLATION: {safety_code}")
-            print(f"Step: {step_description}")
-            print(f"Issue: {violation_message}")
-            print(f"{'='*60}\n")
+            self.logger.debug(f"\n{'='*60}", category="gui")
+            self.logger.warning(f"🚨 SAFETY VIOLATION: {safety_code}", category="gui")
+            self.logger.debug(f"Step: {step_description}", category="gui")
+            self.logger.warning(f"Issue: {violation_message}", category="gui")
+            self.logger.debug(f"{'='*60}\n", category="gui")
             
         except Exception as e:
-            print(f"Error showing safety alert: {e}")
+            self.logger.error(f"Error showing safety alert: {e}", category="gui")
             # Fallback to console message
-            print(f"\n🚨 SAFETY VIOLATION: {violation_message}")
+            self.logger.warning(f"\n🚨 SAFETY VIOLATION: {violation_message}", category="gui")
     
     def update_gui_after_safety_stop(self):
         """Update GUI components after safety-triggered stop"""
@@ -359,7 +361,7 @@ The system will remain stopped until you manually address this issue."""
                 )
             
         except Exception as e:
-            print(f"Error updating GUI after safety stop: {e}")
+            self.logger.error(f"Error updating GUI after safety stop: {e}", category="gui")
     
     def show_transition_dialog(self, from_op, to_op, message):
         """Show auto-dismissing transition dialog"""
@@ -481,7 +483,7 @@ The system will remain stopped until you manually address this issue."""
         )
         auto_dismiss_label.pack(pady=(5, 0))
         
-        print(f"📋 Transition dialog shown: {from_op} → {to_op}")
+        self.logger.debug(f" Transition dialog shown: {from_op} → {to_op}", category="gui")
     
     def update_transition_dialog_status(self, limit_switch_state):
         """Update the transition dialog with current limit switch status"""
@@ -504,4 +506,4 @@ The system will remain stopped until you manually address this issue."""
             )
             
         except Exception as e:
-            print(f"Error updating transition dialog: {e}")
+            self.logger.error(f"Error updating transition dialog: {e}", category="gui")

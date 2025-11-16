@@ -1,6 +1,7 @@
 import tkinter as tk
 import re
 import json
+from core.logger import get_logger
 
 # Load settings
 def load_settings():
@@ -20,6 +21,7 @@ class CanvasSensors:
     def __init__(self, main_app, canvas_manager):
         self.main_app = main_app
         self.canvas_manager = canvas_manager
+        self.logger = get_logger()
         # Access hardware through canvas_manager
         self.hardware = canvas_manager.hardware
         self.canvas_objects = main_app.canvas_objects
@@ -31,7 +33,7 @@ class CanvasSensors:
         
         # Clear any existing sensor override first to prevent conflicts
         if self.canvas_manager.sensor_override_active:
-            print(f"🔄 CLEARING previous sensor override for new sensor: {sensor_type}")
+            self.logger.debug(f" CLEARING previous sensor override for new sensor: {sensor_type}", category="gui")
             self.clear_sensor_override()
         
         program = self.main_app.current_program
@@ -45,7 +47,7 @@ class CanvasSensors:
         current_x = self.hardware.get_current_x()
         current_y = self.hardware.get_current_y()
 
-        print(f"🎯 SENSOR TRIGGER: {sensor_type}")
+        self.logger.debug(f" SENSOR TRIGGER: {sensor_type}", category="gui")
         current_hardware_x = self.hardware.get_current_x()
         current_hardware_y = self.hardware.get_current_y()
         
@@ -53,7 +55,7 @@ class CanvasSensors:
             sensor_x = PAPER_OFFSET_X  # Left edge at paper offset (15.0)
             self.canvas_manager.sensor_position_x = sensor_x
             self.canvas_manager.sensor_position_y = current_y  # PRESERVE current Y position
-            print(f"🔴 X_LEFT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (left paper edge)")
+            self.logger.debug(f" X_LEFT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (left paper edge)", category="gui")
             # Highlight left sensor
             if 'x_left_sensor' in self.canvas_objects:
                 self.main_app.canvas.itemconfig(self.canvas_objects['x_left_sensor'], 
@@ -67,7 +69,7 @@ class CanvasSensors:
             sensor_x = PAPER_OFFSET_X + actual_width  # Right edge at paper offset + ACTUAL width
             self.canvas_manager.sensor_position_x = sensor_x
             self.canvas_manager.sensor_position_y = current_y  # PRESERVE current Y position
-            print(f"🔴 X_RIGHT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (right paper edge, actual_width={actual_width})")
+            self.logger.debug(f" X_RIGHT SENSOR TRIGGERED: Setting sensor_position_x = {sensor_x:.1f} (right paper edge, actual_width={actual_width})", category="gui")
             # Highlight right sensor
             if 'x_right_sensor' in self.canvas_objects:
                 self.main_app.canvas.itemconfig(self.canvas_objects['x_right_sensor'],
@@ -82,7 +84,7 @@ class CanvasSensors:
             sensor_y = PAPER_OFFSET_Y + actual_height  # Top edge of ACTUAL paper
             self.canvas_manager.sensor_position_x = current_x
             self.canvas_manager.sensor_position_y = sensor_y
-            print(f"🔵 Y_TOP SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})")
+            self.logger.debug(f" Y_TOP SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})", category="gui")
             
             # Highlight top sensor
             if 'y_top_sensor' in self.canvas_objects:
@@ -96,7 +98,7 @@ class CanvasSensors:
             sensor_y = PAPER_OFFSET_Y  # Bottom edge of paper
             self.canvas_manager.sensor_position_x = current_x
             self.canvas_manager.sensor_position_y = sensor_y
-            print(f"🔵 Y_BOTTOM SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})")
+            self.logger.debug(f" Y_BOTTOM SENSOR TRIGGERED: Pointer moves to actual sensor position ({current_x:.1f}, {sensor_y:.1f})", category="gui")
                 
             # Highlight bottom sensor
             if 'y_bottom_sensor' in self.canvas_objects:
@@ -107,7 +109,7 @@ class CanvasSensors:
         
         # Set sensor override to prevent position updates from moving pointer
         self.canvas_manager.sensor_override_active = True
-        print(f"🔒 SENSOR OVERRIDE ACTIVATED: Pointer locked at ({self.canvas_manager.sensor_position_x:.1f}, {self.canvas_manager.sensor_position_y:.1f})")
+        self.logger.debug(f" SENSOR OVERRIDE ACTIVATED: Pointer locked at ({self.canvas_manager.sensor_position_x:.1f}, {self.canvas_manager.sensor_position_y:.1f})", category="gui")
         
         # Initialize hardware position tracking for move detection
         self.canvas_manager._last_displayed_hardware_x = get_current_x()
@@ -224,7 +226,7 @@ class CanvasSensors:
         pointer_x = self.canvas_manager.sensor_position_x
         pointer_y = self.canvas_manager.sensor_position_y
         
-        print(f"🎯 POINTER DISPLAY: sensor override active, showing pointer at ({pointer_x:.1f}, {pointer_y:.1f})")
+        self.logger.debug(f" POINTER DISPLAY: sensor override active, showing pointer at ({pointer_x:.1f}, {pointer_y:.1f})", category="gui")
         
         # Motor lines display based on operation mode (independent motor behavior)
         if self.canvas_manager.motor_operation_mode == "lines":
@@ -300,7 +302,7 @@ class CanvasSensors:
     def clear_sensor_override(self):
         """Clear sensor override and resume normal position tracking"""
         self.canvas_manager.sensor_override_active = False
-        print("🔓 SENSOR OVERRIDE CLEARED: Position tracking resumed")
+        self.logger.debug(" SENSOR OVERRIDE CLEARED: Position tracking resumed", category="gui")
         
         # Cancel any pending timer
         if self.canvas_manager.sensor_override_timer:
@@ -327,7 +329,7 @@ class CanvasSensors:
             if self.canvas_manager.sensor_override_timer:
                 self.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
             self.canvas_manager.sensor_override_timer = self.main_app.root.after(timeout_ms, self.clear_sensor_override)
-            print(f"🔒 SENSOR OVERRIDE EXTENDED for rows operation: {step_description}")
+            self.logger.debug(f" SENSOR OVERRIDE EXTENDED for rows operation: {step_description}", category="gui")
             return
         
         # Clear immediately for lines operations or other non-sensor dependent operations
@@ -336,7 +338,7 @@ class CanvasSensors:
             "mark line", "lines complete", "home position"
         ]):
             self.clear_sensor_override()
-            print(f"🔓 SENSOR OVERRIDE CLEARED for operation: {step_description}")
+            self.logger.debug(f" SENSOR OVERRIDE CLEARED for operation: {step_description}", category="gui")
     
     def reset_sensor_highlights(self):
         """Reset all sensor indicators to default colors"""
