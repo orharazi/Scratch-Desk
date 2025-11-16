@@ -178,18 +178,18 @@
         "s3": 16,
         "sig": 5,
         "channels": {
-          "line_motor_right_up_sensor": 0,
-          "line_motor_right_down_sensor": 1,
-          "line_motor_left_up_sensor": 2,
-          "line_motor_left_down_sensor": 3,
-          "line_marker_up_sensor": 4,
-          "line_marker_down_sensor": 5,
-          "line_cutter_up_sensor": 6,
-          "line_cutter_down_sensor": 7,
-          "row_marker_up_sensor": 8,
-          "row_marker_down_sensor": 9,
-          "row_cutter_up_sensor": 10,
-          "row_cutter_down_sensor": 11
+          "line_motor_right_up_sensor": 11,
+          "line_motor_right_down_sensor": 9,
+          "line_motor_left_up_sensor": 8,
+          "line_motor_left_down_sensor": 10,
+          "line_marker_up_sensor": 1,
+          "line_marker_down_sensor": 2,
+          "line_cutter_up_sensor": 3,
+          "line_cutter_down_sensor": 0,
+          "row_marker_up_sensor": 7,
+          "row_marker_down_sensor": 6,
+          "row_cutter_up_sensor": 4,
+          "row_cutter_down_sensor": 5
         }
       },
       "direct_sensors": {

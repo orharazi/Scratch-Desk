@@ -320,10 +320,10 @@ class RaspberryPiGPIO:
         """
         import time
 
-        # Multiplexer needs MORE samples and LONGER delays due to channel switching noise
+        # PERFORMANCE FIX: Reduced MUX debouncing for lower latency while still filtering noise
         if is_multiplexer:
-            samples = 7  # Require 7 consistent reads for MUX (instead of 3)
-            delay = 0.003  # 3ms between samples for MUX (instead of 1ms)
+            samples = 3  # Reduced from 7 to 3 samples (9ms -> 3ms total)
+            delay = 0.001  # Reduced from 3ms to 1ms between samples
 
         readings = []
         for i in range(samples):
@@ -672,7 +672,7 @@ class RaspberryPiGPIO:
 
         for sensor_name, channel in channels.items():
             try:
-                # Read with 7-sample debouncing
+                # Read with 3-sample debouncing (PERFORMANCE OPTIMIZED)
                 state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
 
                 if state is not None:
@@ -698,7 +698,7 @@ class RaspberryPiGPIO:
 
         self.logger.info("Starting continuous switch polling thread...", category="hardware")
         self.logger.info("   This thread will monitor ALL switches and log state changes", category="hardware")
-        self.logger.info("   Poll interval: 100ms (10 times per second)", category="hardware")
+        self.logger.info("   Poll interval: 25ms (40 times per second) - PERFORMANCE OPTIMIZED", category="hardware")
 
         self.polling_active = True
         self.polling_thread = threading.Thread(target=self._poll_switches_continuously, daemon=True)
@@ -717,13 +717,47 @@ class RaspberryPiGPIO:
         """Background thread that continuously polls all switches and logs changes"""
         self.logger.info("Switch polling thread started!", category="hardware")
 
+        # CRITICAL FIX: Initialize switch_states with current edge sensor states
+        # This ensures edge sensors are immediately available in switch_states dictionary
+        self.logger.info("Initializing edge sensor states in polling thread...", category="hardware")
+        for sensor_name, pin in self.direct_sensor_pins.items():
+            try:
+                initial_state = self._read_with_debounce(pin, is_multiplexer=False)
+                if initial_state is not None:
+                    self.switch_states[sensor_name] = initial_state
+                    state_str = 'HIGH (TRIGGERED)' if initial_state else 'LOW (READY)'
+                    self.logger.info(f"   Edge sensor {sensor_name:20s} [pin {pin:2d}] initialized to {state_str}", category="hardware")
+                else:
+                    self.switch_states[sensor_name] = False  # Default to False if unstable
+                    self.logger.warning(f"   Edge sensor {sensor_name:20s} [pin {pin:2d}] UNSTABLE - defaulting to LOW", category="hardware")
+            except Exception as e:
+                self.logger.error(f"   Edge sensor {sensor_name:20s} [pin {pin:2d}] initialization ERROR: {e}", category="hardware")
+                self.switch_states[sensor_name] = False
+
         poll_count = 0
         debounce_counters = {}  # Track consecutive readings for debouncing
-        DEBOUNCE_COUNT = 3  # Require 3 consecutive same readings to confirm change
+        DEBOUNCE_COUNT = 2  # PERFORMANCE FIX: Reduced from 3 to 2 for faster confirmation (50ms -> 33ms)
+        last_edge_status_time = time.time()  # Track when we last logged edge sensor status
 
         while self.polling_active:
             try:
                 poll_count += 1
+
+                # Log edge sensor status every 5 seconds for debugging
+                current_time = time.time()
+                if current_time - last_edge_status_time > 5.0:
+                    last_edge_status_time = current_time
+                    # Read current edge sensor states
+                    edge_states = {}
+                    for sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']:
+                        if sensor_name in self.switch_states:
+                            edge_states[sensor_name] = self.switch_states[sensor_name]
+
+                    if edge_states:
+                        self.logger.debug("⚡ EDGE SENSOR STATUS CHECK ⚡", category="hardware")
+                        self.logger.debug(f"   X-Left: {'TRIGGERED' if edge_states.get('x_left_edge') else 'READY'} | X-Right: {'TRIGGERED' if edge_states.get('x_right_edge') else 'READY'}", category="hardware")
+                        self.logger.debug(f"   Y-Top: {'TRIGGERED' if edge_states.get('y_top_edge') else 'READY'} | Y-Bottom: {'TRIGGERED' if edge_states.get('y_bottom_edge') else 'READY'}", category="hardware")
+                        self.logger.debug(f"   (Poll cycle #{poll_count}, monitoring for changes...)", category="hardware")
 
                 # Poll all direct sensor switches (edge sensors)
                 for sensor_name, pin in self.direct_sensor_pins.items():
@@ -748,7 +782,11 @@ class RaspberryPiGPIO:
                             # Very first read of this sensor - start debounce
                             debounce['pending_state'] = current_state
                             debounce['count'] = 1
-                            self.logger.debug(f"SWITCH FIRST READ: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}] - waiting for confirmation", category="hardware")
+                            # Special logging for edge sensors
+                            if sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']:
+                                self.logger.info(f"📍 EDGE SENSOR FIRST READ: {sensor_name} = {'HIGH (TRIGGERED)' if current_state else 'LOW (READY)'} [pin {pin}] - starting debounce", category="hardware")
+                            else:
+                                self.logger.debug(f"SWITCH FIRST READ: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}] - waiting for confirmation", category="hardware")
                         elif debounce['pending_state'] == current_state:
                             # Reading matches pending state, increment count
                             debounce['count'] += 1
@@ -769,13 +807,24 @@ class RaspberryPiGPIO:
                                     # Real state change (not initial)
                                     old_state_str = 'HIGH (CLOSED/ON)' if last_confirmed_state else 'LOW (OPEN/OFF)'
                                     new_state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
-                                    self.logger.info("=== SWITCH CHANGED ===", category="hardware")
-                                    self.logger.info(f"   Switch: {sensor_name}", category="hardware")
-                                    self.logger.info(f"   Pin: {pin}", category="hardware")
-                                    self.logger.info(f"   Old: {old_state_str}", category="hardware")
-                                    self.logger.info(f"   New: {new_state_str}", category="hardware")
-                                    self.logger.info(f"   Poll: #{poll_count}", category="hardware")
-                                    self.logger.info("=======================", category="hardware")
+
+                                    # Check if this is an edge sensor for special highlighting
+                                    if sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']:
+                                        self.logger.warning("🚨🚨🚨 EDGE SENSOR TRIGGERED 🚨🚨🚨", category="hardware")
+                                        self.logger.warning(f"   EDGE SENSOR: {sensor_name.upper()}", category="hardware")
+                                        self.logger.warning(f"   GPIO PIN: {pin}", category="hardware")
+                                        self.logger.warning(f"   Previous: {old_state_str}", category="hardware")
+                                        self.logger.warning(f"   Current: {new_state_str}", category="hardware")
+                                        self.logger.warning(f"   Poll cycle: #{poll_count}", category="hardware")
+                                        self.logger.warning("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨", category="hardware")
+                                    else:
+                                        self.logger.info("=== SWITCH CHANGED ===", category="hardware")
+                                        self.logger.info(f"   Switch: {sensor_name}", category="hardware")
+                                        self.logger.info(f"   Pin: {pin}", category="hardware")
+                                        self.logger.info(f"   Old: {old_state_str}", category="hardware")
+                                        self.logger.info(f"   New: {new_state_str}", category="hardware")
+                                        self.logger.info(f"   Poll: #{poll_count}", category="hardware")
+                                        self.logger.info("=======================", category="hardware")
                                 else:
                                     # Initial state confirmed
                                     state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
@@ -789,7 +838,7 @@ class RaspberryPiGPIO:
                     channels = self.multiplexer_config.get('channels', {})
                     for sensor_name, channel in channels.items():
                         try:
-                            # Use 7-sample verification for each poll to filter noise at read-time
+                            # Use 3-sample verification for each poll to filter noise at read-time (PERFORMANCE OPTIMIZED)
                             current_state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
 
                             # Skip if read was unstable (returns None)
@@ -866,16 +915,16 @@ class RaspberryPiGPIO:
                     except Exception as e:
                         self.logger.error(f"Error reading limit switch {switch_name} on pin {pin}: {e}", category="hardware")
 
-                # Status update every 100 polls (10 seconds at 100ms interval)
-                if poll_count % 100 == 0:
+                # Status update every 400 polls (10 seconds at 25ms interval)
+                if poll_count % 400 == 0:
                     edge_count = len(self.direct_sensor_pins)
                     mux_count = len(self.multiplexer_config.get('channels', {})) if self.multiplexer else 0
                     limit_count = len(self.limit_switch_pins)
                     total = edge_count + mux_count + limit_count
                     self.logger.debug(f"Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {mux_count} mux + {limit_count} limit)", category="hardware")
 
-                # Sleep 100ms between polls (10 Hz)
-                time.sleep(0.1)
+                # PERFORMANCE FIX: Sleep 25ms between polls (40 Hz) - reduced from 100ms
+                time.sleep(0.025)
 
             except Exception as e:
                 self.logger.error(f"Polling thread error: {e}", category="hardware")
