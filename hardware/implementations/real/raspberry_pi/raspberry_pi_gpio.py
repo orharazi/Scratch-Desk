@@ -13,15 +13,19 @@ import time
 import threading
 from typing import Dict, Optional
 from hardware.implementations.real.raspberry_pi.multiplexer import CD74HC4067Multiplexer
+from core.logger import get_logger
+
+# Module-level logger
+module_logger = get_logger()
 
 # Try to import RPi.GPIO, fall back to mock if not available
 try:
     import RPi.GPIO as GPIO
     GPIO_AVAILABLE = True
-    print("✓ RPi.GPIO library loaded successfully")
+    module_logger.success("RPi.GPIO library loaded successfully", category="hardware")
 except (ImportError, RuntimeError):
     GPIO_AVAILABLE = False
-    print("⚠ RPi.GPIO not available - running in mock mode")
+    module_logger.warning("RPi.GPIO not available - running in mock mode", category="hardware")
     # Create mock GPIO class for development on non-Raspberry Pi systems
     class MockGPIO:
         BCM = "BCM"
@@ -38,20 +42,20 @@ except (ImportError, RuntimeError):
             self._pin_modes = {}   # Track pin modes
 
         def setmode(self, mode):
-            print(f"MOCK GPIO: setmode({mode})")
+            module_logger.debug(f"MOCK GPIO: setmode({mode})", category="hardware")
 
         def setwarnings(self, enabled):
-            print(f"MOCK GPIO: setwarnings({enabled})")
+            module_logger.debug(f"MOCK GPIO: setwarnings({enabled})", category="hardware")
 
         def setup(self, pin, mode, pull_up_down=None):
             self._pin_modes[pin] = mode
             if mode == "OUT":
                 self._pin_states[pin] = False
-            print(f"MOCK GPIO: setup(pin={pin}, mode={mode}, pull_up_down={pull_up_down})")
+            module_logger.debug(f"MOCK GPIO: setup(pin={pin}, mode={mode}, pull_up_down={pull_up_down})", category="hardware")
 
         def output(self, pin, state):
             self._pin_states[pin] = state
-            print(f"MOCK GPIO: output(pin={pin}, state={'HIGH' if state else 'LOW'})")
+            module_logger.debug(f"MOCK GPIO: output(pin={pin}, state={'HIGH' if state else 'LOW'})", category="hardware")
 
         def input(self, pin):
             # Return HIGH for sensor pins (simulating not triggered)
@@ -59,7 +63,7 @@ except (ImportError, RuntimeError):
             return state
 
         def cleanup(self):
-            print("MOCK GPIO: cleanup()")
+            module_logger.debug("MOCK GPIO: cleanup()", category="hardware")
             self._pin_states.clear()
             self._pin_modes.clear()
 
@@ -78,6 +82,7 @@ class RaspberryPiGPIO:
         Args:
             config_path: Path to config/settings.json configuration file
         """
+        self.logger = get_logger()
         self.config = self._load_config(config_path)
         self.gpio_config = self.config.get("hardware_config", {}).get("raspberry_pi", {})
         self.is_initialized = False
@@ -94,25 +99,25 @@ class RaspberryPiGPIO:
         self.polling_active = False
         self.switch_states = {}  # Track last known state of all switches
 
-        print(f"\n{'='*60}")
-        print("Raspberry Pi GPIO Configuration")
-        print(f"{'='*60}")
-        print(f"GPIO Library: {'REAL RPi.GPIO' if GPIO_AVAILABLE else '⚠️  MOCK GPIO (NOT READING REAL PINS!)'}")
-        print(f"GPIO Type: {type(GPIO).__name__}")
-        print(f"GPIO Module: {GPIO.__class__.__module__ if hasattr(GPIO, '__class__') else 'N/A'}")
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("Raspberry Pi GPIO Configuration", category="hardware")
+        self.logger.info("="*60, category="hardware")
+        self.logger.info(f"GPIO Library: {'REAL RPi.GPIO' if GPIO_AVAILABLE else 'MOCK GPIO (NOT READING REAL PINS!)'}", category="hardware")
+        self.logger.debug(f"GPIO Type: {type(GPIO).__name__}", category="hardware")
+        self.logger.debug(f"GPIO Module: {GPIO.__class__.__module__ if hasattr(GPIO, '__class__') else 'N/A'}", category="hardware")
 
         if not GPIO_AVAILABLE:
-            print(f"\n⚠️⚠️⚠️  WARNING  ⚠️⚠️⚠️")
-            print(f"MOCK GPIO IS BEING USED!")
-            print(f"Real hardware sensors WILL NOT BE READ!")
-            print(f"Make sure RPi.GPIO is installed: pip3 install RPi.GPIO")
-            print(f"⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️\n")
+            self.logger.warning("="*40, category="hardware")
+            self.logger.warning("MOCK GPIO IS BEING USED!", category="hardware")
+            self.logger.warning("Real hardware sensors WILL NOT BE READ!", category="hardware")
+            self.logger.warning("Make sure RPi.GPIO is installed: pip3 install RPi.GPIO", category="hardware")
+            self.logger.warning("="*40, category="hardware")
 
-        print(f"Piston pins: {self.piston_pins}")
-        print(f"Multiplexer config: {self.multiplexer_config}")
-        print(f"Direct sensor pins: {self.direct_sensor_pins}")
-        print(f"Limit switch pins: {self.limit_switch_pins}")
-        print(f"{'='*60}\n")
+        self.logger.debug(f"Piston pins: {self.piston_pins}", category="hardware")
+        self.logger.debug(f"Multiplexer config: {self.multiplexer_config}", category="hardware")
+        self.logger.debug(f"Direct sensor pins: {self.direct_sensor_pins}", category="hardware")
+        self.logger.debug(f"Limit switch pins: {self.limit_switch_pins}", category="hardware")
+        self.logger.info("="*60, category="hardware")
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from settings.json"""
@@ -120,7 +125,7 @@ class RaspberryPiGPIO:
             with open(config_path, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Error loading config: {e}")
+            module_logger.error(f"Error loading config: {e}", category="hardware")
             return {}
 
     def initialize(self) -> bool:
@@ -131,23 +136,23 @@ class RaspberryPiGPIO:
             True if initialization successful, False otherwise
         """
         if self.is_initialized:
-            print("GPIO already initialized")
+            self.logger.warning("GPIO already initialized", category="hardware")
             return True
 
         # Check if running on Raspberry Pi
         try:
             import RPi.GPIO as GPIO_TEST
         except (ImportError, RuntimeError) as e:
-            error_msg = "❌ NOT RUNNING ON RASPBERRY PI - RPi.GPIO module not available or not on Pi hardware"
-            print(f"\n{error_msg}")
-            print("   This application requires Raspberry Pi hardware to run in Real Hardware mode.")
-            print("   Switch to Simulation mode in Hardware Settings to test without Pi hardware.\n")
+            error_msg = "NOT RUNNING ON RASPBERRY PI - RPi.GPIO module not available or not on Pi hardware"
+            self.logger.error(error_msg, category="hardware")
+            self.logger.error("This application requires Raspberry Pi hardware to run in Real Hardware mode.", category="hardware")
+            self.logger.error("Switch to Simulation mode in Hardware Settings to test without Pi hardware.", category="hardware")
             raise RuntimeError(error_msg)
 
         try:
             # Set GPIO mode (BCM or BOARD)
             gpio_mode = self.gpio_config.get("gpio_mode", "BCM")
-            print(f"Setting GPIO mode: {gpio_mode}")
+            self.logger.info(f"Setting GPIO mode: {gpio_mode}", category="hardware")
 
             try:
                 if gpio_mode == "BCM":
@@ -155,23 +160,23 @@ class RaspberryPiGPIO:
                 else:
                     GPIO.setmode(GPIO.BOARD)
                 GPIO.setwarnings(False)
-                print(f"✓ GPIO mode set to {gpio_mode}")
+                self.logger.debug(f"GPIO mode set to {gpio_mode}", category="hardware")
             except Exception as e:
                 raise RuntimeError(f"Failed to set GPIO mode: {str(e)}. Check GPIO permissions (run with sudo?)")
 
             # Setup piston pins as outputs (default LOW = retracted/up)
-            print(f"\nInitializing {len(self.piston_pins)} piston outputs...")
+            self.logger.info(f"Initializing {len(self.piston_pins)} piston outputs...", category="hardware")
             for piston_name, pin in self.piston_pins.items():
                 try:
                     GPIO.setup(pin, GPIO.OUT)
                     GPIO.output(pin, GPIO.LOW)
-                    print(f"  ✓ Piston '{piston_name}' on GPIO {pin}")
+                    self.logger.debug(f"Piston '{piston_name}' on GPIO {pin}", category="hardware")
                 except Exception as e:
                     raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
 
             # Initialize multiplexer for sensor reading
             if self.multiplexer_config:
-                print(f"\nInitializing multiplexer for sensor reading...")
+                self.logger.info("Initializing multiplexer for sensor reading...", category="hardware")
                 try:
                     self.multiplexer = CD74HC4067Multiplexer(
                         GPIO,
@@ -182,10 +187,10 @@ class RaspberryPiGPIO:
                         self.multiplexer_config['sig']
                     )
                     channels = self.multiplexer_config.get('channels', {})
-                    print(f"  ✓ Multiplexer initialized")
-                    print(f"  ✓ Control pins: S0={self.multiplexer_config['s0']}, S1={self.multiplexer_config['s1']}, S2={self.multiplexer_config['s2']}, S3={self.multiplexer_config['s3']}")
-                    print(f"  ✓ Signal pin: {self.multiplexer_config['sig']}")
-                    print(f"  ✓ Configured channels: {len(channels)}")
+                    self.logger.debug("Multiplexer initialized", category="hardware")
+                    self.logger.debug(f"Control pins: S0={self.multiplexer_config['s0']}, S1={self.multiplexer_config['s1']}, S2={self.multiplexer_config['s2']}, S3={self.multiplexer_config['s3']}", category="hardware")
+                    self.logger.debug(f"Signal pin: {self.multiplexer_config['sig']}", category="hardware")
+                    self.logger.debug(f"Configured channels: {len(channels)}", category="hardware")
                 except KeyError as e:
                     raise RuntimeError(f"Multiplexer config missing required key: {str(e)}. Check settings.json")
                 except Exception as e:
@@ -193,26 +198,26 @@ class RaspberryPiGPIO:
 
             # Setup direct sensor pins as inputs with pull-down resistors
             if self.direct_sensor_pins:
-                print(f"\nInitializing {len(self.direct_sensor_pins)} direct sensor inputs...")
+                self.logger.info(f"Initializing {len(self.direct_sensor_pins)} direct sensor inputs...", category="hardware")
                 for sensor_name, pin in self.direct_sensor_pins.items():
                     try:
                         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-                        print(f"  ✓ Sensor '{sensor_name}' on GPIO {pin}")
+                        self.logger.debug(f"Sensor '{sensor_name}' on GPIO {pin}", category="hardware")
                     except Exception as e:
                         raise RuntimeError(f"Failed to setup sensor '{sensor_name}' on GPIO {pin}: {str(e)}")
 
             # Setup limit switch pins as inputs with pull-up resistors
             if self.limit_switch_pins:
-                print(f"\nInitializing {len(self.limit_switch_pins)} limit switches...")
+                self.logger.info(f"Initializing {len(self.limit_switch_pins)} limit switches...", category="hardware")
                 for switch_name, pin in self.limit_switch_pins.items():
                     try:
                         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                        print(f"  ✓ Limit switch '{switch_name}' on GPIO {pin}")
+                        self.logger.debug(f"Limit switch '{switch_name}' on GPIO {pin}", category="hardware")
                     except Exception as e:
                         raise RuntimeError(f"Failed to setup limit switch '{switch_name}' on GPIO {pin}: {str(e)}")
 
             self.is_initialized = True
-            print("\n✓ Raspberry Pi GPIO initialized successfully")
+            self.logger.success("Raspberry Pi GPIO initialized successfully", category="hardware")
 
             # Test GPIO reads immediately
             self._test_gpio_reads()
@@ -224,11 +229,11 @@ class RaspberryPiGPIO:
 
         except RuntimeError as e:
             # Re-raise RuntimeError with our detailed message
-            print(f"\n✗ GPIO Initialization Failed: {str(e)}\n")
+            self.logger.error(f"GPIO Initialization Failed: {str(e)}", category="hardware")
             raise
         except Exception as e:
             error_msg = f"Unexpected GPIO error: {type(e).__name__}: {str(e)}"
-            print(f"\n✗ {error_msg}\n")
+            self.logger.error(error_msg, category="hardware")
             raise RuntimeError(error_msg)
 
     # ========== PISTON CONTROL METHODS ==========
@@ -245,11 +250,11 @@ class RaspberryPiGPIO:
             True if successful, False otherwise
         """
         if not self.is_initialized:
-            print("GPIO not initialized")
+            self.logger.error("GPIO not initialized", category="hardware")
             return False
 
         if piston_name not in self.piston_pins:
-            print(f"Unknown piston: {piston_name}")
+            self.logger.error(f"Unknown piston: {piston_name}", category="hardware")
             return False
 
         try:
@@ -257,10 +262,10 @@ class RaspberryPiGPIO:
             # HIGH = extended/down, LOW = retracted/up
             gpio_state = GPIO.HIGH if state == "down" else GPIO.LOW
             GPIO.output(pin, gpio_state)
-            print(f"Piston '{piston_name}' set to {state.upper()} (GPIO {pin} = {'HIGH' if gpio_state else 'LOW'})")
+            self.logger.debug(f"Piston '{piston_name}' set to {state.upper()} (GPIO {pin} = {'HIGH' if gpio_state else 'LOW'})", category="hardware")
             return True
         except Exception as e:
-            print(f"Error setting piston {piston_name}: {e}")
+            self.logger.error(f"Error setting piston {piston_name}: {e}", category="hardware")
             return False
 
     def piston_up(self, piston_name: str) -> bool:
@@ -294,7 +299,7 @@ class RaspberryPiGPIO:
             True if sensor triggered (HIGH signal), False if not triggered (LOW signal), None on error
         """
         if not self.is_initialized:
-            print("GPIO not initialized")
+            self.logger.error("GPIO not initialized", category="hardware")
             return None
 
         try:
@@ -302,7 +307,7 @@ class RaspberryPiGPIO:
             mux_channels = self.multiplexer_config.get('channels', {})
             if sensor_name in mux_channels:
                 if not self.multiplexer:
-                    print(f"Multiplexer not initialized")
+                    self.logger.error("Multiplexer not initialized", category="hardware")
                     return None
                 channel = mux_channels[sensor_name]
                 # Read from multiplexer channel
@@ -327,21 +332,21 @@ class RaspberryPiGPIO:
 
                     # Log changes with read count
                     if self._last_edge_states.get(sensor_name) != state:
-                        print(f"🔍 EDGE SENSOR CHANGED: {sensor_name} = {'HIGH (TRIGGERED)' if state else 'LOW (READY)'} (pin {pin}, read #{self._edge_read_count[sensor_name]})")
+                        self.logger.debug(f"EDGE SENSOR CHANGED: {sensor_name} = {'HIGH (TRIGGERED)' if state else 'LOW (READY)'} (pin {pin}, read #{self._edge_read_count[sensor_name]})", category="hardware")
                         self._last_edge_states[sensor_name] = state
 
                     # Every 50 reads, show we're still polling (even if no change)
                     if self._edge_read_count[sensor_name] % 50 == 0:
-                        print(f"   ✓ Still polling {sensor_name}: {'TRIG' if state else 'READY'} (read #{self._edge_read_count[sensor_name]})")
+                        self.logger.debug(f"Still polling {sensor_name}: {'TRIG' if state else 'READY'} (read #{self._edge_read_count[sensor_name]})", category="hardware")
 
                 return state  # HIGH = triggered (True), LOW = not triggered (False)
 
             else:
-                print(f"Unknown sensor: {sensor_name}")
+                self.logger.error(f"Unknown sensor: {sensor_name}", category="hardware")
                 return None
 
         except Exception as e:
-            print(f"Error reading sensor {sensor_name}: {e}")
+            self.logger.error(f"Error reading sensor {sensor_name}: {e}", category="hardware")
             return None
 
     # ========== INDIVIDUAL SENSOR GETTERS (DUAL SENSORS PER TOOL) ==========
@@ -442,13 +447,13 @@ class RaspberryPiGPIO:
             line_marker_up = self.read_sensor("line_marker_up_sensor")
             line_marker_down = self.read_sensor("line_marker_down_sensor")
 
-            print(f"\n📊 SENSOR POLLING STATUS (reads: {self._debug_counter}):")
-            print(f"   Edge Sensors:")
-            print(f"      X-Left: {'TRIG' if x_left else 'READY'} | X-Right: {'TRIG' if x_right else 'READY'}")
-            print(f"      Y-Top: {'TRIG' if y_top else 'READY'} | Y-Bottom: {'TRIG' if y_bottom else 'READY'}")
-            print(f"   Piston Sensors (sample):")
-            print(f"      Line Marker Up: {'TRIG' if line_marker_up else 'READY'} | Down: {'TRIG' if line_marker_down else 'READY'}")
-            print(f"   💡 Change a sensor wire now to see it update!\n")
+            self.logger.debug(f"SENSOR POLLING STATUS (reads: {self._debug_counter}):", category="hardware")
+            self.logger.debug(f"   Edge Sensors:", category="hardware")
+            self.logger.debug(f"      X-Left: {'TRIG' if x_left else 'READY'} | X-Right: {'TRIG' if x_right else 'READY'}", category="hardware")
+            self.logger.debug(f"      Y-Top: {'TRIG' if y_top else 'READY'} | Y-Bottom: {'TRIG' if y_bottom else 'READY'}", category="hardware")
+            self.logger.debug(f"   Piston Sensors (sample):", category="hardware")
+            self.logger.debug(f"      Line Marker Up: {'TRIG' if line_marker_up else 'READY'} | Down: {'TRIG' if line_marker_down else 'READY'}", category="hardware")
+            self.logger.debug(f"   Change a sensor wire now to see it update!", category="hardware")
 
     # ========== LIMIT SWITCHES ==========
 
@@ -463,11 +468,11 @@ class RaspberryPiGPIO:
             True if switch activated (LOW signal), False if not activated (HIGH signal), None on error
         """
         if not self.is_initialized:
-            print("GPIO not initialized")
+            self.logger.error("GPIO not initialized", category="hardware")
             return None
 
         if switch_name not in self.limit_switch_pins:
-            print(f"Unknown limit switch: {switch_name}")
+            self.logger.error(f"Unknown limit switch: {switch_name}", category="hardware")
             return None
 
         try:
@@ -478,7 +483,7 @@ class RaspberryPiGPIO:
             activated = not state  # Invert: LOW = activated (True), HIGH = not activated (False)
             return activated
         except Exception as e:
-            print(f"Error reading limit switch {switch_name}: {e}")
+            self.logger.error(f"Error reading limit switch {switch_name}: {e}", category="hardware")
             return None
 
     def get_all_sensor_states(self) -> Dict[str, bool]:
@@ -516,12 +521,12 @@ class RaspberryPiGPIO:
 
     def _test_gpio_reads(self):
         """Test GPIO reads immediately after initialization"""
-        print("\n" + "="*60)
-        print("TESTING GPIO PIN READS")
-        print("="*60)
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("TESTING GPIO PIN READS", category="hardware")
+        self.logger.info("="*60, category="hardware")
 
         # Test edge sensor pins
-        print("\n📍 Testing Edge Sensor Pins (X/Y axis):")
+        self.logger.info("Testing Edge Sensor Pins (X/Y axis):", category="hardware")
         for sensor_name, pin in self.direct_sensor_pins.items():
             try:
                 # Read pin 5 times rapidly
@@ -533,17 +538,17 @@ class RaspberryPiGPIO:
                 # Check if all readings are the same (stable)
                 if len(set(readings)) == 1:
                     state = readings[0]
-                    print(f"   ✓ {sensor_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} (stable)")
+                    self.logger.debug(f"{sensor_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} (stable)", category="hardware")
                 else:
-                    print(f"   ⚠️  {sensor_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}")
-                    print(f"      This indicates floating pin or electrical noise!")
-                    print(f"      Check: 1) Wire connection, 2) Pull-down resistor, 3) Power supply")
+                    self.logger.warning(f"{sensor_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}", category="hardware")
+                    self.logger.warning(f"      This indicates floating pin or electrical noise!", category="hardware")
+                    self.logger.warning(f"      Check: 1) Wire connection, 2) Pull-down resistor, 3) Power supply", category="hardware")
             except Exception as e:
-                print(f"   ❌ {sensor_name:20s} [pin {pin:2d}] = ERROR: {e}")
+                self.logger.error(f"{sensor_name:20s} [pin {pin:2d}] = ERROR: {e}", category="hardware")
 
         # Test limit switch pins
         if self.limit_switch_pins:
-            print("\n🔒 Testing Limit Switch Pins:")
+            self.logger.info("Testing Limit Switch Pins:", category="hardware")
             for switch_name, pin in self.limit_switch_pins.items():
                 try:
                     readings = []
@@ -554,30 +559,30 @@ class RaspberryPiGPIO:
                     if len(set(readings)) == 1:
                         state = readings[0]
                         inverted = not state
-                        print(f"   ✓ {switch_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} → {'ACTIVATED' if inverted else 'INACTIVE'} (stable)")
+                        self.logger.debug(f"{switch_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} -> {'ACTIVATED' if inverted else 'INACTIVE'} (stable)", category="hardware")
                     else:
-                        print(f"   ⚠️  {switch_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}")
+                        self.logger.warning(f"{switch_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}", category="hardware")
                 except Exception as e:
-                    print(f"   ❌ {switch_name:20s} [pin {pin:2d}] = ERROR: {e}")
+                    self.logger.error(f"{switch_name:20s} [pin {pin:2d}] = ERROR: {e}", category="hardware")
 
-        print("\n💡 IMPORTANT: If pins show UNSTABLE:")
-        print("   1. Check physical wiring - loose connections cause noise")
-        print("   2. Ensure switches are properly connected to GND or 3.3V")
-        print("   3. Verify pull-down/pull-up resistors are configured")
-        print("   4. Test: touch wire to GND (should show LOW) or 3.3V (should show HIGH)")
-        print("="*60 + "\n")
+        self.logger.info("IMPORTANT: If pins show UNSTABLE:", category="hardware")
+        self.logger.info("   1. Check physical wiring - loose connections cause noise", category="hardware")
+        self.logger.info("   2. Ensure switches are properly connected to GND or 3.3V", category="hardware")
+        self.logger.info("   3. Verify pull-down/pull-up resistors are configured", category="hardware")
+        self.logger.info("   4. Test: touch wire to GND (should show LOW) or 3.3V (should show HIGH)", category="hardware")
+        self.logger.info("="*60, category="hardware")
 
     # ========== CONTINUOUS SWITCH POLLING ==========
 
     def start_switch_polling(self):
         """Start continuous polling thread to monitor all switches"""
         if self.polling_active:
-            print("⚠️ Polling thread already running")
+            self.logger.warning("Polling thread already running", category="hardware")
             return
 
-        print("\n🔄 Starting continuous switch polling thread...")
-        print("   This thread will monitor ALL switches and log state changes")
-        print("   Poll interval: 100ms (10 times per second)\n")
+        self.logger.info("Starting continuous switch polling thread...", category="hardware")
+        self.logger.info("   This thread will monitor ALL switches and log state changes", category="hardware")
+        self.logger.info("   Poll interval: 100ms (10 times per second)", category="hardware")
 
         self.polling_active = True
         self.polling_thread = threading.Thread(target=self._poll_switches_continuously, daemon=True)
@@ -586,15 +591,15 @@ class RaspberryPiGPIO:
     def stop_switch_polling(self):
         """Stop the continuous polling thread"""
         if self.polling_active:
-            print("🛑 Stopping switch polling thread...")
+            self.logger.info("Stopping switch polling thread...", category="hardware")
             self.polling_active = False
             if self.polling_thread:
                 self.polling_thread.join(timeout=1.0)
-            print("✓ Polling thread stopped")
+            self.logger.info("Polling thread stopped", category="hardware")
 
     def _poll_switches_continuously(self):
         """Background thread that continuously polls all switches and logs changes"""
-        print("✅ Switch polling thread started!\n")
+        self.logger.info("Switch polling thread started!", category="hardware")
 
         poll_count = 0
         debounce_counters = {}  # Track consecutive readings for debouncing
@@ -621,8 +626,8 @@ class RaspberryPiGPIO:
                         # First read - initialize immediately
                         if last_confirmed_state is None:
                             self.switch_states[sensor_name] = current_state
-                            print(f"🔌 SWITCH INITIAL STATE: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}]")
-                            print(f"   💡 To change this switch, physically connect/disconnect pin {pin} to GND or 3.3V")
+                            self.logger.debug(f"SWITCH INITIAL STATE: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}]", category="hardware")
+                            self.logger.debug(f"   To change this switch, physically connect/disconnect pin {pin} to GND or 3.3V", category="hardware")
                             debounce['pending_state'] = current_state
                             debounce['count'] = DEBOUNCE_COUNT
                         else:
@@ -640,16 +645,16 @@ class RaspberryPiGPIO:
                                 self.switch_states[sensor_name] = current_state
                                 old_state_str = 'HIGH (CLOSED/ON)' if last_confirmed_state else 'LOW (OPEN/OFF)'
                                 new_state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
-                                print(f"\n🔔 ═══ SWITCH CHANGED ═══")
-                                print(f"   Switch: {sensor_name}")
-                                print(f"   Pin: {pin}")
-                                print(f"   Old: {old_state_str}")
-                                print(f"   New: {new_state_str}")
-                                print(f"   Poll: #{poll_count}")
-                                print(f"   ═══════════════════════\n")
+                                self.logger.info("=== SWITCH CHANGED ===", category="hardware")
+                                self.logger.info(f"   Switch: {sensor_name}", category="hardware")
+                                self.logger.info(f"   Pin: {pin}", category="hardware")
+                                self.logger.info(f"   Old: {old_state_str}", category="hardware")
+                                self.logger.info(f"   New: {new_state_str}", category="hardware")
+                                self.logger.info(f"   Poll: #{poll_count}", category="hardware")
+                                self.logger.info("=======================", category="hardware")
 
                     except Exception as e:
-                        print(f"❌ Error reading {sensor_name} on pin {pin}: {e}")
+                        self.logger.error(f"Error reading {sensor_name} on pin {pin}: {e}", category="hardware")
 
                 # Poll multiplexer switches (piston position sensors)
                 if self.multiplexer:
@@ -664,14 +669,14 @@ class RaspberryPiGPIO:
                             if last_state is None:
                                 # First read - initialize
                                 self.switch_states[switch_key] = current_state
-                                print(f"🔌 MUX SWITCH INITIAL: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}]")
+                                self.logger.debug(f"MUX SWITCH INITIAL: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}]", category="hardware")
                             elif last_state != current_state:
                                 # State changed!
                                 self.switch_states[switch_key] = current_state
-                                print(f"🔔 MUX SWITCH CHANGED: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}] (poll #{poll_count})")
+                                self.logger.info(f"MUX SWITCH CHANGED: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}] (poll #{poll_count})", category="hardware")
 
                         except Exception as e:
-                            print(f"❌ Error reading mux {sensor_name} on channel {channel}: {e}")
+                            self.logger.error(f"Error reading mux {sensor_name} on channel {channel}: {e}", category="hardware")
 
                 # Poll limit switches
                 for switch_name, pin in self.limit_switch_pins.items():
@@ -685,14 +690,14 @@ class RaspberryPiGPIO:
                         if last_state is None:
                             # First read - initialize
                             self.switch_states[switch_key] = current_state
-                            print(f"🔌 LIMIT SWITCH INITIAL: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}]")
+                            self.logger.debug(f"LIMIT SWITCH INITIAL: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}]", category="hardware")
                         elif last_state != current_state:
                             # State changed!
                             self.switch_states[switch_key] = current_state
-                            print(f"🔔 LIMIT SWITCH CHANGED: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}] (poll #{poll_count})")
+                            self.logger.info(f"LIMIT SWITCH CHANGED: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}] (poll #{poll_count})", category="hardware")
 
                     except Exception as e:
-                        print(f"❌ Error reading limit switch {switch_name} on pin {pin}: {e}")
+                        self.logger.error(f"Error reading limit switch {switch_name} on pin {pin}: {e}", category="hardware")
 
                 # Status update every 100 polls (10 seconds at 100ms interval)
                 if poll_count % 100 == 0:
@@ -700,16 +705,16 @@ class RaspberryPiGPIO:
                     mux_count = len(self.multiplexer_config.get('channels', {})) if self.multiplexer else 0
                     limit_count = len(self.limit_switch_pins)
                     total = edge_count + mux_count + limit_count
-                    print(f"💓 Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {mux_count} mux + {limit_count} limit)")
+                    self.logger.debug(f"Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {mux_count} mux + {limit_count} limit)", category="hardware")
 
                 # Sleep 100ms between polls (10 Hz)
                 time.sleep(0.1)
 
             except Exception as e:
-                print(f"❌ Polling thread error: {e}")
+                self.logger.error(f"Polling thread error: {e}", category="hardware")
                 time.sleep(0.1)
 
-        print("🛑 Polling thread exiting")
+        self.logger.info("Polling thread exiting", category="hardware")
 
     # ========== CLEANUP ==========
 
@@ -731,49 +736,52 @@ class RaspberryPiGPIO:
                 # Cleanup multiplexer
                 if self.multiplexer:
                     self.multiplexer.cleanup()
-                    print("✓ Multiplexer cleanup completed")
+                    self.logger.info("Multiplexer cleanup completed", category="hardware")
 
                 GPIO.cleanup()
                 self.is_initialized = False
-                print("✓ GPIO cleanup completed")
+                self.logger.info("GPIO cleanup completed", category="hardware")
             except Exception as e:
-                print(f"Error during GPIO cleanup: {e}")
+                self.logger.error(f"Error during GPIO cleanup: {e}", category="hardware")
 
 
 if __name__ == "__main__":
     """Test GPIO interface"""
-    print("\n" + "="*60)
-    print("Raspberry Pi GPIO Interface Test")
-    print("="*60 + "\n")
+    # Create module-level logger for test section
+    test_logger = get_logger()
+
+    test_logger.info("="*60, category="hardware")
+    test_logger.info("Raspberry Pi GPIO Interface Test", category="hardware")
+    test_logger.info("="*60, category="hardware")
 
     # Create and initialize GPIO interface
     gpio = RaspberryPiGPIO()
 
     if gpio.initialize():
-        print("\nTesting piston control...")
+        test_logger.info("Testing piston control...", category="hardware")
         # Test each piston
         for piston_name in gpio.piston_pins:
-            print(f"\nTesting {piston_name}:")
+            test_logger.info(f"Testing {piston_name}:", category="hardware")
             gpio.piston_down(piston_name)
             time.sleep(0.5)
             gpio.piston_up(piston_name)
             time.sleep(0.5)
 
-        print("\nReading all sensors...")
+        test_logger.info("Reading all sensors...", category="hardware")
         sensor_states = gpio.get_all_sensor_states()
         for sensor, state in sensor_states.items():
-            print(f"  {sensor}: {'TRIGGERED' if state else 'READY'}")
+            test_logger.info(f"  {sensor}: {'TRIGGERED' if state else 'READY'}", category="hardware")
 
-        print("\nReading all limit switches...")
+        test_logger.info("Reading all limit switches...", category="hardware")
         switch_states = gpio.get_all_limit_switch_states()
         for switch, state in switch_states.items():
-            print(f"  {switch}: {'ACTIVATED' if state else 'INACTIVE'}")
+            test_logger.info(f"  {switch}: {'ACTIVATED' if state else 'INACTIVE'}", category="hardware")
 
         # Cleanup
         gpio.cleanup()
     else:
-        print("✗ Failed to initialize GPIO")
+        test_logger.error("Failed to initialize GPIO", category="hardware")
 
-    print("\n" + "="*60)
-    print("Test completed")
-    print("="*60 + "\n")
+    test_logger.info("="*60, category="hardware")
+    test_logger.info("Test completed", category="hardware")
+    test_logger.info("="*60, category="hardware")

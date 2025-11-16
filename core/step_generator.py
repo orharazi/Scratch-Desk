@@ -3,6 +3,11 @@
 # Updated step generation system for new CSV structure
 # Uses new field names: high, top_padding, bottom_padding, width, left_margin, etc.
 
+from core.logger import get_logger
+
+# Module-level logger for functions
+logger = get_logger()
+
 def create_step(operation, parameters=None, description=""):
     """Create a simple step dictionary - optimized for minimal memory usage"""
     return {
@@ -43,10 +48,10 @@ def generate_lines_marking_steps(program):
     actual_paper_width = program.width * program.repeat_rows
     actual_paper_height = program.high * program.repeat_lines
     
-    print(f"🔄 REPEAT CALCULATION:")
-    print(f"   Single pattern: {program.width}cm W × {program.high}cm H")
-    print(f"   Repeats: {program.repeat_rows} rows × {program.repeat_lines} lines") 
-    print(f"   ACTUAL PAPER SIZE: {actual_paper_width}cm W × {actual_paper_height}cm H")
+    logger.debug(f"REPEAT CALCULATION:", category="execution")
+    logger.debug(f"   Single pattern: {program.width}cm W × {program.high}cm H", category="execution")
+    logger.debug(f"   Repeats: {program.repeat_rows} rows × {program.repeat_lines} lines", category="execution")
+    logger.debug(f"   ACTUAL PAPER SIZE: {actual_paper_width}cm W × {actual_paper_height}cm H", category="execution")
     
     # INDEPENDENT MOTOR OPERATION: Ensure both motors start at home position
     steps.append(create_step(
@@ -110,15 +115,15 @@ def generate_lines_marking_steps(program):
     
     # CORRECTED REPEAT LOGIC: Process each repeated section individually
     # Each section has its own margins and line spacing
-    print(f"📏 REPEAT PROCESSING: {program.repeat_lines} sections of {program.high}cm each")
-    print(f"   Each section: {program.number_of_lines} lines with {program.top_padding}cm top, {program.bottom_padding}cm bottom margins")
+    logger.debug(f"REPEAT PROCESSING: {program.repeat_lines} sections of {program.high}cm each", category="execution")
+    logger.debug(f"   Each section: {program.number_of_lines} lines with {program.top_padding}cm top, {program.bottom_padding}cm bottom margins", category="execution")
     
     # Process each repeated section from top to bottom
     for section_num in range(program.repeat_lines):
         section_start_y = PAPER_OFFSET_Y + (program.repeat_lines - section_num) * program.high  # Top of this section
         section_end_y = PAPER_OFFSET_Y + (program.repeat_lines - section_num - 1) * program.high  # Bottom of this section
         
-        print(f"🔄 SECTION {section_num + 1}: Y range {section_end_y:.1f} to {section_start_y:.1f}cm")
+        logger.debug(f"SECTION {section_num + 1}: Y range {section_end_y:.1f} to {section_start_y:.1f}cm", category="execution")
         
         # Calculate line positions within THIS section
         first_line_y_section = section_start_y - program.top_padding
@@ -130,7 +135,7 @@ def generate_lines_marking_steps(program):
         else:
             line_spacing_section = 0
         
-        print(f"   Lines in section: {first_line_y_section:.1f} to {last_line_y_section:.1f}cm (spacing: {line_spacing_section:.2f}cm)")
+        logger.debug(f"   Lines in section: {first_line_y_section:.1f} to {last_line_y_section:.1f}cm (spacing: {line_spacing_section:.2f}cm)", category="execution")
         
         # Move to first line of this section
         if section_num == 0:  # Only move for first section (already positioned at top)
@@ -294,10 +299,10 @@ def generate_row_marking_steps(program):
     actual_paper_width = program.width * program.repeat_rows
     actual_paper_height = program.high * program.repeat_lines
     
-    print(f"🔄 ROW REPEAT CALCULATION:")
-    print(f"   Single pattern: {program.width}cm W × {program.high}cm H")
-    print(f"   Repeats: {program.repeat_rows} rows × {program.repeat_lines} lines") 
-    print(f"   ACTUAL PAPER SIZE: {actual_paper_width}cm W × {actual_paper_height}cm H")
+    logger.debug(f"ROW REPEAT CALCULATION:", category="execution")
+    logger.debug(f"   Single pattern: {program.width}cm W × {program.high}cm H", category="execution")
+    logger.debug(f"   Repeats: {program.repeat_rows} rows × {program.repeat_lines} lines", category="execution")
+    logger.debug(f"   ACTUAL PAPER SIZE: {actual_paper_width}cm W × {actual_paper_height}cm H", category="execution")
     
     # INDEPENDENT MOTOR OPERATION: Ensure lines motor is at home position (Y=0)
     steps.append(create_step(
@@ -340,9 +345,9 @@ def generate_row_marking_steps(program):
     
     # STEP 2: Mark pages BY SECTION (RIGHT-TO-LEFT), cutting between sections as we go
     # Process sections from RIGHTMOST to LEFTMOST (RTL order)
-    print(f"📄 PAGE MARKING BY SECTION (RTL):")
-    print(f"   Pages per section: {program.number_of_pages}")
-    print(f"   Repeated sections: {program.repeat_rows}")
+    logger.debug(f"PAGE MARKING BY SECTION (RTL):", category="execution")
+    logger.debug(f"   Pages per section: {program.number_of_pages}", category="execution")
+    logger.debug(f"   Repeated sections: {program.repeat_rows}", category="execution")
 
     # Process sections RIGHT-TO-LEFT: rightmost section first
     for rtl_section_index in range(program.repeat_rows):
@@ -351,7 +356,7 @@ def generate_row_marking_steps(program):
         section_index = program.repeat_rows - 1 - rtl_section_index
         section_num = section_index + 1
 
-        print(f"   Processing section {section_num}/{program.repeat_rows} (RTL order: {rtl_section_index + 1})")
+        logger.debug(f"   Processing section {section_num}/{program.repeat_rows} (RTL order: {rtl_section_index + 1})", category="execution")
 
         # Mark all pages in this section (RIGHT-TO-LEFT execution order)
         # Process pages from rightmost to leftmost (RTL)
@@ -382,7 +387,7 @@ def generate_row_marking_steps(program):
 
             page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, RTL Page {rtl_page_in_section + 1}/{program.number_of_pages})"
 
-            print(f"      📍 RTL Page {rtl_page_number}: section_index={section_index}, rtl_page_in_section={rtl_page_in_section}, physical_page={physical_page_in_section}, position={page_left_edge:.1f}-{page_right_edge:.1f}cm")
+            logger.debug(f"      RTL Page {rtl_page_number}: section_index={section_index}, rtl_page_in_section={rtl_page_in_section}, physical_page={physical_page_in_section}, position={page_left_edge:.1f}-{page_right_edge:.1f}cm", category="execution")
 
             # Move to this page's RIGHT edge first (starting point for each page)
             steps.append(create_step(
@@ -455,7 +460,7 @@ def generate_row_marking_steps(program):
             # The cut is at the LEFT edge of the section we just finished = section_start_x
             section_start_x = PAPER_OFFSET_X + section_index * program.width
 
-            print(f"   Adding cut AFTER section {section_num} at X={section_start_x}cm")
+            logger.debug(f"   Adding cut AFTER section {section_num} at X={section_start_x}cm", category="execution")
 
             # Move to cut position between sections
             steps.append(create_step(
@@ -559,12 +564,12 @@ def generate_complete_program_steps(program):
     ))
     
     # Generate lines marking steps (handles all repeated sections internally)
-    print(f"\n🎯 GENERATING LINES STEPS with repeats...")
+    logger.debug(f"GENERATING LINES STEPS with repeats...", category="execution")
     lines_steps = generate_lines_marking_steps(program)
     all_steps.extend(lines_steps)
-    
-    # Generate row marking steps (handles all repeated sections internally)  
-    print(f"\n🎯 GENERATING ROWS STEPS with repeats...")
+
+    # Generate row marking steps (handles all repeated sections internally)
+    logger.debug(f"GENERATING ROWS STEPS with repeats...", category="execution")
     row_steps = generate_row_marking_steps(program)
     all_steps.extend(row_steps)
     

@@ -16,6 +16,7 @@ saving GPIO pins on the Raspberry Pi.
 """
 
 import time
+from core.logger import get_logger
 
 
 class CD74HC4067Multiplexer:
@@ -33,6 +34,7 @@ class CD74HC4067Multiplexer:
             s3_pin: GPIO pin for S3 (bit 3)
             sig_pin: GPIO pin for SIG (signal/output)
         """
+        self.logger = get_logger()
         self.GPIO = gpio_lib
         self.s0 = s0_pin
         self.s1 = s1_pin
@@ -43,9 +45,10 @@ class CD74HC4067Multiplexer:
         # Setup GPIO pins
         self._setup_pins()
 
-        print(f"✅ CD74HC4067 Multiplexer initialized:")
-        print(f"   S0={s0_pin}, S1={s1_pin}, S2={s2_pin}, S3={s3_pin}")
-        print(f"   SIG={sig_pin}")
+        self.logger.info(
+            f"CD74HC4067 Multiplexer initialized: S0={s0_pin}, S1={s1_pin}, S2={s2_pin}, S3={s3_pin}, SIG={sig_pin}",
+            category="hardware"
+        )
 
     def _setup_pins(self):
         """Setup GPIO pins for multiplexer control"""
@@ -111,7 +114,10 @@ class CD74HC4067Multiplexer:
 
         # Log when a channel state changes
         if self._last_channel_states.get(channel) != value:
-            print(f"🔍 MUX CHANNEL {channel} CHANGED: {'HIGH (TRIG)' if value else 'LOW (READY)'}")
+            self.logger.debug(
+                f"MUX CHANNEL {channel} CHANGED: {'HIGH (TRIG)' if value else 'LOW (READY)'}",
+                category="hardware"
+            )
             self._last_channel_states[channel] = value
 
         return bool(value)

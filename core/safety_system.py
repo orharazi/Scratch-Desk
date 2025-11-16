@@ -6,6 +6,7 @@ Prevents dangerous operations that could damage the hardware
 """
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
+from core.logger import get_logger
 
 class SafetyViolation(Exception):
     """Exception raised when a safety condition is violated"""
@@ -22,16 +23,17 @@ class SafetySystem:
         self.violations_log = []
         # Get hardware interface via factory
         self.hardware = get_hardware_interface()
+        self.logger = get_logger()
     
     def enable_safety(self):
         """Enable safety checks"""
         self.safety_enabled = True
-        print("🛡️  Safety system ENABLED")
+        self.logger.info("Safety system ENABLED", category="safety")
     
     def disable_safety(self):
         """Disable safety checks (WARNING: Use only for debugging)"""
         self.safety_enabled = False
-        print("⚠️  WARNING: Safety system DISABLED!")
+        self.logger.warning("Safety system DISABLED!", category="safety")
     
     def check_y_axis_movement_safety(self, target_y=None):
         """
@@ -113,7 +115,7 @@ class SafetySystem:
                 # Distinguish between setup movements and actual operations
                 if self._is_setup_movement(description):
                     # Setup movements are allowed regardless of door position
-                    print(f"🔧 SETUP MOVEMENT: {description[:50]}... (allowed)")
+                    self.logger.debug(f"SETUP MOVEMENT: {description[:50]}... (allowed)", category="safety")
                 else:
                     # LINES OPERATIONS: Row marker MUST be UP (door closed)
                     self.check_lines_operation_safety(description)
@@ -143,7 +145,7 @@ class SafetySystem:
                 # Distinguish between setup movements and actual operations
                 if self._is_setup_movement(description):
                     # Setup movements are allowed regardless of door position
-                    print(f"🔧 SETUP MOVEMENT: {description[:50]}... (allowed)")
+                    self.logger.debug(f"SETUP MOVEMENT: {description[:50]}... (allowed)", category="safety")
                 else:
                     # ROWS OPERATIONS: Row marker MUST be DOWN (door open)
                     self.check_rows_operation_safety(description)
@@ -182,7 +184,7 @@ class SafetySystem:
             raise
         except Exception as e:
             # Log unexpected errors but don't block execution
-            print(f"⚠️  Warning: Safety check error for {operation}: {e}")
+            self.logger.warning(f"Safety check error for {operation}: {e}", category="safety")
             return True
     
     def check_lines_operation_safety(self, description=""):
@@ -307,6 +309,9 @@ class SafetySystem:
 # Global safety system instance
 safety_system = SafetySystem()
 
+# Module-level logger for standalone functions and main
+module_logger = get_logger()
+
 def check_step_safety(step):
     """Convenience function to check step safety"""
     return safety_system.check_step_safety(step)
@@ -324,15 +329,15 @@ def disable_safety():
     return safety_system.disable_safety()
 
 if __name__ == "__main__":
-    print("Safety System Test")
-    print("=" * 30)
-    
+    module_logger.info("Safety System Test", category="safety")
+    module_logger.info("=" * 30, category="safety")
+
     # Test safety status
     status = get_safety_status()
-    print(f"Safety enabled: {status['enabled']}")
-    print(f"Row marker limit_switch programmed: {status['row_marker_limit_switch']}")
+    module_logger.debug(f"Safety enabled: {status['enabled']}", category="safety")
+    module_logger.debug(f"Row marker limit_switch programmed: {status['row_marker_limit_switch']}", category="safety")
 
-    print(f"Current position: X={status['current_position']['x']}, Y={status['current_position']['y']}")
+    module_logger.debug(f"Current position: X={status['current_position']['x']}, Y={status['current_position']['y']}", category="safety")
     
     # Test Y-axis movement with row marker up (should be safe)
     test_step_safe = {
@@ -343,12 +348,12 @@ if __name__ == "__main__":
     
     try:
         check_step_safety(test_step_safe)
-        print("✓ Y-axis movement with row marker UP: SAFE")
+        module_logger.debug("Y-axis movement with row marker UP: SAFE", category="safety")
     except SafetyViolation as e:
-        print(f"✗ Safety violation: {e}")
-    
+        module_logger.error(f"Safety violation: {e}", category="safety")
+
     # Simulate row marker down and test Y-axis movement (should be unsafe)
-    print("\nSimulating row marker DOWN...")
+    module_logger.debug("Simulating row marker DOWN...", category="safety")
     from mock_hardware import set_row_marker_limit_switch
     set_row_marker_limit_switch("down")
     
@@ -360,9 +365,9 @@ if __name__ == "__main__":
     
     try:
         check_step_safety(test_step_unsafe)
-        print("✗ Y-axis movement with row marker DOWN: Should have been blocked!")
+        module_logger.error("Y-axis movement with row marker DOWN: Should have been blocked!", category="safety")
     except SafetyViolation as e:
-        print("✓ Y-axis movement with row marker DOWN: Correctly blocked")
-        print(f"   Violation: {e.safety_code}")
-    
-    print("\n✅ Safety system test completed!")
+        module_logger.debug("Y-axis movement with row marker DOWN: Correctly blocked", category="safety")
+        module_logger.debug(f"   Violation: {e.safety_code}", category="safety")
+
+    module_logger.info("Safety system test completed!", category="safety")

@@ -11,6 +11,10 @@ Automatically selects between mock hardware (simulation) and real hardware
 
 import json
 from typing import Dict, Optional
+from core.logger import get_logger
+
+# Module-level logger
+logger = get_logger()
 
 
 def load_config(config_path: str = "config/settings.json") -> Dict:
@@ -19,7 +23,7 @@ def load_config(config_path: str = "config/settings.json") -> Dict:
         with open(config_path, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Warning: Could not load config from {config_path}: {e}")
+        logger.warning(f"Could not load config from {config_path}: {e}", category="hardware")
         return {}
 
 
@@ -36,12 +40,12 @@ def create_hardware_interface(config_path: str = "config/settings.json"):
     config = load_config(config_path)
     use_real_hardware = config.get("hardware_config", {}).get("use_real_hardware", False)
 
-    print(f"\n{'='*60}")
-    print("Hardware Factory - Creating Hardware Interface")
-    print(f"{'='*60}")
-    print(f"Configuration: {config_path}")
-    print(f"Mode: {'REAL HARDWARE' if use_real_hardware else 'MOCK/SIMULATION'}")
-    print(f"{'='*60}\n")
+    logger.info("="*60, category="hardware")
+    logger.info("Hardware Factory - Creating Hardware Interface", category="hardware")
+    logger.info("="*60, category="hardware")
+    logger.info(f"Configuration: {config_path}", category="hardware")
+    logger.info(f"Mode: {'REAL HARDWARE' if use_real_hardware else 'MOCK/SIMULATION'}", category="hardware")
+    logger.info("="*60, category="hardware")
 
     if use_real_hardware:
         # Import and return real hardware interface
@@ -83,24 +87,24 @@ def reset_hardware_interface():
 
 if __name__ == "__main__":
     """Test hardware factory"""
-    print("\n" + "="*60)
-    print("Hardware Factory Test")
-    print("="*60 + "\n")
+    logger.info("="*60, category="hardware")
+    logger.info("Hardware Factory Test", category="hardware")
+    logger.info("="*60, category="hardware")
 
     # Create hardware interface
     hardware = create_hardware_interface()
 
-    print(f"\nCreated hardware interface: {type(hardware).__name__}")
-    print(f"Module: {type(hardware).__module__}")
+    logger.info(f"Created hardware interface: {type(hardware).__name__}", category="hardware")
+    logger.info(f"Module: {type(hardware).__module__}", category="hardware")
 
     # Test basic functionality
     if hasattr(hardware, 'initialize'):
-        print("\n✓ Hardware has initialize() method")
+        logger.debug("Hardware has initialize() method", category="hardware")
     if hasattr(hardware, 'move_x'):
-        print("✓ Hardware has move_x() method")
+        logger.debug("Hardware has move_x() method", category="hardware")
     if hasattr(hardware, 'get_current_x'):
-        print("✓ Hardware has get_current_x() method")
+        logger.debug("Hardware has get_current_x() method", category="hardware")
 
-    print("\n" + "="*60)
-    print("Factory test completed")
-    print("="*60 + "\n")
+    logger.info("="*60, category="hardware")
+    logger.info("Factory test completed", category="hardware")
+    logger.info("="*60, category="hardware")

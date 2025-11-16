@@ -1,5 +1,6 @@
 import csv
 from core.program_model import ScratchDeskProgram
+from core.logger import get_logger
 
 class CSVParser:
     """
@@ -13,6 +14,7 @@ class CSVParser:
     """
     
     def __init__(self):
+        self.logger = get_logger()
         self.required_headers = [
             # General Program Information
             'program_number', 'program_name',
@@ -43,7 +45,7 @@ class CSVParser:
                 # Check for extra headers (informational)
                 extra_headers = set(csv_reader.fieldnames or []) - set(self.required_headers)
                 if extra_headers:
-                    print(f"INFO: Extra headers found (will be ignored): {', '.join(extra_headers)}")
+                    self.logger.info(f"Extra headers found (will be ignored): {', '.join(extra_headers)}", category="parser")
                 
                 for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 because header is row 1
                     try:
@@ -144,27 +146,27 @@ class CSVParser:
         programs, errors = self.load_programs_from_csv(file_path)
         
         if errors:
-            print("Validation Errors Found:")
+            self.logger.error("Validation Errors Found:", category="parser")
             for error in errors:
-                print(f"  - {error}")
-            print(f"\\nLoaded {len(programs)} valid programs out of total rows.")
+                self.logger.error(f"  - {error}", category="parser")
+            self.logger.warning(f"Loaded {len(programs)} valid programs out of total rows.", category="parser")
             return False
-        
-        print(f"CSV validation successful! Loaded {len(programs)} valid programs.")
+
+        self.logger.info(f"CSV validation successful! Loaded {len(programs)} valid programs.", category="parser")
         
         # Show validation details for each program
         for program in programs:
             dims = program.get_total_desk_dimensions()
-            status = "✅ VALID" if program.is_valid() else "❌ INVALID"
-            print(f"  {status} - {program.program_name}: "
+            status = "VALID" if program.is_valid() else "INVALID"
+            self.logger.debug(f"  {status} - {program.program_name}: "
                   f"{dims['total_width']:.1f}x{dims['total_height']:.1f}cm "
-                  f"({'fits' if dims['fits_on_desk'] else 'too large'})")
+                  f"({'fits' if dims['fits_on_desk'] else 'too large'})", category="parser")
         
         return True
     
     def test_validation_examples(self):
         """Test the validation formulas with example data"""
-        print("Testing validation formulas...")
+        self.logger.info("Testing validation formulas...", category="parser")
         
         # Test Program 1 - Should fail row pattern validation
         test1 = ScratchDeskProgram(
@@ -175,14 +177,14 @@ class CSVParser:
             repeat_rows=1, repeat_lines=1
         )
         
-        print(f"\\nTest 1: {test1.program_name}")
+        self.logger.debug(f"Test 1: {test1.program_name}", category="parser")
         errors = test1.validate()
         if errors:
-            print("  ❌ VALIDATION FAILED:")
+            self.logger.error("  VALIDATION FAILED:", category="parser")
             for error in errors:
-                print(f"    - {error}")
+                self.logger.error(f"    - {error}", category="parser")
         else:
-            print("  ✅ VALIDATION PASSED")
+            self.logger.info("  VALIDATION PASSED", category="parser")
         
         # Test Program 2 - Should fail row pattern validation  
         test2 = ScratchDeskProgram(
@@ -193,14 +195,14 @@ class CSVParser:
             repeat_rows=1, repeat_lines=2
         )
         
-        print(f"\\nTest 2: {test2.program_name}")
+        self.logger.debug(f"Test 2: {test2.program_name}", category="parser")
         errors = test2.validate()
         if errors:
-            print("  ❌ VALIDATION FAILED:")
+            self.logger.error("  VALIDATION FAILED:", category="parser")
             for error in errors:
-                print(f"    - {error}")
+                self.logger.error(f"    - {error}", category="parser")
         else:
-            print("  ✅ VALIDATION PASSED")
+            self.logger.info("  VALIDATION PASSED", category="parser")
         
         # Test Program 3 - Should pass all validations
         test3 = ScratchDeskProgram(
@@ -211,13 +213,13 @@ class CSVParser:
             repeat_rows=1, repeat_lines=1
         )
         
-        print(f"\\nTest 3: {test3.program_name}")
+        self.logger.debug(f"Test 3: {test3.program_name}", category="parser")
         errors = test3.validate()
         if errors:
-            print("  ❌ VALIDATION FAILED:")
+            self.logger.error("  VALIDATION FAILED:", category="parser")
             for error in errors:
-                print(f"    - {error}")
+                self.logger.error(f"    - {error}", category="parser")
         else:
-            print("  ✅ VALIDATION PASSED")
+            self.logger.info("  VALIDATION PASSED", category="parser")
             dims = test3.get_total_desk_dimensions()
-            print(f"    Total desk usage: {dims['total_width']}x{dims['total_height']}cm")
+            self.logger.debug(f"    Total desk usage: {dims['total_width']}x{dims['total_height']}cm", category="parser")

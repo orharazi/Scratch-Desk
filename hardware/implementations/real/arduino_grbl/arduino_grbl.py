@@ -13,16 +13,19 @@ import time
 import re
 from typing import Optional, Tuple, Dict
 from threading import Lock
+from core.logger import get_logger
 
 # Try to import pyserial, fall back to mock if not available
 try:
     import serial
     SERIAL_AVAILABLE = True
-    print("✓ pyserial library loaded successfully")
+    _module_logger = get_logger()
+    _module_logger.debug("pyserial library loaded successfully", category="grbl")
 except ImportError:
     SERIAL_AVAILABLE = False
-    print("⚠ pyserial not available - Arduino GRBL will run in mock mode")
-    print("  Install with: pip3 install pyserial")
+    _module_logger = get_logger()
+    _module_logger.debug("pyserial not available - Arduino GRBL will run in mock mode", category="grbl")
+    _module_logger.debug("Install with: pip3 install pyserial", category="grbl")
     # Create mock serial class
     class MockSerial:
         def __init__(self, port, baudrate, timeout):
@@ -30,16 +33,17 @@ except ImportError:
             self.baudrate = baudrate
             self.timeout = timeout
             self.in_waiting = 0
-            print(f"MOCK SERIAL: Opened {port} at {baudrate} baud")
+            self.logger = get_logger()
+            self.logger.debug(f"MOCK SERIAL: Opened {port} at {baudrate} baud", category="grbl")
 
         def write(self, data):
-            print(f"MOCK SERIAL >> {data.decode().strip()}")
+            self.logger.debug(f"MOCK SERIAL >> {data.decode().strip()}", category="grbl")
 
         def readline(self):
             return b"ok\n"
 
         def close(self):
-            print("MOCK SERIAL: Connection closed")
+            self.logger.debug("MOCK SERIAL: Connection closed", category="grbl")
 
         def flushInput(self):
             pass
@@ -62,6 +66,7 @@ class ArduinoGRBL:
         Args:
             config_path: Path to config/settings.json configuration file
         """
+        self.logger = get_logger()
         self.config = self._load_config(config_path)
         self.grbl_config = self.config.get("hardware_config", {}).get("arduino_grbl", {})
 
@@ -85,16 +90,13 @@ class ArduinoGRBL:
         self.current_x = 0.0  # Current X position in mm
         self.current_y = 0.0  # Current Y position in mm
 
-        print(f"\n{'='*60}")
-        print("Arduino GRBL Configuration")
-        print(f"{'='*60}")
-        print(f"Serial Port: {self.serial_port}")
-        print(f"Baud Rate: {self.baud_rate}")
-        print(f"Feed Rate: {self.feed_rate} mm/min")
-        print(f"Rapid Rate: {self.rapid_rate} mm/min")
+        self.logger.info(
+            f"Arduino GRBL Configuration - Port: {self.serial_port}, Baud: {self.baud_rate}, "
+            f"Feed Rate: {self.feed_rate} mm/min, Rapid Rate: {self.rapid_rate} mm/min",
+            category="grbl"
+        )
         if self.door_switch_config:
-            print(f"Door Switch: Pin {self.door_switch_config.get('pin', 'N/A')}")
-        print(f"{'='*60}\n")
+            self.logger.info(f"Door Switch: Pin {self.door_switch_config.get('pin', 'N/A')}", category="grbl")
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from config/settings.json"""
@@ -102,7 +104,7 @@ class ArduinoGRBL:
             with open(config_path, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Error loading config: {e}")
+            self.logger.error(f"Error loading config: {e}", category="grbl")
             return {}
 
     def connect(self) -> bool:
@@ -113,33 +115,33 @@ class ArduinoGRBL:
             True if connection successful, False otherwise
         """
         if self.is_connected:
-            print("Already connected to GRBL")
+            self.logger.info("Already connected to GRBL", category="grbl")
             return True
 
         # First check if port is configured
         if not self.serial_port or self.serial_port == "None":
-            error_msg = "❌ ARDUINO PORT NOT CONFIGURED - No serial port specified in settings"
-            print(f"\n{error_msg}")
-            print("   Please configure the Arduino port in Hardware Settings panel")
-            print("   Select the correct port from the dropdown and click Apply & Save\n")
+            error_msg = "ARDUINO PORT NOT CONFIGURED - No serial port specified in settings"
+            self.logger.error(error_msg, category="grbl")
+            self.logger.error("Please configure the Arduino port in Hardware Settings panel", category="grbl")
+            self.logger.error("Select the correct port from the dropdown and click Apply & Save", category="grbl")
             raise RuntimeError(error_msg)
 
         try:
-            print(f"Attempting to connect to Arduino GRBL...")
-            print(f"  Port: {self.serial_port}")
-            print(f"  Baud rate: {self.baud_rate}")
-            print(f"  Timeout: {self.connection_timeout}s")
+            self.logger.info(f"Attempting to connect to Arduino GRBL...", category="grbl")
+            self.logger.debug(f"Port: {self.serial_port}", category="grbl")
+            self.logger.debug(f"Baud rate: {self.baud_rate}", category="grbl")
+            self.logger.debug(f"Timeout: {self.connection_timeout}s", category="grbl")
 
             # Check if port exists (list available ports)
             import serial.tools.list_ports
             available_ports = [port.device for port in serial.tools.list_ports.comports()]
-            print(f"  Available ports: {available_ports if available_ports else 'None found'}")
+            self.logger.debug(f"Available ports: {available_ports if available_ports else 'None found'}", category="grbl")
 
             if self.serial_port not in available_ports:
-                error_msg = f"❌ PORT NOT FOUND - '{self.serial_port}' is not available"
-                print(f"\n{error_msg}")
-                print(f"   Available ports: {', '.join(available_ports) if available_ports else 'None'}")
-                print("   Check Arduino is connected and port is correct in Hardware Settings\n")
+                error_msg = f"PORT NOT FOUND - '{self.serial_port}' is not available"
+                self.logger.error(error_msg, category="grbl")
+                self.logger.error(f"Available ports: {', '.join(available_ports) if available_ports else 'None'}", category="grbl")
+                self.logger.error("Check Arduino is connected and port is correct in Hardware Settings", category="grbl")
                 raise RuntimeError(error_msg)
 
             # Open serial connection
@@ -149,49 +151,49 @@ class ArduinoGRBL:
                     baudrate=self.baud_rate,
                     timeout=self.connection_timeout
                 )
-                print(f"  ✓ Serial port opened")
+                self.logger.debug("Serial port opened", category="grbl")
             except serial.SerialException as e:
                 if "Permission denied" in str(e):
-                    error_msg = f"❌ PERMISSION DENIED - Cannot access port '{self.serial_port}'"
-                    print(f"\n{error_msg}")
-                    print("   Try: sudo usermod -a -G dialout $USER")
-                    print("   Then logout and login again\n")
+                    error_msg = f"PERMISSION DENIED - Cannot access port '{self.serial_port}'"
+                    self.logger.error(error_msg, category="grbl")
+                    self.logger.error("Try: sudo usermod -a -G dialout $USER", category="grbl")
+                    self.logger.error("Then logout and login again", category="grbl")
                 elif "Device is busy" in str(e) or "Resource busy" in str(e):
-                    error_msg = f"❌ PORT IN USE - '{self.serial_port}' is already open by another program"
-                    print(f"\n{error_msg}")
-                    print("   Close other programs using the Arduino (Arduino IDE, screen, minicom, etc.)\n")
+                    error_msg = f"PORT IN USE - '{self.serial_port}' is already open by another program"
+                    self.logger.error(error_msg, category="grbl")
+                    self.logger.error("Close other programs using the Arduino (Arduino IDE, screen, minicom, etc.)", category="grbl")
                 else:
-                    error_msg = f"❌ SERIAL ERROR - {str(e)}"
-                    print(f"\n{error_msg}\n")
+                    error_msg = f"SERIAL ERROR - {str(e)}"
+                    self.logger.error(error_msg, category="grbl")
                 raise RuntimeError(error_msg)
 
             # Wait for GRBL to initialize (it sends startup message)
-            print("  Waiting for GRBL to initialize...")
+            self.logger.debug("Waiting for GRBL to initialize...", category="grbl")
             time.sleep(2)
 
             # Flush any startup messages
             self.serial_connection.flushInput()
 
             # Send a simple command to verify connection
-            print("  Sending status query to GRBL...")
+            self.logger.debug("Sending status query to GRBL...", category="grbl")
             response = self._send_command("?")
-            print(f"Response: {response}")  # Status query
+            self.logger.debug(f"Response: {response}", category="grbl")  # Status query
 
             if response:
                 self.is_connected = True
-                print("  ✓ GRBL responded successfully")
-                print("✓ Connected to Arduino GRBL")
+                self.logger.debug("GRBL responded successfully", category="grbl")
+                self.logger.success("Connected to Arduino GRBL", category="grbl")
 
                 # Initialize GRBL
                 self._initialize_grbl()
                 return True
             else:
-                error_msg = "❌ NO RESPONSE FROM GRBL - Device not responding or wrong baud rate"
-                print(f"\n{error_msg}")
-                print("   Check:")
-                print("   1. Arduino has GRBL firmware installed")
-                print("   2. Correct baud rate (usually 115200)")
-                print("   3. USB cable supports data (not charge-only)\n")
+                error_msg = "NO RESPONSE FROM GRBL - Device not responding or wrong baud rate"
+                self.logger.error(error_msg, category="grbl")
+                self.logger.error("Check:", category="grbl")
+                self.logger.error("1. Arduino has GRBL firmware installed", category="grbl")
+                self.logger.error("2. Correct baud rate (usually 115200)", category="grbl")
+                self.logger.error("3. USB cable supports data (not charge-only)", category="grbl")
                 self.disconnect()
                 raise RuntimeError(error_msg)
 
@@ -199,17 +201,17 @@ class ArduinoGRBL:
             # Re-raise our detailed errors
             raise
         except serial.SerialException as e:
-            error_msg = f"❌ SERIAL EXCEPTION - {type(e).__name__}: {str(e)}"
-            print(f"\n{error_msg}\n")
+            error_msg = f"SERIAL EXCEPTION - {type(e).__name__}: {str(e)}"
+            self.logger.error(error_msg, category="grbl")
             raise RuntimeError(error_msg)
         except Exception as e:
-            error_msg = f"❌ UNEXPECTED ARDUINO ERROR - {type(e).__name__}: {str(e)}"
-            print(f"\n{error_msg}\n")
+            error_msg = f"UNEXPECTED ARDUINO ERROR - {type(e).__name__}: {str(e)}"
+            self.logger.error(error_msg, category="grbl")
             raise RuntimeError(error_msg)
 
     def _initialize_grbl(self):
         """Initialize GRBL with required settings"""
-        print("Initializing GRBL...")
+        self.logger.info("Initializing GRBL...", category="grbl")
 
         # Set to absolute positioning mode
         self._send_command("G90")
@@ -218,12 +220,12 @@ class ArduinoGRBL:
         self._send_command("G21")
 
         # Home the machine (if homing is enabled)
-        print("Homing machine... (This may take a few seconds)")
+        self.logger.info("Homing machine... (This may take a few seconds)", category="grbl")
         response = self._send_command("$H", timeout=30.0)
         if response and "ok" in response.lower():
-            print("✓ Homing completed")
+            self.logger.success("Homing completed", category="grbl")
         else:
-            print("⚠ Homing may have failed or is not configured")
+            self.logger.debug("Homing may have failed or is not configured", category="grbl")
 
         # Reset work coordinates to (0, 0)
         self._send_command("G92 X0 Y0")
@@ -231,7 +233,7 @@ class ArduinoGRBL:
         self.current_x = 0.0
         self.current_y = 0.0
 
-        print("✓ GRBL initialized")
+        self.logger.success("GRBL initialized", category="grbl")
 
     def _send_command(self, command: str, timeout: Optional[float] = None) -> Optional[str]:
         """
@@ -246,7 +248,7 @@ class ArduinoGRBL:
         """
         # Allow commands if serial connection exists (even if not fully connected yet)
         if not self.serial_connection:
-            print("No serial connection available")
+            self.logger.debug("No serial connection available", category="grbl")
             return None
 
         if timeout is None:
@@ -256,7 +258,7 @@ class ArduinoGRBL:
             with self.command_lock:
                 # Send command
                 command = command.strip()
-                print(f"GRBL >> {command}")
+                self.logger.debug(f"GRBL >> {command}", category="grbl")
                 self.serial_connection.write(f"{command}\n".encode())
 
                 # Read response
@@ -269,7 +271,7 @@ class ArduinoGRBL:
                         line = self.serial_connection.readline().decode().strip()
                         if line:
                             response_lines.append(line)
-                            print(f"GRBL << {line}")
+                            self.logger.debug(f"GRBL << {line}", category="grbl")
 
                             # Status queries return immediately with <...> format
                             if is_status_query and line.startswith("<") and line.endswith(">"):
@@ -283,11 +285,11 @@ class ArduinoGRBL:
 
                     time.sleep(0.01)
 
-                print(f"⚠ Command timeout after {timeout}s")
+                self.logger.debug(f"Command timeout after {timeout}s", category="grbl")
                 return "\n".join(response_lines) if response_lines else None
 
         except Exception as e:
-            print(f"Error sending command: {e}")
+            self.logger.error(f"Error sending command: {e}", category="grbl")
             return None
 
     def move_to(self, x: float, y: float, rapid: bool = False) -> bool:
@@ -303,7 +305,7 @@ class ArduinoGRBL:
             True if successful, False otherwise
         """
         if not self.is_connected:
-            print("Not connected to GRBL")
+            self.logger.debug("Not connected to GRBL", category="grbl")
             return False
 
         # Convert cm to mm
@@ -324,14 +326,14 @@ class ArduinoGRBL:
             if response and "ok" in response.lower():
                 self.current_x = x
                 self.current_y = y
-                print(f"✓ Moved to X={x:.2f}cm, Y={y:.2f}cm")
+                self.logger.debug(f"Moved to X={x:.2f}cm, Y={y:.2f}cm", category="grbl")
                 return True
             else:
-                print(f"✗ Move command failed")
+                self.logger.debug("Move command failed", category="grbl")
                 return False
 
         except Exception as e:
-            print(f"Error moving to position: {e}")
+            self.logger.error(f"Error moving to position: {e}", category="grbl")
             return False
 
     def move_relative(self, dx: float, dy: float) -> bool:
@@ -357,24 +359,24 @@ class ArduinoGRBL:
             True if successful, False otherwise
         """
         if not self.is_connected:
-            print("Not connected to GRBL")
+            self.logger.debug("Not connected to GRBL", category="grbl")
             return False
 
         try:
-            print("Homing machine...")
+            self.logger.info("Homing machine...", category="grbl")
             response = self._send_command("$H", timeout=30.0)
 
             if response and "ok" in response.lower():
                 self.current_x = 0.0
                 self.current_y = 0.0
-                print("✓ Homing completed")
+                self.logger.success("Homing completed", category="grbl")
                 return True
             else:
-                print("✗ Homing failed")
+                self.logger.debug("Homing failed", category="grbl")
                 return False
 
         except Exception as e:
-            print(f"Error homing: {e}")
+            self.logger.error(f"Error homing: {e}", category="grbl")
             return False
 
     def get_status(self) -> Optional[Dict]:
@@ -411,7 +413,7 @@ class ArduinoGRBL:
             return None
 
         except Exception as e:
-            print(f"Error getting status: {e}")
+            self.logger.error(f"Error getting status: {e}", category="grbl")
             return None
 
     def stop(self) -> bool:
@@ -427,10 +429,10 @@ class ArduinoGRBL:
         try:
             # Send feed hold character (!)
             self.serial_connection.write(b"!")
-            print("⚠ EMERGENCY STOP activated")
+            self.logger.info("EMERGENCY STOP activated", category="grbl")
             return True
         except Exception as e:
-            print(f"Error sending stop: {e}")
+            self.logger.error(f"Error sending stop: {e}", category="grbl")
             return False
 
     def resume(self) -> bool:
@@ -446,10 +448,10 @@ class ArduinoGRBL:
         try:
             # Send cycle start character (~)
             self.serial_connection.write(b"~")
-            print("✓ Resuming operation")
+            self.logger.info("Resuming operation", category="grbl")
             return True
         except Exception as e:
-            print(f"Error sending resume: {e}")
+            self.logger.error(f"Error sending resume: {e}", category="grbl")
             return False
 
     def reset(self) -> bool:
@@ -466,10 +468,10 @@ class ArduinoGRBL:
             # Send reset character (Ctrl-X)
             self.serial_connection.write(b"\x18")
             time.sleep(2)  # Wait for reset
-            print("✓ GRBL reset")
+            self.logger.success("GRBL reset", category="grbl")
             return True
         except Exception as e:
-            print(f"Error sending reset: {e}")
+            self.logger.error(f"Error sending reset: {e}", category="grbl")
             return False
 
     def read_door_switch(self) -> Optional[bool]:
@@ -480,11 +482,11 @@ class ArduinoGRBL:
             True if door is closed (switch activated), False if open, None on error
         """
         if not self.is_connected:
-            print("Not connected to Arduino")
+            self.logger.debug("Not connected to Arduino", category="grbl")
             return None
 
         if not self.door_switch_config:
-            print("Door switch not configured")
+            self.logger.debug("Door switch not configured", category="grbl")
             return None
 
         try:
@@ -509,7 +511,7 @@ class ArduinoGRBL:
             return False
 
         except Exception as e:
-            print(f"Error reading door switch: {e}")
+            self.logger.error(f"Error reading door switch: {e}", category="grbl")
             return None
 
     def get_door_switch_state(self) -> Optional[bool]:
@@ -529,51 +531,52 @@ class ArduinoGRBL:
             try:
                 self.serial_connection.close()
                 self.is_connected = False
-                print("✓ Disconnected from GRBL")
+                self.logger.info("Disconnected from GRBL", category="grbl")
             except Exception as e:
-                print(f"Error disconnecting: {e}")
+                self.logger.error(f"Error disconnecting: {e}", category="grbl")
 
 
 if __name__ == "__main__":
     """Test GRBL interface"""
-    print("\n" + "="*60)
-    print("Arduino GRBL Interface Test")
-    print("="*60 + "\n")
+    test_logger = get_logger()
+    test_logger.info("="*60, category="grbl")
+    test_logger.info("Arduino GRBL Interface Test", category="grbl")
+    test_logger.info("="*60, category="grbl")
 
     # Create GRBL interface
     grbl = ArduinoGRBL()
 
     # Try to connect
     if grbl.connect():
-        print("\nTesting motor movements...")
+        test_logger.info("Testing motor movements...", category="grbl")
 
         # Test movement sequence
-        print("\n1. Moving to (10cm, 10cm)")
+        test_logger.info("1. Moving to (10cm, 10cm)", category="grbl")
         grbl.move_to(10, 10)
         time.sleep(2)
 
-        print("\n2. Moving to (20cm, 15cm)")
+        test_logger.info("2. Moving to (20cm, 15cm)", category="grbl")
         grbl.move_to(20, 15)
         time.sleep(2)
 
-        print("\n3. Moving back to origin")
+        test_logger.info("3. Moving back to origin", category="grbl")
         grbl.move_to(0, 0)
         time.sleep(2)
 
         # Get status
-        print("\nGetting status...")
+        test_logger.info("Getting status...", category="grbl")
         status = grbl.get_status()
         if status:
-            print(f"  State: {status.get('state', 'Unknown')}")
-            print(f"  Position: X={status.get('x', 0):.2f}cm, Y={status.get('y', 0):.2f}cm")
+            test_logger.info(f"State: {status.get('state', 'Unknown')}", category="grbl")
+            test_logger.info(f"Position: X={status.get('x', 0):.2f}cm, Y={status.get('y', 0):.2f}cm", category="grbl")
 
         # Disconnect
         grbl.disconnect()
     else:
-        print("✗ Failed to connect to GRBL")
-        print("\nNote: This is expected if Arduino is not connected.")
-        print("The interface will work correctly when connected to real hardware.")
+        test_logger.error("Failed to connect to GRBL", category="grbl")
+        test_logger.info("Note: This is expected if Arduino is not connected.", category="grbl")
+        test_logger.info("The interface will work correctly when connected to real hardware.", category="grbl")
 
-    print("\n" + "="*60)
-    print("Test completed")
-    print("="*60 + "\n")
+    test_logger.info("="*60, category="grbl")
+    test_logger.info("Test completed", category="grbl")
+    test_logger.info("="*60, category="grbl")

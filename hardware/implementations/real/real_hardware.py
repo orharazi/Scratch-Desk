@@ -12,6 +12,10 @@ import json
 from typing import Optional, Dict
 from hardware.implementations.real.raspberry_pi.raspberry_pi_gpio import RaspberryPiGPIO
 from hardware.implementations.real.arduino_grbl.arduino_grbl import ArduinoGRBL
+from core.logger import get_logger
+
+# Module-level logger for main section
+module_logger = get_logger()
 
 
 class RealHardware:
@@ -27,6 +31,7 @@ class RealHardware:
         Args:
             config_path: Path to config/settings.json configuration file
         """
+        self.logger = get_logger()
         self.config_path = config_path
         self.config = self._load_config(config_path)
 
@@ -36,11 +41,11 @@ class RealHardware:
         self.is_initialized = False
         self.initialization_error = None
 
-        print(f"\n{'='*60}")
-        print("Real Hardware Interface Configuration")
-        print(f"{'='*60}")
-        print(f"Mode: REAL HARDWARE")
-        print(f"{'='*60}\n")
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("Real Hardware Interface Configuration", category="hardware")
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("Mode: REAL HARDWARE", category="hardware")
+        self.logger.info("="*60, category="hardware")
 
         # Attempt to initialize hardware
         if not self.initialize():
@@ -52,7 +57,7 @@ class RealHardware:
             with open(config_path, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Error loading config: {e}")
+            self.logger.error(f"Error loading config: {e}", category="hardware")
             return {}
 
     def initialize(self) -> bool:
@@ -63,49 +68,49 @@ class RealHardware:
             True if initialization successful, False otherwise
         """
         if self.is_initialized:
-            print("Hardware already initialized")
+            self.logger.debug("Hardware already initialized", category="hardware")
             return True
 
         errors = []
 
         # Initialize Raspberry Pi GPIO
-        print("\nInitializing Raspberry Pi GPIO...")
+        self.logger.info("Initializing Raspberry Pi GPIO...", category="hardware")
         try:
             self.gpio = RaspberryPiGPIO(self.config_path)
             if not self.gpio.initialize():
                 error_msg = "GPIO initialization failed"
-                print(f"✗ {error_msg}")
+                self.logger.error(error_msg, category="hardware")
                 errors.append(error_msg)
             else:
-                print("✓ GPIO initialized successfully")
+                self.logger.success("GPIO initialized successfully", category="hardware")
         except Exception as e:
             error_msg = f"GPIO error: {str(e)}"
-            print(f"✗ {error_msg}")
+            self.logger.error(error_msg, category="hardware")
             errors.append(error_msg)
 
         # Initialize Arduino GRBL
-        print("\nInitializing Arduino GRBL...")
+        self.logger.info("Initializing Arduino GRBL...", category="hardware")
         try:
             self.grbl = ArduinoGRBL(self.config_path)
             if not self.grbl.connect():
                 error_msg = "GRBL connection failed - check Arduino port and connection"
-                print(f"✗ {error_msg}")
+                self.logger.error(error_msg, category="hardware")
                 errors.append(error_msg)
             else:
-                print("✓ GRBL connected successfully")
+                self.logger.success("GRBL connected successfully", category="hardware")
         except Exception as e:
             error_msg = f"GRBL error: {str(e)}"
-            print(f"✗ {error_msg}")
+            self.logger.error(error_msg, category="hardware")
             errors.append(error_msg)
 
         if not errors:
             self.is_initialized = True
             self.initialization_error = None
-            print("\n✓ All hardware initialized successfully\n")
+            self.logger.success("All hardware initialized successfully", category="hardware")
             return True
         else:
             self.initialization_error = "; ".join(errors)
-            print(f"\n✗ Hardware initialization failed: {self.initialization_error}\n")
+            self.logger.error(f"Hardware initialization failed: {self.initialization_error}", category="hardware")
             return False
 
     # ========== MOTOR CONTROL (via GRBL) ==========
@@ -121,7 +126,7 @@ class RealHardware:
             True if successful, False otherwise
         """
         if not self.is_initialized or not self.grbl:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         # Move only X axis, keep Y at current position
@@ -138,7 +143,7 @@ class RealHardware:
             True if successful, False otherwise
         """
         if not self.is_initialized or not self.grbl:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         # Move only Y axis, keep X at current position
@@ -156,7 +161,7 @@ class RealHardware:
             True if successful, False otherwise
         """
         if not self.is_initialized or not self.grbl:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.grbl.move_to(x, y)
@@ -169,7 +174,7 @@ class RealHardware:
             True if successful, False otherwise
         """
         if not self.is_initialized or not self.grbl:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.grbl.home()
@@ -179,7 +184,7 @@ class RealHardware:
     def line_marker_piston_down(self) -> bool:
         """Lower line marker piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_down("line_marker_piston")
@@ -187,7 +192,7 @@ class RealHardware:
     def line_marker_piston_up(self) -> bool:
         """Raise line marker piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_up("line_marker_piston")
@@ -195,7 +200,7 @@ class RealHardware:
     def line_cutter_piston_down(self) -> bool:
         """Lower line cutter piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_down("line_cutter_piston")
@@ -203,7 +208,7 @@ class RealHardware:
     def line_cutter_piston_up(self) -> bool:
         """Raise line cutter piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_up("line_cutter_piston")
@@ -211,7 +216,7 @@ class RealHardware:
     def line_motor_piston_down(self) -> bool:
         """Lower line motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.line_motor_piston_down()
@@ -219,7 +224,7 @@ class RealHardware:
     def line_motor_piston_up(self) -> bool:
         """Raise line motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.line_motor_piston_up()
@@ -227,7 +232,7 @@ class RealHardware:
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_down("row_marker_piston")
@@ -235,7 +240,7 @@ class RealHardware:
     def row_marker_piston_up(self) -> bool:
         """Raise row marker piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_up("row_marker_piston")
@@ -243,7 +248,7 @@ class RealHardware:
     def row_cutter_piston_down(self) -> bool:
         """Lower row cutter piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_down("row_cutter_piston")
@@ -251,7 +256,7 @@ class RealHardware:
     def row_cutter_piston_up(self) -> bool:
         """Raise row cutter piston"""
         if not self.is_initialized or not self.gpio:
-            print("Hardware not initialized")
+            self.logger.error("Hardware not initialized", category="hardware")
             return False
 
         return self.gpio.piston_up("row_cutter_piston")
@@ -766,7 +771,7 @@ class RealHardware:
 
     def shutdown(self):
         """Shutdown and cleanup all hardware"""
-        print("\nShutting down hardware...")
+        self.logger.info("Shutting down hardware...", category="hardware")
 
         if self.grbl:
             self.grbl.disconnect()
@@ -774,37 +779,37 @@ class RealHardware:
             self.gpio.cleanup()
 
         self.is_initialized = False
-        print("✓ Hardware shutdown complete\n")
+        self.logger.success("Hardware shutdown complete", category="hardware")
 
 
 if __name__ == "__main__":
     """Test hardware interface"""
-    print("\n" + "="*60)
-    print("Real Hardware Interface Test")
-    print("="*60 + "\n")
+    module_logger.info("="*60, category="hardware")
+    module_logger.info("Real Hardware Interface Test", category="hardware")
+    module_logger.info("="*60, category="hardware")
 
     # Create hardware interface
     hardware = RealHardware()
 
     # Initialize
     if hardware.initialize():
-        print("\nTesting motor control...")
+        module_logger.info("Testing motor control...", category="hardware")
         hardware.move_to(10, 10)
         hardware.move_to(0, 0)
 
-        print("\nTesting piston control...")
+        module_logger.info("Testing piston control...", category="hardware")
         hardware.line_marker_piston_down()
         hardware.line_marker_piston_up()
 
-        print("\nReading sensors...")
+        module_logger.info("Reading sensors...", category="hardware")
         edge_sensors = hardware.read_edge_sensors()
-        print(f"Edge sensors: {edge_sensors}")
+        module_logger.debug(f"Edge sensors: {edge_sensors}", category="hardware")
 
         # Shutdown
         hardware.shutdown()
     else:
-        print("✗ Failed to initialize hardware")
+        module_logger.error("Failed to initialize hardware", category="hardware")
 
-    print("\n" + "="*60)
-    print("Test completed")
-    print("="*60 + "\n")
+    module_logger.info("="*60, category="hardware")
+    module_logger.info("Test completed", category="hardware")
+    module_logger.info("="*60, category="hardware")
