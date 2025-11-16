@@ -914,8 +914,9 @@ class UltimateHardwareTestGUI:
         self.log("INFO", "Monitor loop started - updating sensors at 10Hz")
         while self.monitor_running:
             try:
-                # Update position from GRBL
-                if self.grbl_connected and hasattr(self.hardware, 'grbl'):
+                # Update position from GRBL or hardware
+                if self.grbl_connected and hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                    # Get position from GRBL
                     status = self.hardware.grbl.get_status()
                     if status:
                         self.current_x = status.get('x', 0)
@@ -926,6 +927,16 @@ class UltimateHardwareTestGUI:
                         state = status.get('state', 'Unknown')
                         color = "green" if state == "Idle" else "orange" if state == "Run" else "red"
                         self.motor_status_label.config(text=state, foreground=color)
+                elif self.is_connected and hasattr(self.hardware, 'get_current_x') and hasattr(self.hardware, 'get_current_y'):
+                    # Get position from hardware interface (mock or real without GRBL)
+                    try:
+                        self.current_x = self.hardware.get_current_x()
+                        self.current_y = self.hardware.get_current_y()
+                        self.x_pos_var.set(f"X: {self.current_x:.2f} cm")
+                        self.y_pos_var.set(f"Y: {self.current_y:.2f} cm")
+                        self.motor_status_label.config(text="Idle", foreground="green")
+                    except Exception as e:
+                        pass  # Silently ignore position update errors
 
                 # Update sensors and connection indicators
                 if self.is_connected:
