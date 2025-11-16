@@ -55,6 +55,9 @@ class UltimateHardwareTestGUI:
         self.available_ports = []
         self.selected_port = tk.StringVar(value="Auto-detect")
 
+        # Hardware mode toggle
+        self.use_real_hardware = tk.BooleanVar(value=False)
+
         # Position tracking
         self.current_x = 0.0
         self.current_y = 0.0
@@ -65,6 +68,9 @@ class UltimateHardwareTestGUI:
 
         # Load port mappings from config
         self.port_mappings = self.load_port_mappings()
+
+        # Load initial hardware mode from config
+        self.load_hardware_mode()
 
         # Initialize widget dictionaries
         self.sensor_widgets = {}
@@ -125,6 +131,18 @@ class UltimateHardwareTestGUI:
             print(f"Error loading port mappings: {e}")
             return {}
 
+    def load_hardware_mode(self):
+        """Load hardware mode from config"""
+        try:
+            import json
+            with open('config/settings.json', 'r') as f:
+                config = json.load(f)
+            use_real = config.get('hardware_config', {}).get('use_real_hardware', False)
+            self.use_real_hardware.set(use_real)
+        except Exception as e:
+            print(f"Error loading hardware mode: {e}")
+            self.use_real_hardware.set(False)
+
     def create_ui(self):
         """Create the main user interface with tabs"""
         # Top frame for connection status
@@ -133,6 +151,9 @@ class UltimateHardwareTestGUI:
         # Main notebook with tabs
         self.notebook = ttk.Notebook(self.root, padding="5")
         self.notebook.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+
+        # Set minimum size for the notebook to prevent collapse
+        self.root.minsize(1200, 700)
 
         # Create tabs
         self.motors_tab = ttk.Frame(self.notebook)
@@ -178,9 +199,19 @@ class UltimateHardwareTestGUI:
         # Refresh ports button
         ttk.Button(conn_frame, text="🔄", width=3, command=self.scan_ports).grid(row=0, column=6, padx=2)
 
+        # Hardware mode toggle
+        ttk.Label(conn_frame, text="Mode:", font=("Arial", 10, "bold")).grid(row=0, column=7, padx=(20, 5))
+        self.hardware_mode_check = ttk.Checkbutton(
+            conn_frame,
+            text="Use Real Hardware",
+            variable=self.use_real_hardware,
+            command=self.on_hardware_mode_changed
+        )
+        self.hardware_mode_check.grid(row=0, column=8, padx=5)
+
         # Connect/Disconnect button
         self.connect_btn = ttk.Button(conn_frame, text="Connect Hardware", command=self.toggle_connection)
-        self.connect_btn.grid(row=0, column=7, padx=20)
+        self.connect_btn.grid(row=0, column=9, padx=20)
 
         # Scan ports on startup
         self.scan_ports()
@@ -202,10 +233,11 @@ class UltimateHardwareTestGUI:
 
     def create_motors_tab(self):
         """Create motors control tab with jogging and presets"""
-        # Configure grid weights
-        self.motors_tab.columnconfigure(0, weight=1)
-        self.motors_tab.columnconfigure(1, weight=1)
-        self.motors_tab.rowconfigure(1, weight=1)
+        # Configure grid weights - fixed weights to prevent expansion
+        self.motors_tab.columnconfigure(0, weight=1, minsize=400)
+        self.motors_tab.columnconfigure(1, weight=1, minsize=400)
+        self.motors_tab.rowconfigure(0, weight=0)  # Position display - don't expand
+        self.motors_tab.rowconfigure(1, weight=1)  # Main content - can expand
 
         # Position display at top
         pos_frame = ttk.LabelFrame(self.motors_tab, text="Current Position", padding="10")
@@ -346,9 +378,10 @@ class UltimateHardwareTestGUI:
 
     def create_pistons_tab(self):
         """Create pistons and sensors control tab"""
-        # Configure grid
-        self.pistons_tab.columnconfigure(0, weight=1)
-        self.pistons_tab.columnconfigure(1, weight=1)
+        # Configure grid - fixed weights to prevent expansion
+        self.pistons_tab.columnconfigure(0, weight=1, minsize=400)
+        self.pistons_tab.columnconfigure(1, weight=1, minsize=400)
+        self.pistons_tab.rowconfigure(0, weight=1)
 
         # Left side - Piston controls
         left_frame = ttk.Frame(self.pistons_tab)
@@ -768,6 +801,34 @@ class UltimateHardwareTestGUI:
                 print(f"Log processor error: {e}")
                 time.sleep(0.1)
 
+    def on_hardware_mode_changed(self):
+        """Handle hardware mode toggle change"""
+        use_real = self.use_real_hardware.get()
+        try:
+            import json
+            with open('config/settings.json', 'r') as f:
+                config = json.load(f)
+
+            # Update the config
+            if 'hardware_config' not in config:
+                config['hardware_config'] = {}
+            config['hardware_config']['use_real_hardware'] = use_real
+
+            # Save with proper formatting
+            with open('config/settings.json', 'w') as f:
+                json.dump(config, f, indent=2)
+
+            self.log("INFO", f"Hardware mode changed to: {'REAL' if use_real else 'MOCK'}")
+
+            # If connected, disconnect and suggest reconnecting
+            if self.is_connected:
+                self.log("WARNING", "Please disconnect and reconnect to apply hardware mode change")
+                messagebox.showinfo("Hardware Mode Changed",
+                                   "Please disconnect and reconnect to apply the new hardware mode.")
+        except Exception as e:
+            self.log("ERROR", f"Failed to update hardware mode: {e}")
+            messagebox.showerror("Error", f"Failed to update hardware mode: {e}")
+
     def scan_ports(self):
         """Scan for available serial ports"""
         try:
@@ -822,13 +883,16 @@ class UltimateHardwareTestGUI:
                 try:
                     with open('config/settings.json', 'r') as f:
                         config = json.load(f)
-                    # Override the serial port in config
-                    if 'grbl' in config:
-                        config['grbl']['serial_port'] = port_device
-                        # Save temporarily
-                        with open('config/settings.json', 'w') as f:
-                            json.dump(config, f, indent=4)
-                        self.log("INFO", f"Configured GRBL port: {port_device}")
+                    # Override the serial port in config - use correct path
+                    if 'hardware_config' not in config:
+                        config['hardware_config'] = {}
+                    if 'arduino_grbl' not in config['hardware_config']:
+                        config['hardware_config']['arduino_grbl'] = {}
+                    config['hardware_config']['arduino_grbl']['serial_port'] = port_device
+                    # Save with proper formatting
+                    with open('config/settings.json', 'w') as f:
+                        json.dump(config, f, indent=2)
+                    self.log("INFO", f"Configured GRBL port: {port_device}")
                 except Exception as e:
                     self.log("WARNING", f"Could not update port in config: {e}")
             else:
@@ -868,6 +932,9 @@ class UltimateHardwareTestGUI:
 
                 # Enable all controls
                 self.enable_controls(True)
+
+                # Update layout after connection
+                self.root.update_idletasks()
 
             else:
                 self.log("ERROR", "Failed to initialize hardware")
@@ -918,31 +985,47 @@ class UltimateHardwareTestGUI:
     def monitor_loop(self):
         """Monitor sensors and positions in background"""
         self.log("INFO", "Monitor loop started - updating sensors at 10Hz")
+        last_position_update = 0
+        position_update_interval = 0.2  # Update position less frequently to reduce flickering
+
         while self.monitor_running:
             try:
-                # Update position from GRBL or hardware
-                if self.grbl_connected and hasattr(self.hardware, 'grbl') and self.hardware.grbl:
-                    # Get position from GRBL
-                    status = self.hardware.grbl.get_status()
-                    if status:
-                        self.current_x = status.get('x', 0)
-                        self.current_y = status.get('y', 0)
-                        self.x_pos_var.set(f"X: {self.current_x:.2f} cm")
-                        self.y_pos_var.set(f"Y: {self.current_y:.2f} cm")
+                current_time = time.time()
 
-                        state = status.get('state', 'Unknown')
-                        color = "green" if state == "Idle" else "orange" if state == "Run" else "red"
-                        self.motor_status_label.config(text=state, foreground=color)
-                elif self.is_connected and hasattr(self.hardware, 'get_current_x') and hasattr(self.hardware, 'get_current_y'):
-                    # Get position from hardware interface (mock or real without GRBL)
-                    try:
-                        self.current_x = self.hardware.get_current_x()
-                        self.current_y = self.hardware.get_current_y()
-                        self.x_pos_var.set(f"X: {self.current_x:.2f} cm")
-                        self.y_pos_var.set(f"Y: {self.current_y:.2f} cm")
-                        self.motor_status_label.config(text="Idle", foreground="green")
-                    except Exception as e:
-                        pass  # Silently ignore position update errors
+                # Update position from GRBL or hardware (less frequently)
+                if current_time - last_position_update >= position_update_interval:
+                    if self.grbl_connected and hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                        # Get position from GRBL
+                        status = self.hardware.grbl.get_status()
+                        if status:
+                            new_x = status.get('x', 0)
+                            new_y = status.get('y', 0)
+                            # Only update UI if position actually changed
+                            if abs(new_x - self.current_x) > 0.01 or abs(new_y - self.current_y) > 0.01:
+                                self.current_x = new_x
+                                self.current_y = new_y
+                                self.root.after_idle(lambda: self.x_pos_var.set(f"X: {self.current_x:.2f} cm"))
+                                self.root.after_idle(lambda: self.y_pos_var.set(f"Y: {self.current_y:.2f} cm"))
+
+                            state = status.get('state', 'Unknown')
+                            color = "green" if state == "Idle" else "orange" if state == "Run" else "red"
+                            self.root.after_idle(lambda s=state, c=color: self.motor_status_label.config(text=s, foreground=c))
+                    elif self.is_connected and hasattr(self.hardware, 'get_current_x') and hasattr(self.hardware, 'get_current_y'):
+                        # Get position from hardware interface (mock or real without GRBL)
+                        try:
+                            new_x = self.hardware.get_current_x()
+                            new_y = self.hardware.get_current_y()
+                            # Only update UI if position actually changed
+                            if abs(new_x - self.current_x) > 0.01 or abs(new_y - self.current_y) > 0.01:
+                                self.current_x = new_x
+                                self.current_y = new_y
+                                self.root.after_idle(lambda: self.x_pos_var.set(f"X: {self.current_x:.2f} cm"))
+                                self.root.after_idle(lambda: self.y_pos_var.set(f"Y: {self.current_y:.2f} cm"))
+                            self.root.after_idle(lambda: self.motor_status_label.config(text="Idle", foreground="green"))
+                        except Exception as e:
+                            pass  # Silently ignore position update errors
+
+                    last_position_update = current_time
 
                 # Update sensors and connection indicators
                 if self.is_connected:
@@ -955,28 +1038,31 @@ class UltimateHardwareTestGUI:
 
                                 # Update connection indicator (green if method works)
                                 if sensor_id in self.sensor_connection_widgets:
-                                    self.sensor_connection_widgets[sensor_id].config(fg="#27AE60")  # Green
+                                    conn_widget = self.sensor_connection_widgets[sensor_id]
+                                    self.root.after_idle(lambda w=conn_widget: w.config(fg="#27AE60"))  # Green
 
                                 # Different display for limit switches
                                 if "limit_switch" in sensor_id:
                                     if state:
-                                        widget.config(text="CLOSED", background="#E74C3C", foreground="white")  # Red when triggered
+                                        self.root.after_idle(lambda w=widget: w.config(text="CLOSED", background="#E74C3C", foreground="white"))  # Red when triggered
                                     else:
-                                        widget.config(text="OPEN", background="#95A5A6", foreground="white")  # Gray when open
+                                        self.root.after_idle(lambda w=widget: w.config(text="OPEN", background="#95A5A6", foreground="white"))  # Gray when open
                                 else:
                                     # Regular sensors
                                     if state:
-                                        widget.config(text="ACTIVE", background="#27AE60", foreground="white")  # Green
+                                        self.root.after_idle(lambda w=widget: w.config(text="ACTIVE", background="#27AE60", foreground="white"))  # Green
                                     else:
-                                        widget.config(text="INACTIVE", background="#95A5A6", foreground="white")  # Gray
+                                        self.root.after_idle(lambda w=widget: w.config(text="INACTIVE", background="#95A5A6", foreground="white"))  # Gray
                             except:
                                 # Connection failed
                                 if sensor_id in self.sensor_connection_widgets:
-                                    self.sensor_connection_widgets[sensor_id].config(fg="#E74C3C")  # Red for error
+                                    conn_widget = self.sensor_connection_widgets[sensor_id]
+                                    self.root.after_idle(lambda w=conn_widget: w.config(fg="#E74C3C"))  # Red for error
                         else:
                             # Method not found - no connection
                             if sensor_id in self.sensor_connection_widgets:
-                                self.sensor_connection_widgets[sensor_id].config(fg="#95A5A6")  # Gray
+                                conn_widget = self.sensor_connection_widgets[sensor_id]
+                                self.root.after_idle(lambda w=conn_widget: w.config(fg="#95A5A6"))  # Gray
 
                     # Update piston states and connection indicators
                     for piston_key, (name, method_base) in self.piston_methods.items():
@@ -992,21 +1078,25 @@ class UltimateHardwareTestGUI:
                                 state = getattr(self.hardware, state_method)()
 
                                 # Update connection indicator
-                                self.piston_connection_widgets[piston_key].config(fg="#27AE60")  # Green - connected
+                                conn_widget = self.piston_connection_widgets[piston_key]
+                                self.root.after_idle(lambda w=conn_widget: w.config(fg="#27AE60"))  # Green - connected
 
                                 # Update state display
+                                widget = self.piston_widgets[piston_key]
                                 if state == "up":
-                                    self.piston_widgets[piston_key].config(text="UP", background="#3498DB", foreground="white")
+                                    self.root.after_idle(lambda w=widget: w.config(text="UP", background="#3498DB", foreground="white"))
                                 elif state == "down":
-                                    self.piston_widgets[piston_key].config(text="DOWN", background="#27AE60", foreground="white")
+                                    self.root.after_idle(lambda w=widget: w.config(text="DOWN", background="#27AE60", foreground="white"))
                                 else:
-                                    self.piston_widgets[piston_key].config(text="UNKNOWN", background="#95A5A6", foreground="white")
+                                    self.root.after_idle(lambda w=widget: w.config(text="UNKNOWN", background="#95A5A6", foreground="white"))
                             except:
                                 # Error reading state
-                                self.piston_connection_widgets[piston_key].config(fg="#E74C3C")  # Red - error
+                                conn_widget = self.piston_connection_widgets[piston_key]
+                                self.root.after_idle(lambda w=conn_widget: w.config(fg="#E74C3C"))  # Red - error
                         else:
                             # Method not found
-                            self.piston_connection_widgets[piston_key].config(fg="#95A5A6")  # Gray - not found
+                            conn_widget = self.piston_connection_widgets[piston_key]
+                            self.root.after_idle(lambda w=conn_widget: w.config(fg="#95A5A6"))  # Gray - not found
 
                 time.sleep(0.1)  # Update 10 times per second
 
