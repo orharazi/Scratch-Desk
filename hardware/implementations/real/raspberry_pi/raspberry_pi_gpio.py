@@ -153,6 +153,13 @@ class RaspberryPiGPIO:
             raise RuntimeError(error_msg)
 
         try:
+            # Clean up any existing GPIO state first
+            try:
+                GPIO.cleanup()
+                self.logger.debug("Cleaned up existing GPIO state", category="hardware")
+            except:
+                pass  # Ignore cleanup errors if GPIO wasn't initialized
+
             # Set GPIO mode (BCM or BOARD)
             gpio_mode = self.gpio_config.get("gpio_mode", "BCM")
             self.logger.info(f"Setting GPIO mode: {gpio_mode}", category="hardware")
@@ -224,6 +231,12 @@ class RaspberryPiGPIO:
 
             # Test GPIO reads immediately
             self._test_gpio_reads()
+
+            # Test multiplexer reads specifically
+            self._test_multiplexer_reads()
+
+            # Pre-initialize sensor states before starting polling thread
+            self._initialize_sensor_states()
 
             # Start continuous polling thread for all switches
             self.start_switch_polling()
@@ -352,50 +365,22 @@ class RaspberryPiGPIO:
             # Check if sensor is connected via multiplexer
             mux_channels = self.multiplexer_config.get('channels', {})
             if sensor_name in mux_channels:
-                if not self.multiplexer:
-                    self.logger.error("Multiplexer not initialized", category="hardware")
-                    return None
-                channel = mux_channels[sensor_name]
-
-                # Read from multiplexer channel WITH DEBOUNCING
-                state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel, samples=3)
-
-                # If read is unstable (None), skip this update
-                if state is None:
-                    return self._last_sensor_states.get(sensor_name, False)  # Return last known good state
-
-                # Track state changes for multiplexer sensors
-                if not hasattr(self, '_last_sensor_states'):
-                    self._last_sensor_states = {}
-
-                # Only log when state actually changes AND read is stable
-                if self._last_sensor_states.get(sensor_name) != state:
-                    self.logger.info(f"Sensor {sensor_name} changed: {'TRIGGERED' if state else 'READY'} (MUX CH{channel})", category="hardware")
-                    self._last_sensor_states[sensor_name] = state
-
-                return state
+                # Return state from polling thread's switch_states (debounced and verified)
+                switch_key = f"mux_{sensor_name}"
+                if switch_key in self.switch_states:
+                    return self.switch_states[switch_key]
+                else:
+                    # Fallback to last known state if polling thread hasn't initialized yet
+                    return self._last_sensor_states.get(sensor_name, False)
 
             # Check if it's a direct sensor
             elif sensor_name in self.direct_sensor_pins:
-                pin = self.direct_sensor_pins[sensor_name]
-
-                # Read the GPIO pin WITH DEBOUNCING
-                state = self._read_with_debounce(pin, is_multiplexer=False, samples=3)
-
-                # If read is unstable (None), skip this update
-                if state is None:
-                    return self._last_sensor_states.get(sensor_name, False)  # Return last known good state
-
-                # Track state changes
-                if not hasattr(self, '_last_sensor_states'):
-                    self._last_sensor_states = {}
-
-                # Only log when state actually changes AND read is stable
-                if self._last_sensor_states.get(sensor_name) != state:
-                    self.logger.info(f"Sensor {sensor_name} changed: {'TRIGGERED' if state else 'READY'} (pin {pin})", category="hardware")
-                    self._last_sensor_states[sensor_name] = state
-
-                return state
+                # Return state from polling thread's switch_states (debounced and verified)
+                if sensor_name in self.switch_states:
+                    return self.switch_states[sensor_name]
+                else:
+                    # Fallback to last known state if polling thread hasn't initialized yet
+                    return self._last_sensor_states.get(sensor_name, False)
 
             else:
                 self.logger.error(f"Unknown sensor: {sensor_name}", category="hardware")
@@ -573,6 +558,50 @@ class RaspberryPiGPIO:
     # Note: Door limit switch has been moved to Arduino GRBL
     # Use hardware_interface.get_door_switch() instead
 
+    # ========== SENSOR INITIALIZATION ==========
+
+    def _initialize_sensor_states(self):
+        """Pre-initialize all sensor states before starting polling thread"""
+        self.logger.info("Pre-initializing sensor states...", category="hardware")
+
+        # Initialize _last_sensor_states if not already done
+        if not hasattr(self, '_last_sensor_states'):
+            self._last_sensor_states = {}
+
+        # Read all direct sensors
+        for sensor_name, pin in self.direct_sensor_pins.items():
+            try:
+                state = self._read_with_debounce(pin, is_multiplexer=False)
+                if state is not None:
+                    self._last_sensor_states[sensor_name] = state
+                    self.logger.debug(f"Initialized {sensor_name}: {'HIGH' if state else 'LOW'}", category="hardware")
+                else:
+                    self._last_sensor_states[sensor_name] = False  # Default to False if unstable
+                    self.logger.warning(f"Initialized {sensor_name}: UNSTABLE (defaulting to LOW)", category="hardware")
+            except Exception as e:
+                self.logger.error(f"Error initializing {sensor_name}: {e}", category="hardware")
+                self._last_sensor_states[sensor_name] = False
+
+        # Read all multiplexer sensors
+        if self.multiplexer:
+            channels = self.multiplexer_config.get('channels', {})
+            self.logger.info(f"Initializing {len(channels)} multiplexer sensor states...", category="hardware")
+            for sensor_name, channel in channels.items():
+                try:
+                    state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
+                    if state is not None:
+                        self._last_sensor_states[sensor_name] = state
+                        state_str = 'HIGH (ACTIVE)' if state else 'LOW (INACTIVE)'
+                        self.logger.info(f"   MUX {sensor_name:30s} [CH{channel:2d}] = {state_str}", category="hardware")
+                    else:
+                        self._last_sensor_states[sensor_name] = False  # Default to False if unstable
+                        self.logger.warning(f"   MUX {sensor_name:30s} [CH{channel:2d}] = UNSTABLE (defaulting to LOW)", category="hardware")
+                except Exception as e:
+                    self.logger.error(f"   MUX {sensor_name:30s} [CH{channel:2d}] = ERROR: {e}", category="hardware")
+                    self._last_sensor_states[sensor_name] = False
+
+        self.logger.success(f"Pre-initialized {len(self._last_sensor_states)} sensor states", category="hardware")
+
     # ========== GPIO TEST ==========
 
     def _test_gpio_reads(self):
@@ -628,6 +657,37 @@ class RaspberryPiGPIO:
         self.logger.info("   4. Test: touch wire to GND (should show LOW) or 3.3V (should show HIGH)", category="hardware")
         self.logger.info("="*60, category="hardware")
 
+    def _test_multiplexer_reads(self):
+        """Test multiplexer sensor reads immediately after initialization"""
+        if not self.multiplexer:
+            self.logger.warning("Multiplexer not initialized - skipping MUX test", category="hardware")
+            return
+
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("TESTING MULTIPLEXER SENSOR READS", category="hardware")
+        self.logger.info("="*60, category="hardware")
+
+        channels = self.multiplexer_config.get('channels', {})
+        self.logger.info(f"Testing {len(channels)} multiplexer channels...", category="hardware")
+
+        for sensor_name, channel in channels.items():
+            try:
+                # Read with 7-sample debouncing
+                state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
+
+                if state is not None:
+                    state_str = 'HIGH (ACTIVE/TRIGGERED)' if state else 'LOW (INACTIVE)'
+                    self.logger.info(f"   {sensor_name:30s} [CH{channel:2d}] = {state_str} (stable)", category="hardware")
+                else:
+                    self.logger.warning(f"   {sensor_name:30s} [CH{channel:2d}] = UNSTABLE! (noise detected)", category="hardware")
+                    self.logger.warning(f"      Check: 1) Sensor wiring, 2) Multiplexer connections, 3) Power supply", category="hardware")
+            except Exception as e:
+                self.logger.error(f"   {sensor_name:30s} [CH{channel:2d}] = ERROR: {e}", category="hardware")
+
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("TIP: Trigger a sensor now and watch for changes in the GUI!", category="hardware")
+        self.logger.info("="*60, category="hardware")
+
     # ========== CONTINUOUS SWITCH POLLING ==========
 
     def start_switch_polling(self):
@@ -668,8 +728,12 @@ class RaspberryPiGPIO:
                 # Poll all direct sensor switches (edge sensors)
                 for sensor_name, pin in self.direct_sensor_pins.items():
                     try:
-                        # Read pin multiple times for stability
-                        current_state = GPIO.input(pin)
+                        # Read pin with multi-sample debouncing for stability
+                        current_state = self._read_with_debounce(pin, is_multiplexer=False)
+
+                        # Skip if read was unstable (returns None)
+                        if current_state is None:
+                            continue
 
                         # Debounce: require multiple consecutive same readings
                         last_confirmed_state = self.switch_states.get(sensor_name)
@@ -679,35 +743,43 @@ class RaspberryPiGPIO:
 
                         debounce = debounce_counters[sensor_name]
 
-                        # First read - initialize immediately
-                        if last_confirmed_state is None:
-                            self.switch_states[sensor_name] = current_state
-                            self.logger.debug(f"SWITCH INITIAL STATE: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}]", category="hardware")
-                            self.logger.debug(f"   To change this switch, physically connect/disconnect pin {pin} to GND or 3.3V", category="hardware")
+                        # Handle debounce logic for initial and subsequent reads
+                        if debounce['pending_state'] is None:
+                            # Very first read of this sensor - start debounce
                             debounce['pending_state'] = current_state
-                            debounce['count'] = DEBOUNCE_COUNT
+                            debounce['count'] = 1
+                            self.logger.debug(f"SWITCH FIRST READ: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [pin {pin}] - waiting for confirmation", category="hardware")
+                        elif debounce['pending_state'] == current_state:
+                            # Reading matches pending state, increment count
+                            debounce['count'] += 1
                         else:
-                            # Check if this reading matches pending state
-                            if debounce['pending_state'] == current_state:
-                                debounce['count'] += 1
-                            else:
-                                # State is different, start new debounce sequence
-                                debounce['pending_state'] = current_state
-                                debounce['count'] = 1
+                            # State changed, restart debounce
+                            debounce['pending_state'] = current_state
+                            debounce['count'] = 1
 
-                            # If we have enough consecutive readings and it's different from confirmed state
-                            if debounce['count'] >= DEBOUNCE_COUNT and current_state != last_confirmed_state:
-                                # State change confirmed!
+                        # Check if we have enough consecutive readings
+                        if debounce['count'] >= DEBOUNCE_COUNT:
+                            # Check if this is different from confirmed state (or first confirmation)
+                            if current_state != last_confirmed_state:
+                                # State change confirmed (or initial state set)!
                                 self.switch_states[sensor_name] = current_state
-                                old_state_str = 'HIGH (CLOSED/ON)' if last_confirmed_state else 'LOW (OPEN/OFF)'
-                                new_state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
-                                self.logger.info("=== SWITCH CHANGED ===", category="hardware")
-                                self.logger.info(f"   Switch: {sensor_name}", category="hardware")
-                                self.logger.info(f"   Pin: {pin}", category="hardware")
-                                self.logger.info(f"   Old: {old_state_str}", category="hardware")
-                                self.logger.info(f"   New: {new_state_str}", category="hardware")
-                                self.logger.info(f"   Poll: #{poll_count}", category="hardware")
-                                self.logger.info("=======================", category="hardware")
+
+                                # Log state change or initial state
+                                if last_confirmed_state is not None:
+                                    # Real state change (not initial)
+                                    old_state_str = 'HIGH (CLOSED/ON)' if last_confirmed_state else 'LOW (OPEN/OFF)'
+                                    new_state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
+                                    self.logger.info("=== SWITCH CHANGED ===", category="hardware")
+                                    self.logger.info(f"   Switch: {sensor_name}", category="hardware")
+                                    self.logger.info(f"   Pin: {pin}", category="hardware")
+                                    self.logger.info(f"   Old: {old_state_str}", category="hardware")
+                                    self.logger.info(f"   New: {new_state_str}", category="hardware")
+                                    self.logger.info(f"   Poll: #{poll_count}", category="hardware")
+                                    self.logger.info("=======================", category="hardware")
+                                else:
+                                    # Initial state confirmed
+                                    state_str = 'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'
+                                    self.logger.info(f"SWITCH INITIALIZED: {sensor_name} = {state_str} [pin {pin}]", category="hardware")
 
                     except Exception as e:
                         self.logger.error(f"Error reading {sensor_name} on pin {pin}: {e}", category="hardware")
@@ -717,19 +789,58 @@ class RaspberryPiGPIO:
                     channels = self.multiplexer_config.get('channels', {})
                     for sensor_name, channel in channels.items():
                         try:
-                            current_state = self.multiplexer.read_channel(channel)
-                            switch_key = f"mux_{sensor_name}"
-                            last_state = self.switch_states.get(switch_key)
+                            # Use 7-sample verification for each poll to filter noise at read-time
+                            current_state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
 
-                            # Log state change
-                            if last_state is None:
-                                # First read - initialize
-                                self.switch_states[switch_key] = current_state
-                                self.logger.debug(f"MUX SWITCH INITIAL: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}]", category="hardware")
-                            elif last_state != current_state:
-                                # State changed!
-                                self.switch_states[switch_key] = current_state
-                                self.logger.info(f"MUX SWITCH CHANGED: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}] (poll #{poll_count})", category="hardware")
+                            # Skip if read was unstable (returns None)
+                            if current_state is None:
+                                continue
+
+                            switch_key = f"mux_{sensor_name}"
+                            last_confirmed_state = self.switch_states.get(switch_key)
+
+                            # Initialize debounce counter for this sensor if needed
+                            if switch_key not in debounce_counters:
+                                debounce_counters[switch_key] = {'pending_state': None, 'count': 0}
+
+                            debounce = debounce_counters[switch_key]
+
+                            # Handle debounce logic for initial and subsequent reads
+                            if debounce['pending_state'] is None:
+                                # Very first read of this sensor - start debounce
+                                debounce['pending_state'] = current_state
+                                debounce['count'] = 1
+                                self.logger.debug(f"MUX SWITCH FIRST READ: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}] - waiting for confirmation", category="hardware")
+                            elif debounce['pending_state'] == current_state:
+                                # Reading matches pending state, increment count
+                                debounce['count'] += 1
+                            else:
+                                # State changed, restart debounce
+                                debounce['pending_state'] = current_state
+                                debounce['count'] = 1
+
+                            # Check if we have enough consecutive readings
+                            if debounce['count'] >= DEBOUNCE_COUNT:
+                                # Check if this is different from confirmed state (or first confirmation)
+                                if current_state != last_confirmed_state:
+                                    # State change confirmed (or initial state set)!
+                                    self.switch_states[switch_key] = current_state
+
+                                    # Log state change or initial state
+                                    if last_confirmed_state is not None:
+                                        # Real state change (not initial)
+                                        old_state_str = 'HIGH (ACTIVE/TRIGGERED)' if last_confirmed_state else 'LOW (INACTIVE)'
+                                        new_state_str = 'HIGH (ACTIVE/TRIGGERED)' if current_state else 'LOW (INACTIVE)'
+                                        self.logger.info("=== MULTIPLEXER SENSOR CHANGED ===", category="hardware")
+                                        self.logger.info(f"   Sensor: {sensor_name}", category="hardware")
+                                        self.logger.info(f"   Channel: {channel}", category="hardware")
+                                        self.logger.info(f"   Old State: {old_state_str}", category="hardware")
+                                        self.logger.info(f"   New State: {new_state_str}", category="hardware")
+                                        self.logger.info(f"   Poll: #{poll_count}", category="hardware")
+                                    else:
+                                        # Initial state set
+                                        state_str = 'HIGH (ACTIVE/TRIGGERED)' if current_state else 'LOW (INACTIVE)'
+                                        self.logger.info(f"MUX SENSOR INITIALIZED: {sensor_name} = {state_str} [channel {channel}]", category="hardware")
 
                         except Exception as e:
                             self.logger.error(f"Error reading mux {sensor_name} on channel {channel}: {e}", category="hardware")

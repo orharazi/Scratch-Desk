@@ -88,20 +88,27 @@ class RealHardware:
             self.logger.error(error_msg, category="hardware")
             errors.append(error_msg)
 
-        # Initialize Arduino GRBL
-        self.logger.info("Initializing Arduino GRBL...", category="hardware")
-        try:
-            self.grbl = ArduinoGRBL(self.config_path)
-            if not self.grbl.connect():
-                error_msg = "GRBL connection failed - check Arduino port and connection"
+        # Initialize Arduino GRBL (conditional based on config)
+        start_with_grbl = self.config.get('hardware_config', {}).get('start_with_grbl', True)
+
+        if start_with_grbl:
+            self.logger.info("Initializing Arduino GRBL...", category="hardware")
+            try:
+                self.grbl = ArduinoGRBL(self.config_path)
+                if not self.grbl.connect():
+                    error_msg = "GRBL connection failed - check Arduino port and connection"
+                    self.logger.error(error_msg, category="hardware")
+                    errors.append(error_msg)
+                else:
+                    self.logger.success("GRBL connected successfully", category="hardware")
+            except Exception as e:
+                error_msg = f"GRBL error: {str(e)}"
                 self.logger.error(error_msg, category="hardware")
                 errors.append(error_msg)
-            else:
-                self.logger.success("GRBL connected successfully", category="hardware")
-        except Exception as e:
-            error_msg = f"GRBL error: {str(e)}"
-            self.logger.error(error_msg, category="hardware")
-            errors.append(error_msg)
+        else:
+            self.logger.info("GRBL initialization skipped (start_with_grbl=false)", category="hardware")
+            self.logger.warning("Motor control will not be available without GRBL", category="hardware")
+            self.grbl = None
 
         if not errors:
             self.is_initialized = True
@@ -531,34 +538,58 @@ class RealHardware:
         """Get line marker tool state"""
         up = self.get_line_marker_up_sensor()
         down = self.get_line_marker_down_sensor()
+
+        # Handle sensor read errors
+        if up is None or down is None:
+            return "error"
+
+        # Check physical state
         if up and not down:
             return "up"
         elif down and not up:
             return "down"
+        elif not up and not down:
+            return "moving"  # Between positions
         else:
-            return "unknown"
+            return "error"  # Both sensors active - hardware fault
 
     def get_line_cutter_state(self) -> str:
         """Get line cutter tool state"""
         up = self.get_line_cutter_up_sensor()
         down = self.get_line_cutter_down_sensor()
+
+        # Handle sensor read errors
+        if up is None or down is None:
+            return "error"
+
+        # Check physical state
         if up and not down:
             return "up"
         elif down and not up:
             return "down"
+        elif not up and not down:
+            return "moving"  # Between positions
         else:
-            return "unknown"
+            return "error"  # Both sensors active - hardware fault
 
     def get_row_marker_state(self) -> str:
         """Get row marker tool state"""
         up = self.get_row_marker_up_sensor()
         down = self.get_row_marker_down_sensor()
+
+        # Handle sensor read errors
+        if up is None or down is None:
+            return "error"
+
+        # Check physical state
         if up and not down:
             return "up"
         elif down and not up:
             return "down"
+        elif not up and not down:
+            return "moving"  # Between positions
         else:
-            return "unknown"
+            return "error"  # Both sensors active - hardware fault
 
     def get_row_cutter_state(self) -> str:
         """Get row cutter tool state"""
