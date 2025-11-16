@@ -435,6 +435,16 @@ HEBREW_TRANSLATIONS = {
     "y_bottom": "Y תחתון",
     "x": "X",
     "y": "Y",
+
+    # Operation transitions and status messages
+    "Lines": "קווים",
+    "Rows": "שורות",
+    "✅ Safety resolved - {operation_type} execution resuming": "✅ בטיחות נפתרה - ביצוע {operation_type} ממשיך",
+    "⏸️  Waiting: {from_op} → {to_op} transition": "⏸️  ממתין: מעבר מ-{from_op} ל-{to_op}",
+    "{progress:.1f}% - Waiting for rows motor door CLOSED": "{progress:.1f}% - ממתין לדלת מנוע שורות סגורה",
+    "▶️  Rows operations starting...": "▶️  פעולות שורות מתחילות...",
+    "SAFETY VIOLATION - Execution Stopped": "הפרת בטיחות - ביצוע נעצר",
+
     "{progress}% Complete ({step_index}/{total_steps} steps)": "{progress}% הושלם ({step_index}/{total_steps} צעדים)",
     "100% Complete - Execution finished": "100% הושלם - הביצוע הסתיים",
     "🚨 EMERGENCY STOP - Safety Violation": "🚨 עצירת חירום - הפרת בטיחות",

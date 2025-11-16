@@ -209,23 +209,30 @@ class ExecutionController:
                         )
 
                 # Update operation label
+                # Translate operation type to Hebrew for UI display
+                operation_type_raw = operation_type.title()
+                operation_type_hebrew = t(operation_type_raw) if operation_type_raw else operation_type_raw
                 self.main_app.operation_label.config(
-                    text=t("✅ Safety resolved - {operation_type} execution resuming", operation_type=operation_type.title()),
+                    text=t("✅ Safety resolved - {operation_type} execution resuming", operation_type=operation_type_hebrew),
                     fg='green'
                 )
             
             elif status == 'transition_alert':
                 # Show auto-dismissing transition alert
-                from_op = info.get('from_operation', '').title()
-                to_op = info.get('to_operation', '').title()
+                from_op_raw = info.get('from_operation', '').title()
+                to_op_raw = info.get('to_operation', '').title()
                 message = info.get('message', '')
-                
-                self.logger.warning(f" TRANSITION ALERT: {from_op} → {to_op}", category="gui")
+
+                # Translate operation names to Hebrew for UI display
+                from_op = t(from_op_raw) if from_op_raw else ''
+                to_op = t(to_op_raw) if to_op_raw else ''
+
+                self.logger.warning(f" TRANSITION ALERT: {from_op_raw} → {to_op_raw}", category="gui")
                 self.logger.debug(f" TRANSITION MESSAGE: {message}", category="gui")
-                
+
                 # Show non-blocking transition dialog
                 self.show_transition_dialog(from_op, to_op, message)
-                
+
                 # Update GUI status
                 self.main_app.operation_label.config(
                     text=t("⏸️  Waiting: {from_op} → {to_op} transition", from_op=from_op, to_op=to_op),
