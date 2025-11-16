@@ -7,7 +7,6 @@ Prevents dangerous operations that could damage the hardware
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.logger import get_logger
-from core.translations import t
 
 class SafetyViolation(Exception):
     """Exception raised when a safety condition is violated"""
@@ -256,40 +255,24 @@ class SafetySystem:
     def _is_setup_movement(self, description):
         """
         Determine if a movement is a setup operation that should bypass safety checks
-
+        
         Setup movements are positioning operations that prepare motors for actual work.
         These are allowed regardless of door position.
-
-        Note: Checks both English and Hebrew keywords to work with translated descriptions
         """
         description_lower = description.lower()
-
-        # Setup movement indicators in English (for non-translated or internal use)
-        setup_indicators_en = [
+        
+        # Setup movement indicators
+        setup_indicators = [
             'home position',
             'ensure',
             'move rows motor to home',
-            'move lines motor to home',
+            'move lines motor to home', 
             'complete:',
             'init:',
             'position for repeat'
         ]
-
-        # Setup movement indicators in Hebrew (for translated UI)
-        setup_indicators_he = [
-            'מיקום בית',  # home position
-            'ודא',  # ensure
-            'הזז מנוע שורות למיקום בית',  # move rows motor to home
-            'הזז מנוע קווים למיקום בית',  # move lines motor to home
-            'הושלמו:',  # complete:
-            'קווים הושלמו',  # lines complete
-            'שורות הושלמו',  # rows complete
-            'אתחול:',  # init:
-        ]
-
-        # Check both English and Hebrew indicators
-        all_indicators = setup_indicators_en + setup_indicators_he
-        return any(indicator in description_lower for indicator in all_indicators)
+        
+        return any(indicator in description_lower for indicator in setup_indicators)
     
     def log_violation(self, safety_code, message):
         """Log safety violation for debugging"""
