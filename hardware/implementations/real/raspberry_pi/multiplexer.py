@@ -114,8 +114,8 @@ class CD74HC4067Multiplexer:
 
         # Log when a channel state changes
         if self._last_channel_states.get(channel) != value:
-            self.logger.debug(
-                f"MUX CHANNEL {channel} CHANGED: {'HIGH (TRIG)' if value else 'LOW (READY)'}",
+            self.logger.info(
+                f"Multiplexer channel {channel} changed: {'TRIGGERED' if value else 'READY'}",
                 category="hardware"
             )
             self._last_channel_states[channel] = value

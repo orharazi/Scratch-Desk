@@ -310,34 +310,36 @@ class RaspberryPiGPIO:
                     self.logger.error("Multiplexer not initialized", category="hardware")
                     return None
                 channel = mux_channels[sensor_name]
+
                 # Read from multiplexer channel
                 state = self.multiplexer.read_channel(channel)
+
+                # Track state changes for multiplexer sensors too
+                if not hasattr(self, '_last_sensor_states'):
+                    self._last_sensor_states = {}
+
+                # Only log when state actually changes
+                if self._last_sensor_states.get(sensor_name) != state:
+                    self.logger.info(f"Sensor {sensor_name} changed: {'TRIGGERED' if state else 'READY'} (MUX CH{channel})", category="hardware")
+                    self._last_sensor_states[sensor_name] = state
+
                 return state  # HIGH = triggered (True), LOW = not triggered (False)
 
             # Check if it's a direct sensor
             elif sensor_name in self.direct_sensor_pins:
                 pin = self.direct_sensor_pins[sensor_name]
 
-                # Read the GPIO pin - THIS IS THE CRITICAL READ
+                # Read the GPIO pin
                 state = GPIO.input(pin)
 
-                # Debug: Log ALL reads for edge sensors (not just changes)
-                if sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']:
-                    if not hasattr(self, '_last_edge_states'):
-                        self._last_edge_states = {}
-                        self._edge_read_count = {}
+                # Track state changes (only log actual changes, not every read)
+                if not hasattr(self, '_last_sensor_states'):
+                    self._last_sensor_states = {}
 
-                    # Count reads
-                    self._edge_read_count[sensor_name] = self._edge_read_count.get(sensor_name, 0) + 1
-
-                    # Log changes with read count
-                    if self._last_edge_states.get(sensor_name) != state:
-                        self.logger.debug(f"EDGE SENSOR CHANGED: {sensor_name} = {'HIGH (TRIGGERED)' if state else 'LOW (READY)'} (pin {pin}, read #{self._edge_read_count[sensor_name]})", category="hardware")
-                        self._last_edge_states[sensor_name] = state
-
-                    # Every 50 reads, show we're still polling (even if no change)
-                    if self._edge_read_count[sensor_name] % 50 == 0:
-                        self.logger.debug(f"Still polling {sensor_name}: {'TRIG' if state else 'READY'} (read #{self._edge_read_count[sensor_name]})", category="hardware")
+                # Only log when state actually changes
+                if self._last_sensor_states.get(sensor_name) != state:
+                    self.logger.info(f"Sensor {sensor_name} changed: {'TRIGGERED' if state else 'READY'} (pin {pin})", category="hardware")
+                    self._last_sensor_states[sensor_name] = state
 
                 return state  # HIGH = triggered (True), LOW = not triggered (False)
 
