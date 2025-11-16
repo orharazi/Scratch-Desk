@@ -153,12 +153,22 @@ class RaspberryPiGPIO:
             raise RuntimeError(error_msg)
 
         try:
-            # Clean up any existing GPIO state first
+            # AGGRESSIVE GPIO cleanup to handle "GPIO busy" errors
             try:
+                self.logger.info("Performing aggressive GPIO cleanup...", category="hardware")
                 GPIO.cleanup()
+                time.sleep(0.1)  # Give GPIO time to release
                 self.logger.debug("Cleaned up existing GPIO state", category="hardware")
-            except:
-                pass  # Ignore cleanup errors if GPIO wasn't initialized
+            except Exception as cleanup_error:
+                self.logger.debug(f"Initial cleanup: {cleanup_error}", category="hardware")
+                # Try alternative cleanup method
+                try:
+                    # Reset GPIO mode to force cleanup
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.cleanup()
+                    self.logger.debug("Alternative GPIO cleanup successful", category="hardware")
+                except:
+                    pass  # Ignore if this also fails
 
             # Set GPIO mode (BCM or BOARD)
             gpio_mode = self.gpio_config.get("gpio_mode", "BCM")
@@ -214,7 +224,22 @@ class RaspberryPiGPIO:
                         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
                         self.logger.debug(f"Sensor '{sensor_name}' on GPIO {pin}", category="hardware")
                     except Exception as e:
-                        raise RuntimeError(f"Failed to setup sensor '{sensor_name}' on GPIO {pin}: {str(e)}")
+                        error_msg = str(e)
+                        if "busy" in error_msg.lower():
+                            # GPIO busy - try to recover
+                            self.logger.warning(f"GPIO {pin} ({sensor_name}) is busy, attempting recovery...", category="hardware")
+                            try:
+                                # Force cleanup this specific pin and retry
+                                GPIO.cleanup(pin)
+                                time.sleep(0.05)
+                                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+                                self.logger.success(f"Recovered GPIO {pin} ({sensor_name})", category="hardware")
+                            except Exception as recovery_error:
+                                # If recovery fails, log but continue - we'll try in the polling thread
+                                self.logger.error(f"Could not recover GPIO {pin}: {recovery_error}", category="hardware")
+                                self.logger.warning(f"Will attempt to read {sensor_name} anyway", category="hardware")
+                        else:
+                            raise RuntimeError(f"Failed to setup sensor '{sensor_name}' on GPIO {pin}: {str(e)}")
 
             # Setup limit switch pins as inputs with pull-up resistors
             if self.limit_switch_pins:
@@ -362,6 +387,14 @@ class RaspberryPiGPIO:
             return None
 
         try:
+            # AGGRESSIVE LOGGING for edge sensors
+            is_edge_sensor = sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']
+
+            if is_edge_sensor:
+                self.logger.debug(f"🔍 read_sensor() called for EDGE SENSOR: {sensor_name}", category="hardware")
+                self.logger.debug(f"   Direct sensor pins: {list(self.direct_sensor_pins.keys())}", category="hardware")
+                self.logger.debug(f"   Switch states keys: {list(self.switch_states.keys())}", category="hardware")
+
             # Check if sensor is connected via multiplexer
             mux_channels = self.multiplexer_config.get('channels', {})
             if sensor_name in mux_channels:
@@ -375,15 +408,33 @@ class RaspberryPiGPIO:
 
             # Check if it's a direct sensor
             elif sensor_name in self.direct_sensor_pins:
+                if is_edge_sensor:
+                    self.logger.debug(f"   ✓ Found {sensor_name} in direct_sensor_pins", category="hardware")
+                    self.logger.debug(f"   Pin number: {self.direct_sensor_pins[sensor_name]}", category="hardware")
+
+                    # Try direct read for debugging
+                    pin = self.direct_sensor_pins[sensor_name]
+                    direct_read = GPIO.input(pin)
+                    self.logger.debug(f"   DIRECT GPIO.input({pin}) = {direct_read} ({'HIGH' if direct_read else 'LOW'})", category="hardware")
+
                 # Return state from polling thread's switch_states (debounced and verified)
                 if sensor_name in self.switch_states:
-                    return self.switch_states[sensor_name]
+                    state = self.switch_states[sensor_name]
+                    if is_edge_sensor:
+                        self.logger.debug(f"   ✓ Found in switch_states: {state} ({'TRIGGERED' if state else 'READY'})", category="hardware")
+                    return state
                 else:
                     # Fallback to last known state if polling thread hasn't initialized yet
-                    return self._last_sensor_states.get(sensor_name, False)
+                    fallback = self._last_sensor_states.get(sensor_name, False)
+                    if is_edge_sensor:
+                        self.logger.warning(f"   ⚠ NOT in switch_states! Using fallback: {fallback}", category="hardware")
+                        self.logger.warning(f"   This means polling thread hasn't updated this sensor!", category="hardware")
+                    return fallback
 
             else:
                 self.logger.error(f"Unknown sensor: {sensor_name}", category="hardware")
+                self.logger.error(f"  Not in mux_channels: {list(mux_channels.keys())}", category="hardware")
+                self.logger.error(f"  Not in direct_sensor_pins: {list(self.direct_sensor_pins.keys())}", category="hardware")
                 return None
 
         except Exception as e:
@@ -762,11 +813,25 @@ class RaspberryPiGPIO:
                 # Poll all direct sensor switches (edge sensors)
                 for sensor_name, pin in self.direct_sensor_pins.items():
                     try:
-                        # Read pin with multi-sample debouncing for stability
-                        current_state = self._read_with_debounce(pin, is_multiplexer=False)
+                        # AGGRESSIVE LOGGING for edge sensors
+                        is_edge = sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']
+
+                        # CRITICAL FIX: Use direct reads for edge sensors (no debouncing)
+                        if is_edge:
+                            # Direct read without debouncing for edge sensors
+                            current_state = bool(GPIO.input(pin))
+
+                            # Log every read attempt for edge sensors
+                            if poll_count % 20 == 0:  # Every 20 polls (500ms)
+                                self.logger.debug(f"EDGE POLL: {sensor_name} pin={pin} direct_read={current_state} ({'HIGH' if current_state else 'LOW'})", category="hardware")
+                        else:
+                            # Read pin with multi-sample debouncing for other sensors
+                            current_state = self._read_with_debounce(pin, is_multiplexer=False)
 
                         # Skip if read was unstable (returns None)
                         if current_state is None:
+                            if is_edge:
+                                self.logger.warning(f"EDGE SENSOR {sensor_name} UNSTABLE READ! (pin {pin})", category="hardware")
                             continue
 
                         # Debounce: require multiple consecutive same readings
