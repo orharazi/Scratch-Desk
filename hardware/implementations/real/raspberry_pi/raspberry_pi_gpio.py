@@ -94,6 +94,9 @@ class RaspberryPiGPIO:
         self.limit_switch_pins = self.gpio_config.get("limit_switches", {})
         self.multiplexer = None  # Will be initialized later
 
+        # Initialize state tracking dictionary
+        self._last_sensor_states = {}  # Initialize state tracking dictionary
+
         # Polling thread for continuous switch monitoring
         self.polling_thread = None
         self.polling_active = False
@@ -288,6 +291,44 @@ class RaspberryPiGPIO:
 
     # ========== SENSOR READING METHODS ==========
 
+    def _read_with_debounce(self, pin_or_channel, is_multiplexer=False, channel=None, samples=3, delay=0.001):
+        """
+        Read GPIO or multiplexer with debouncing
+
+        Args:
+            pin_or_channel: GPIO pin number or multiplexer channel
+            is_multiplexer: True if reading from multiplexer
+            channel: Multiplexer channel number (if is_multiplexer=True)
+            samples: Number of consistent reads required (default 3)
+            delay: Delay between reads in seconds (default 1ms)
+
+        Returns:
+            Stable boolean state or None if reads are inconsistent
+        """
+        import time
+
+        readings = []
+        for i in range(samples):
+            if is_multiplexer and self.multiplexer:
+                # For multiplexer, select channel and read
+                value = self.multiplexer.read_channel(channel)
+            else:
+                # For direct GPIO
+                value = GPIO.input(pin_or_channel)
+
+            readings.append(value)
+
+            if i < samples - 1:  # Don't delay after last read
+                time.sleep(delay)
+
+        # Check if all readings are consistent
+        if all(r == readings[0] for r in readings):
+            return bool(readings[0])
+        else:
+            # Inconsistent reads - sensor is bouncing/noisy
+            # Return None to indicate unstable read
+            return None
+
     def read_sensor(self, sensor_name: str) -> Optional[bool]:
         """
         Read sensor state (via multiplexer or direct GPIO)
@@ -311,37 +352,45 @@ class RaspberryPiGPIO:
                     return None
                 channel = mux_channels[sensor_name]
 
-                # Read from multiplexer channel
-                state = self.multiplexer.read_channel(channel)
+                # Read from multiplexer channel WITH DEBOUNCING
+                state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel, samples=3)
 
-                # Track state changes for multiplexer sensors too
+                # If read is unstable (None), skip this update
+                if state is None:
+                    return self._last_sensor_states.get(sensor_name, False)  # Return last known good state
+
+                # Track state changes for multiplexer sensors
                 if not hasattr(self, '_last_sensor_states'):
                     self._last_sensor_states = {}
 
-                # Only log when state actually changes
+                # Only log when state actually changes AND read is stable
                 if self._last_sensor_states.get(sensor_name) != state:
                     self.logger.info(f"Sensor {sensor_name} changed: {'TRIGGERED' if state else 'READY'} (MUX CH{channel})", category="hardware")
                     self._last_sensor_states[sensor_name] = state
 
-                return state  # HIGH = triggered (True), LOW = not triggered (False)
+                return state
 
             # Check if it's a direct sensor
             elif sensor_name in self.direct_sensor_pins:
                 pin = self.direct_sensor_pins[sensor_name]
 
-                # Read the GPIO pin
-                state = GPIO.input(pin)
+                # Read the GPIO pin WITH DEBOUNCING
+                state = self._read_with_debounce(pin, is_multiplexer=False, samples=3)
 
-                # Track state changes (only log actual changes, not every read)
+                # If read is unstable (None), skip this update
+                if state is None:
+                    return self._last_sensor_states.get(sensor_name, False)  # Return last known good state
+
+                # Track state changes
                 if not hasattr(self, '_last_sensor_states'):
                     self._last_sensor_states = {}
 
-                # Only log when state actually changes
+                # Only log when state actually changes AND read is stable
                 if self._last_sensor_states.get(sensor_name) != state:
                     self.logger.info(f"Sensor {sensor_name} changed: {'TRIGGERED' if state else 'READY'} (pin {pin})", category="hardware")
                     self._last_sensor_states[sensor_name] = state
 
-                return state  # HIGH = triggered (True), LOW = not triggered (False)
+                return state
 
             else:
                 self.logger.error(f"Unknown sensor: {sensor_name}", category="hardware")

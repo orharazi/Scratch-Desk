@@ -85,7 +85,7 @@ class CD74HC4067Multiplexer:
         self.GPIO.output(self.s3, self.GPIO.HIGH if (channel & 0b1000) else self.GPIO.LOW)
 
         # Small delay to allow multiplexer to settle
-        time.sleep(0.0001)  # 100 microseconds
+        time.sleep(0.002)  # 2 milliseconds - more stable
 
     def read_channel(self, channel):
         """
@@ -100,26 +100,12 @@ class CD74HC4067Multiplexer:
         self.select_channel(channel)
 
         # Small delay to allow signal to stabilize
-        time.sleep(0.0001)  # 100 microseconds
+        time.sleep(0.002)  # 2 milliseconds - more stable
 
         # Read digital value from SIG pin
         value = self.GPIO.input(self.sig)
 
-        # Debug logging for channel reads (reduced frequency)
-        if not hasattr(self, '_debug_reads'):
-            self._debug_reads = 0
-            self._last_channel_states = {}
-
-        self._debug_reads += 1
-
-        # Log when a channel state changes
-        if self._last_channel_states.get(channel) != value:
-            self.logger.info(
-                f"Multiplexer channel {channel} changed: {'TRIGGERED' if value else 'READY'}",
-                category="hardware"
-            )
-            self._last_channel_states[channel] = value
-
+        # Return the boolean value (state change logging is handled by raspberry_pi_gpio.py)
         return bool(value)
 
     def cleanup(self):
