@@ -1,6 +1,7 @@
 import tkinter as tk
 import json
 from core.logger import get_logger
+from core.translations import t
 
 
 class HardwareStatusPanel:
@@ -55,7 +56,7 @@ class HardwareStatusPanel:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Title
-        tk.Label(main_container, text="⚙️ HARDWARE STATUS",
+        tk.Label(main_container, text=t("⚙️ HARDWARE STATUS"),
                 font=title_font, bg=self.section_bg, fg=self.text_color).pack(fill=tk.X, pady=(2, 0))
 
         # Content grid
@@ -69,15 +70,15 @@ class HardwareStatusPanel:
         row = 0
 
         # MOTORS & SYSTEM Section (combined to save space)
-        self._create_section_header(grid_frame, 0, row, "🎯 MOTORS & SYSTEM", heading_font)
+        self._create_section_header(grid_frame, 0, row, t("🎯 MOTORS & SYSTEM"), heading_font)
         row_offset = row + 1
-        self._create_grid_item(grid_frame, 0, row_offset, "X Position", "x_position", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 1, "Y Position", "y_position", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 2, "Top Limit Switch", "top_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 3, "Bottom Limit Switch", "bottom_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 4, "Right Limit Switch", "right_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 5, "Left Limit Switch", "left_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 6, "Rows Limit Switch", "rows_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset, t("X Position"), "x_position", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 1, t("Y Position"), "y_position", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 2, t("Top Limit Switch"), "top_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 3, t("Bottom Limit Switch"), "bottom_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 4, t("Right Limit Switch"), "right_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 5, t("Left Limit Switch"), "left_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 6, t("Rows Limit Switch"), "rows_limit_switch", label_font, tiny_font)
         # System items (merged into same column)
         row_offset += 7
         self._create_operation_mode_item(grid_frame, 0, row_offset, heading_font, label_font, tiny_font)
@@ -85,56 +86,56 @@ class HardwareStatusPanel:
         self._create_progress_section(grid_frame, 0, row_offset, label_font, tiny_font)
 
         # LINES Section
-        self._create_section_header(grid_frame, 1, row, "✏️ LINES", heading_font)
+        self._create_section_header(grid_frame, 1, row, t("✏️ LINES"), heading_font)
         row_offset = row + 1
         # Tool Sensors subsection (UP/DOWN sensors for each tool)
-        self._create_subsection_header(grid_frame, 1, row_offset, "Tool Sensors", tiny_font)
+        self._create_subsection_header(grid_frame, 1, row_offset, t("Tool Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "Marker ↑", "line_marker_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "Marker ↓", "line_marker_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, "Cutter ↑", "line_cutter_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 3, "Cutter ↓", "line_cutter_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 4, "Motor L↑", "line_motor_left_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 5, "Motor L↓", "line_motor_left_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 6, "Motor R↑", "line_motor_right_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 7, "Motor R↓", "line_motor_right_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, t("Marker ↑"), "line_marker_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, t("Marker ↓"), "line_marker_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, t("Cutter ↑"), "line_cutter_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 3, t("Cutter ↓"), "line_cutter_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 4, t("Motor L↑"), "line_motor_left_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 5, t("Motor L↓"), "line_motor_left_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 6, t("Motor R↑"), "line_motor_right_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 7, t("Motor R↓"), "line_motor_right_down_sensor", label_font, tiny_font)
         # Edge Sensors subsection
         row_offset += 8
-        self._create_subsection_header(grid_frame, 1, row_offset, "Edge Sensors", tiny_font)
+        self._create_subsection_header(grid_frame, 1, row_offset, t("Edge Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "X Left", "x_left_edge_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "X Right", "x_right_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, t("X Left"), "x_left_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, t("X Right"), "x_right_edge_sensor", label_font, tiny_font)
         # Pistons subsection
         row_offset += 2
-        self._create_subsection_header(grid_frame, 1, row_offset, "Pistons", tiny_font)
+        self._create_subsection_header(grid_frame, 1, row_offset, t("Pistons"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, "Marker", "lines_piston_marker", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, "Cutter", "lines_piston_cutter", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, "Motor L", "lines_piston_motor_left", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 3, "Motor R", "lines_piston_motor_right", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, t("Marker"), "lines_piston_marker", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, t("Cutter"), "lines_piston_cutter", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, t("Motor L"), "lines_piston_motor_left", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 3, t("Motor R"), "lines_piston_motor_right", label_font, tiny_font)
 
         # ROWS Section
-        self._create_section_header(grid_frame, 2, row, "✂️ ROWS", heading_font)
+        self._create_section_header(grid_frame, 2, row, t("✂️ ROWS"), heading_font)
         row_offset = row + 1
         # Tool Sensors subsection (UP/DOWN sensors for each tool)
-        self._create_subsection_header(grid_frame, 2, row_offset, "Tool Sensors", tiny_font)
+        self._create_subsection_header(grid_frame, 2, row_offset, t("Tool Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, "Marker ↑", "row_marker_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "Marker ↓", "row_marker_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 2, "Cutter ↑", "row_cutter_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 3, "Cutter ↓", "row_cutter_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, t("Marker ↑"), "row_marker_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Marker ↓"), "row_marker_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 2, t("Cutter ↑"), "row_cutter_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 3, t("Cutter ↓"), "row_cutter_down_sensor", label_font, tiny_font)
         # Edge Sensors subsection
         row_offset += 4
-        self._create_subsection_header(grid_frame, 2, row_offset, "Edge Sensors", tiny_font)
+        self._create_subsection_header(grid_frame, 2, row_offset, t("Edge Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, "Y Top", "y_top_edge_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "Y Bottom", "y_bottom_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, t("Y Top"), "y_top_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Y Bottom"), "y_bottom_edge_sensor", label_font, tiny_font)
         # Pistons subsection
         row_offset += 2
-        self._create_subsection_header(grid_frame, 2, row_offset, "Pistons", tiny_font)
+        self._create_subsection_header(grid_frame, 2, row_offset, t("Pistons"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, "Marker", "rows_piston_marker", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, "Cutter", "rows_piston_cutter", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, t("Marker"), "rows_piston_marker", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Cutter"), "rows_piston_cutter", label_font, tiny_font)
 
     def _create_section_header(self, parent, col, row, text, font):
         """Create section header"""
@@ -188,7 +189,7 @@ class HardwareStatusPanel:
     def _create_operation_mode_item(self, parent, col, row, heading_font, label_font, value_font):
         """Create operation mode display"""
         # Mode label
-        tk.Label(parent, text="Mode:", font=label_font,
+        tk.Label(parent, text=t("Mode:"), font=label_font,
                 bg=self.section_bg, fg=self.label_color,
                 anchor='w').grid(row=row, column=col, sticky="ew", padx=2)
 
@@ -196,12 +197,12 @@ class HardwareStatusPanel:
         status_frame = tk.Frame(parent, bg='#95A5A6', relief=tk.RAISED, bd=1)
         status_frame.grid(row=row + 1, column=col, sticky="ew", padx=1, pady=1)
 
-        status_label = tk.Label(status_frame, text="IDLE", font=heading_font,
+        status_label = tk.Label(status_frame, text=t("IDLE"), font=heading_font,
                                bg='#95A5A6', fg='white', anchor='center')
         status_label.pack(fill=tk.BOTH, expand=True, pady=2)
 
         # Explanation
-        explanation_label = tk.Label(parent, text="System ready", font=value_font,
+        explanation_label = tk.Label(parent, text=t("System ready"), font=value_font,
                                     bg=self.section_bg, fg=self.label_color,
                                     anchor='w', wraplength=120)
         explanation_label.grid(row=row + 2, column=col, sticky="ew", padx=2)
@@ -219,7 +220,7 @@ class HardwareStatusPanel:
     def _create_blocker_status_item(self, parent, col, row, label_font, value_font):
         """Create blocker/warning status display"""
         # Blocker label
-        tk.Label(parent, text="Safety:", font=label_font,
+        tk.Label(parent, text=t("Safety:"), font=label_font,
                 bg=self.section_bg, fg=self.label_color,
                 anchor='w').grid(row=row, column=col, sticky="ew", padx=2)
 
@@ -227,7 +228,7 @@ class HardwareStatusPanel:
         status_frame = tk.Frame(parent, bg='#27AE60', relief=tk.SUNKEN, bd=1)
         status_frame.grid(row=row + 1, column=col, sticky="ew", padx=1, pady=1)
 
-        status_label = tk.Label(status_frame, text="OK", font=value_font,
+        status_label = tk.Label(status_frame, text=t("OK"), font=value_font,
                                bg='#27AE60', fg='white', anchor='center',
                                wraplength=120)
         status_label.pack(fill=tk.BOTH, expand=True, pady=2, padx=2)
@@ -243,7 +244,7 @@ class HardwareStatusPanel:
         from tkinter import ttk
 
         # Progress label
-        tk.Label(parent, text="Progress:", font=label_font,
+        tk.Label(parent, text=t("Progress:"), font=label_font,
                 bg=self.section_bg, fg=self.label_color,
                 anchor='w').grid(row=row, column=col, sticky="ew", padx=2, pady=(5, 0))
 
@@ -274,7 +275,7 @@ class HardwareStatusPanel:
             if 'error' in hw_status and not hw_status.get('is_initialized', True):
                 self.logger.error(f" HARDWARE ERROR: {hw_status['error']}", category="gui")
                 # Show error in position displays
-                self._update_widget('x_position', "ERROR", "#FF0000")
+                self._update_widget('x_position', t("ERROR"), "#FF0000")
                 self._update_widget('y_position', hw_status['error'][:20], "#FF0000")
                 return
 
@@ -289,27 +290,27 @@ class HardwareStatusPanel:
             # Y-axis (Lines) - Top/Bottom
             y_top_ls = self.hardware.get_limit_switch_state('y_top')
             self._update_widget('top_limit_switch',
-                               'ON' if y_top_ls else 'OFF',
+                               t('ON') if y_top_ls else t('OFF'),
                                self.switch_on_color if y_top_ls else self.switch_off_color)
             y_bottom_ls = self.hardware.get_limit_switch_state('y_bottom')
             self._update_widget('bottom_limit_switch',
-                               'ON' if y_bottom_ls else 'OFF',
+                               t('ON') if y_bottom_ls else t('OFF'),
                                self.switch_on_color if y_bottom_ls else self.switch_off_color)
 
             # X-axis (Rows) - Right/Left
             x_right_ls = self.hardware.get_limit_switch_state('x_right')
             self._update_widget('right_limit_switch',
-                               'ON' if x_right_ls else 'OFF',
+                               t('ON') if x_right_ls else t('OFF'),
                                self.switch_on_color if x_right_ls else self.switch_off_color)
             x_left_ls = self.hardware.get_limit_switch_state('x_left')
             self._update_widget('left_limit_switch',
-                               'ON' if x_left_ls else 'OFF',
+                               t('ON') if x_left_ls else t('OFF'),
                                self.switch_on_color if x_left_ls else self.switch_off_color)
 
             # Rows limit switch
             rows_ls = self.hardware.get_limit_switch_state('rows')
             self._update_widget('rows_limit_switch',
-                               'ON' if rows_ls else 'OFF',
+                               t('ON') if rows_ls else t('OFF'),
                                self.switch_on_color if rows_ls else self.switch_off_color)
 
             # LINES SECTION - Tool Sensors (UP/DOWN sensors for each tool)
@@ -317,69 +318,69 @@ class HardwareStatusPanel:
             # Line Marker Sensors
             line_marker_up = self.hardware.get_line_marker_up_sensor()
             self._update_widget('line_marker_up_sensor',
-                               'TRIG' if line_marker_up else 'READY',
+                               t('TRIG') if line_marker_up else t('READY'),
                                self.sensor_triggered_color if line_marker_up else self.sensor_ready_color)
             line_marker_down = self.hardware.get_line_marker_down_sensor()
             self._update_widget('line_marker_down_sensor',
-                               'TRIG' if line_marker_down else 'READY',
+                               t('TRIG') if line_marker_down else t('READY'),
                                self.sensor_triggered_color if line_marker_down else self.sensor_ready_color)
 
             # Line Cutter Sensors
             line_cutter_up = self.hardware.get_line_cutter_up_sensor()
             self._update_widget('line_cutter_up_sensor',
-                               'TRIG' if line_cutter_up else 'READY',
+                               t('TRIG') if line_cutter_up else t('READY'),
                                self.sensor_triggered_color if line_cutter_up else self.sensor_ready_color)
             line_cutter_down = self.hardware.get_line_cutter_down_sensor()
             self._update_widget('line_cutter_down_sensor',
-                               'TRIG' if line_cutter_down else 'READY',
+                               t('TRIG') if line_cutter_down else t('READY'),
                                self.sensor_triggered_color if line_cutter_down else self.sensor_ready_color)
 
             # Line Motor Left Piston Sensors
             line_motor_left_up = self.hardware.get_line_motor_left_up_sensor()
             self._update_widget('line_motor_left_up_sensor',
-                               'TRIG' if line_motor_left_up else 'READY',
+                               t('TRIG') if line_motor_left_up else t('READY'),
                                self.sensor_triggered_color if line_motor_left_up else self.sensor_ready_color)
             line_motor_left_down = self.hardware.get_line_motor_left_down_sensor()
             self._update_widget('line_motor_left_down_sensor',
-                               'TRIG' if line_motor_left_down else 'READY',
+                               t('TRIG') if line_motor_left_down else t('READY'),
                                self.sensor_triggered_color if line_motor_left_down else self.sensor_ready_color)
 
             # Line Motor Right Piston Sensors
             line_motor_right_up = self.hardware.get_line_motor_right_up_sensor()
             self._update_widget('line_motor_right_up_sensor',
-                               'TRIG' if line_motor_right_up else 'READY',
+                               t('TRIG') if line_motor_right_up else t('READY'),
                                self.sensor_triggered_color if line_motor_right_up else self.sensor_ready_color)
             line_motor_right_down = self.hardware.get_line_motor_right_down_sensor()
             self._update_widget('line_motor_right_down_sensor',
-                               'TRIG' if line_motor_right_down else 'READY',
+                               t('TRIG') if line_motor_right_down else t('READY'),
                                self.sensor_triggered_color if line_motor_right_down else self.sensor_ready_color)
 
             # Edge Sensors (X-axis for Lines)
             x_left_edge = self.hardware.get_x_left_edge()
             self._update_widget('x_left_edge_sensor',
-                               'TRIG' if x_left_edge else 'READY',
+                               t('TRIG') if x_left_edge else t('READY'),
                                self.sensor_triggered_color if x_left_edge else self.sensor_ready_color)
             x_right_edge = self.hardware.get_x_right_edge()
             self._update_widget('x_right_edge_sensor',
-                               'TRIG' if x_right_edge else 'READY',
+                               t('TRIG') if x_right_edge else t('READY'),
                                self.sensor_triggered_color if x_right_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             line_marker_piston_state = self.hardware.get_line_marker_piston_state().upper()
-            self._update_widget('lines_piston_marker', line_marker_piston_state,
+            self._update_widget('lines_piston_marker', t(line_marker_piston_state),
                                self.piston_down_color if line_marker_piston_state == 'DOWN' else self.piston_up_color)
 
             line_cutter_piston_state = self.hardware.get_line_cutter_piston_state().upper()
-            self._update_widget('lines_piston_cutter', line_cutter_piston_state,
+            self._update_widget('lines_piston_cutter', t(line_cutter_piston_state),
                                self.piston_down_color if line_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
             # Line motor sensors (left and right have separate sensors, shared piston control)
             line_motor_left_state = self.hardware.get_line_motor_piston_state().upper()
-            self._update_widget('lines_piston_motor_left', line_motor_left_state,
+            self._update_widget('lines_piston_motor_left', t(line_motor_left_state),
                                self.piston_down_color if line_motor_left_state == 'DOWN' else self.piston_up_color)
 
             line_motor_right_state = self.hardware.get_line_motor_piston_state().upper()
-            self._update_widget('lines_piston_motor_right', line_motor_right_state,
+            self._update_widget('lines_piston_motor_right', t(line_motor_right_state),
                                self.piston_down_color if line_motor_right_state == 'DOWN' else self.piston_up_color)
 
             # ROWS SECTION - Tool Sensors (UP/DOWN sensors for each tool)
@@ -387,40 +388,40 @@ class HardwareStatusPanel:
             # Row Marker Sensors
             row_marker_up = self.hardware.get_row_marker_up_sensor()
             self._update_widget('row_marker_up_sensor',
-                               'TRIG' if row_marker_up else 'READY',
+                               t('TRIG') if row_marker_up else t('READY'),
                                self.sensor_triggered_color if row_marker_up else self.sensor_ready_color)
             row_marker_down = self.hardware.get_row_marker_down_sensor()
             self._update_widget('row_marker_down_sensor',
-                               'TRIG' if row_marker_down else 'READY',
+                               t('TRIG') if row_marker_down else t('READY'),
                                self.sensor_triggered_color if row_marker_down else self.sensor_ready_color)
 
             # Row Cutter Sensors
             row_cutter_up = self.hardware.get_row_cutter_up_sensor()
             self._update_widget('row_cutter_up_sensor',
-                               'TRIG' if row_cutter_up else 'READY',
+                               t('TRIG') if row_cutter_up else t('READY'),
                                self.sensor_triggered_color if row_cutter_up else self.sensor_ready_color)
             row_cutter_down = self.hardware.get_row_cutter_down_sensor()
             self._update_widget('row_cutter_down_sensor',
-                               'TRIG' if row_cutter_down else 'READY',
+                               t('TRIG') if row_cutter_down else t('READY'),
                                self.sensor_triggered_color if row_cutter_down else self.sensor_ready_color)
 
             # Edge Sensors (Y-axis for Rows)
             y_top_edge = self.hardware.get_y_top_edge()
             self._update_widget('y_top_edge_sensor',
-                               'TRIG' if y_top_edge else 'READY',
+                               t('TRIG') if y_top_edge else t('READY'),
                                self.sensor_triggered_color if y_top_edge else self.sensor_ready_color)
             y_bottom_edge = self.hardware.get_y_bottom_edge()
             self._update_widget('y_bottom_edge_sensor',
-                               'TRIG' if y_bottom_edge else 'READY',
+                               t('TRIG') if y_bottom_edge else t('READY'),
                                self.sensor_triggered_color if y_bottom_edge else self.sensor_ready_color)
 
             # Pistons - color coded: UP=gray, DOWN=green
             row_marker_piston_state = self.hardware.get_row_marker_piston_state().upper()
-            self._update_widget('rows_piston_marker', row_marker_piston_state,
+            self._update_widget('rows_piston_marker', t(row_marker_piston_state),
                                self.piston_down_color if row_marker_piston_state == 'DOWN' else self.piston_up_color)
 
             row_cutter_piston_state = self.hardware.get_row_cutter_piston_state().upper()
-            self._update_widget('rows_piston_cutter', row_cutter_piston_state,
+            self._update_widget('rows_piston_cutter', t(row_cutter_piston_state),
                                self.piston_down_color if row_cutter_piston_state == 'DOWN' else self.piston_up_color)
 
             # Update operation mode
@@ -438,42 +439,42 @@ class HardwareStatusPanel:
 
             if engine.is_running:
                 if hasattr(engine, 'is_blocked') and engine.is_blocked:
-                    status = "BLOCKED"
-                    explanation = getattr(engine, 'block_reason', 'Waiting')
+                    status = t("BLOCKED")
+                    explanation = getattr(engine, 'block_reason', t('Waiting'))
                     color = '#E67E22'  # Orange
                 elif hasattr(self.main_app, 'canvas_manager'):
                     mode = self.main_app.canvas_manager.motor_operation_mode.upper()
                     if mode == 'LINES':
-                        status = "LINES"
-                        explanation = "Marking lines"
+                        status = t("LINES")
+                        explanation = t("Marking lines")
                         color = '#3498DB'  # Blue
                     elif mode == 'ROWS':
-                        status = "ROWS"
-                        explanation = "Cutting rows"
+                        status = t("ROWS")
+                        explanation = t("Cutting rows")
                         color = '#E74C3C'  # Red
                     else:
-                        status = "IDLE"
-                        explanation = "System ready"
+                        status = t("IDLE")
+                        explanation = t("System ready")
                         color = '#95A5A6'
                 else:
-                    status = "IDLE"
-                    explanation = "System ready"
+                    status = t("IDLE")
+                    explanation = t("System ready")
                     color = '#95A5A6'
             elif hasattr(engine, 'execution_completed') and engine.execution_completed:
-                status = "SUCCESS"
-                explanation = "All done!"
+                status = t("SUCCESS")
+                explanation = t("All done!")
                 color = '#27AE60'  # Green
             elif hasattr(engine, 'execution_failed') and engine.execution_failed:
-                status = "FAIL"
-                explanation = "Not completed"
+                status = t("FAIL")
+                explanation = t("Not completed")
                 color = '#C0392B'  # Dark red
             else:
-                status = "IDLE"
-                explanation = "System ready"
+                status = t("IDLE")
+                explanation = t("System ready")
                 color = '#95A5A6'
         else:
-            status = "IDLE"
-            explanation = "System ready"
+            status = t("IDLE")
+            explanation = t("System ready")
             color = '#95A5A6'
 
         self._update_widget('operation_mode', status, color)
@@ -482,7 +483,7 @@ class HardwareStatusPanel:
 
     def _update_blocker_status(self):
         """Update blocker/safety status display"""
-        blocker_message = "OK"
+        blocker_message = t("OK")
         blocker_color = '#27AE60'  # Green
 
         # Check if execution engine is running
@@ -498,12 +499,12 @@ class HardwareStatusPanel:
                 if mode == 'LINES':
                     # During LINES operation, row marker MUST be DOWN
                     if row_marker_state != 'DOWN':
-                        blocker_message = "⚠️ Row marker must be DOWN for Lines operation"
+                        blocker_message = t("⚠️ Row marker must be DOWN for Lines operation")
                         blocker_color = '#E67E22'  # Orange warning
                 elif mode == 'ROWS':
                     # During ROWS operation, row marker MUST be UP
                     if row_marker_state != 'UP':
-                        blocker_message = "⚠️ Row marker must be UP for Rows operation"
+                        blocker_message = t("⚠️ Row marker must be UP for Rows operation")
                         blocker_color = '#E67E22'  # Orange warning
 
         self._update_widget('blocker_status', blocker_message, blocker_color)

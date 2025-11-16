@@ -1,4 +1,5 @@
 {
+  "language": "he",
   "hardware_limits": {
     "max_x_position": 120.0,
     "max_y_position": 80.0,

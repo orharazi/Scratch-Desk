@@ -28,12 +28,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.logger import get_logger
+from core.translations import t
 
 
 class UltimateHardwareTestGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Ultimate Hardware Test Interface - Scratch Desk")
+        self.root.title(t("Ultimate Hardware Test Interface - Scratch Desk"))
         self.root.geometry("1400x900")
 
         # Make window resizable
@@ -53,7 +54,7 @@ class UltimateHardwareTestGUI:
 
         # Port selection
         self.available_ports = []
-        self.selected_port = tk.StringVar(value="Auto-detect")
+        self.selected_port = tk.StringVar(value=t("Auto-detect"))
 
         # Hardware mode toggle
         self.use_real_hardware = tk.BooleanVar(value=False)
@@ -162,10 +163,10 @@ class UltimateHardwareTestGUI:
         self.console_tab = ttk.Frame(self.notebook)
 
         # Add tabs to notebook
-        self.notebook.add(self.motors_tab, text="Motors & Position")
-        self.notebook.add(self.pistons_tab, text="Pistons & Sensors")
-        self.notebook.add(self.grbl_tab, text="GRBL Settings")
-        self.notebook.add(self.console_tab, text="Status & Logs")
+        self.notebook.add(self.motors_tab, text=t("Motors & Position"))
+        self.notebook.add(self.pistons_tab, text=t("Pistons & Sensors"))
+        self.notebook.add(self.grbl_tab, text=t("GRBL Settings"))
+        self.notebook.add(self.console_tab, text=t("Status & Logs"))
 
         # Create tab contents
         self.create_motors_tab()
@@ -183,16 +184,16 @@ class UltimateHardwareTestGUI:
         conn_frame = ttk.Frame(top_frame)
         conn_frame.grid(row=0, column=0, padx=10, pady=5)
 
-        ttk.Label(conn_frame, text="Hardware:", font=("Arial", 10, "bold")).grid(row=0, column=0, padx=(0, 5))
-        self.hw_status_label = ttk.Label(conn_frame, text="Not Connected", foreground="red", font=("Arial", 10))
+        ttk.Label(conn_frame, text=t("Hardware:"), font=("Arial", 10, "bold")).grid(row=0, column=0, padx=(0, 5))
+        self.hw_status_label = ttk.Label(conn_frame, text=t("Not Connected"), foreground="red", font=("Arial", 10))
         self.hw_status_label.grid(row=0, column=1, padx=5)
 
         ttk.Label(conn_frame, text="GRBL:", font=("Arial", 10, "bold")).grid(row=0, column=2, padx=(20, 5))
-        self.grbl_status_label = ttk.Label(conn_frame, text="Not Connected", foreground="red", font=("Arial", 10))
+        self.grbl_status_label = ttk.Label(conn_frame, text=t("Not Connected"), foreground="red", font=("Arial", 10))
         self.grbl_status_label.grid(row=0, column=3, padx=5)
 
         # Port selection dropdown
-        ttk.Label(conn_frame, text="Port:", font=("Arial", 10, "bold")).grid(row=0, column=4, padx=(20, 5))
+        ttk.Label(conn_frame, text=t("Port:"), font=("Arial", 10, "bold")).grid(row=0, column=4, padx=(20, 5))
         self.port_combo = ttk.Combobox(conn_frame, textvariable=self.selected_port, state="readonly", width=20)
         self.port_combo.grid(row=0, column=5, padx=5)
 
@@ -200,17 +201,17 @@ class UltimateHardwareTestGUI:
         ttk.Button(conn_frame, text="🔄", width=3, command=self.scan_ports).grid(row=0, column=6, padx=2)
 
         # Hardware mode toggle
-        ttk.Label(conn_frame, text="Mode:", font=("Arial", 10, "bold")).grid(row=0, column=7, padx=(20, 5))
+        ttk.Label(conn_frame, text=t("Mode:"), font=("Arial", 10, "bold")).grid(row=0, column=7, padx=(20, 5))
         self.hardware_mode_check = ttk.Checkbutton(
             conn_frame,
-            text="Use Real Hardware",
+            text=t("Use Real Hardware"),
             variable=self.use_real_hardware,
             command=self.on_hardware_mode_changed
         )
         self.hardware_mode_check.grid(row=0, column=8, padx=5)
 
         # Connect/Disconnect button
-        self.connect_btn = ttk.Button(conn_frame, text="Connect Hardware", command=self.toggle_connection)
+        self.connect_btn = ttk.Button(conn_frame, text=t("Connect Hardware"), command=self.toggle_connection)
         self.connect_btn.grid(row=0, column=9, padx=20)
 
         # Scan ports on startup
@@ -220,11 +221,11 @@ class UltimateHardwareTestGUI:
         mode_frame = ttk.Frame(top_frame)
         mode_frame.grid(row=0, column=1, padx=10, pady=5)
 
-        self.mode_label = ttk.Label(mode_frame, text="Mode: Unknown", font=("Arial", 10))
+        self.mode_label = ttk.Label(mode_frame, text=t("Mode: Unknown"), font=("Arial", 10))
         self.mode_label.pack()
 
         # Emergency stop (always visible)
-        self.emergency_btn = tk.Button(top_frame, text="⚠ EMERGENCY STOP",
+        self.emergency_btn = tk.Button(top_frame, text=t("⚠ EMERGENCY STOP"),
                                        command=self.emergency_stop,
                                        bg="red", fg="white",
                                        font=("Arial", 12, "bold"),
@@ -240,19 +241,19 @@ class UltimateHardwareTestGUI:
         self.motors_tab.rowconfigure(1, weight=1)  # Main content - can expand
 
         # Position display at top
-        pos_frame = ttk.LabelFrame(self.motors_tab, text="Current Position", padding="10")
+        pos_frame = ttk.LabelFrame(self.motors_tab, text=t("Current Position"), padding="10")
         pos_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
 
         # Large position display
-        self.x_pos_var = tk.StringVar(value="X: 0.00 cm")
-        self.y_pos_var = tk.StringVar(value="Y: 0.00 cm")
+        self.x_pos_var = tk.StringVar(value=t("X: {x:.2f} cm", x=0.00))
+        self.y_pos_var = tk.StringVar(value=t("Y: {y:.2f} cm", y=0.00))
 
         ttk.Label(pos_frame, textvariable=self.x_pos_var, font=("Arial", 20, "bold")).grid(row=0, column=0, padx=20)
         ttk.Label(pos_frame, textvariable=self.y_pos_var, font=("Arial", 20, "bold")).grid(row=0, column=1, padx=20)
 
         # Status indicators
-        ttk.Label(pos_frame, text="Status:", font=("Arial", 10)).grid(row=0, column=2, padx=(40, 5))
-        self.motor_status_label = ttk.Label(pos_frame, text="Idle", font=("Arial", 10, "bold"), foreground="green")
+        ttk.Label(pos_frame, text=t("Status:"), font=("Arial", 10)).grid(row=0, column=2, padx=(40, 5))
+        self.motor_status_label = ttk.Label(pos_frame, text=t("Idle"), font=("Arial", 10, "bold"), foreground="green")
         self.motor_status_label.grid(row=0, column=3, padx=5)
 
         # Left side - Manual control and jogging
@@ -260,11 +261,11 @@ class UltimateHardwareTestGUI:
         left_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
         # Jog control
-        jog_frame = ttk.LabelFrame(left_frame, text="Jog Control", padding="10")
+        jog_frame = ttk.LabelFrame(left_frame, text=t("Jog Control"), padding="10")
         jog_frame.pack(fill="both", expand=True, pady=(0, 5))
 
         # Step size selector
-        ttk.Label(jog_frame, text="Step Size:").grid(row=0, column=0, columnspan=2, pady=(0, 5))
+        ttk.Label(jog_frame, text=t("Step Size:")).grid(row=0, column=0, columnspan=2, pady=(0, 5))
         step_frame = ttk.Frame(jog_frame)
         step_frame.grid(row=1, column=0, columnspan=3, pady=(0, 10))
 
@@ -284,7 +285,7 @@ class UltimateHardwareTestGUI:
         ttk.Button(jog_btn_frame, text="←\nX-", width=8, command=lambda: self.jog('X', -1)).grid(row=1, column=0, padx=2, pady=2)
 
         # Home button (center)
-        ttk.Button(jog_btn_frame, text="HOME", width=8, command=self.home_motors).grid(row=1, column=1, padx=2, pady=2)
+        ttk.Button(jog_btn_frame, text=t("HOME"), width=8, command=self.home_motors).grid(row=1, column=1, padx=2, pady=2)
 
         # X+ button (right)
         ttk.Button(jog_btn_frame, text="X+\n→", width=8, command=lambda: self.jog('X', 1)).grid(row=1, column=2, padx=2, pady=2)
@@ -293,38 +294,38 @@ class UltimateHardwareTestGUI:
         ttk.Button(jog_btn_frame, text="↓\nY-", width=8, command=lambda: self.jog('Y', -1)).grid(row=2, column=1, padx=2, pady=2)
 
         # Manual position entry
-        manual_frame = ttk.LabelFrame(left_frame, text="Go to Position", padding="10")
+        manual_frame = ttk.LabelFrame(left_frame, text=t("Go to Position"), padding="10")
         manual_frame.pack(fill="x", pady=5)
 
-        ttk.Label(manual_frame, text="X (cm):").grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Label(manual_frame, text=t("X (cm):")).grid(row=0, column=0, sticky="w", pady=2)
         self.x_entry = ttk.Entry(manual_frame, width=10)
         self.x_entry.insert(0, "0")
         self.x_entry.grid(row=0, column=1, padx=5, pady=2)
 
-        ttk.Label(manual_frame, text="Y (cm):").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Label(manual_frame, text=t("Y (cm):")).grid(row=1, column=0, sticky="w", pady=2)
         self.y_entry = ttk.Entry(manual_frame, width=10)
         self.y_entry.insert(0, "0")
         self.y_entry.grid(row=1, column=1, padx=5, pady=2)
 
-        ttk.Button(manual_frame, text="Move", command=self.move_to_position, width=15).grid(row=0, column=2, rowspan=2, padx=10)
+        ttk.Button(manual_frame, text=t("Move"), command=self.move_to_position, width=15).grid(row=0, column=2, rowspan=2, padx=10)
 
         # Right side - Presets and quick positions
         right_frame = ttk.Frame(self.motors_tab)
         right_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
         # Preset positions
-        preset_frame = ttk.LabelFrame(right_frame, text="Preset Positions", padding="10")
+        preset_frame = ttk.LabelFrame(right_frame, text=t("Preset Positions"), padding="10")
         preset_frame.pack(fill="both", expand=True, pady=(0, 5))
 
         presets = [
-            ("Origin (0, 0)", 0, 0),
-            ("Center (50, 35)", 50, 35),
-            ("Top Right (100, 0)", 100, 0),
-            ("Top Left (0, 0)", 0, 0),
-            ("Bottom Right (100, 70)", 100, 70),
-            ("Bottom Left (0, 70)", 0, 70),
-            ("Test Position 1 (25, 25)", 25, 25),
-            ("Test Position 2 (75, 45)", 75, 45),
+            (t("Origin (0, 0)"), 0, 0),
+            (t("Center (50, 35)"), 50, 35),
+            (t("Top Right (100, 0)"), 100, 0),
+            (t("Top Left (0, 0)"), 0, 0),
+            (t("Bottom Right (100, 70)"), 100, 70),
+            (t("Bottom Left (0, 70)"), 0, 70),
+            (t("Test Position 1 (25, 25)"), 25, 25),
+            (t("Test Position 2 (75, 45)"), 75, 45),
         ]
 
         for i, (name, x, y) in enumerate(presets):
@@ -333,24 +334,24 @@ class UltimateHardwareTestGUI:
             btn.grid(row=i//2, column=i%2, padx=5, pady=3, sticky="ew")
 
         # Speed control
-        speed_frame = ttk.LabelFrame(right_frame, text="Movement Speed", padding="10")
+        speed_frame = ttk.LabelFrame(right_frame, text=t("Movement Speed"), padding="10")
         speed_frame.pack(fill="x", pady=5)
 
         self.speed_var = tk.StringVar(value="normal")
-        ttk.Radiobutton(speed_frame, text="Slow", variable=self.speed_var, value="slow").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(speed_frame, text="Normal", variable=self.speed_var, value="normal").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(speed_frame, text="Fast", variable=self.speed_var, value="fast").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(speed_frame, text=t("Slow"), variable=self.speed_var, value="slow").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(speed_frame, text=t("Normal"), variable=self.speed_var, value="normal").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(speed_frame, text=t("Fast"), variable=self.speed_var, value="fast").pack(side=tk.LEFT, padx=5)
 
         # Limit switches
-        limit_frame = ttk.LabelFrame(right_frame, text="Limit Switches (Live)", padding="10")
+        limit_frame = ttk.LabelFrame(right_frame, text=t("Limit Switches (Live)"), padding="10")
         limit_frame.pack(fill="x", pady=5)
 
         limit_switches = [
-            ("Top Limit", "top_limit_switch"),
-            ("Bottom Limit", "bottom_limit_switch"),
-            ("Left Limit", "left_limit_switch"),
-            ("Right Limit", "right_limit_switch"),
-            ("Rows Limit", "rows_limit_switch")
+            (t("Top Limit"), "top_limit_switch"),
+            (t("Bottom Limit"), "bottom_limit_switch"),
+            (t("Left Limit"), "left_limit_switch"),
+            (t("Right Limit"), "right_limit_switch"),
+            (t("Rows Limit"), "rows_limit_switch")
         ]
 
         for i, (name, switch_id) in enumerate(limit_switches):
@@ -368,7 +369,7 @@ class UltimateHardwareTestGUI:
             self.sensor_connection_widgets[switch_id] = conn_indicator
 
             # State label
-            state_label = ttk.Label(limit_frame, text="OPEN", width=10,
+            state_label = ttk.Label(limit_frame, text=t("OPEN"), width=10,
                                    relief=tk.SUNKEN, anchor=tk.CENTER,
                                    background="#95A5A6", foreground="white",
                                    font=("Arial", 8, "bold"))
@@ -387,15 +388,15 @@ class UltimateHardwareTestGUI:
         left_frame = ttk.Frame(self.pistons_tab)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        piston_frame = ttk.LabelFrame(left_frame, text="Piston Control", padding="10")
+        piston_frame = ttk.LabelFrame(left_frame, text=t("Piston Control"), padding="10")
         piston_frame.pack(fill="both", expand=True)
 
         self.piston_methods = {
-            "line_marker": ("Line Marker", "line_marker_piston"),
-            "line_cutter": ("Line Cutter", "line_cutter_piston"),
-            "line_motor": ("Line Motor (Both)", "line_motor_piston"),  # Special handling
-            "row_marker": ("Row Marker", "row_marker_piston"),
-            "row_cutter": ("Row Cutter", "row_cutter_piston")
+            "line_marker": (t("Line Marker"), "line_marker_piston"),
+            "line_cutter": (t("Line Cutter"), "line_cutter_piston"),
+            "line_motor": (t("Line Motor (Both)"), "line_motor_piston"),  # Special handling
+            "row_marker": (t("Row Marker"), "row_marker_piston"),
+            "row_cutter": (t("Row Cutter"), "row_cutter_piston")
         }
 
         for i, (key, (name, method_base)) in enumerate(self.piston_methods.items()):
@@ -421,7 +422,7 @@ class UltimateHardwareTestGUI:
             state_frame = ttk.Frame(piston_frame)
             state_frame.grid(row=i, column=2, padx=10, pady=5)
 
-            state_label = ttk.Label(state_frame, text="UNKNOWN", width=10,
+            state_label = ttk.Label(state_frame, text=t("UNKNOWN"), width=10,
                                    relief=tk.SUNKEN, anchor=tk.CENTER,
                                    background="#95A5A6", foreground="white",
                                    font=("Arial", 10, "bold"))
@@ -431,11 +432,11 @@ class UltimateHardwareTestGUI:
             btn_frame = ttk.Frame(piston_frame)
             btn_frame.grid(row=i, column=3, pady=5)
 
-            up_btn = ttk.Button(btn_frame, text="↑ UP", width=10,
+            up_btn = ttk.Button(btn_frame, text=t("↑ UP"), width=10,
                               command=lambda k=key: self.piston_up(k))
             up_btn.pack(side=tk.LEFT, padx=2)
 
-            down_btn = ttk.Button(btn_frame, text="↓ DOWN", width=10,
+            down_btn = ttk.Button(btn_frame, text=t("↓ DOWN"), width=10,
                                 command=lambda k=key: self.piston_down(k))
             down_btn.pack(side=tk.LEFT, padx=2)
 
@@ -446,32 +447,32 @@ class UltimateHardwareTestGUI:
         right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
 
         # Tool sensors
-        sensor_frame = ttk.LabelFrame(right_frame, text="Tool Position Sensors (Live)", padding="10")
+        sensor_frame = ttk.LabelFrame(right_frame, text=t("Tool Position Sensors (Live)"), padding="10")
         sensor_frame.pack(fill="both", expand=True, pady=(0, 5))
 
         # Create sensor display with grouping
         sensor_groups = [
-            ("Line Marker", [
-                ("UP Sensor", "line_marker_up_sensor"),
-                ("DOWN Sensor", "line_marker_down_sensor")
+            (t("Line Marker"), [
+                (t("UP Sensor"), "line_marker_up_sensor"),
+                (t("DOWN Sensor"), "line_marker_down_sensor")
             ]),
-            ("Line Cutter", [
-                ("UP Sensor", "line_cutter_up_sensor"),
-                ("DOWN Sensor", "line_cutter_down_sensor")
+            (t("Line Cutter"), [
+                (t("UP Sensor"), "line_cutter_up_sensor"),
+                (t("DOWN Sensor"), "line_cutter_down_sensor")
             ]),
-            ("Line Motor", [
-                ("Left UP", "line_motor_left_up_sensor"),
-                ("Left DOWN", "line_motor_left_down_sensor"),
-                ("Right UP", "line_motor_right_up_sensor"),
-                ("Right DOWN", "line_motor_right_down_sensor")
+            (t("Line Motor"), [
+                (t("Left UP"), "line_motor_left_up_sensor"),
+                (t("Left DOWN"), "line_motor_left_down_sensor"),
+                (t("Right UP"), "line_motor_right_up_sensor"),
+                (t("Right DOWN"), "line_motor_right_down_sensor")
             ]),
-            ("Row Marker", [
-                ("UP Sensor", "row_marker_up_sensor"),
-                ("DOWN Sensor", "row_marker_down_sensor")
+            (t("Row Marker"), [
+                (t("UP Sensor"), "row_marker_up_sensor"),
+                (t("DOWN Sensor"), "row_marker_down_sensor")
             ]),
-            ("Row Cutter", [
-                ("UP Sensor", "row_cutter_up_sensor"),
-                ("DOWN Sensor", "row_cutter_down_sensor")
+            (t("Row Cutter"), [
+                (t("UP Sensor"), "row_cutter_up_sensor"),
+                (t("DOWN Sensor"), "row_cutter_down_sensor")
             ])
         ]
 
@@ -496,7 +497,7 @@ class UltimateHardwareTestGUI:
                 self.sensor_connection_widgets[sensor_id] = conn_indicator
 
                 # State label
-                state_label = ttk.Label(sensor_frame, text="INACTIVE", width=10,
+                state_label = ttk.Label(sensor_frame, text=t("INACTIVE"), width=10,
                                        relief=tk.SUNKEN, anchor=tk.CENTER,
                                        background="#95A5A6", foreground="white",
                                        font=("Arial", 8, "bold"))
@@ -506,14 +507,14 @@ class UltimateHardwareTestGUI:
                 row += 1
 
         # Edge switches
-        edge_frame = ttk.LabelFrame(right_frame, text="Edge Switches", padding="10")
+        edge_frame = ttk.LabelFrame(right_frame, text=t("Edge Switches"), padding="10")
         edge_frame.pack(fill="x", pady=5)
 
         edge_sensors = [
-            ("X Left Edge", "x_left_edge_sensor"),
-            ("X Right Edge", "x_right_edge_sensor"),
-            ("Y Top Edge", "y_top_edge_sensor"),
-            ("Y Bottom Edge", "y_bottom_edge_sensor")
+            (t("X Left Edge"), "x_left_edge_sensor"),
+            (t("X Right Edge"), "x_right_edge_sensor"),
+            (t("Y Top Edge"), "y_top_edge_sensor"),
+            (t("Y Bottom Edge"), "y_bottom_edge_sensor")
         ]
 
         for i, (name, sensor_id) in enumerate(edge_sensors):
@@ -531,7 +532,7 @@ class UltimateHardwareTestGUI:
             self.sensor_connection_widgets[sensor_id] = conn_indicator
 
             # State label
-            state_label = ttk.Label(edge_frame, text="INACTIVE", width=10,
+            state_label = ttk.Label(edge_frame, text=t("INACTIVE"), width=10,
                                    relief=tk.SUNKEN, anchor=tk.CENTER,
                                    background="#95A5A6", foreground="white",
                                    font=("Arial", 8, "bold"))
@@ -550,14 +551,14 @@ class UltimateHardwareTestGUI:
         control_frame = ttk.Frame(self.grbl_tab)
         control_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
 
-        ttk.Button(control_frame, text="Read Settings ($$)", command=self.read_grbl_settings).pack(side=tk.LEFT, padx=5)
-        ttk.Button(control_frame, text="Apply Changes", command=self.write_grbl_settings).pack(side=tk.LEFT, padx=5)
-        ttk.Button(control_frame, text="Reset to Defaults", command=self.reset_grbl_settings).pack(side=tk.LEFT, padx=5)
-        ttk.Button(control_frame, text="Unlock ($X)", command=self.unlock_grbl).pack(side=tk.LEFT, padx=5)
-        ttk.Button(control_frame, text="Home ($H)", command=self.home_grbl).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Read Settings ($$)"), command=self.read_grbl_settings).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Apply Changes"), command=self.write_grbl_settings).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Reset to Defaults"), command=self.reset_grbl_settings).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Unlock ($X)"), command=self.unlock_grbl).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Home ($H)"), command=self.home_grbl).pack(side=tk.LEFT, padx=5)
 
         # Settings display
-        settings_frame = ttk.LabelFrame(self.grbl_tab, text="GRBL Configuration", padding="10")
+        settings_frame = ttk.LabelFrame(self.grbl_tab, text=t("GRBL Configuration"), padding="10")
         settings_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
         # Create scrollable frame for settings
@@ -579,40 +580,40 @@ class UltimateHardwareTestGUI:
         # Key settings to edit - in ascending order with default values
         self.grbl_entries = {}
         key_settings = [
-            ("$0", "Step pulse", "Step pulse time (microseconds)", "10"),
-            ("$1", "Step idle delay", "Step idle delay (milliseconds)", "25"),
-            ("$2", "Step port invert", "Step port invert mask", "0"),
-            ("$3", "Direction port invert", "Direction port invert mask", "0"),
-            ("$4", "Step enable invert", "Step enable invert (boolean)", "0"),
-            ("$5", "Limit pins invert", "Limit pins invert (boolean)", "0"),
-            ("$6", "Probe pin invert", "Probe pin invert (boolean)", "0"),
-            ("$10", "Status report", "Status report mask", "1"),
-            ("$11", "Junction deviation", "Junction deviation (mm)", "0.010"),
-            ("$12", "Arc tolerance", "Arc tolerance (mm)", "0.002"),
-            ("$13", "Report inches", "Report in inches (boolean)", "0"),
-            ("$20", "Soft limits", "Soft limits enable (boolean)", "0"),
-            ("$21", "Hard limits", "Hard limits enable (boolean)", "0"),
-            ("$22", "Homing cycle", "Homing cycle enable (boolean)", "0"),
-            ("$23", "Homing dir invert", "Homing direction invert mask", "0"),
-            ("$24", "Homing feed", "Homing feed rate (mm/min)", "25.0"),
-            ("$25", "Homing seek", "Homing seek rate (mm/min)", "500.0"),
-            ("$26", "Homing debounce", "Homing debounce (milliseconds)", "250"),
-            ("$27", "Homing pull-off", "Homing pull-off distance (mm)", "1.0"),
-            ("$30", "Max spindle speed", "Maximum spindle speed (RPM)", "1000"),
-            ("$31", "Min spindle speed", "Minimum spindle speed (RPM)", "0"),
-            ("$32", "Laser mode", "Laser mode enable (boolean)", "0"),
-            ("$100", "X steps/mm", "Steps per mm for X axis", "250.0"),
-            ("$101", "Y steps/mm", "Steps per mm for Y axis", "250.0"),
-            ("$102", "Z steps/mm", "Steps per mm for Z axis", "250.0"),
-            ("$110", "X Max rate", "Maximum rate for X axis (mm/min)", "500.0"),
-            ("$111", "Y Max rate", "Maximum rate for Y axis (mm/min)", "500.0"),
-            ("$112", "Z Max rate", "Maximum rate for Z axis (mm/min)", "500.0"),
-            ("$120", "X Acceleration", "X axis acceleration (mm/sec²)", "10.0"),
-            ("$121", "Y Acceleration", "Y axis acceleration (mm/sec²)", "10.0"),
-            ("$122", "Z Acceleration", "Z axis acceleration (mm/sec²)", "10.0"),
-            ("$130", "X Max travel", "Maximum travel for X axis (mm)", "200.0"),
-            ("$131", "Y Max travel", "Maximum travel for Y axis (mm)", "200.0"),
-            ("$132", "Z Max travel", "Maximum travel for Z axis (mm)", "200.0")
+            ("$0", t("Step pulse"), t("Step pulse time (microseconds)"), "10"),
+            ("$1", t("Step idle delay"), t("Step idle delay (milliseconds)"), "25"),
+            ("$2", t("Step port invert"), t("Step port invert mask"), "0"),
+            ("$3", t("Direction port invert"), t("Direction port invert mask"), "0"),
+            ("$4", t("Step enable invert"), t("Step enable invert (boolean)"), "0"),
+            ("$5", t("Limit pins invert"), t("Limit pins invert (boolean)"), "0"),
+            ("$6", t("Probe pin invert"), t("Probe pin invert (boolean)"), "0"),
+            ("$10", t("Status report"), t("Status report mask"), "1"),
+            ("$11", t("Junction deviation"), t("Junction deviation (mm)"), "0.010"),
+            ("$12", t("Arc tolerance"), t("Arc tolerance (mm)"), "0.002"),
+            ("$13", t("Report inches"), t("Report in inches (boolean)"), "0"),
+            ("$20", t("Soft limits"), t("Soft limits enable (boolean)"), "0"),
+            ("$21", t("Hard limits"), t("Hard limits enable (boolean)"), "0"),
+            ("$22", t("Homing cycle"), t("Homing cycle enable (boolean)"), "0"),
+            ("$23", t("Homing dir invert"), t("Homing direction invert mask"), "0"),
+            ("$24", t("Homing feed"), t("Homing feed rate (mm/min)"), "25.0"),
+            ("$25", t("Homing seek"), t("Homing seek rate (mm/min)"), "500.0"),
+            ("$26", t("Homing debounce"), t("Homing debounce (milliseconds)"), "250"),
+            ("$27", t("Homing pull-off"), t("Homing pull-off distance (mm)"), "1.0"),
+            ("$30", t("Max spindle speed"), t("Maximum spindle speed (RPM)"), "1000"),
+            ("$31", t("Min spindle speed"), t("Minimum spindle speed (RPM)"), "0"),
+            ("$32", t("Laser mode"), t("Laser mode enable (boolean)"), "0"),
+            ("$100", t("X steps/mm"), t("Steps per mm for X axis"), "250.0"),
+            ("$101", t("Y steps/mm"), t("Steps per mm for Y axis"), "250.0"),
+            ("$102", t("Z steps/mm"), t("Steps per mm for Z axis"), "250.0"),
+            ("$110", t("X Max rate"), t("Maximum rate for X axis (mm/min)"), "500.0"),
+            ("$111", t("Y Max rate"), t("Maximum rate for Y axis (mm/min)"), "500.0"),
+            ("$112", t("Z Max rate"), t("Maximum rate for Z axis (mm/min)"), "500.0"),
+            ("$120", t("X Acceleration"), t("X axis acceleration (mm/sec²)"), "10.0"),
+            ("$121", t("Y Acceleration"), t("Y axis acceleration (mm/sec²)"), "10.0"),
+            ("$122", t("Z Acceleration"), t("Z axis acceleration (mm/sec²)"), "10.0"),
+            ("$130", t("X Max travel"), t("Maximum travel for X axis (mm)"), "200.0"),
+            ("$131", t("Y Max travel"), t("Maximum travel for Y axis (mm)"), "200.0"),
+            ("$132", t("Z Max travel"), t("Maximum travel for Z axis (mm)"), "200.0")
         ]
 
         for i, (param, name, tooltip, default) in enumerate(key_settings):
@@ -632,71 +633,71 @@ class UltimateHardwareTestGUI:
             self.grbl_entries[param] = entry
 
         # Command console on right
-        console_frame = ttk.LabelFrame(self.grbl_tab, text="G-code Commands & Console", padding="10")
+        console_frame = ttk.LabelFrame(self.grbl_tab, text=t("G-code Commands & Console"), padding="10")
         console_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
         # Quick G-code commands
-        quick_commands_frame = ttk.LabelFrame(console_frame, text="Quick Commands", padding="5")
+        quick_commands_frame = ttk.LabelFrame(console_frame, text=t("Quick Commands"), padding="5")
         quick_commands_frame.pack(fill="x", pady=(0, 10))
 
         # Motion commands
         motion_frame = ttk.Frame(quick_commands_frame)
         motion_frame.pack(fill="x", pady=2)
-        ttk.Label(motion_frame, text="Motion:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(motion_frame, text="G0 (Rapid)", width=12, command=lambda: self.insert_command("G0 X0 Y0")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(motion_frame, text="G1 (Linear)", width=12, command=lambda: self.insert_command("G1 X0 Y0 F1000")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(motion_frame, text="G2 (Arc CW)", width=12, command=lambda: self.insert_command("G2 X10 Y10 I5 J0")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(motion_frame, text="G3 (Arc CCW)", width=12, command=lambda: self.insert_command("G3 X10 Y10 I5 J0")).pack(side=tk.LEFT, padx=2)
+        ttk.Label(motion_frame, text=t("Motion:"), font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(motion_frame, text=t("G0 (Rapid)"), width=12, command=lambda: self.insert_command("G0 X0 Y0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(motion_frame, text=t("G1 (Linear)"), width=12, command=lambda: self.insert_command("G1 X0 Y0 F1000")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(motion_frame, text=t("G2 (Arc CW)"), width=12, command=lambda: self.insert_command("G2 X10 Y10 I5 J0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(motion_frame, text=t("G3 (Arc CCW)"), width=12, command=lambda: self.insert_command("G3 X10 Y10 I5 J0")).pack(side=tk.LEFT, padx=2)
 
         # Mode commands
         mode_frame = ttk.Frame(quick_commands_frame)
         mode_frame.pack(fill="x", pady=2)
-        ttk.Label(mode_frame, text="Modes:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(mode_frame, text="G90 (Absolute)", width=14, command=lambda: self.insert_command("G90")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(mode_frame, text="G91 (Relative)", width=14, command=lambda: self.insert_command("G91")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(mode_frame, text="G21 (Metric)", width=13, command=lambda: self.insert_command("G21")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(mode_frame, text="G20 (Inches)", width=13, command=lambda: self.insert_command("G20")).pack(side=tk.LEFT, padx=2)
+        ttk.Label(mode_frame, text=t("Modes:"), font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(mode_frame, text=t("G90 (Absolute)"), width=14, command=lambda: self.insert_command("G90")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mode_frame, text=t("G91 (Relative)"), width=14, command=lambda: self.insert_command("G91")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mode_frame, text=t("G21 (Metric)"), width=13, command=lambda: self.insert_command("G21")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(mode_frame, text=t("G20 (Inches)"), width=13, command=lambda: self.insert_command("G20")).pack(side=tk.LEFT, padx=2)
 
         # Coordinate commands
         coord_frame = ttk.Frame(quick_commands_frame)
         coord_frame.pack(fill="x", pady=2)
-        ttk.Label(coord_frame, text="Coords:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(coord_frame, text=t("Coords:"), font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(coord_frame, text="G54 (WCS 1)", width=12, command=lambda: self.insert_command("G54")).pack(side=tk.LEFT, padx=2)
         ttk.Button(coord_frame, text="G92 X0 Y0", width=12, command=lambda: self.insert_command("G92 X0 Y0")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(coord_frame, text="G10 Set WCS", width=12, command=lambda: self.insert_command("G10 L20 P1 X0 Y0")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(coord_frame, text="G28 (Home)", width=12, command=lambda: self.insert_command("G28")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(coord_frame, text=t("G10 Set WCS"), width=12, command=lambda: self.insert_command("G10 L20 P1 X0 Y0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(coord_frame, text=t("G28 (Home)"), width=12, command=lambda: self.insert_command("G28")).pack(side=tk.LEFT, padx=2)
 
         # Program control
         prog_frame = ttk.Frame(quick_commands_frame)
         prog_frame.pack(fill="x", pady=2)
-        ttk.Label(prog_frame, text="Program:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(prog_frame, text="M0 (Pause)", width=11, command=lambda: self.insert_command("M0")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(prog_frame, text="M2 (End)", width=11, command=lambda: self.insert_command("M2")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(prog_frame, text="M30 (End)", width=11, command=lambda: self.insert_command("M30")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(prog_frame, text="G4 P1 (Dwell)", width=13, command=lambda: self.insert_command("G4 P1.0")).pack(side=tk.LEFT, padx=2)
+        ttk.Label(prog_frame, text=t("Program:"), font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(prog_frame, text=t("M0 (Pause)"), width=11, command=lambda: self.insert_command("M0")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(prog_frame, text=t("M2 (End)"), width=11, command=lambda: self.insert_command("M2")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(prog_frame, text=t("M30 (End)"), width=11, command=lambda: self.insert_command("M30")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(prog_frame, text=t("G4 P1 (Dwell)"), width=13, command=lambda: self.insert_command("G4 P1.0")).pack(side=tk.LEFT, padx=2)
 
         # Status/Query
         status_frame = ttk.Frame(quick_commands_frame)
         status_frame.pack(fill="x", pady=2)
-        ttk.Label(status_frame, text="Query:", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(status_frame, text="? (Status)", width=11, command=lambda: self.insert_command("?")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(status_frame, text="$G (State)", width=11, command=lambda: self.insert_command("$G")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(status_frame, text="$# (Offsets)", width=11, command=lambda: self.insert_command("$#")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(status_frame, text="$I (Info)", width=13, command=lambda: self.insert_command("$I")).pack(side=tk.LEFT, padx=2)
+        ttk.Label(status_frame, text=t("Query:"), font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(status_frame, text=t("? (Status)"), width=11, command=lambda: self.insert_command("?")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(status_frame, text=t("$G (State)"), width=11, command=lambda: self.insert_command("$G")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(status_frame, text=t("$# (Offsets)"), width=11, command=lambda: self.insert_command("$#")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(status_frame, text=t("$I (Info)"), width=13, command=lambda: self.insert_command("$I")).pack(side=tk.LEFT, padx=2)
 
         # Command input
         input_frame = ttk.Frame(console_frame)
         input_frame.pack(fill="x", pady=(10, 5))
 
-        ttk.Label(input_frame, text="Command:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(input_frame, text=t("Command:")).pack(side=tk.LEFT, padx=(0, 5))
         self.grbl_command_entry = ttk.Entry(input_frame)
         self.grbl_command_entry.pack(side=tk.LEFT, fill="x", expand=True, padx=5)
         self.grbl_command_entry.bind("<Return>", lambda e: self.send_grbl_command())
 
-        ttk.Button(input_frame, text="Send", command=self.send_grbl_command).pack(side=tk.LEFT)
+        ttk.Button(input_frame, text=t("Send"), command=self.send_grbl_command).pack(side=tk.LEFT)
 
         # Response display
-        ttk.Label(console_frame, text="Response:").pack(anchor="w", pady=(5, 0))
+        ttk.Label(console_frame, text=t("Response:")).pack(anchor="w", pady=(5, 0))
         self.grbl_response_text = scrolledtext.ScrolledText(console_frame, height=12, width=40,
                                                            font=("Courier", 9))
         self.grbl_response_text.pack(fill="both", expand=True)
@@ -717,15 +718,15 @@ class UltimateHardwareTestGUI:
         control_frame = ttk.Frame(console_frame)
         control_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
 
-        ttk.Button(control_frame, text="Clear Log", command=self.clear_log).pack(side=tk.LEFT, padx=5)
-        ttk.Button(control_frame, text="Save Log", command=self.save_log).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Clear Log"), command=self.clear_log).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text=t("Save Log"), command=self.save_log).pack(side=tk.LEFT, padx=5)
 
         # Auto-scroll checkbox
         self.auto_scroll_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(control_frame, text="Auto-scroll", variable=self.auto_scroll_var).pack(side=tk.LEFT, padx=20)
+        ttk.Checkbutton(control_frame, text=t("Auto-scroll"), variable=self.auto_scroll_var).pack(side=tk.LEFT, padx=20)
 
         # Log level selector
-        ttk.Label(control_frame, text="Log Level:").pack(side=tk.LEFT, padx=(20, 5))
+        ttk.Label(control_frame, text=t("Log Level:")).pack(side=tk.LEFT, padx=(20, 5))
         self.log_level_var = tk.StringVar(value="INFO")
         log_level_combo = ttk.Combobox(control_frame, textvariable=self.log_level_var,
                                        values=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -746,8 +747,8 @@ class UltimateHardwareTestGUI:
         self.console_text.tag_config("GRBL", foreground="cyan")
 
         # Welcome message
-        self.log("INFO", "Ultimate Hardware Test GUI initialized")
-        self.log("INFO", "Click 'Connect Hardware' to begin testing")
+        self.log("INFO", t("Ultimate Hardware Test GUI initialized"))
+        self.log("INFO", t("Click 'Connect Hardware' to begin testing"))
 
     def create_tooltip(self, widget, text):
         """Create a tooltip for a widget"""
@@ -818,16 +819,16 @@ class UltimateHardwareTestGUI:
             with open('config/settings.json', 'w') as f:
                 json.dump(config, f, indent=2)
 
-            self.log("INFO", f"Hardware mode changed to: {'REAL' if use_real else 'MOCK'}")
+            self.log("INFO", t("Hardware mode changed to: {mode}", mode='REAL' if use_real else 'MOCK'))
 
             # If connected, disconnect and suggest reconnecting
             if self.is_connected:
-                self.log("WARNING", "Please disconnect and reconnect to apply hardware mode change")
-                messagebox.showinfo("Hardware Mode Changed",
-                                   "Please disconnect and reconnect to apply the new hardware mode.")
+                self.log("WARNING", t("Please disconnect and reconnect to apply hardware mode change"))
+                messagebox.showinfo(t("Hardware Mode Changed"),
+                                   t("Please disconnect and reconnect to apply the new hardware mode."))
         except Exception as e:
-            self.log("ERROR", f"Failed to update hardware mode: {e}")
-            messagebox.showerror("Error", f"Failed to update hardware mode: {e}")
+            self.log("ERROR", t("Failed to update hardware mode: {error}", error=str(e)))
+            messagebox.showerror(t("Error"), t("Failed to update hardware mode: {error}", error=str(e)))
 
     def scan_ports(self):
         """Scan for available serial ports"""
@@ -835,7 +836,7 @@ class UltimateHardwareTestGUI:
             import serial.tools.list_ports
 
             ports = serial.tools.list_ports.comports()
-            self.available_ports = ["Auto-detect"]
+            self.available_ports = [t("Auto-detect")]
 
             for port in ports:
                 port_name = f"{port.device} - {port.description}"
@@ -845,18 +846,18 @@ class UltimateHardwareTestGUI:
             self.port_combo['values'] = self.available_ports
 
             if len(self.available_ports) > 1:
-                self.log("INFO", f"Found {len(self.available_ports)-1} serial port(s)")
+                self.log("INFO", t("Found {count} serial port(s)", count=len(self.available_ports)-1))
             else:
-                self.log("WARNING", "No serial ports found")
+                self.log("WARNING", t("No serial ports found"))
 
         except Exception as e:
-            self.log("ERROR", f"Error scanning ports: {str(e)}")
-            self.available_ports = ["Auto-detect"]
+            self.log("ERROR", t("Error scanning ports: {error}", error=str(e)))
+            self.available_ports = [t("Auto-detect")]
             self.port_combo['values'] = self.available_ports
 
     def auto_initialize(self):
         """Auto-initialize hardware on startup"""
-        self.log("INFO", "Auto-initializing hardware...")
+        self.log("INFO", t("Auto-initializing hardware..."))
         self.toggle_connection()
 
     def toggle_connection(self):
@@ -869,14 +870,14 @@ class UltimateHardwareTestGUI:
     def connect_hardware(self):
         """Connect to hardware"""
         try:
-            self.log("INFO", "Connecting to hardware...")
+            self.log("INFO", t("Connecting to hardware..."))
 
             # Get selected port
             selected = self.selected_port.get()
-            if selected and selected != "Auto-detect":
+            if selected and selected != t("Auto-detect"):
                 # Extract just the port device (e.g., "/dev/ttyACM0" from "/dev/ttyACM0 - Arduino...")
                 port_device = selected.split(" - ")[0]
-                self.log("INFO", f"Using selected port: {port_device}")
+                self.log("INFO", t("Using selected port: {port}", port=port_device))
 
                 # Load config and temporarily override port if specified
                 import json
@@ -892,38 +893,38 @@ class UltimateHardwareTestGUI:
                     # Save with proper formatting
                     with open('config/settings.json', 'w') as f:
                         json.dump(config, f, indent=2)
-                    self.log("INFO", f"Configured GRBL port: {port_device}")
+                    self.log("INFO", t("Configured GRBL port: {port}", port=port_device))
                 except Exception as e:
-                    self.log("WARNING", f"Could not update port in config: {e}")
+                    self.log("WARNING", t("Could not update port in config: {error}", error=str(e)))
             else:
-                self.log("INFO", "Using auto-detect mode")
+                self.log("INFO", t("Using auto-detect mode"))
 
             # Get hardware interface
             self.hardware = get_hardware_interface()
 
             # Check mode
-            mode = "REAL HARDWARE" if hasattr(self.hardware, 'gpio') else "MOCK/SIMULATION"
-            self.mode_label.config(text=f"Mode: {mode}")
-            self.log("INFO", f"Hardware mode: {mode}")
+            mode = t("REAL HARDWARE") if hasattr(self.hardware, 'gpio') else t("MOCK/SIMULATION")
+            self.mode_label.config(text=t("Mode: {mode}", mode=mode))
+            self.log("INFO", t("Hardware mode: {mode}", mode=mode))
 
             # Initialize hardware
             if self.hardware.initialize():
                 self.is_connected = True
-                self.hw_status_label.config(text="Connected", foreground="green")
-                self.connect_btn.config(text="Disconnect")
-                self.log("SUCCESS", "Hardware connected successfully")
+                self.hw_status_label.config(text=t("Connected"), foreground="green")
+                self.connect_btn.config(text=t("Disconnect"))
+                self.log("SUCCESS", t("Hardware connected successfully"))
 
                 # Check GRBL connection
                 if hasattr(self.hardware, 'grbl') and self.hardware.grbl and self.hardware.grbl.is_connected:
                     self.grbl_connected = True
-                    self.grbl_status_label.config(text="Connected", foreground="green")
-                    self.log("SUCCESS", "GRBL connected successfully")
+                    self.grbl_status_label.config(text=t("Connected"), foreground="green")
+                    self.log("SUCCESS", t("GRBL connected successfully"))
 
                     # Read initial settings
                     self.root.after(100, self.read_grbl_settings)
                 else:
-                    self.grbl_status_label.config(text="Not Available", foreground="orange")
-                    self.log("WARNING", "GRBL not available")
+                    self.grbl_status_label.config(text=t("Not Available"), foreground="orange")
+                    self.log("WARNING", t("GRBL not available"))
 
                 # Start monitoring thread
                 self.monitor_running = True
@@ -937,16 +938,16 @@ class UltimateHardwareTestGUI:
                 self.root.update_idletasks()
 
             else:
-                self.log("ERROR", "Failed to initialize hardware")
-                messagebox.showerror("Connection Error", "Failed to initialize hardware")
+                self.log("ERROR", t("Failed to initialize hardware"))
+                messagebox.showerror(t("Connection Error"), t("Failed to initialize hardware"))
 
         except Exception as e:
-            self.log("ERROR", f"Connection error: {str(e)}")
-            messagebox.showerror("Connection Error", f"Failed to connect: {str(e)}")
+            self.log("ERROR", t("Connection error: {error}", error=str(e)))
+            messagebox.showerror(t("Connection Error"), t("Failed to connect: {error}", error=str(e)))
 
     def disconnect_hardware(self):
         """Disconnect from hardware"""
-        self.log("INFO", "Disconnecting from hardware...")
+        self.log("INFO", t("Disconnecting from hardware..."))
 
         # Stop monitoring
         self.monitor_running = False
@@ -959,14 +960,14 @@ class UltimateHardwareTestGUI:
 
         self.is_connected = False
         self.grbl_connected = False
-        self.hw_status_label.config(text="Not Connected", foreground="red")
-        self.grbl_status_label.config(text="Not Connected", foreground="red")
-        self.connect_btn.config(text="Connect Hardware")
+        self.hw_status_label.config(text=t("Not Connected"), foreground="red")
+        self.grbl_status_label.config(text=t("Not Connected"), foreground="red")
+        self.connect_btn.config(text=t("Connect Hardware"))
 
         # Disable controls
         self.enable_controls(False)
 
-        self.log("INFO", "Hardware disconnected")
+        self.log("INFO", t("Hardware disconnected"))
 
     def enable_controls(self, enabled):
         """Enable or disable all control widgets"""
@@ -984,7 +985,7 @@ class UltimateHardwareTestGUI:
 
     def monitor_loop(self):
         """Monitor sensors and positions in background"""
-        self.log("INFO", "Monitor loop started - updating sensors at 10Hz")
+        self.log("INFO", t("Monitor loop started - updating sensors at 10Hz"))
         last_position_update = 0
         position_update_interval = 0.2  # Update position less frequently to reduce flickering
 
@@ -1004,12 +1005,13 @@ class UltimateHardwareTestGUI:
                             if abs(new_x - self.current_x) > 0.01 or abs(new_y - self.current_y) > 0.01:
                                 self.current_x = new_x
                                 self.current_y = new_y
-                                self.root.after_idle(lambda: self.x_pos_var.set(f"X: {self.current_x:.2f} cm"))
-                                self.root.after_idle(lambda: self.y_pos_var.set(f"Y: {self.current_y:.2f} cm"))
+                                self.root.after_idle(lambda: self.x_pos_var.set(t("X: {x:.2f} cm", x=self.current_x)))
+                                self.root.after_idle(lambda: self.y_pos_var.set(t("Y: {y:.2f} cm", y=self.current_y)))
 
                             state = status.get('state', 'Unknown')
+                            state_text = t(state) if state in ['Idle', 'Run', 'Unknown'] else state
                             color = "green" if state == "Idle" else "orange" if state == "Run" else "red"
-                            self.root.after_idle(lambda s=state, c=color: self.motor_status_label.config(text=s, foreground=c))
+                            self.root.after_idle(lambda s=state_text, c=color: self.motor_status_label.config(text=s, foreground=c))
                     elif self.is_connected and hasattr(self.hardware, 'get_current_x') and hasattr(self.hardware, 'get_current_y'):
                         # Get position from hardware interface (mock or real without GRBL)
                         try:
@@ -1019,9 +1021,9 @@ class UltimateHardwareTestGUI:
                             if abs(new_x - self.current_x) > 0.01 or abs(new_y - self.current_y) > 0.01:
                                 self.current_x = new_x
                                 self.current_y = new_y
-                                self.root.after_idle(lambda: self.x_pos_var.set(f"X: {self.current_x:.2f} cm"))
-                                self.root.after_idle(lambda: self.y_pos_var.set(f"Y: {self.current_y:.2f} cm"))
-                            self.root.after_idle(lambda: self.motor_status_label.config(text="Idle", foreground="green"))
+                                self.root.after_idle(lambda: self.x_pos_var.set(t("X: {x:.2f} cm", x=self.current_x)))
+                                self.root.after_idle(lambda: self.y_pos_var.set(t("Y: {y:.2f} cm", y=self.current_y)))
+                            self.root.after_idle(lambda: self.motor_status_label.config(text=t("Idle"), foreground="green"))
                         except Exception as e:
                             pass  # Silently ignore position update errors
 
@@ -1044,15 +1046,15 @@ class UltimateHardwareTestGUI:
                                 # Different display for limit switches
                                 if "limit_switch" in sensor_id:
                                     if state:
-                                        self.root.after_idle(lambda w=widget: w.config(text="CLOSED", background="#E74C3C", foreground="white"))  # Red when triggered
+                                        self.root.after_idle(lambda w=widget: w.config(text=t("CLOSED"), background="#E74C3C", foreground="white"))  # Red when triggered
                                     else:
-                                        self.root.after_idle(lambda w=widget: w.config(text="OPEN", background="#95A5A6", foreground="white"))  # Gray when open
+                                        self.root.after_idle(lambda w=widget: w.config(text=t("OPEN"), background="#95A5A6", foreground="white"))  # Gray when open
                                 else:
                                     # Regular sensors
                                     if state:
-                                        self.root.after_idle(lambda w=widget: w.config(text="ACTIVE", background="#27AE60", foreground="white"))  # Green
+                                        self.root.after_idle(lambda w=widget: w.config(text=t("ACTIVE"), background="#27AE60", foreground="white"))  # Green
                                     else:
-                                        self.root.after_idle(lambda w=widget: w.config(text="INACTIVE", background="#95A5A6", foreground="white"))  # Gray
+                                        self.root.after_idle(lambda w=widget: w.config(text=t("INACTIVE"), background="#95A5A6", foreground="white"))  # Gray
                             except:
                                 # Connection failed
                                 if sensor_id in self.sensor_connection_widgets:
@@ -1084,11 +1086,11 @@ class UltimateHardwareTestGUI:
                                 # Update state display
                                 widget = self.piston_widgets[piston_key]
                                 if state == "up":
-                                    self.root.after_idle(lambda w=widget: w.config(text="UP", background="#3498DB", foreground="white"))
+                                    self.root.after_idle(lambda w=widget: w.config(text=t("UP"), background="#3498DB", foreground="white"))
                                 elif state == "down":
-                                    self.root.after_idle(lambda w=widget: w.config(text="DOWN", background="#27AE60", foreground="white"))
+                                    self.root.after_idle(lambda w=widget: w.config(text=t("DOWN"), background="#27AE60", foreground="white"))
                                 else:
-                                    self.root.after_idle(lambda w=widget: w.config(text="UNKNOWN", background="#95A5A6", foreground="white"))
+                                    self.root.after_idle(lambda w=widget: w.config(text=t("UNKNOWN"), background="#95A5A6", foreground="white"))
                             except:
                                 # Error reading state
                                 conn_widget = self.piston_connection_widgets[piston_key]
@@ -1101,14 +1103,14 @@ class UltimateHardwareTestGUI:
                 time.sleep(0.1)  # Update 10 times per second
 
             except Exception as e:
-                self.log("ERROR", f"Monitor error: {str(e)}")
+                self.log("ERROR", t("Monitor error: {error}", error=str(e)))
                 time.sleep(1)
 
     # Motor control methods
     def jog(self, axis, direction):
         """Jog motor in specified direction"""
         if not self.is_connected:
-            messagebox.showwarning("Not Connected", "Please connect hardware first")
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
         try:
@@ -1116,58 +1118,58 @@ class UltimateHardwareTestGUI:
 
             if axis == 'X':
                 new_pos = self.current_x + (step * direction)
-                self.log("INFO", f"Jogging X by {step * direction:.2f}cm to {new_pos:.2f}cm")
+                self.log("INFO", t("Jogging X by {delta:.2f}cm to {pos:.2f}cm", delta=step * direction, pos=new_pos))
                 self.hardware.move_x(new_pos)
             else:  # Y
                 new_pos = self.current_y + (step * direction)
-                self.log("INFO", f"Jogging Y by {step * direction:.2f}cm to {new_pos:.2f}cm")
+                self.log("INFO", t("Jogging Y by {delta:.2f}cm to {pos:.2f}cm", delta=step * direction, pos=new_pos))
                 self.hardware.move_y(new_pos)
 
         except Exception as e:
-            self.log("ERROR", f"Jog error: {str(e)}")
+            self.log("ERROR", t("Jog error: {error}", error=str(e)))
 
     def move_to_position(self):
         """Move to manually entered position"""
         if not self.is_connected:
-            messagebox.showwarning("Not Connected", "Please connect hardware first")
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
         try:
             x = float(self.x_entry.get())
             y = float(self.y_entry.get())
 
-            self.log("INFO", f"Moving to position X={x:.2f}cm, Y={y:.2f}cm")
+            self.log("INFO", t("Moving to position X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
             if self.hardware.move_to(x, y):
-                self.log("SUCCESS", f"Moved to X={x:.2f}cm, Y={y:.2f}cm")
+                self.log("SUCCESS", t("Moved to X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
             else:
-                self.log("ERROR", "Move command failed")
+                self.log("ERROR", t("Move command failed"))
 
         except ValueError:
-            self.log("ERROR", "Invalid position values")
-            messagebox.showerror("Error", "Invalid position values")
+            self.log("ERROR", t("Invalid position values"))
+            messagebox.showerror(t("Error"), t("Invalid position values"))
 
     def move_to_preset(self, x, y):
         """Move to preset position"""
         if not self.is_connected:
-            messagebox.showwarning("Not Connected", "Please connect hardware first")
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
-        self.log("INFO", f"Moving to preset position X={x:.2f}cm, Y={y:.2f}cm")
+        self.log("INFO", t("Moving to preset position X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
         if self.hardware.move_to(x, y):
-            self.log("SUCCESS", f"Moved to preset X={x:.2f}cm, Y={y:.2f}cm")
+            self.log("SUCCESS", t("Moved to preset X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
         else:
-            self.log("ERROR", "Move to preset failed")
+            self.log("ERROR", t("Move to preset failed"))
 
     def home_motors(self):
         """Home all motors"""
         if not self.is_connected:
-            messagebox.showwarning("Not Connected", "Please connect hardware first")
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
-        if messagebox.askyesno("Home Motors", "Move all motors to home position (0, 0)?"):
-            self.log("INFO", "Homing all motors...")
+        if messagebox.askyesno(t("Home Motors"), t("Move all motors to home position (0, 0)?")):
+            self.log("INFO", t("Homing all motors..."))
             if self.hardware.home_motors():
-                self.log("SUCCESS", "Motors homed successfully")
+                self.log("SUCCESS", t("Motors homed successfully"))
                 self.current_x = 0
                 self.current_y = 0
                 self.x_entry.delete(0, tk.END)
@@ -1175,23 +1177,23 @@ class UltimateHardwareTestGUI:
                 self.y_entry.delete(0, tk.END)
                 self.y_entry.insert(0, "0")
             else:
-                self.log("ERROR", "Homing failed")
+                self.log("ERROR", t("Homing failed"))
 
     def emergency_stop(self):
         """Emergency stop all motors"""
-        self.log("WARNING", "EMERGENCY STOP activated!")
+        self.log("WARNING", t("EMERGENCY STOP activated!"))
 
         if self.is_connected and self.hardware.emergency_stop():
-            messagebox.showwarning("Emergency Stop",
-                                 "All motors stopped!\nClick OK to resume.")
+            messagebox.showwarning(t("Emergency Stop"),
+                                 t("All motors stopped!\nClick OK to resume."))
             self.hardware.resume_operation()
-            self.log("INFO", "Emergency stop cleared, operation resumed")
+            self.log("INFO", t("Emergency stop cleared, operation resumed"))
 
     # Piston control methods
     def piston_up(self, piston_key):
         """Raise piston"""
         if not self.is_connected:
-            messagebox.showwarning("Not Connected", "Please connect hardware first")
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
         name, method_base = self.piston_methods[piston_key]
@@ -1202,21 +1204,21 @@ class UltimateHardwareTestGUI:
         else:
             method_name = f"{method_base}_up"
 
-        self.log("INFO", f"Raising {name}")
+        self.log("INFO", t("Raising {name}", name=name))
 
         if hasattr(self.hardware, method_name):
             if getattr(self.hardware, method_name)():
-                self.piston_widgets[piston_key].config(text="UP", background="#3498DB")
-                self.log("SUCCESS", f"{name} raised")
+                self.piston_widgets[piston_key].config(text=t("UP"), background="#3498DB")
+                self.log("SUCCESS", t("{name} raised", name=name))
             else:
-                self.log("ERROR", f"Failed to raise {name}")
+                self.log("ERROR", t("Failed to raise {name}", name=name))
         else:
-            self.log("ERROR", f"Method {method_name} not found")
+            self.log("ERROR", t("Method {method} not found", method=method_name))
 
     def piston_down(self, piston_key):
         """Lower piston"""
         if not self.is_connected:
-            messagebox.showwarning("Not Connected", "Please connect hardware first")
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
         name, method_base = self.piston_methods[piston_key]
@@ -1227,25 +1229,25 @@ class UltimateHardwareTestGUI:
         else:
             method_name = f"{method_base}_down"
 
-        self.log("INFO", f"Lowering {name}")
+        self.log("INFO", t("Lowering {name}", name=name))
 
         if hasattr(self.hardware, method_name):
             if getattr(self.hardware, method_name)():
-                self.piston_widgets[piston_key].config(text="DOWN", background="#27AE60")
-                self.log("SUCCESS", f"{name} lowered")
+                self.piston_widgets[piston_key].config(text=t("DOWN"), background="#27AE60")
+                self.log("SUCCESS", t("{name} lowered", name=name))
             else:
-                self.log("ERROR", f"Failed to lower {name}")
+                self.log("ERROR", t("Failed to lower {name}", name=name))
         else:
-            self.log("ERROR", f"Method {method_name} not found")
+            self.log("ERROR", t("Method {method} not found", method=method_name))
 
     # GRBL methods
     def read_grbl_settings(self):
         """Read GRBL settings"""
         if not self.grbl_connected:
-            self.log("WARNING", "GRBL not connected")
+            self.log("WARNING", t("GRBL not connected"))
             return
 
-        self.log("INFO", "Reading GRBL settings...")
+        self.log("INFO", t("Reading GRBL settings..."))
 
         try:
             # Send $$ command to get all settings
@@ -1271,27 +1273,26 @@ class UltimateHardwareTestGUI:
 
                             self.grbl_settings[param] = value
 
-                    self.log("SUCCESS", "GRBL settings loaded")
+                    self.log("SUCCESS", t("GRBL settings loaded"))
                 else:
-                    self.log("ERROR", "Failed to read GRBL settings")
+                    self.log("ERROR", t("Failed to read GRBL settings"))
             else:
-                self.log("ERROR", "GRBL command interface not available")
+                self.log("ERROR", t("GRBL command interface not available"))
 
         except Exception as e:
-            self.log("ERROR", f"Error reading settings: {str(e)}")
+            self.log("ERROR", t("Error reading settings: {error}", error=str(e)))
 
     def write_grbl_settings(self):
         """Write modified GRBL settings"""
         if not self.grbl_connected:
-            self.log("WARNING", "GRBL not connected")
+            self.log("WARNING", t("GRBL not connected"))
             return
 
-        if not messagebox.askyesno("Apply Settings",
-                                  "Apply changes to GRBL configuration?\n\n" +
-                                  "WARNING: Incorrect settings can damage hardware!"):
+        if not messagebox.askyesno(t("Apply Settings"),
+                                  t("Apply changes to GRBL configuration?\n\nWARNING: Incorrect settings can damage hardware!")):
             return
 
-        self.log("INFO", "Applying GRBL settings...")
+        self.log("INFO", t("Applying GRBL settings..."))
 
         try:
             changes_made = False
@@ -1302,94 +1303,93 @@ class UltimateHardwareTestGUI:
                     if new_value != self.grbl_settings[param]:
                         # Send setting command
                         command = f"{param}={new_value}"
-                        self.log("INFO", f"Setting {command}")
+                        self.log("INFO", t("Setting {command}", command=command))
 
                         if hasattr(self.hardware.grbl, '_send_command'):
                             response = self.hardware.grbl._send_command(command)
 
                             if response and "ok" in response.lower():
-                                self.log("SUCCESS", f"Set {param} = {new_value}")
+                                self.log("SUCCESS", t("Set {param} = {value}", param=param, value=new_value))
                                 self.grbl_settings[param] = new_value
                                 changes_made = True
                             else:
-                                self.log("ERROR", f"Failed to set {param}")
+                                self.log("ERROR", t("Failed to set {param}", param=param))
 
             if changes_made:
-                self.log("SUCCESS", "Settings applied successfully")
+                self.log("SUCCESS", t("Settings applied successfully"))
                 # Re-read settings to confirm
                 self.root.after(500, self.read_grbl_settings)
             else:
-                self.log("INFO", "No changes to apply")
+                self.log("INFO", t("No changes to apply"))
 
         except Exception as e:
-            self.log("ERROR", f"Error applying settings: {str(e)}")
+            self.log("ERROR", t("Error applying settings: {error}", error=str(e)))
 
     def reset_grbl_settings(self):
         """Reset GRBL to default settings"""
         if not self.grbl_connected:
-            self.log("WARNING", "GRBL not connected")
+            self.log("WARNING", t("GRBL not connected"))
             return
 
-        if not messagebox.askyesno("Reset Settings",
-                                  "Reset GRBL to factory defaults?\n\n" +
-                                  "This will reset ALL settings!"):
+        if not messagebox.askyesno(t("Reset Settings"),
+                                  t("Reset GRBL to factory defaults?\n\nThis will reset ALL settings!")):
             return
 
-        self.log("WARNING", "Resetting GRBL to defaults...")
+        self.log("WARNING", t("Resetting GRBL to defaults..."))
 
         try:
             if hasattr(self.hardware.grbl, '_send_command'):
                 response = self.hardware.grbl._send_command("$RST=$")
 
                 if response:
-                    self.log("SUCCESS", "GRBL reset to defaults")
+                    self.log("SUCCESS", t("GRBL reset to defaults"))
                     # Re-read settings
                     self.root.after(500, self.read_grbl_settings)
                 else:
-                    self.log("ERROR", "Failed to reset GRBL")
+                    self.log("ERROR", t("Failed to reset GRBL"))
 
         except Exception as e:
-            self.log("ERROR", f"Error resetting GRBL: {str(e)}")
+            self.log("ERROR", t("Error resetting GRBL: {error}", error=str(e)))
 
     def unlock_grbl(self):
         """Unlock GRBL"""
         if not self.grbl_connected:
-            self.log("WARNING", "GRBL not connected")
+            self.log("WARNING", t("GRBL not connected"))
             return
 
-        self.log("INFO", "Unlocking GRBL...")
+        self.log("INFO", t("Unlocking GRBL..."))
 
         try:
             if hasattr(self.hardware.grbl, '_send_command'):
                 response = self.hardware.grbl._send_command("$X")
 
                 if response and "ok" in response.lower():
-                    self.log("SUCCESS", "GRBL unlocked")
+                    self.log("SUCCESS", t("GRBL unlocked"))
                 else:
-                    self.log("ERROR", "Failed to unlock GRBL")
+                    self.log("ERROR", t("Failed to unlock GRBL"))
 
         except Exception as e:
-            self.log("ERROR", f"Error unlocking GRBL: {str(e)}")
+            self.log("ERROR", t("Error unlocking GRBL: {error}", error=str(e)))
 
     def home_grbl(self):
         """Home GRBL"""
         if not self.grbl_connected:
-            self.log("WARNING", "GRBL not connected")
+            self.log("WARNING", t("GRBL not connected"))
             return
 
-        self.log("INFO", "Homing GRBL...")
+        self.log("INFO", t("Homing GRBL..."))
 
         try:
             if hasattr(self.hardware.grbl, '_send_command'):
                 response = self.hardware.grbl._send_command("$H", timeout=30)
 
                 if response and "ok" in response.lower():
-                    self.log("SUCCESS", "GRBL homing completed")
+                    self.log("SUCCESS", t("GRBL homing completed"))
                 else:
-                    self.log("ERROR", "GRBL homing failed")
+                    self.log("ERROR", t("GRBL homing failed"))
 
         except Exception as e:
-            self.log("ERROR", f"Error homing GRBL: {str(e)}")
+            self.log("ERROR", t("Error homing GRBL: {error}", error=str(e)))
 
     def insert_command(self, command):
         """Insert a command template into the command entry"""
@@ -1402,14 +1402,14 @@ class UltimateHardwareTestGUI:
     def send_grbl_command(self):
         """Send direct GRBL command"""
         if not self.grbl_connected:
-            self.log("WARNING", "GRBL not connected")
+            self.log("WARNING", t("GRBL not connected"))
             return
 
         command = self.grbl_command_entry.get().strip()
         if not command:
             return
 
-        self.log("GRBL", f"Sending: {command}")
+        self.log("GRBL", t("Sending: {command}", command=command))
 
         try:
             if hasattr(self.hardware.grbl, '_send_command'):
@@ -1418,23 +1418,23 @@ class UltimateHardwareTestGUI:
                 if response:
                     self.grbl_response_text.insert(tk.END, f"\n> {command}\n{response}\n")
                     self.grbl_response_text.see(tk.END)
-                    self.log("GRBL", f"Response: {response.replace(chr(10), ' ')}")
+                    self.log("GRBL", t("Response: {response}", response=response.replace(chr(10), ' ')))
                 else:
-                    self.grbl_response_text.insert(tk.END, f"\n> {command}\n[No response]\n")
+                    self.grbl_response_text.insert(tk.END, f"\n> {command}\n[{t('No response')}]\n")
                     self.grbl_response_text.see(tk.END)
-                    self.log("WARNING", "No response from GRBL")
+                    self.log("WARNING", t("No response from GRBL"))
 
             # Clear command entry
             self.grbl_command_entry.delete(0, tk.END)
 
         except Exception as e:
-            self.log("ERROR", f"Error sending command: {str(e)}")
+            self.log("ERROR", t("Error sending command: {error}", error=str(e)))
 
     # Console methods
     def clear_log(self):
         """Clear the console log"""
         self.console_text.delete(1.0, tk.END)
-        self.log("INFO", "Log cleared")
+        self.log("INFO", t("Log cleared"))
 
     def save_log(self):
         """Save log to file"""
@@ -1450,14 +1450,14 @@ class UltimateHardwareTestGUI:
             try:
                 with open(filename, 'w') as f:
                     f.write(self.console_text.get(1.0, tk.END))
-                self.log("SUCCESS", f"Log saved to {filename}")
+                self.log("SUCCESS", t("Log saved to {filename}", filename=filename))
             except Exception as e:
-                self.log("ERROR", f"Failed to save log: {str(e)}")
+                self.log("ERROR", t("Failed to save log: {error}", error=str(e)))
 
     def on_closing(self):
         """Handle window closing"""
         if self.is_connected:
-            if messagebox.askokcancel("Quit", "Disconnect hardware and quit?"):
+            if messagebox.askokcancel(t("Quit"), t("Disconnect hardware and quit?")):
                 self.log_processor_running = False
                 self.disconnect_hardware()
                 self.root.destroy()

@@ -3,6 +3,7 @@ from tkinter import ttk
 import json
 import serial.tools.list_ports
 from core.logger import get_logger
+from core.translations import t
 
 
 class HardwareSettingsPanel:
@@ -17,7 +18,7 @@ class HardwareSettingsPanel:
         # Create main frame
         self.frame = tk.LabelFrame(
             parent_frame,
-            text="⚙️ Hardware Settings",
+            text=t("⚙️ Hardware Settings"),
             font=('Arial', 10, 'bold'),
             bg='#E8F4F8',
             fg='black',
@@ -59,7 +60,7 @@ class HardwareSettingsPanel:
         # Mode label
         tk.Label(
             mode_frame,
-            text="Hardware Mode:",
+            text=t("Hardware Mode:"),
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
             fg='black'
@@ -70,7 +71,7 @@ class HardwareSettingsPanel:
 
         self.sim_radio = tk.Radiobutton(
             mode_frame,
-            text="🖥️ Simulation",
+            text=t("🖥️ Simulation"),
             variable=self.mode_var,
             value="simulation",
             command=self.on_mode_changed,
@@ -83,7 +84,7 @@ class HardwareSettingsPanel:
 
         self.real_radio = tk.Radiobutton(
             mode_frame,
-            text="🔧 Real Hardware",
+            text=t("🔧 Real Hardware"),
             variable=self.mode_var,
             value="real",
             command=self.on_mode_changed,
@@ -103,7 +104,7 @@ class HardwareSettingsPanel:
         # Port label
         tk.Label(
             port_frame,
-            text="Arduino Port:",
+            text=t("Arduino Port:"),
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
             fg='black'
@@ -145,7 +146,7 @@ class HardwareSettingsPanel:
 
         self.status_label = tk.Label(
             status_frame,
-            text="● Simulation Mode Active",
+            text=t("● Simulation Mode Active"),
             font=('Arial', 9),
             bg='#E8F4F8',
             fg='#27AE60'
@@ -160,7 +161,7 @@ class HardwareSettingsPanel:
         # Apply button
         self.apply_btn = tk.Button(
             button_frame,
-            text="✓ Apply Settings",
+            text=t("✓ Apply Settings"),
             command=self.apply_settings,
             font=('Arial', 9, 'bold'),
             bg='#27AE60',
@@ -175,7 +176,7 @@ class HardwareSettingsPanel:
         # Save button
         self.save_btn = tk.Button(
             button_frame,
-            text="💾 Save to Config",
+            text=t("💾 Save to Config"),
             command=self.save_settings,
             font=('Arial', 9),
             bg='#3498DB',
@@ -205,7 +206,7 @@ class HardwareSettingsPanel:
             self.logger.debug(f" Found: {port_desc}", category="gui")
 
         if not port_list:
-            port_list = ["No ports detected"]
+            port_list = [t("No ports detected")]
             self.logger.debug(" No serial ports found", category="gui")
 
         # Update dropdown
@@ -214,10 +215,10 @@ class HardwareSettingsPanel:
         # Select current port if it exists in the list
         if self.current_port in port_list:
             self.port_var.set(self.current_port)
-        elif port_list and port_list[0] != "No ports detected":
+        elif port_list and port_list[0] != t("No ports detected"):
             self.port_var.set(port_list[0])
         else:
-            self.port_var.set("No ports detected")
+            self.port_var.set(t("No ports detected"))
 
         # Update UI state
         self.update_ui_state()
@@ -252,7 +253,7 @@ class HardwareSettingsPanel:
         mode = self.mode_var.get()
 
         # Enable real hardware mode only if a valid port is selected
-        if selected_port and selected_port != "No ports detected":
+        if selected_port and selected_port != t("No ports detected"):
             self.real_radio.config(state=tk.NORMAL)
             port_valid = True
         else:
@@ -265,17 +266,17 @@ class HardwareSettingsPanel:
         # Update status label
         if mode == "simulation":
             self.status_label.config(
-                text="● Simulation Mode Active",
+                text=t("● Simulation Mode Active"),
                 fg='#27AE60'
             )
         elif mode == "real" and port_valid:
             self.status_label.config(
-                text=f"● Real Hardware Mode - Port: {selected_port}",
+                text=t("● Real Hardware Mode - Port: {port}", port=selected_port),
                 fg='#E67E22'
             )
         else:
             self.status_label.config(
-                text="⚠️ Select a valid port to enable Real Hardware Mode",
+                text=t("⚠️ Select a valid port to enable Real Hardware Mode"),
                 fg='#E74C3C'
             )
 
@@ -310,12 +311,14 @@ class HardwareSettingsPanel:
         # Show info message
         from tkinter import messagebox
         messagebox.showinfo(
-            "Settings Applied",
-            f"Hardware settings updated:\n\n"
-            f"Mode: {mode.upper()}\n"
-            f"Port: {selected_port}\n\n"
-            f"⚠️ Please RESTART the application\n"
-            f"to switch hardware modes."
+            t("Settings Applied"),
+            t("Hardware settings updated:\n\n"
+              "Mode: {mode}\n"
+              "Port: {port}\n\n"
+              "⚠️ Please RESTART the application\n"
+              "to switch hardware modes.",
+              mode=mode.upper(),
+              port=selected_port)
         )
 
         # Disable buttons after applying
@@ -356,12 +359,14 @@ class HardwareSettingsPanel:
             # Show success message
             from tkinter import messagebox
             messagebox.showinfo(
-                "Settings Saved",
-                f"Hardware settings saved to config:\n\n"
-                f"Mode: {mode.upper()}\n"
-                f"Port: {selected_port}\n\n"
-                f"⚠️ Please RESTART the application\n"
-                f"to switch hardware modes."
+                t("Settings Saved"),
+                t("Hardware settings saved to config:\n\n"
+                  "Mode: {mode}\n"
+                  "Port: {port}\n\n"
+                  "⚠️ Please RESTART the application\n"
+                  "to switch hardware modes.",
+                  mode=mode.upper(),
+                  port=selected_port)
             )
 
             # Disable buttons after saving
@@ -372,8 +377,8 @@ class HardwareSettingsPanel:
             self.logger.error(f" Error saving settings: {e}", category="gui")
             from tkinter import messagebox
             messagebox.showerror(
-                "Save Error",
-                f"Failed to save settings:\n{e}"
+                t("Save Error"),
+                t("Failed to save settings:\n{error}", error=e)
             )
 
     def get_current_config(self):

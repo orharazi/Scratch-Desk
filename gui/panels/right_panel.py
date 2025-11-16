@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.logger import get_logger
+from core.translations import t
 
 
 class RightPanel:
@@ -153,12 +154,12 @@ class RightPanel:
         self.create_scrollable_frame()
         
         # Title with responsive font
-        self.title_label = tk.Label(self.scrollable_frame, text="CONTROLS & STATUS", font=self.title_font,
+        self.title_label = tk.Label(self.scrollable_frame, text=t("CONTROLS & STATUS"), font=self.title_font,
                 bg='lightblue')
         self.title_label.pack(pady=3)
 
         # Generate Steps Button with responsive font and sizing
-        self.gen_steps_btn = tk.Button(self.scrollable_frame, text="Generate Steps", command=self.generate_steps,
+        self.gen_steps_btn = tk.Button(self.scrollable_frame, text=t("Generate Steps"), command=self.generate_steps,
                  bg='yellow', fg='darkblue', font=self.button_font, height=1)
         self.gen_steps_btn.pack(fill=tk.X, padx=10, pady=3)
         
@@ -166,21 +167,21 @@ class RightPanel:
         nav_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
         nav_frame.pack(fill=tk.X, padx=10, pady=3)
 
-        tk.Label(nav_frame, text="Step Navigation:", font=('Arial', 9, 'bold'),
+        tk.Label(nav_frame, text=t("Step Navigation:"), font=('Arial', 9, 'bold'),
                 bg='lightblue').pack()
 
         nav_buttons = tk.Frame(nav_frame, bg='lightblue')
         nav_buttons.pack(fill=tk.X, pady=2)
 
-        self.prev_btn = tk.Button(nav_buttons, text="◄ Prev", command=self.prev_step,
+        self.prev_btn = tk.Button(nav_buttons, text=t("◄ Prev"), command=self.prev_step,
                                  state=tk.DISABLED, width=8, font=('Arial', 8))
         self.prev_btn.pack(side=tk.LEFT)
 
-        self.next_btn = tk.Button(nav_buttons, text="Next ►", command=self.next_step,
+        self.next_btn = tk.Button(nav_buttons, text=t("Next ►"), command=self.next_step,
                                  state=tk.DISABLED, width=8, font=('Arial', 8))
         self.next_btn.pack(side=tk.RIGHT)
 
-        self.step_info_label = tk.Label(nav_frame, text="No steps loaded",
+        self.step_info_label = tk.Label(nav_frame, text=t("No steps loaded"),
                                        bg='lightblue', font=('Arial', 8), wraplength=250)
         self.step_info_label.pack(pady=2)
         
@@ -188,22 +189,22 @@ class RightPanel:
         details_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
         details_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=2)
 
-        tk.Label(details_frame, text="Steps Queue:", font=('Arial', 9, 'bold'),
+        tk.Label(details_frame, text=t("Steps Queue:"), font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
 
         # Create tabbed view for current step vs all steps
         notebook = ttk.Notebook(details_frame)
         notebook.pack(fill=tk.BOTH, expand=True, pady=2)
-        
+
         # Current Step Tab
         current_tab = tk.Frame(notebook, bg='white')
-        notebook.add(current_tab, text='Current')
+        notebook.add(current_tab, text=t('Current'))
         
         # Current step info with better formatting - more compact
         current_info_frame = tk.Frame(current_tab, bg='lightgray', relief=tk.RAISED, bd=2)
         current_info_frame.pack(fill=tk.X, padx=5, pady=3)
 
-        self.current_step_label = tk.Label(current_info_frame, text="No step selected",
+        self.current_step_label = tk.Label(current_info_frame, text=t("No step selected"),
                                           font=('Arial', 10, 'bold'), bg='lightgray', fg='darkblue',
                                           wraplength=250)
         self.current_step_label.pack(pady=3)
@@ -218,7 +219,7 @@ class RightPanel:
 
         # All Steps Tab
         all_steps_tab = tk.Frame(notebook, bg='white')
-        notebook.add(all_steps_tab, text='All Steps')
+        notebook.add(all_steps_tab, text=t('All Steps'))
 
         # Steps queue listbox with better visibility - more compact
         queue_frame = tk.Frame(all_steps_tab, bg='white')
@@ -234,7 +235,7 @@ class RightPanel:
         queue_scroll.config(command=self.steps_listbox.yview)
 
         # Selected step details (separate from current step details)
-        selected_details_label = tk.Label(all_steps_tab, text="Selected Step Details:",
+        selected_details_label = tk.Label(all_steps_tab, text=t("Selected Step Details:"),
                                          font=('Arial', 9, 'bold'), bg='white', fg='darkblue')
         selected_details_label.pack(pady=(5, 2))
 
@@ -245,7 +246,7 @@ class RightPanel:
         self.selected_step_details.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=2)
         self.selected_step_details.config(yscrollcommand=selected_scroll.set)
         selected_scroll.config(command=self.selected_step_details.yview)
-        self.selected_step_details.insert(1.0, "Click on a step to view details...")
+        self.selected_step_details.insert(1.0, t("Click on a step to view details..."))
         self.selected_step_details.config(state=tk.DISABLED)
 
         # Bind listbox selection to show step details
@@ -258,39 +259,39 @@ class RightPanel:
         exec_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
         exec_frame.pack(fill=tk.X, padx=10, pady=3)
 
-        tk.Label(exec_frame, text="Execution:", font=('Arial', 9, 'bold'),
+        tk.Label(exec_frame, text=t("Execution:"), font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
 
         # Execution buttons in single row - Compact
         button_row1 = tk.Frame(exec_frame, bg='lightblue')
         button_row1.pack(pady=2)
 
-        self.run_btn = tk.Button(button_row1, text="▶ RUN", command=self.run_execution,
+        self.run_btn = tk.Button(button_row1, text=t("▶ RUN"), command=self.run_execution,
                                 bg='darkgreen', fg='white', font=('Arial', 7, 'bold'),
                                 width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                 activebackground='green', activeforeground='white')
         self.run_btn.pack(side=tk.LEFT, padx=1)
 
-        self.pause_btn = tk.Button(button_row1, text="⏸ PAUSE", command=self.pause_execution,
+        self.pause_btn = tk.Button(button_row1, text=t("⏸ PAUSE"), command=self.pause_execution,
                                   bg='darkorange', fg='black', font=('Arial', 7, 'bold'),
                                   width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                   activebackground='orange', activeforeground='black')
         self.pause_btn.pack(side=tk.LEFT, padx=1)
 
-        self.stop_btn = tk.Button(button_row1, text="⏹ STOP", command=self.stop_execution,
+        self.stop_btn = tk.Button(button_row1, text=t("⏹ STOP"), command=self.stop_execution,
                                  bg='darkred', fg='black', font=('Arial', 7, 'bold'),
                                  width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                  activebackground='red', activeforeground='white')
         self.stop_btn.pack(side=tk.LEFT, padx=1)
 
-        self.reset_btn = tk.Button(button_row1, text="🔄 RESET", command=self.reset_execution,
+        self.reset_btn = tk.Button(button_row1, text=t("🔄 RESET"), command=self.reset_execution,
                                   bg='royalblue', fg='black', font=('Arial', 7, 'bold'),
                                   width=6, relief=tk.RAISED, bd=2,
                                   activebackground='blue', activeforeground='white')
         self.reset_btn.pack(side=tk.LEFT, padx=1)
 
         # Progress indicator (compact) with better visibility
-        self.progress_label = tk.Label(exec_frame, text="Ready",
+        self.progress_label = tk.Label(exec_frame, text=t("Ready"),
                                       bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'))
         self.progress_label.pack(pady=1)
 
@@ -300,14 +301,14 @@ class RightPanel:
         self.test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Title
-        tk.Label(self.test_controls_frame, text="🧪 TEST CONTROLS", font=('Arial', 9, 'bold'),
+        tk.Label(self.test_controls_frame, text=t("🧪 TEST CONTROLS"), font=('Arial', 9, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(pady=(5, 8))
 
         # EDGE SENSORS Section
         sensors_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
         sensors_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
-        tk.Label(sensors_frame, text="📡 Sensors", font=('Arial', 8, 'bold'),
+        tk.Label(sensors_frame, text=t("📡 Sensors"), font=('Arial', 8, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
 
         # X and Y Sensors in separate rows
@@ -317,20 +318,20 @@ class RightPanel:
         # X Sensors (Rows) - Left and Right
         tk.Label(sensors_grid, text="X:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=0, column=0, sticky='w')
-        tk.Button(sensors_grid, text="◄Left", bg='#FF6600', fg='black',
+        tk.Button(sensors_grid, text=t("◄Left"), bg='#FF6600', fg='black',
                  command=self.trigger_x_left, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=0, column=1, padx=2)
-        tk.Button(sensors_grid, text="Right►", bg='#FF6600', fg='black',
+        tk.Button(sensors_grid, text=t("Right►"), bg='#FF6600', fg='black',
                  command=self.trigger_x_right, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=0, column=2, padx=2)
 
         # Y Sensors (Lines) - Top and Bottom (separate row)
         tk.Label(sensors_grid, text="Y:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=1, column=0, sticky='w')
-        tk.Button(sensors_grid, text="▲Top", bg='#8800FF', fg='black',
+        tk.Button(sensors_grid, text=t("▲Top"), bg='#8800FF', fg='black',
                  command=self.trigger_y_top, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=1, column=1, padx=2)
-        tk.Button(sensors_grid, text="Bottom▼", bg='#8800FF', fg='black',
+        tk.Button(sensors_grid, text=t("Bottom▼"), bg='#8800FF', fg='black',
                  command=self.trigger_y_bottom, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=1, column=2, padx=2)
 
@@ -341,7 +342,7 @@ class RightPanel:
         limit_switches_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
         limit_switches_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
-        tk.Label(limit_switches_frame, text="🔌 Limit Switches", font=('Arial', 8, 'bold'),
+        tk.Label(limit_switches_frame, text=t("🔌 Limit Switches"), font=('Arial', 8, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
 
         ls_grid = tk.Frame(limit_switches_frame, bg='#F0F8FF')
@@ -351,11 +352,11 @@ class RightPanel:
         tk.Label(ls_grid, text="Y:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=0, column=0, sticky='w')
         self.y_top_ls_var = tk.BooleanVar()
-        tk.Checkbutton(ls_grid, text="Top", variable=self.y_top_ls_var,
+        tk.Checkbutton(ls_grid, text=t("Top"), variable=self.y_top_ls_var,
                       command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=0, column=1, padx=2, sticky='w')
         self.y_bottom_ls_var = tk.BooleanVar()
-        tk.Checkbutton(ls_grid, text="Bottom", variable=self.y_bottom_ls_var,
+        tk.Checkbutton(ls_grid, text=t("Bottom"), variable=self.y_bottom_ls_var,
                       command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=0, column=2, padx=2, sticky='w')
 
@@ -363,19 +364,19 @@ class RightPanel:
         tk.Label(ls_grid, text="X:", bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=1, column=0, sticky='w')
         self.x_right_ls_var = tk.BooleanVar()
-        tk.Checkbutton(ls_grid, text="Right", variable=self.x_right_ls_var,
+        tk.Checkbutton(ls_grid, text=t("Right"), variable=self.x_right_ls_var,
                       command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=1, column=1, padx=2, sticky='w')
         self.x_left_ls_var = tk.BooleanVar()
-        tk.Checkbutton(ls_grid, text="Left", variable=self.x_left_ls_var,
+        tk.Checkbutton(ls_grid, text=t("Left"), variable=self.x_left_ls_var,
                       command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=1, column=2, padx=2, sticky='w')
 
         # Rows Limit Switch (separate row)
-        tk.Label(ls_grid, text="Row:", bg='#F0F8FF', fg='#003366',
+        tk.Label(ls_grid, text=t("Row:"), bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=2, column=0, sticky='w')
         self.rows_ls_var = tk.BooleanVar(value=False)  # Default unchecked (UP)
-        tk.Checkbutton(ls_grid, text="Limit Switch", variable=self.rows_ls_var,
+        tk.Checkbutton(ls_grid, text=t("Limit Switch"), variable=self.rows_ls_var,
                       command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=2, column=1, padx=2, sticky='w')
 
@@ -386,37 +387,37 @@ class RightPanel:
         pistons_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
         pistons_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
-        tk.Label(pistons_frame, text="🔧 Pistons (↓=checked)", font=('Arial', 8, 'bold'),
+        tk.Label(pistons_frame, text=t("🔧 Pistons (↓=checked)"), font=('Arial', 8, 'bold'),
                 bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
 
         # Lines Pistons in grid
         lines_pist_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
         lines_pist_frame.pack(fill=tk.X)
 
-        tk.Label(lines_pist_frame, text="Lines:", bg='#F0F8FF', fg='#003366',
+        tk.Label(lines_pist_frame, text=t("Lines:"), bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=0, column=0, sticky='w')
         self.lines_marker_var = tk.BooleanVar()
-        tk.Checkbutton(lines_pist_frame, text="Marker", variable=self.lines_marker_var,
+        tk.Checkbutton(lines_pist_frame, text=t("Marker"), variable=self.lines_marker_var,
                       command=self.toggle_line_marker, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=1, padx=2)
         self.lines_cutter_var = tk.BooleanVar()
-        tk.Checkbutton(lines_pist_frame, text="Cutter", variable=self.lines_cutter_var,
+        tk.Checkbutton(lines_pist_frame, text=t("Cutter"), variable=self.lines_cutter_var,
                       command=self.toggle_line_cutter, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=2, padx=2)
         self.lines_motor_var = tk.BooleanVar()
-        tk.Checkbutton(lines_pist_frame, text="Motor", variable=self.lines_motor_var,
+        tk.Checkbutton(lines_pist_frame, text=t("Motor"), variable=self.lines_motor_var,
                       command=self.toggle_line_motor, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=3, padx=2)
 
         # Rows Pistons
-        tk.Label(lines_pist_frame, text="Rows:", bg='#F0F8FF', fg='#003366',
+        tk.Label(lines_pist_frame, text=t("Rows:"), bg='#F0F8FF', fg='#003366',
                 font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=1, column=0, sticky='w')
         self.rows_marker_var = tk.BooleanVar()
-        tk.Checkbutton(lines_pist_frame, text="Marker", variable=self.rows_marker_var,
+        tk.Checkbutton(lines_pist_frame, text=t("Marker"), variable=self.rows_marker_var,
                       command=self.toggle_row_marker, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=1, padx=2)
         self.rows_cutter_var = tk.BooleanVar()
-        tk.Checkbutton(lines_pist_frame, text="Cutter", variable=self.rows_cutter_var,
+        tk.Checkbutton(lines_pist_frame, text=t("Cutter"), variable=self.rows_cutter_var,
                       command=self.toggle_row_cutter, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=2, padx=2)
 
@@ -470,11 +471,13 @@ class RightPanel:
             # Get step count summary
             summary = get_step_count_summary(self.main_app.current_program)
             self.step_info_label.config(
-                text=f"Generated {len(self.main_app.steps)} steps ({summary['total_repeats']} repetitions)"
+                text=t("Generated {steps} steps ({repeats} repetitions)",
+                      steps=len(self.main_app.steps),
+                      repeats=summary['total_repeats'])
             )
-            
+
         except Exception as e:
-            self.step_info_label.config(text=f"Error generating steps: {e}")
+            self.step_info_label.config(text=t("Error generating steps: {error}", error=e))
     
     def update_step_display(self):
         """Update the step display with current steps"""
@@ -519,20 +522,23 @@ class RightPanel:
         # Update current step info
         if self.main_app.steps and 0 <= current_index < len(self.main_app.steps):
             current_step = self.main_app.steps[current_index]
-            self.current_step_label.config(text=f"Step {current_index + 1}/{len(self.main_app.steps)}: {current_step['operation']}")
-            
+            self.current_step_label.config(text=t("Step {current}/{total}: {operation}",
+                                                 current=current_index + 1,
+                                                 total=len(self.main_app.steps),
+                                                 operation=current_step['operation']))
+
             # Update step details - fix newline parsing
-            details_text = f"Operation: {current_step['operation']}\n"
-            details_text += f"Description: {current_step['description']}\n"
+            details_text = t("Operation: {op}\n", op=current_step['operation'])
+            details_text += t("Description: {desc}\n", desc=current_step['description'])
             if current_step.get('parameters'):
-                details_text += f"Parameters: {current_step['parameters']}"
+                details_text += t("Parameters: {params}", params=current_step['parameters'])
 
             self.step_details.config(state=tk.NORMAL)
             self.step_details.delete(1.0, tk.END)
             self.step_details.insert(1.0, details_text)
             self.step_details.config(state=tk.DISABLED)
         else:
-            self.current_step_label.config(text="No step selected")
+            self.current_step_label.config(text=t("No step selected"))
             self.step_details.config(state=tk.NORMAL)
             self.step_details.delete(1.0, tk.END)
             self.step_details.config(state=tk.DISABLED)
@@ -546,12 +552,14 @@ class RightPanel:
                 step = self.main_app.steps[step_index]
 
                 # Show step details in the SELECTED step details widget (not current step widget)
-                details_text = f"Step {step_index + 1}/{len(self.main_app.steps)}\n\n"
-                details_text += f"Operation: {step['operation']}\n\n"
-                details_text += f"Description: {step['description']}\n\n"
+                details_text = t("Step {current}/{total}\n\n",
+                               current=step_index + 1,
+                               total=len(self.main_app.steps))
+                details_text += t("Operation: {op}\n\n", op=step['operation'])
+                details_text += t("Description: {desc}\n\n", desc=step['description'])
 
                 if step.get('parameters'):
-                    details_text += f"Parameters:\n"
+                    details_text += t("Parameters:\n")
                     for key, value in step['parameters'].items():
                         details_text += f"  {key}: {value}\n"
 
@@ -606,7 +614,7 @@ class RightPanel:
             self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
             self.pause_btn.config(state=tk.DISABLED)
             self.stop_btn.config(state=tk.DISABLED)
-            self.main_app.operation_label.config(text="Execution Stopped", fg='red')
+            self.main_app.operation_label.config(text=t("Execution Stopped"), fg='red')
     
     def reset_execution(self):
         """Reset execution and UI state"""
@@ -642,13 +650,13 @@ class RightPanel:
         # Reset progress bar
         if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
             self.main_app.progress['value'] = 0
-            self.main_app.progress_text.config(text="0% Complete")
-        
+            self.main_app.progress_text.config(text=t("0% Complete"))
+
         # Reset operation label
-        self.main_app.operation_label.config(text="System Ready", fg='blue')
-        
+        self.main_app.operation_label.config(text=t("System Ready"), fg='blue')
+
         # Reset progress label
-        self.progress_label.config(text="Ready", fg='darkblue')
+        self.progress_label.config(text=t("Ready"), fg='darkblue')
         
         # Reset sensor status label (cancel any pending updates)
         try:
@@ -656,10 +664,10 @@ class RightPanel:
             self.main_app.root.after_cancel()
         except:
             pass  # Ignore if no pending tasks
-        self.sensor_label.config(text="Sensor: Ready", fg='darkgreen')
-        
+        self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen')
+
         # Reset state label
-        self.state_label.config(text="State: Idle", fg='darkred')
+        self.state_label.config(text=t("State: Idle"), fg='darkred')
         
         # Reset canvas and refresh colors to show all as pending
         if hasattr(self.main_app, 'canvas_manager'):
@@ -690,8 +698,8 @@ class RightPanel:
         self.hardware.trigger_x_left_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
-            self.sensor_label.config(text="Sensor: X-Left Triggered", fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+            self.sensor_label.config(text=t("Sensor: X-Left Triggered"), fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -701,8 +709,8 @@ class RightPanel:
         self.hardware.trigger_x_right_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
-            self.sensor_label.config(text="Sensor: X-Right Triggered", fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+            self.sensor_label.config(text=t("Sensor: X-Right Triggered"), fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -712,8 +720,8 @@ class RightPanel:
         self.hardware.trigger_y_top_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
-            self.sensor_label.config(text="Sensor: Y-Top Triggered", fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+            self.sensor_label.config(text=t("Sensor: Y-Top Triggered"), fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -723,8 +731,8 @@ class RightPanel:
         self.hardware.trigger_y_bottom_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
-            self.sensor_label.config(text="Sensor: Y-Bottom Triggered", fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text="Sensor: Ready", fg='darkgreen'))
+            self.sensor_label.config(text=t("Sensor: Y-Bottom Triggered"), fg='red')
+            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -732,7 +740,9 @@ class RightPanel:
     def toggle_ls(self, switch_name):
         """Toggle a limit switch"""
         state = self.hardware.toggle_limit_switch(switch_name)
-        self.logger.debug(f"Limit switch {switch_name} toggled: {'ON' if state else 'OFF'}", category="gui")
+        self.logger.debug(t("Limit switch {name} toggled: {state}",
+                           name=switch_name,
+                           state='ON' if state else 'OFF'), category="gui")
 
         # Force canvas position update to refresh indicators
         if hasattr(self.main_app, 'canvas_manager'):
@@ -831,11 +841,11 @@ class RightPanel:
         if is_real_hardware:
             # Disable all test controls on real hardware
             self._set_frame_state(self.test_controls_frame, tk.DISABLED)
-            self.logger.info("Test controls DISABLED - Real hardware mode active", category="gui")
+            self.logger.info(t("Test controls DISABLED - Real hardware mode active"), category="gui")
         else:
             # Enable test controls in simulation mode
             self._set_frame_state(self.test_controls_frame, tk.NORMAL)
-            self.logger.info("Test controls ENABLED - Simulation mode active", category="gui")
+            self.logger.info(t("Test controls ENABLED - Simulation mode active"), category="gui")
 
     def _set_frame_state(self, frame, state):
         """Recursively set state of all widgets in a frame"""

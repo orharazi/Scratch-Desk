@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from core.logger import get_logger
+from core.translations import t
 
 
 class CenterPanel:
@@ -16,7 +17,7 @@ class CenterPanel:
     def create_widgets(self):
         """Create the canvas and related widgets"""
         # Title
-        tk.Label(self.parent_frame, text="DESK SIMULATION", font=('Arial', 12, 'bold')).pack(pady=5)
+        tk.Label(self.parent_frame, text=t("DESK SIMULATION"), font=('Arial', 12, 'bold')).pack(pady=5)
 
         # Create canvas container with horizontal layout
         canvas_container = tk.Frame(self.parent_frame)
@@ -44,7 +45,7 @@ class CenterPanel:
         self._resize_scheduled = False
 
         # Current Operation Display (below canvas)
-        self.operation_label = tk.Label(self.parent_frame, text="System Ready",
+        self.operation_label = tk.Label(self.parent_frame, text=t("System Ready"),
                                        font=('Arial', 11, 'bold'), fg='blue')
         self.operation_label.pack(pady=5)
 
@@ -98,7 +99,7 @@ class CenterPanel:
         ops_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
         
         # Title
-        tk.Label(ops_frame, text="📋 WORK OPERATIONS STATUS", 
+        tk.Label(ops_frame, text=t("📋 WORK OPERATIONS STATUS"),
                 font=('Arial', 10, 'bold'), bg='lightblue', fg='darkblue').pack(pady=2)
         
         # Operations row
@@ -121,7 +122,7 @@ class CenterPanel:
             "completed": "#AA00AA"
         })
         
-        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 9, 'bold'), 
+        tk.Label(mark_frame, text=t("✏️ MARK"), font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
         
         self.mark_status_frame = tk.Frame(mark_frame, bg='lightblue')
@@ -129,14 +130,14 @@ class CenterPanel:
         
         # Create colored indicators for mark operations
         self.create_status_indicators(self.mark_status_frame, [
-            ("Ready", mark_colors['pending']), ("Working", mark_colors['in_progress']), ("Done", mark_colors['completed'])
+            (t("Ready"), mark_colors['pending']), (t("Working"), mark_colors['in_progress']), (t("Done"), mark_colors['completed'])
         ])
         
         # CUT Operations Column  
         cut_frame = tk.Frame(ops_row, bg='lightblue')
         cut_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 9, 'bold'), 
+        tk.Label(cut_frame, text=t("✂️ CUT"), font=('Arial', 9, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
         
         self.cut_status_frame = tk.Frame(cut_frame, bg='lightblue')
@@ -144,7 +145,7 @@ class CenterPanel:
         
         # Create colored indicators for cut operations
         self.create_status_indicators(self.cut_status_frame, [
-            ("Ready", cut_colors['pending']), ("Working", cut_colors['in_progress']), ("Done", cut_colors['completed'])
+            (t("Ready"), cut_colors['pending']), (t("Working"), cut_colors['in_progress']), (t("Done"), cut_colors['completed'])
         ])
     
     def create_work_operations_status(self, parent):
@@ -155,7 +156,7 @@ class CenterPanel:
         ops_frame.pack_propagate(False)  # Maintain fixed width
 
         # Title
-        tk.Label(ops_frame, text="📋 WORK\nOPERATIONS\nSTATUS",
+        tk.Label(ops_frame, text=t("📋 WORK\nOPERATIONS\nSTATUS"),
                 font=('Arial', 8, 'bold'), bg='lightblue', fg='darkblue').pack(pady=5)
 
         operation_colors = self.main_app.settings.get("operation_colors", {})
@@ -174,32 +175,32 @@ class CenterPanel:
         mark_frame = tk.Frame(ops_frame, bg='lightblue')
         mark_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 8, 'bold'),
+        tk.Label(mark_frame, text=t("✏️ MARK"), font=('Arial', 8, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
 
         self.mark_status_frame = tk.Frame(mark_frame, bg='lightblue')
         self.mark_status_frame.pack(pady=2)
 
         self.create_status_indicators(self.mark_status_frame, [
-            ("Ready", mark_colors['pending']),
-            ("Work", mark_colors['in_progress']),
-            ("Done", mark_colors['completed'])
+            (t("Ready"), mark_colors['pending']),
+            (t("Work"), mark_colors['in_progress']),
+            (t("Done"), mark_colors['completed'])
         ])
 
         # CUT Operations
         cut_frame = tk.Frame(ops_frame, bg='lightblue')
         cut_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 8, 'bold'),
+        tk.Label(cut_frame, text=t("✂️ CUT"), font=('Arial', 8, 'bold'),
                 bg='lightblue', fg='darkblue').pack()
 
         self.cut_status_frame = tk.Frame(cut_frame, bg='lightblue')
         self.cut_status_frame.pack(pady=2)
 
         self.create_status_indicators(self.cut_status_frame, [
-            ("Ready", cut_colors['pending']),
-            ("Work", cut_colors['in_progress']),
-            ("Done", cut_colors['completed'])
+            (t("Ready"), cut_colors['pending']),
+            (t("Work"), cut_colors['in_progress']),
+            (t("Done"), cut_colors['completed'])
         ])
 
     def create_status_indicators(self, parent, status_list):
@@ -239,7 +240,7 @@ class CenterPanel:
         # Title row - slightly larger
         title_label = tk.Label(
             overlay_frame,
-            text="📋 WORK OPERATIONS STATUS",
+            text=t("📋 WORK OPERATIONS STATUS"),
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
             fg='black',
@@ -256,16 +257,16 @@ class CenterPanel:
         mark_frame = tk.Frame(ops_row, bg='#E8F4F8')
         mark_frame.pack(side=tk.LEFT, padx=8)
 
-        tk.Label(mark_frame, text="✏️ MARK", font=('Arial', 8, 'bold'),
+        tk.Label(mark_frame, text=t("✏️ MARK"), font=('Arial', 8, 'bold'),
                 bg='#E8F4F8', fg='black').pack()
 
         mark_indicators = tk.Frame(mark_frame, bg='#E8F4F8')
         mark_indicators.pack(pady=2)
 
         # Horizontal compact indicators for MARK - slightly larger
-        for status_text, color in [("Ready", mark_colors['pending']),
-                                   ("Work", mark_colors['in_progress']),
-                                   ("Done", mark_colors['completed'])]:
+        for status_text, color in [(t("Ready"), mark_colors['pending']),
+                                   (t("Work"), mark_colors['in_progress']),
+                                   (t("Done"), mark_colors['completed'])]:
             ind = tk.Frame(mark_indicators, bg='#E8F4F8')
             ind.pack(side=tk.LEFT, padx=3)
 
@@ -285,16 +286,16 @@ class CenterPanel:
         cut_frame = tk.Frame(ops_row, bg='#E8F4F8')
         cut_frame.pack(side=tk.LEFT, padx=8)
 
-        tk.Label(cut_frame, text="✂️ CUT", font=('Arial', 8, 'bold'),
+        tk.Label(cut_frame, text=t("✂️ CUT"), font=('Arial', 8, 'bold'),
                 bg='#E8F4F8', fg='black').pack()
 
         cut_indicators = tk.Frame(cut_frame, bg='#E8F4F8')
         cut_indicators.pack(pady=2)
 
         # Horizontal compact indicators for CUT - slightly larger
-        for status_text, color in [("Ready", cut_colors['pending']),
-                                   ("Work", cut_colors['in_progress']),
-                                   ("Done", cut_colors['completed'])]:
+        for status_text, color in [(t("Ready"), cut_colors['pending']),
+                                   (t("Work"), cut_colors['in_progress']),
+                                   (t("Done"), cut_colors['completed'])]:
             ind = tk.Frame(cut_indicators, bg='#E8F4F8')
             ind.pack(side=tk.LEFT, padx=3)
 

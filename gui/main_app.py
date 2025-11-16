@@ -7,6 +7,9 @@ import time
 import os
 import json
 
+# Import translation function
+from core.translations import t
+
 # Import our modules
 from core.csv_parser import CSVParser
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
@@ -26,10 +29,10 @@ from core.logger import get_logger
 
 class ScratchDeskGUI:
     """Main GUI application class"""
-    
+
     def __init__(self, root):
         self.root = root
-        self.root.title("Scratch Desk Control System")
+        self.root.title(t("Scratch Desk Control System"))
         self.root.geometry("1500x1000")
         self.root.minsize(1400, 950)
         self.root.resizable(True, True)
@@ -49,7 +52,7 @@ class ScratchDeskGUI:
 
         # Load settings
         self.settings = self.load_settings()
-        
+
         # Data storage
         self.programs = []
         self.current_program = None
@@ -57,14 +60,14 @@ class ScratchDeskGUI:
         self.csv_parser = CSVParser()
         self.execution_engine = ExecutionEngine()
         self.current_file = None
-        
+
         # GUI state
         self.operation_states = {
             'lines': {},      # Track line marking states: {1: 'pending', 2: 'completed', ...}
             'cuts': {},       # Track cutting states: {'top'/'bottom'/'left'/'right': 'pending'/'completed'}
             'pages': {}       # Track page states: {0: 'pending', 1: 'completed', ...}
         }
-        
+
         # Canvas and drawing objects
         self.work_line_objects = {}  # Store line objects for dynamic updates
         self.canvas_objects = {}  # Store canvas objects for efficient updates
@@ -88,24 +91,24 @@ class ScratchDeskGUI:
         self.canvas_height = 700
         self.actual_canvas_width = 900
         self.actual_canvas_height = 700
-        
+
         # Position tracking
         self.position_update_scheduled = False
-        
+
         # Initialize GUI components
         self.canvas_manager = CanvasManager(self)
         self.execution_controller = ExecutionController(self)
-        
+
         # Create main layout and panels
         self.create_main_layout()
         self.create_panels()
-        
+
         # Set up execution engine callback
         self.execution_engine.set_status_callback(self.on_execution_status)
-        
+
         # Connect canvas manager to execution engine for GUI updates
         self.execution_engine.canvas_manager = self.canvas_manager
-        
+
         # Set execution engine reference in hardware for sensor positioning
         self.hardware.set_execution_engine_reference(self.execution_engine)
 
@@ -114,13 +117,13 @@ class ScratchDeskGUI:
         self.hardware.move_x(0.0)  # Rows motor home position
         self.hardware.move_y(0.0)  # Lines motor home position
         self.canvas_manager.update_position_display()
-        
+
         # Start position update timer
         self.schedule_position_update()
-        
+
         # Initial load
         self.load_csv_file_by_path("data/sample_programs.csv")
-    
+
     def load_settings(self):
         """Load settings from config/settings.json"""
         try:
@@ -143,19 +146,19 @@ class ScratchDeskGUI:
                     "max_display_y": 80
                 }
             }
-    
+
     def load_csv_file_by_path(self, file_path):
         """Load CSV file by path"""
         if os.path.exists(file_path):
             programs, errors = self.csv_parser.load_programs_from_csv(file_path)
-            
+
             if errors:
-                error_msg = "\\n".join(errors[:5])
+                error_msg = "\n".join(errors[:5])
                 if len(errors) > 5:
-                    error_msg += f"\\n... and {len(errors) - 5} more errors"
-                messagebox.showerror("CSV Validation Errors", 
-                                   f"Found {len(errors)} validation errors:\\n{error_msg}")
-            
+                    error_msg += f"\n" + t("... and {count} more errors", count=len(errors) - 5)
+                messagebox.showerror(t("CSV Validation Errors"),
+                                   t("Found {count} validation errors:\n{errors}", count=len(errors), errors=error_msg))
+
             if programs:
                 self.programs = programs
                 self.current_file = file_path
@@ -163,8 +166,8 @@ class ScratchDeskGUI:
                 if programs:
                     self.left_panel.select_program(0)
             else:
-                messagebox.showerror("Error", f"No valid programs found in {file_path}")
-    
+                messagebox.showerror(t("Error"), t("No valid programs found in {file}", file=file_path))
+
     def create_main_layout(self):
         """Create the main window layout - responsive design"""
         # Create main frames with responsive sizing
@@ -182,7 +185,7 @@ class ScratchDeskGUI:
         self.left_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=5)
         self.center_frame.grid(row=0, column=1, sticky="nsew", padx=3, pady=5)
         self.right_frame.grid(row=0, column=2, sticky="nsew", padx=(3,5), pady=5)
-    
+
     def create_panels(self):
         """Create and initialize all GUI panels"""
         self.left_panel = LeftPanel(self, self.left_frame)
@@ -208,12 +211,12 @@ class ScratchDeskGUI:
         # NOW finalize canvas setup after all panels are created and laid out
         self.logger.debug("All panels created, calling finalize_canvas_setup()", category="gui")
         self.center_panel.finalize_canvas_setup()
-    
+
     def schedule_position_update(self):
         """Schedule regular position updates"""
         self.canvas_manager.update_position_display()
         self.root.after(500, self.schedule_position_update)  # Update every 500ms
-    
+
     def on_execution_status(self, status, info=None):
         """Handle execution status updates"""
         self.execution_controller.on_execution_status(status, info)

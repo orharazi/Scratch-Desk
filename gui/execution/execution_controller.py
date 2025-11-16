@@ -3,6 +3,7 @@ import time
 import tkinter as tk
 from tkinter import messagebox
 from core.logger import get_logger
+from core.translations import t
 
 
 class ExecutionController:
@@ -17,21 +18,21 @@ class ExecutionController:
         """Handle execution status updates"""
         if hasattr(self.main_app, 'progress_label'):
             if status == 'running':
-                self.main_app.progress_label.config(text="Execution Running...", fg='green')
+                self.main_app.progress_label.config(text=t("Execution Running..."), fg='green')
             elif status == 'paused':
-                self.main_app.progress_label.config(text="Execution Paused", fg='orange')
+                self.main_app.progress_label.config(text=t("Execution Paused"), fg='orange')
             elif status == 'stopped':
-                self.main_app.progress_label.config(text="Execution Stopped", fg='red')
+                self.main_app.progress_label.config(text=t("Execution Stopped"), fg='red')
             elif status == 'completed':
-                self.main_app.progress_label.config(text="Execution Completed", fg='blue')
+                self.main_app.progress_label.config(text=t("Execution Completed"), fg='blue')
             elif status == 'error':
-                error_msg = info.get('message', 'Unknown error') if info else 'Unknown error'
-                self.main_app.progress_label.config(text=f"Error: {error_msg}", fg='red')
+                error_msg = info.get('message', t('Unknown error')) if info else t('Unknown error')
+                self.main_app.progress_label.config(text=t("Error: {error_msg}", error_msg=error_msg), fg='red')
         
         # Update operation label if available
         if hasattr(self.main_app, 'operation_label'):
             if status == 'step_executing':
-                step_info = info.get('description', 'Executing step...') if info else 'Executing step...'
+                step_info = info.get('description', t('Executing step...')) if info else t('Executing step...')
                 self.main_app.operation_label.config(text=step_info, fg='green')
 
                 # Detect motor operation mode but DON'T track colors yet (wait for completion)
@@ -100,8 +101,8 @@ class ExecutionController:
                         self.main_app.canvas_manager.update_position_display()
                     
             elif status == 'waiting_sensor':
-                sensor_info = info.get('sensor', 'sensor') if info else 'sensor'
-                self.main_app.operation_label.config(text=f"Waiting for {sensor_info} sensor", fg='orange')
+                sensor_info = info.get('sensor', t('sensor')) if info else t('sensor')
+                self.main_app.operation_label.config(text=t("Waiting for {sensor_info} sensor", sensor_info=sensor_info), fg='orange')
         
         # Update progress bar if available
         if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
@@ -114,7 +115,7 @@ class ExecutionController:
                 self.main_app.progress['value'] = progress
                 
                 # Update progress text
-                self.main_app.progress_text.config(text=f"{progress:.1f}% Complete ({step_index}/{total_steps} steps)")
+                self.main_app.progress_text.config(text=t("{progress:.1f}% Complete ({step_index}/{total_steps} steps)", progress=progress, step_index=step_index, total_steps=total_steps))
                 
                 # Update step display to show current step progress
                 if hasattr(self.main_app, 'right_panel'):
@@ -122,7 +123,7 @@ class ExecutionController:
                 
             elif status == 'completed':
                 self.main_app.progress['value'] = 100
-                self.main_app.progress_text.config(text="100% Complete - Execution finished")
+                self.main_app.progress_text.config(text=t("100% Complete - Execution finished"))
                 
                 # Final step display update
                 if hasattr(self.main_app, 'right_panel'):
@@ -131,22 +132,25 @@ class ExecutionController:
             elif status == 'emergency_stop':
                 # EMERGENCY STOP due to safety violation
                 current_progress = self.main_app.progress['value']
-                self.main_app.progress_text.config(text=f"🚨 EMERGENCY STOP - Safety Violation", fg='red')
-                
+                self.main_app.progress_text.config(text=t("🚨 EMERGENCY STOP - Safety Violation"), fg='red')
+
                 # Show emergency stop dialog
-                violation_msg = info.get('violation_message', 'Unknown safety violation')
+                violation_msg = info.get('violation_message', t('Unknown safety violation'))
                 safety_code = info.get('safety_code', '')
                 monitor_type = info.get('monitor_type', 'pre_execution')
-                
+
                 import tkinter.messagebox as messagebox
                 messagebox.showerror(
-                    "🚨 EMERGENCY STOP - Safety Violation",
-                    f"Execution has been immediately stopped due to a safety violation!\n\n"
-                    f"Safety Code: {safety_code}\n"
-                    f"Detection: {monitor_type.replace('_', ' ').title()}\n\n"
-                    f"Details:\n{violation_msg}\n\n"
-                    f"⚠️  All motor movement has been halted to prevent damage.\n"
-                    f"Please correct the safety issue before attempting to continue."
+                    t("🚨 EMERGENCY STOP - Safety Violation"),
+                    t("Execution has been immediately stopped due to a safety violation!\n\n"
+                      "Safety Code: {safety_code}\n"
+                      "Detection: {monitor_type}\n\n"
+                      "Details:\n{violation_msg}\n\n"
+                      "⚠️  All motor movement has been halted to prevent damage.\n"
+                      "Please correct the safety issue before attempting to continue.",
+                      safety_code=safety_code,
+                      monitor_type=monitor_type.replace('_', ' ').title(),
+                      violation_msg=violation_msg)
                 )
                 
                 # Update step display to show emergency stop state
@@ -156,52 +160,52 @@ class ExecutionController:
                 # Update GUI controls to emergency stop state
                 if hasattr(self.main_app, 'right_panel'):
                     # Set emergency stop button states
-                    self.main_app.right_panel.run_btn.config(state='normal', text='🔄 RETRY', bg='orange')
+                    self.main_app.right_panel.run_btn.config(state='normal', text=t('🔄 RETRY'), bg='orange')
                     self.main_app.right_panel.pause_btn.config(state='disabled')
                     self.main_app.right_panel.stop_btn.config(state='disabled')
-                    
+
                     # Show persistent error status in right panel
-                    error_message = f"⚠️  SAFETY VIOLATION: {safety_code}"
+                    error_message = t("⚠️  SAFETY VIOLATION: {safety_code}", safety_code=safety_code)
                     if hasattr(self.main_app.right_panel, 'progress_label'):
                         self.main_app.right_panel.progress_label.config(
                             text=error_message, 
                             fg='red'
                         )
                 
-                self.main_app.operation_label.config(text="🚨 EMERGENCY STOP - Safety Violation", fg='red')
+                self.main_app.operation_label.config(text=t("🚨 EMERGENCY STOP - Safety Violation"), fg='red')
             
             elif status == 'safety_recovered':
                 # Safety violation resolved - auto-resuming
-                message = info.get('message', 'Safety violation resolved')
-                operation_type = info.get('operation_type', 'operation')
-                
+                message = info.get('message', t('Safety violation resolved'))
+                operation_type = info.get('operation_type', t('operation'))
+
                 # Update progress and status to show recovery
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(
-                    text=f"{current_progress:.1f}% - Safety resolved, resuming...", 
+                    text=t("{progress:.1f}% - Safety resolved, resuming...", progress=current_progress),
                     fg='green'
                 )
-                
+
                 # Restore run button to normal state
                 if hasattr(self.main_app, 'right_panel'):
                     self.main_app.right_panel.run_btn.config(
-                        state='disabled', 
-                        text='▶ RUN', 
+                        state='disabled',
+                        text=t('▶ RUN'),
                         bg='darkgreen'
                     )
                     self.main_app.right_panel.pause_btn.config(state='normal')
                     self.main_app.right_panel.stop_btn.config(state='normal')
-                    
+
                     # Clear error status from right panel
                     if hasattr(self.main_app.right_panel, 'progress_label'):
                         self.main_app.right_panel.progress_label.config(
-                            text="✅ Safety violation resolved - Resuming", 
+                            text=t("✅ Safety violation resolved - Resuming"),
                             fg='green'
                         )
-                
+
                 # Update operation label
                 self.main_app.operation_label.config(
-                    text=f"✅ Safety resolved - {operation_type.title()} execution resuming", 
+                    text=t("✅ Safety resolved - {operation_type} execution resuming", operation_type=operation_type.title()),
                     fg='green'
                 )
             
@@ -219,14 +223,14 @@ class ExecutionController:
                 
                 # Update GUI status
                 self.main_app.operation_label.config(
-                    text=f"⏸️  Waiting: {from_op} → {to_op} transition", 
+                    text=t("⏸️  Waiting: {from_op} → {to_op} transition", from_op=from_op, to_op=to_op),
                     fg='orange'
                 )
-                
+
                 # Update progress text
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(
-                    text=f"{current_progress:.1f}% - Waiting for rows motor door CLOSED"
+                    text=t("{progress:.1f}% - Waiting for rows motor door CLOSED", progress=current_progress)
                 )
             
             elif status == 'transition_waiting':
@@ -252,14 +256,14 @@ class ExecutionController:
                 
                 # Update GUI status to show rows operations starting
                 self.main_app.operation_label.config(
-                    text="▶️  Rows operations starting...", 
+                    text=t("▶️  Rows operations starting..."),
                     fg='blue'
                 )
-                
+
                 # Update progress text
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(
-                    text=f"{current_progress:.1f}% - Continuing execution"
+                    text=t("{progress:.1f}% - Continuing execution", progress=current_progress)
                 )
                 
                 self.logger.info(" TRANSITION COMPLETE: GUI updated for rows operations", category="gui")
@@ -267,7 +271,7 @@ class ExecutionController:
             elif status == 'stopped' or status == 'error':
                 # Keep current progress but update text
                 current_progress = self.main_app.progress['value']
-                self.main_app.progress_text.config(text=f"{current_progress:.1f}% - Execution stopped")
+                self.main_app.progress_text.config(text=t("{progress:.1f}% - Execution stopped", progress=current_progress))
                 
                 # Update step display to show stopped state
                 if hasattr(self.main_app, 'right_panel'):
@@ -281,19 +285,19 @@ class ExecutionController:
         """Handle safety violation with immediate alerts and execution stop"""
         if not info:
             return
-        
-        violation_message = info.get('violation_message', 'Unknown safety violation')
+
+        violation_message = info.get('violation_message', t('Unknown safety violation'))
         safety_code = info.get('safety_code', 'UNKNOWN')
         step = info.get('step', {})
-        step_description = step.get('description', 'Unknown step')
-        
+        step_description = step.get('description', t('Unknown step'))
+
         # Update progress label with safety violation
         if hasattr(self.main_app, 'progress_label'):
-            self.main_app.progress_label.config(text="🚨 SAFETY VIOLATION - STOPPED", fg='red')
-        
+            self.main_app.progress_label.config(text=t("🚨 SAFETY VIOLATION - STOPPED"), fg='red')
+
         # Update operation label
         if hasattr(self.main_app, 'operation_label'):
-            self.main_app.operation_label.config(text="SAFETY VIOLATION - Execution Stopped", fg='red')
+            self.main_app.operation_label.config(text=t("SAFETY VIOLATION - Execution Stopped"), fg='red')
         
         # Show critical safety alert dialog
         self.show_safety_alert(violation_message, safety_code, step_description)
@@ -305,27 +309,30 @@ class ExecutionController:
         """Show safety violation alert dialog"""
         try:
             # Create detailed alert message
-            alert_title = f"🚨 SAFETY VIOLATION - {safety_code}"
-            
+            alert_title = t("🚨 SAFETY VIOLATION - {safety_code}", safety_code=safety_code)
+
             # Determine the required action based on the safety code
             if "ROWS" in safety_code or "rows" in violation_message.lower():
-                required_action = "Open the rows door (set row marker DOWN) to continue rows operations."
+                required_action = t("Open the rows door (set row marker DOWN) to continue rows operations.")
                 error_code = "ROWS_DOOR_CLOSED"
             elif "LINES" in safety_code or "lines" in violation_message.lower():
-                required_action = "Close the rows door (set row marker UP) to continue lines operations."  
+                required_action = t("Close the rows door (set row marker UP) to continue lines operations.")
                 error_code = "LINES_DOOR_OPEN"
             else:
-                required_action = "Check the row marker position and resolve the safety condition."
+                required_action = t("Check the row marker position and resolve the safety condition.")
                 error_code = safety_code
-            
-            alert_message = f"""🚨 SAFETY VIOLATION - {error_code}
+
+            alert_message = t("""🚨 SAFETY VIOLATION - {error_code}
 
 {violation_message}
 
 REQUIRED ACTION:
 {required_action}
 
-The system will remain stopped until you manually address this issue."""
+The system will remain stopped until you manually address this issue.""",
+                            error_code=error_code,
+                            violation_message=violation_message,
+                            required_action=required_action)
 
             # Show critical warning dialog
             messagebox.showerror(alert_title, alert_message)
@@ -357,7 +364,7 @@ The system will remain stopped until you manually address this issue."""
             if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
                 current_progress = self.main_app.progress.get('value', 0)
                 self.main_app.progress_text.config(
-                    text=f"{current_progress:.1f}% - STOPPED: Safety Violation"
+                    text=t("{progress:.1f}% - STOPPED: Safety Violation", progress=current_progress)
                 )
             
         except Exception as e:
@@ -377,7 +384,7 @@ The system will remain stopped until you manually address this issue."""
         
         # Create new transition dialog window
         self.transition_dialog = tk.Toplevel(self.main_app.root)
-        self.transition_dialog.title(f"Operation Transition: {from_op} → {to_op}")
+        self.transition_dialog.title(t("Operation Transition: {from_op} → {to_op}", from_op=from_op, to_op=to_op))
         self.transition_dialog.geometry("450x320")
         self.transition_dialog.resizable(False, False)
         
@@ -403,17 +410,17 @@ The system will remain stopped until you manually address this issue."""
         
         # Title
         title_label = tk.Label(
-            main_frame, 
-            text=f"🔄 Operation Transition", 
+            main_frame,
+            text=t("🔄 Operation Transition"),
             font=('Arial', 14, 'bold'),
             fg='orange'
         )
         title_label.pack(pady=(0, 10))
-        
+
         # Transition info
         transition_label = tk.Label(
             main_frame,
-            text=f"{from_op} Operations Complete ✅\nPreparing for {to_op} Operations",
+            text=t("{from_op} Operations Complete ✅\nPreparing for {to_op} Operations", from_op=from_op, to_op=to_op),
             font=('Arial', 11),
             justify=tk.CENTER
         )
@@ -435,7 +442,7 @@ The system will remain stopped until you manually address this issue."""
         
         status_title = tk.Label(
             status_frame,
-            text="Rows Motor Door Limit Switch:",
+            text=t("Rows Motor Door Limit Switch:"),
             font=('Arial', 10, 'bold'),
             padx=10, pady=5
         )
@@ -444,7 +451,7 @@ The system will remain stopped until you manually address this issue."""
         # Status label (will be updated in real-time)
         self.transition_limit_switch_label = tk.Label(
             status_frame,
-            text="Status: OFF (OPEN)",
+            text=t("Status: OFF (OPEN)"),
             font=('Arial', 9),
             padx=10, pady=2
         )
@@ -456,15 +463,15 @@ The system will remain stopped until you manually address this issue."""
         
         tk.Label(
             progress_frame,
-            text="⏳ Waiting for rows motor door to CLOSE (limit switch ON)...",
+            text=t("⏳ Waiting for rows motor door to CLOSE (limit switch ON)..."),
             font=('Arial', 10, 'italic'),
             fg='blue'
         ).pack()
-        
+
         # Instructions for user
         instructions_label = tk.Label(
             main_frame,
-            text="💡 You can use the main window controls while this dialog is open.\nUse the 'Toggle Rows Motor Limit Switch' button to close the door (set to ON).",
+            text=t("💡 You can use the main window controls while this dialog is open.\nUse the 'Toggle Rows Motor Limit Switch' button to close the door (set to ON)."),
             font=('Arial', 9, 'bold'),
             fg='blue',
             wraplength=400,
@@ -475,7 +482,7 @@ The system will remain stopped until you manually address this issue."""
         # Auto-dismiss info
         auto_dismiss_label = tk.Label(
             main_frame,
-            text="This dialog will automatically close when the motor door is CLOSED (limit switch ON).",
+            text=t("This dialog will automatically close when the motor door is CLOSED (limit switch ON)."),
             font=('Arial', 9, 'italic'),
             fg='gray',
             wraplength=400,
@@ -494,10 +501,10 @@ The system will remain stopped until you manually address this issue."""
             # Update status label with current limit switch state
             # limit_switch_state is "down" (ON/CLOSED) or "up" (OFF/OPEN)
             if limit_switch_state == "down":
-                status_text = "Status: ON (CLOSED)"
+                status_text = t("Status: ON (CLOSED)")
                 status_color = 'green'
             else:
-                status_text = "Status: OFF (OPEN)"
+                status_text = t("Status: OFF (OPEN)")
                 status_color = 'red'
 
             self.transition_limit_switch_label.config(

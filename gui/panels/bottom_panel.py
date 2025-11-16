@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from core.translations import t
 
 
 class BottomPanel:
@@ -13,8 +14,8 @@ class BottomPanel:
     
     def create_widgets(self):
         """Create all widgets for the bottom panel - match original exactly"""
-        # Status label  
-        tk.Label(self.parent_frame, text="STATUS:", font=('Arial', 10, 'bold'), 
+        # Status label
+        tk.Label(self.parent_frame, text=t("STATUS:"), font=('Arial', 10, 'bold'),
                 bg='lightyellow', fg='darkgreen').pack(side=tk.LEFT, padx=8)
         
         # Progress bar (compact version)
@@ -25,7 +26,7 @@ class BottomPanel:
         self.progress.pack(fill=tk.X, pady=8)
         
         # System status summary
-        self.system_status_label = tk.Label(self.parent_frame, text="System Ready - Load program to begin", 
+        self.system_status_label = tk.Label(self.parent_frame, text=t("System Ready - Load program to begin"),
                                            bg='lightyellow', fg='darkblue', font=('Arial', 9, 'bold'))
         self.system_status_label.pack(side=tk.RIGHT, padx=8)
         
