@@ -501,7 +501,10 @@ class RightPanel:
             else:
                 status_icon = " "  # Pending
 
-            step_summary = f"{status_icon} {i+1:3d}. {step['operation']}: {step['description'][:60]}..."
+            # Use Hebrew operation title and description for UI display
+            heb_op = step.get('hebOperationTitle', step['operation'])
+            heb_desc = step.get('hebDescription', step['description'])
+            step_summary = f"{status_icon} {i+1:3d}. {heb_op}: {heb_desc[:60]}..."
             self.steps_listbox.insert(tk.END, step_summary)
 
             # Color-code items for better visibility
@@ -522,14 +525,17 @@ class RightPanel:
         # Update current step info
         if self.main_app.steps and 0 <= current_index < len(self.main_app.steps):
             current_step = self.main_app.steps[current_index]
+            # Use Hebrew operation title for UI display
+            heb_op = current_step.get('hebOperationTitle', current_step['operation'])
             self.current_step_label.config(text=t("Step {current}/{total}: {operation}",
                                                  current=current_index + 1,
                                                  total=len(self.main_app.steps),
-                                                 operation=current_step['operation']))
+                                                 operation=heb_op))
 
-            # Update step details - fix newline parsing
-            details_text = t("Operation: {op}\n", op=current_step['operation'])
-            details_text += t("Description: {desc}\n", desc=current_step['description'])
+            # Update step details - use Hebrew fields for UI display
+            heb_desc = current_step.get('hebDescription', current_step['description'])
+            details_text = t("Operation: {op}\n", op=heb_op)
+            details_text += t("Description: {desc}\n", desc=heb_desc)
             if current_step.get('parameters'):
                 details_text += t("Parameters: {params}", params=current_step['parameters'])
 
@@ -551,12 +557,16 @@ class RightPanel:
             if 0 <= step_index < len(self.main_app.steps):
                 step = self.main_app.steps[step_index]
 
+                # Use Hebrew fields for UI display
+                heb_op = step.get('hebOperationTitle', step['operation'])
+                heb_desc = step.get('hebDescription', step['description'])
+
                 # Show step details in the SELECTED step details widget (not current step widget)
                 details_text = t("Step {current}/{total}\n\n",
                                current=step_index + 1,
                                total=len(self.main_app.steps))
-                details_text += t("Operation: {op}\n\n", op=step['operation'])
-                details_text += t("Description: {desc}\n\n", desc=step['description'])
+                details_text += t("Operation: {op}\n\n", op=heb_op)
+                details_text += t("Description: {desc}\n\n", desc=heb_desc)
 
                 if step.get('parameters'):
                     details_text += t("Parameters:\n")
