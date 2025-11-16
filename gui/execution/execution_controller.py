@@ -32,12 +32,15 @@ class ExecutionController:
         # Update operation label if available
         if hasattr(self.main_app, 'operation_label'):
             if status == 'step_executing':
+                # Get English description for internal processing
                 step_info = info.get('description', t('Executing step...')) if info else t('Executing step...')
-                self.main_app.operation_label.config(text=step_info, fg='green')
+                # Get Hebrew description for UI display
+                step_info_ui = info.get('hebDescription', step_info) if info else t('Executing step...')
+                self.main_app.operation_label.config(text=step_info_ui, fg='green')
 
                 # Detect motor operation mode but DON'T track colors yet (wait for completion)
                 if hasattr(self.main_app, 'canvas_manager') and info:
-                    # Detect motor operation mode from step description
+                    # Detect motor operation mode from step description (use English for pattern matching)
                     self.main_app.canvas_manager.detect_operation_mode_from_step(step_info)
 
                     # Force immediate position update for all move operations
@@ -289,7 +292,8 @@ class ExecutionController:
         violation_message = info.get('violation_message', t('Unknown safety violation'))
         safety_code = info.get('safety_code', 'UNKNOWN')
         step = info.get('step', {})
-        step_description = step.get('description', t('Unknown step'))
+        # Use Hebrew description for UI display, fallback to English for compatibility
+        step_description = step.get('hebDescription', step.get('description', t('Unknown step')))
 
         # Update progress label with safety violation
         if hasattr(self.main_app, 'progress_label'):
