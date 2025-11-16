@@ -911,6 +911,7 @@ class UltimateHardwareTestGUI:
 
     def monitor_loop(self):
         """Monitor sensors and positions in background"""
+        self.log("INFO", "Monitor loop started - updating sensors at 10Hz")
         while self.monitor_running:
             try:
                 # Update position from GRBL
@@ -960,19 +961,34 @@ class UltimateHardwareTestGUI:
                             if sensor_id in self.sensor_connection_widgets:
                                 self.sensor_connection_widgets[sensor_id].config(fg="#95A5A6")  # Gray
 
-                    # Update piston connection indicators
+                    # Update piston states and connection indicators
                     for piston_key, (name, method_base) in self.piston_methods.items():
                         # Check if piston control methods exist
                         if piston_key == "line_motor":
-                            up_method = "line_motor_piston_up"
-                            down_method = "line_motor_piston_down"
+                            state_method = "get_line_motor_piston_state"
                         else:
-                            up_method = f"{method_base}_up"
-                            down_method = f"{method_base}_down"
+                            state_method = f"get_{method_base}_state"
 
-                        if hasattr(self.hardware, up_method) and hasattr(self.hardware, down_method):
-                            self.piston_connection_widgets[piston_key].config(fg="#27AE60")  # Green - connected
+                        # Update piston state
+                        if hasattr(self.hardware, state_method):
+                            try:
+                                state = getattr(self.hardware, state_method)()
+
+                                # Update connection indicator
+                                self.piston_connection_widgets[piston_key].config(fg="#27AE60")  # Green - connected
+
+                                # Update state display
+                                if state == "up":
+                                    self.piston_widgets[piston_key].config(text="UP", background="#3498DB", foreground="white")
+                                elif state == "down":
+                                    self.piston_widgets[piston_key].config(text="DOWN", background="#27AE60", foreground="white")
+                                else:
+                                    self.piston_widgets[piston_key].config(text="UNKNOWN", background="#95A5A6", foreground="white")
+                            except:
+                                # Error reading state
+                                self.piston_connection_widgets[piston_key].config(fg="#E74C3C")  # Red - error
                         else:
+                            # Method not found
                             self.piston_connection_widgets[piston_key].config(fg="#95A5A6")  # Gray - not found
 
                 time.sleep(0.1)  # Update 10 times per second
