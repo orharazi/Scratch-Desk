@@ -12,14 +12,22 @@ Usage:
 
     # Get command info
     cmd = MOTION_COMMANDS['G0']
-    print(cmd['description'])
+    # cmd['description'] can be accessed programmatically
 
     # Generate G-code
     gcode = generate_gcode('G0', X=50, Y=35)
 """
 
+import sys
+import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+
+# Add parent directory to path for logger import when running as main
+if __name__ == '__main__':
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from core.logger import get_logger
 
 
 @dataclass
@@ -903,32 +911,34 @@ PRESET_POSITIONS = {
 
 if __name__ == '__main__':
     """Test command generation"""
-    print("GRBL Command Library Test\n")
-    print("=" * 60)
+    logger = get_logger()
+
+    logger.info("GRBL Command Library Test", category="grbl")
+    logger.info("=" * 60, category="grbl")
 
     # Test G-code generation
-    print("\nG-code Generation:")
-    print(f"  {generate_gcode('G0', X=50, Y=35)}")
-    print(f"  {generate_gcode('G1', X=100, Y=50, F=1000)}")
-    print(f"  {generate_gcode('G2', X=10, Y=10, I=5, J=0, F=500)}")
+    logger.info("\nG-code Generation:", category="grbl")
+    logger.info(f"  {generate_gcode('G0', X=50, Y=35)}", category="grbl")
+    logger.info(f"  {generate_gcode('G1', X=100, Y=50, F=1000)}", category="grbl")
+    logger.info(f"  {generate_gcode('G2', X=10, Y=10, I=5, J=0, F=500)}", category="grbl")
 
     # Test jog commands
-    print("\nJog Commands:")
-    print(f"  {generate_jog_command('X', 10, 500)}")
-    print(f"  {generate_jog_command('Y', -5, 1000)}")
-    print(f"  {generate_jog_command('X', 50, 1000, absolute=True)}")
+    logger.info("\nJog Commands:", category="grbl")
+    logger.info(f"  {generate_jog_command('X', 10, 500)}", category="grbl")
+    logger.info(f"  {generate_jog_command('Y', -5, 1000)}", category="grbl")
+    logger.info(f"  {generate_jog_command('X', 50, 1000, absolute=True)}", category="grbl")
 
     # List categories
-    print("\nCommand Categories:")
+    logger.info("\nCommand Categories:", category="grbl")
     for category in get_categories():
         commands = get_commands_by_category(category)
-        print(f"  {category}: {len(commands)} commands")
+        logger.info(f"  {category}: {len(commands)} commands", category="grbl")
 
     # Show some commands
-    print("\nSample Commands:")
+    logger.info("\nSample Commands:", category="grbl")
     for code, cmd in list(MOTION_COMMANDS.items())[:3]:
-        print(f"  {code}: {cmd['name']}")
-        print(f"    Description: {cmd['description']}")
-        print(f"    Example: {cmd['example']}")
+        logger.info(f"  {code}: {cmd['name']}", category="grbl")
+        logger.info(f"    Description: {cmd['description']}", category="grbl")
+        logger.info(f"    Example: {cmd['example']}", category="grbl")
 
-    print("\n" + "=" * 60)
+    logger.info("\n" + "=" * 60, category="grbl")
