@@ -427,6 +427,14 @@ HEBREW_TRANSLATIONS = {
     "Error: {message}": "שגיאה: {message}",
     "Executing step...": "...מבצע צעד",
     "Waiting for {sensor} sensor": "ממתין לחיישן {sensor}",
+
+    # Sensor names
+    "x_left": "X שמאלי",
+    "x_right": "X ימני",
+    "y_top": "Y עליון",
+    "y_bottom": "Y תחתון",
+    "x": "X",
+    "y": "Y",
     "{progress}% Complete ({step_index}/{total_steps} steps)": "{progress}% הושלם ({step_index}/{total_steps} צעדים)",
     "100% Complete - Execution finished": "100% הושלם - הביצוע הסתיים",
     "🚨 EMERGENCY STOP - Safety Violation": "🚨 עצירת חירום - הפרת בטיחות",

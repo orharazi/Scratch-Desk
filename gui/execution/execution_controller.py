@@ -104,8 +104,10 @@ class ExecutionController:
                         self.main_app.canvas_manager.update_position_display()
                     
             elif status == 'waiting_sensor':
-                sensor_info = info.get('sensor', t('sensor')) if info else t('sensor')
-                self.main_app.operation_label.config(text=t("Waiting for {sensor_info} sensor", sensor_info=sensor_info), fg='orange')
+                # Get sensor name and translate it to Hebrew
+                sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
+                sensor_name_hebrew = t(sensor_name)  # Translate sensor name (e.g., "y_top" -> "Y עליון")
+                self.main_app.operation_label.config(text=t("Waiting for {sensor} sensor", sensor=sensor_name_hebrew), fg='orange')
         
         # Update progress bar if available
         if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
