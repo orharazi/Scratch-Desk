@@ -4,6 +4,7 @@
 # Uses new field names: high, top_padding, bottom_padding, width, left_margin, etc.
 
 from core.logger import get_logger
+from core.translations import t
 
 # Module-level logger for functions
 logger = get_logger()
@@ -57,13 +58,13 @@ def generate_lines_marking_steps(program):
     steps.append(create_step(
         'move_x',
         {'position': 0.0},
-        "Init: Move rows motor to home position (X=0)"
+        t("Init: Move rows motor to home position (X=0)")
     ))
 
     steps.append(create_step(
         'move_y',
         {'position': 0.0},
-        "Init: Move lines motor to home position (Y=0)"
+        t("Init: Move lines motor to home position (Y=0)")
     ))
 
     # Init: Move Y motor to ACTUAL high position (paper_offset + actual_paper_height)
@@ -73,44 +74,44 @@ def generate_lines_marking_steps(program):
     steps.append(create_step(
         'tool_action',
         {'tool': 'line_motor_piston', 'action': 'up'},
-        f"⚠️ Lifting line motor piston UP (preparing for upward movement to {desk_y_position}cm)"
+        t("⚠️ Lifting line motor piston UP (preparing for upward movement to {position}cm)", position=desk_y_position)
     ))
 
     steps.append(create_step(
         'move_y',
         {'position': desk_y_position},
-        f"Init: Move Y motor to {desk_y_position}cm (paper + {actual_paper_height}cm ACTUAL high)"
+        t("Init: Move Y motor to {position}cm (paper + {height}cm ACTUAL high)", position=desk_y_position, height=actual_paper_height)
     ))
 
     steps.append(create_step(
         'tool_action',
         {'tool': 'line_motor_piston', 'action': 'down'},
-        "Line motor piston DOWN (Y motor assembly lowered to default position)"
+        t("Line motor piston DOWN (Y motor assembly lowered to default position)")
     ))
     
     # Cut top edge workflow - LEFT sensor first, then RIGHT sensor
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'x_left', 'description': 'Wait for LEFT X sensor to start top cut'},
-        "Cut top edge: Wait for LEFT X sensor"
+        t("Cut top edge: Wait for LEFT X sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'line_cutter', 'action': 'down'},
-        "Cut top edge: Open line cutter"
+        t("Cut top edge: Open line cutter")
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'x_right', 'description': 'Wait for RIGHT X sensor to complete top cut'},
-        "Cut top edge: Wait for RIGHT X sensor"
+        t("Cut top edge: Wait for RIGHT X sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'line_cutter', 'action': 'up'},
-        "Cut top edge: Close line cutter"
+        t("Cut top edge: Close line cutter")
     ))
     
     # CORRECTED REPEAT LOGIC: Process each repeated section individually
@@ -142,7 +143,7 @@ def generate_lines_marking_steps(program):
             steps.append(create_step(
                 'move_y',
                 {'position': first_line_y_section},
-                f"Move to first line of section {section_num + 1}: {first_line_y_section}cm"
+                t("Move to first line of section {section}: {position}cm", section=section_num + 1, position=first_line_y_section)
             ))
         
         # Mark all lines in this section
@@ -151,38 +152,46 @@ def generate_lines_marking_steps(program):
             line_y_position = first_line_y_section - (line_in_section * line_spacing_section)
             
             line_description = f"Mark line {overall_line_num}/{program.number_of_lines * program.repeat_lines} (Section {section_num + 1}, Line {line_in_section + 1})"
-            
+
             # Move to this line position (unless it's the first line of first section)
             if not (section_num == 0 and line_in_section == 0):
                 steps.append(create_step(
                     'move_y',
                     {'position': line_y_position},
-                    f"Move to line position: {line_y_position:.1f}cm"
+                    t("Move to line position: {position}cm", position=line_y_position)
                 ))
-            
+
             # Mark this line
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for line {overall_line_num}'},
-                f"{line_description}: Wait for LEFT X sensor"
+                t("Mark line {line}/{total} (Section {section}, Line {line_in_section}): Wait for LEFT X sensor",
+                  line=overall_line_num, total=program.number_of_lines * program.repeat_lines,
+                  section=section_num + 1, line_in_section=line_in_section + 1)
             ))
-            
+
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'line_marker', 'action': 'down'},
-                f"{line_description}: Open line marker"
+                t("Mark line {line}/{total} (Section {section}, Line {line_in_section}): Open line marker",
+                  line=overall_line_num, total=program.number_of_lines * program.repeat_lines,
+                  section=section_num + 1, line_in_section=line_in_section + 1)
             ))
-            
+
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for line {overall_line_num}'},
-                f"{line_description}: Wait for RIGHT X sensor"
+                t("Mark line {line}/{total} (Section {section}, Line {line_in_section}): Wait for RIGHT X sensor",
+                  line=overall_line_num, total=program.number_of_lines * program.repeat_lines,
+                  section=section_num + 1, line_in_section=line_in_section + 1)
             ))
-            
+
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'line_marker', 'action': 'up'},
-                f"{line_description}: Close line marker"
+                t("Mark line {line}/{total} (Section {section}, Line {line_in_section}): Close line marker",
+                  line=overall_line_num, total=program.number_of_lines * program.repeat_lines,
+                  section=section_num + 1, line_in_section=line_in_section + 1)
             ))
         
         # ADD CUT BETWEEN SECTIONS (except after the last section)
@@ -193,32 +202,37 @@ def generate_lines_marking_steps(program):
             steps.append(create_step(
                 'move_y',
                 {'position': cut_position},
-                f"Move to cut between sections {section_num + 1} and {section_num + 2}: {cut_position}cm"
+                t("Move to cut between sections {section1} and {section2}: {position}cm",
+                  section1=section_num + 1, section2=section_num + 2, position=cut_position)
             ))
-            
+
             # Perform cut between sections
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for cut between sections {section_num + 1}-{section_num + 2}'},
-                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for LEFT X sensor"
+                t("Cut between sections {section1} and {section2}: Wait for LEFT X sensor",
+                  section1=section_num + 1, section2=section_num + 2)
             ))
-            
+
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'line_cutter', 'action': 'down'},
-                f"Cut between sections {section_num + 1} and {section_num + 2}: Open line cutter"
+                t("Cut between sections {section1} and {section2}: Open line cutter",
+                  section1=section_num + 1, section2=section_num + 2)
             ))
-            
+
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for cut between sections {section_num + 1}-{section_num + 2}'},
-                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for RIGHT X sensor"
+                t("Cut between sections {section1} and {section2}: Wait for RIGHT X sensor",
+                  section1=section_num + 1, section2=section_num + 2)
             ))
-            
+
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'line_cutter', 'action': 'up'},
-                f"Cut between sections {section_num + 1} and {section_num + 2}: Close line cutter"
+                t("Cut between sections {section1} and {section2}: Close line cutter",
+                  section1=section_num + 1, section2=section_num + 2)
             ))
     
     # Cut bottom edge: Move to bottom position (paper starting position)
@@ -226,38 +240,38 @@ def generate_lines_marking_steps(program):
     steps.append(create_step(
         'move_y',
         {'position': bottom_position},
-        f"Move to bottom cut position: {bottom_position}cm (paper starting position)"
+        t("Move to bottom cut position: {position}cm (paper starting position)", position=bottom_position)
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'x_left', 'description': 'Wait for LEFT X sensor to start bottom cut'},
-        "Cut bottom edge: Wait for LEFT X sensor"
+        t("Cut bottom edge: Wait for LEFT X sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'line_cutter', 'action': 'down'},
-        "Cut bottom edge: Open line cutter"
+        t("Cut bottom edge: Open line cutter")
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'x_right', 'description': 'Wait for RIGHT X sensor to complete bottom cut'},
-        "Cut bottom edge: Wait for RIGHT X sensor"
+        t("Cut bottom edge: Wait for RIGHT X sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'line_cutter', 'action': 'up'},
-        "Cut bottom edge: Close line cutter"
+        t("Cut bottom edge: Close line cutter")
     ))
-    
+
     # LINES OPERATION COMPLETE: Move lines motor to home position (Y=0)
     steps.append(create_step(
         'move_y',
         {'position': 0.0},
-        "Lines complete: Move lines motor to home position (Y=0)"
+        t("Lines complete: Move lines motor to home position (Y=0)")
     ))
     
     return steps
@@ -308,39 +322,39 @@ def generate_row_marking_steps(program):
     steps.append(create_step(
         'move_y',
         {'position': 0.0},
-        "Rows operation: Ensure lines motor is at home position (Y=0)"
+        t("Rows operation: Ensure lines motor is at home position (Y=0)")
     ))
-    
+
     # STEP 1: Cut RIGHT edge of ACTUAL paper first (spans all repeated sections)
     right_paper_cut_position = PAPER_OFFSET_X + actual_paper_width  # Right boundary of ACTUAL paper
     steps.append(create_step(
         'move_x',
         {'position': right_paper_cut_position},
-        f"Cut RIGHT paper edge: Move to {right_paper_cut_position}cm (ACTUAL width)"
+        t("Cut RIGHT paper edge: Move to {position}cm (ACTUAL width)", position=right_paper_cut_position)
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'y_top', 'description': 'Wait for TOP Y sensor for right paper cut'},
-        "Cut RIGHT paper edge: Wait for TOP Y sensor"
+        t("Cut RIGHT paper edge: Wait for TOP Y sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'row_cutter', 'action': 'down'},
-        "Cut RIGHT paper edge: Open row cutter"
+        t("Cut RIGHT paper edge: Open row cutter")
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'y_bottom', 'description': 'Wait for BOTTOM Y sensor for right paper cut'},
-        "Cut RIGHT paper edge: Wait for BOTTOM Y sensor"
+        t("Cut RIGHT paper edge: Wait for BOTTOM Y sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'row_cutter', 'action': 'up'},
-        "Cut RIGHT paper edge: Close row cutter"
+        t("Cut RIGHT paper edge: Close row cutter")
     ))
     
     # STEP 2: Mark pages BY SECTION (RIGHT-TO-LEFT), cutting between sections as we go
@@ -393,64 +407,86 @@ def generate_row_marking_steps(program):
             steps.append(create_step(
                 'move_x',
                 {'position': page_right_edge},
-                f"Move to {page_description} RIGHT edge: {page_right_edge}cm"
+                t("Move to RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}) RIGHT edge: {position}cm",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages,
+                  position=page_right_edge)
             ))
 
             # Mark RIGHT edge of page
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} right edge'},
-                f"{page_description}: Wait TOP Y sensor (RIGHT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Wait TOP Y sensor (RIGHT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_marker', 'action': 'down'},
-                f"{page_description}: Open row marker (RIGHT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Open row marker (RIGHT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} right edge'},
-                f"{page_description}: Wait BOTTOM Y sensor (RIGHT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Wait BOTTOM Y sensor (RIGHT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_marker', 'action': 'up'},
-                f"{page_description}: Close row marker (RIGHT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Close row marker (RIGHT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             # Move RIGHT-TO-LEFT to this page's LEFT edge
             steps.append(create_step(
                 'move_x',
                 {'position': page_left_edge},
-                f"RTL: Move to {page_description} LEFT edge: {page_left_edge}cm"
+                t("RTL: Move to RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}) LEFT edge: {position}cm",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages,
+                  position=page_left_edge)
             ))
 
             # Mark LEFT edge of page
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} left edge'},
-                f"{page_description}: Wait TOP Y sensor (LEFT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Wait TOP Y sensor (LEFT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_marker', 'action': 'down'},
-                f"{page_description}: Open row marker (LEFT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Open row marker (LEFT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} left edge'},
-                f"{page_description}: Wait BOTTOM Y sensor (LEFT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Wait BOTTOM Y sensor (LEFT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_marker', 'action': 'up'},
-                f"{page_description}: Close row marker (LEFT edge)"
+                t("RTL Page {page}/{total} (Section {section}, RTL Page {page_in_section}/{pages_per_section}): Close row marker (LEFT edge)",
+                  page=rtl_page_number, total=total_pages, section=section_num,
+                  page_in_section=rtl_page_in_section + 1, pages_per_section=program.number_of_pages)
             ))
 
         # AFTER finishing all pages in this section, cut between this section and the next (if not the last section)
@@ -466,32 +502,37 @@ def generate_row_marking_steps(program):
             steps.append(create_step(
                 'move_x',
                 {'position': section_start_x},
-                f"Move to cut between row sections {section_num} and {section_num - 1}: {section_start_x}cm"
+                t("Move to cut between row sections {section1} and {section2}: {position}cm",
+                  section1=section_num, section2=section_num - 1, position=section_start_x)
             ))
 
             # Perform cut between sections (vertical cut spanning full height)
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut between row sections {section_num}-{section_num - 1}'},
-                f"Cut between row sections {section_num} and {section_num - 1}: Wait for TOP Y sensor"
+                t("Cut between row sections {section1} and {section2}: Wait for TOP Y sensor",
+                  section1=section_num, section2=section_num - 1)
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_cutter', 'action': 'down'},
-                f"Cut between row sections {section_num} and {section_num - 1}: Open row cutter"
+                t("Cut between row sections {section1} and {section2}: Open row cutter",
+                  section1=section_num, section2=section_num - 1)
             ))
 
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut between row sections {section_num}-{section_num - 1}'},
-                f"Cut between row sections {section_num} and {section_num - 1}: Wait for BOTTOM Y sensor"
+                t("Cut between row sections {section1} and {section2}: Wait for BOTTOM Y sensor",
+                  section1=section_num, section2=section_num - 1)
             ))
 
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'row_cutter', 'action': 'up'},
-                f"Cut between row sections {section_num} and {section_num - 1}: Close row cutter"
+                t("Cut between row sections {section1} and {section2}: Close row cutter",
+                  section1=section_num, section2=section_num - 1)
             ))
 
     # STEP 3: Cut LEFT edge of ACTUAL paper last
@@ -499,38 +540,38 @@ def generate_row_marking_steps(program):
     steps.append(create_step(
         'move_x',
         {'position': left_paper_cut_position},
-        f"Cut LEFT paper edge: Move to {left_paper_cut_position}cm (ACTUAL paper boundary)"
+        t("Cut LEFT paper edge: Move to {position}cm (ACTUAL paper boundary)", position=left_paper_cut_position)
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'y_top', 'description': 'Wait for TOP Y sensor for left paper cut'},
-        "Cut LEFT paper edge: Wait for TOP Y sensor"
+        t("Cut LEFT paper edge: Wait for TOP Y sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'row_cutter', 'action': 'down'},
-        "Cut LEFT paper edge: Open row cutter"
+        t("Cut LEFT paper edge: Open row cutter")
     ))
-    
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'y_bottom', 'description': 'Wait for BOTTOM Y sensor for left paper cut'},
-        "Cut LEFT paper edge: Wait for BOTTOM Y sensor"
+        t("Cut LEFT paper edge: Wait for BOTTOM Y sensor")
     ))
-    
+
     steps.append(create_step(
         'tool_action',
         {'tool': 'row_cutter', 'action': 'up'},
-        "Cut LEFT paper edge: Close row cutter"
+        t("Cut LEFT paper edge: Close row cutter")
     ))
-    
+
     # ROWS OPERATION COMPLETE: Move rows motor to home position (X=0)
     steps.append(create_step(
         'move_x',
         {'position': 0.0},
-        "Rows complete: Move rows motor to home position (X=0)"
+        t("Rows complete: Move rows motor to home position (X=0)")
     ))
     
     return steps
@@ -555,14 +596,16 @@ def generate_complete_program_steps(program):
     # Add starting step with actual dimensions
     all_steps.append(create_step(
         'program_start',
-        {'program_number': program.program_number, 
+        {'program_number': program.program_number,
          'actual_width': actual_paper_width,
          'actual_height': actual_paper_height,
          'repeat_rows': program.repeat_rows,
          'repeat_lines': program.repeat_lines},
-        f"=== Starting Program {program.program_number}: {program.program_name} (ACTUAL SIZE: {actual_paper_width}×{actual_paper_height}cm) ==="
+        t("=== Starting Program {program}: {name} (ACTUAL SIZE: {width}×{height}cm) ===",
+          program=program.program_number, name=program.program_name,
+          width=actual_paper_width, height=actual_paper_height)
     ))
-    
+
     # Generate lines marking steps (handles all repeated sections internally)
     logger.debug(f"GENERATING LINES STEPS with repeats...", category="execution")
     lines_steps = generate_lines_marking_steps(program)
@@ -572,15 +615,16 @@ def generate_complete_program_steps(program):
     logger.debug(f"GENERATING ROWS STEPS with repeats...", category="execution")
     row_steps = generate_row_marking_steps(program)
     all_steps.extend(row_steps)
-    
+
     # Add completion step
     all_steps.append(create_step(
         'program_complete',
-        {'program_number': program.program_number, 
+        {'program_number': program.program_number,
          'total_repeats': total_repeats,
          'actual_width': actual_paper_width,
          'actual_height': actual_paper_height},
-        f"=== Program {program.program_number} completed: {actual_paper_width}×{actual_paper_height}cm paper processed ==="
+        t("=== Program {program} completed: {width}×{height}cm paper processed ===",
+          program=program.program_number, width=actual_paper_width, height=actual_paper_height)
     ))
     
     return all_steps
