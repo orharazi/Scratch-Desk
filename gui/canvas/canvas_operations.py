@@ -656,16 +656,34 @@ class CanvasOperations:
                     self.logger.debug(f" Row section cut {lower_section}-{higher_section} → IN PROGRESS", category="gui")
 
             # Track outer edge cuts (top/bottom/left/right and Hebrew equivalents)
+            # Note: Hebrew includes "נייר" (paper) in the middle: "חיתוך קצה נייר ימני" = "cut paper edge right"
             cut_patterns = [
-                ('top', ['cut top', 'חיתוך קצה עליון']),
-                ('bottom', ['cut bottom', 'חיתוך קצה תחתון']),
-                ('left', ['cut left', 'חיתוך קצה.*שמאלי']),
-                ('right', ['cut right', 'חיתוך קצה.*ימני'])
+                ('top', ['cut top', 'חיתוך קצה', 'עליון']),  # top edge cut
+                ('bottom', ['cut bottom', 'חיתוך קצה', 'תחתון']),  # bottom edge cut
+                ('left', ['חיתוך קצה', 'שמאלי']),  # left edge cut (Hebrew: "חיתוך קצה נייר שמאלי")
+                ('right', ['חיתוך קצה', 'ימני'])  # right edge cut (Hebrew: "חיתוך קצה נייר ימני")
             ]
 
             for cut_name, patterns in cut_patterns:
-                # Check if any pattern matches and 'edge'/'קצה' is present
-                if any(pattern in step_desc for pattern in patterns) and any(edge_word in step_desc for edge_word in ['edge', 'קצה']):
+                # For left/right cuts: must have "חיתוך קצה" AND "שמאלי"/"ימני" OR "cut left"/"cut right"
+                # For top/bottom: must have "חיתוך קצה" AND "עליון"/"תחתון" OR "cut top"/"cut bottom"
+                matches = False
+                if cut_name in ['left', 'right']:
+                    # Hebrew: check for both "חיתוך קצה" and the direction word
+                    if all(p in step_desc for p in patterns):
+                        matches = True
+                    # English: check for "cut left" or "cut right"
+                    elif f'cut {cut_name}' in step_desc and 'edge' in step_desc:
+                        matches = True
+                else:  # top or bottom
+                    # Hebrew: check for both "חיתוך קצה" and the direction word
+                    if all(p in step_desc for p in patterns[:2]) and patterns[2] in step_desc:
+                        matches = True
+                    # English: check for "cut top" or "cut bottom"
+                    elif f'cut {cut_name}' in step_desc and 'edge' in step_desc:
+                        matches = True
+
+                if matches:
                     if any(keyword in step_desc for keyword in ['complete', 'close', 'finished', 'סגור', 'הושלם']):
                         self.update_operation_state('cuts', cut_name, 'completed')
                         self.logger.info(f" {cut_name.title()} cut edge → COMPLETED", category="gui")
@@ -719,16 +737,6 @@ class CanvasOperations:
 
         # Load colors from settings
         operation_colors = self.main_app.settings.get("operation_colors", {})
-        # mark_colors = operation_colors.get("lines", {
-        #     "pending": "#FF6600",
-        #     "in_progress": "#FF8800",
-        #     "completed": "#00AA00"
-        # })
-        # rows_colors = operation_colors.get("rows", {
-        #     "pending": "#8800FF",
-        #     "in_progress": "#FF0088",
-        #     "completed": "#AA00AA"
-        # })
         mark_colors = operation_colors.get("mark", {
             "pending": "#8800FF",
             "in_progress": "#FF0088",
