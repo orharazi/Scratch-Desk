@@ -1191,54 +1191,68 @@ class UltimateHardwareTestGUI:
 
     # Piston control methods
     def piston_up(self, piston_key):
-        """Raise piston"""
+        """Raise piston with EXPLICIT method calls (no dynamic getattr)"""
         if not self.is_connected:
             messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
         name, method_base = self.piston_methods[piston_key]
-
-        # Special handling for line motor (uses different method names)
-        if piston_key == "line_motor":
-            method_name = "line_motor_piston_up"
-        else:
-            method_name = f"{method_base}_up"
-
         self.log("INFO", t("Raising {name}", name=name))
 
-        if hasattr(self.hardware, method_name):
-            if getattr(self.hardware, method_name)():
-                self.piston_widgets[piston_key].config(text=t("UP"), background="#3498DB")
-                self.log("SUCCESS", t("{name} raised", name=name))
-            else:
-                self.log("ERROR", t("Failed to raise {name}", name=name))
+        # EXPLICIT method calls - no dynamic getattr to avoid unpredictable behavior
+        success = False
+
+        if piston_key == "line_marker":
+            success = self.hardware.line_marker_piston_up()
+        elif piston_key == "line_cutter":
+            success = self.hardware.line_cutter_piston_up()
+        elif piston_key == "line_motor":
+            success = self.hardware.line_motor_piston_up()
+        elif piston_key == "row_marker":
+            success = self.hardware.row_marker_piston_up()
+        elif piston_key == "row_cutter":
+            success = self.hardware.row_cutter_piston_up()
         else:
-            self.log("ERROR", t("Method {method} not found", method=method_name))
+            self.log("ERROR", t("Unknown piston: {key}", key=piston_key))
+            return
+
+        if success:
+            self.piston_widgets[piston_key].config(text=t("UP"), background="#3498DB")
+            self.log("SUCCESS", t("{name} raised", name=name))
+        else:
+            self.log("ERROR", t("Failed to raise {name}", name=name))
 
     def piston_down(self, piston_key):
-        """Lower piston"""
+        """Lower piston with EXPLICIT method calls (no dynamic getattr)"""
         if not self.is_connected:
             messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
             return
 
         name, method_base = self.piston_methods[piston_key]
-
-        # Special handling for line motor (uses different method names)
-        if piston_key == "line_motor":
-            method_name = "line_motor_piston_down"
-        else:
-            method_name = f"{method_base}_down"
-
         self.log("INFO", t("Lowering {name}", name=name))
 
-        if hasattr(self.hardware, method_name):
-            if getattr(self.hardware, method_name)():
-                self.piston_widgets[piston_key].config(text=t("DOWN"), background="#27AE60")
-                self.log("SUCCESS", t("{name} lowered", name=name))
-            else:
-                self.log("ERROR", t("Failed to lower {name}", name=name))
+        # EXPLICIT method calls - no dynamic getattr to avoid unpredictable behavior
+        success = False
+
+        if piston_key == "line_marker":
+            success = self.hardware.line_marker_piston_down()
+        elif piston_key == "line_cutter":
+            success = self.hardware.line_cutter_piston_down()
+        elif piston_key == "line_motor":
+            success = self.hardware.line_motor_piston_down()
+        elif piston_key == "row_marker":
+            success = self.hardware.row_marker_piston_down()
+        elif piston_key == "row_cutter":
+            success = self.hardware.row_cutter_piston_down()
         else:
-            self.log("ERROR", t("Method {method} not found", method=method_name))
+            self.log("ERROR", t("Unknown piston: {key}", key=piston_key))
+            return
+
+        if success:
+            self.piston_widgets[piston_key].config(text=t("DOWN"), background="#27AE60")
+            self.log("SUCCESS", t("{name} lowered", name=name))
+        else:
+            self.log("ERROR", t("Failed to lower {name}", name=name))
 
     # GRBL methods
     def read_grbl_settings(self):

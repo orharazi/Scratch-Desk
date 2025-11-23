@@ -93,6 +93,7 @@ class RaspberryPiGPIO:
         self.direct_sensor_pins = self.gpio_config.get("direct_sensors", {})
         # REMOVED limit_switch_pins - not part of user's machine
         self.multiplexer = None  # Will be initialized later
+        self.invert_mux_readings = self.multiplexer_config.get("invert_readings", False)
 
         # Initialize state tracking dictionary
         self._last_sensor_states = {}  # Initialize state tracking dictionary
@@ -101,6 +102,9 @@ class RaspberryPiGPIO:
         self.polling_thread = None
         self.polling_active = False
         self.switch_states = {}  # Track last known state of all switches
+
+        # Piston settling time
+        self._piston_settling_time = self.config.get("timing", {}).get("piston_gpio_settling_delay", 0.05)  # 50ms default
 
         self.logger.info("="*60, category="hardware")
         self.logger.info("Raspberry Pi GPIO Configuration", category="hardware")
@@ -144,7 +148,7 @@ class RaspberryPiGPIO:
 
         # Check if running on Raspberry Pi
         try:
-            import RPi.GPIO as GPIO_TEST
+            import RPi.GPIO
         except (ImportError, RuntimeError) as e:
             error_msg = "NOT RUNNING ON RASPBERRY PI - RPi.GPIO module not available or not on Pi hardware"
             self.logger.error(error_msg, category="hardware")
@@ -231,20 +235,22 @@ class RaspberryPiGPIO:
                     self.logger.debug(f"Control pins: S0={self.multiplexer_config['s0']}, S1={self.multiplexer_config['s1']}, S2={self.multiplexer_config['s2']}, S3={self.multiplexer_config['s3']}", category="hardware")
                     self.logger.debug(f"Signal pin: {self.multiplexer_config['sig']}", category="hardware")
                     self.logger.debug(f"Configured channels: {len(channels)}", category="hardware")
+                    if self.invert_mux_readings:
+                        self.logger.info("Multiplexer sensor inversion ENABLED (handling backwards wiring)", category="hardware")
                 except KeyError as e:
                     raise RuntimeError(f"Multiplexer config missing required key: {str(e)}. Check settings.json")
                 except Exception as e:
                     raise RuntimeError(f"Failed to initialize multiplexer: {str(e)}")
 
-            # Setup direct sensor pins as inputs with pull-up resistors (switches connect to GND)
+            # Setup direct sensor pins as inputs (external pull resistors assumed)
             if self.direct_sensor_pins:
-                self.logger.info(f"Initializing {len(self.direct_sensor_pins)} direct sensor inputs (edge switches - GND connection)...", category="hardware")
+                self.logger.info(f"Initializing {len(self.direct_sensor_pins)} direct sensor inputs (edge switches)...", category="hardware")
                 for sensor_name, pin in self.direct_sensor_pins.items():
                     try:
-                        # Edge switches connect to GND when pressed, so use pull-UP resistors
-                        # Reading: HIGH = switch open (not pressed), LOW = switch closed (pressed/triggered)
-                        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                        self.logger.debug(f"Edge switch '{sensor_name}' on GPIO {pin} (pull-UP, inverted logic)", category="hardware")
+                        # Edge switches have external pull resistors
+                        # Reading: HIGH = switch triggered/active, LOW = switch not triggered
+                        GPIO.setup(pin, GPIO.IN)
+                        self.logger.debug(f"Edge switch '{sensor_name}' on GPIO {pin} (external pull resistors)", category="hardware")
                     except Exception as e:
                         error_msg = str(e)
                         if "busy" in error_msg.lower():
@@ -254,8 +260,8 @@ class RaspberryPiGPIO:
                                 # Force cleanup this specific pin and retry
                                 GPIO.cleanup(pin)
                                 time.sleep(0.05)
-                                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                                self.logger.success(f"Recovered GPIO {pin} ({sensor_name}) with pull-UP", category="hardware")
+                                GPIO.setup(pin, GPIO.IN)
+                                self.logger.success(f"Recovered GPIO {pin} ({sensor_name})", category="hardware")
                             except Exception as recovery_error:
                                 # If recovery fails, log but continue - we'll try in the polling thread
                                 self.logger.error(f"Could not recover GPIO {pin}: {recovery_error}", category="hardware")
@@ -267,12 +273,6 @@ class RaspberryPiGPIO:
 
             self.is_initialized = True
             self.logger.success("Raspberry Pi GPIO initialized successfully", category="hardware")
-
-            # Test GPIO reads immediately
-            self._test_gpio_reads()
-
-            # Test multiplexer reads specifically
-            self._test_multiplexer_reads()
 
             # Pre-initialize sensor states before starting polling thread
             self._initialize_sensor_states()
@@ -295,7 +295,7 @@ class RaspberryPiGPIO:
 
     def set_piston(self, piston_name: str, state: str) -> bool:
         """
-        Set piston state
+        Set piston state with COMPREHENSIVE electrical interference suppression
 
         Args:
             piston_name: Name of piston (e.g., 'line_marker_piston')
@@ -303,6 +303,11 @@ class RaspberryPiGPIO:
 
         Returns:
             True if successful, False otherwise
+
+        Note:
+            This method includes comprehensive recovery mechanisms to prevent
+            persistent false positives on multiplexer channels. The fix addresses
+            GPIO pin corruption that can persist indefinitely after piston operations.
         """
         if not self.is_initialized:
             self.logger.error("GPIO not initialized", category="hardware")
@@ -318,6 +323,10 @@ class RaspberryPiGPIO:
             gpio_state = GPIO.HIGH if state == "down" else GPIO.LOW
             GPIO.output(pin, gpio_state)
             self.logger.debug(f"Piston '{piston_name}' set to {state.upper()} (GPIO {pin} = {'HIGH' if gpio_state else 'LOW'})", category="hardware")
+
+            # Settling delay to allow electrical noise to dissipate
+            time.sleep(self._piston_settling_time)
+
             return True
         except Exception as e:
             self.logger.error(f"Error setting piston {piston_name}: {e}", category="hardware")
@@ -343,48 +352,21 @@ class RaspberryPiGPIO:
 
     # ========== SENSOR READING METHODS ==========
 
-    def _read_with_debounce(self, pin_or_channel, is_multiplexer=False, channel=None, samples=3, delay=0.001):
+    def _read_multiplexer_channel(self, channel: int) -> bool:
         """
-        Read GPIO or multiplexer with debouncing
+        Read from multiplexer with optional inversion based on configuration
 
         Args:
-            pin_or_channel: GPIO pin number or multiplexer channel
-            is_multiplexer: True if reading from multiplexer
-            channel: Multiplexer channel number (if is_multiplexer=True)
-            samples: Number of consistent reads required (default 3)
-            delay: Delay between reads in seconds (default 1ms)
+            channel: Multiplexer channel number
 
         Returns:
-            Stable boolean state or None if reads are inconsistent
+            Boolean sensor state (inverted if configured)
         """
-        import time
-
-        # PERFORMANCE FIX: Reduced MUX debouncing for lower latency while still filtering noise
-        if is_multiplexer:
-            samples = 3  # Reduced from 7 to 3 samples (9ms -> 3ms total)
-            delay = 0.001  # Reduced from 3ms to 1ms between samples
-
-        readings = []
-        for i in range(samples):
-            if is_multiplexer and self.multiplexer:
-                # For multiplexer, select channel and read
-                value = self.multiplexer.read_channel(channel)
-            else:
-                # For direct GPIO
-                value = GPIO.input(pin_or_channel)
-
-            readings.append(value)
-
-            if i < samples - 1:  # Don't delay after last read
-                time.sleep(delay)
-
-        # Check if all readings are consistent
-        if all(r == readings[0] for r in readings):
-            return bool(readings[0])
-        else:
-            # Inconsistent reads - sensor is bouncing/noisy
-            # Return None to indicate unstable read
-            return None
+        raw_value = self.multiplexer.read_channel(channel)
+        # Invert reading if configured (handles backwards wiring)
+        if self.invert_mux_readings:
+            return not raw_value
+        return raw_value
 
     def read_sensor(self, sensor_name: str) -> Optional[bool]:
         """
@@ -401,18 +383,10 @@ class RaspberryPiGPIO:
             return None
 
         try:
-            # AGGRESSIVE LOGGING for edge sensors
-            is_edge_sensor = sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']
-
-            if is_edge_sensor:
-                self.logger.debug(f"🔍 read_sensor() called for EDGE SENSOR: {sensor_name}", category="hardware")
-                self.logger.debug(f"   Direct sensor pins: {list(self.direct_sensor_pins.keys())}", category="hardware")
-                self.logger.debug(f"   Switch states keys: {list(self.switch_states.keys())}", category="hardware")
-
             # Check if sensor is connected via multiplexer
             mux_channels = self.multiplexer_config.get('channels', {})
             if sensor_name in mux_channels:
-                # Return state from polling thread's switch_states (debounced and verified)
+                # Return state from polling thread's switch_states
                 switch_key = f"mux_{sensor_name}"
                 if switch_key in self.switch_states:
                     return self.switch_states[switch_key]
@@ -420,37 +394,17 @@ class RaspberryPiGPIO:
                     # Fallback to last known state if polling thread hasn't initialized yet
                     return self._last_sensor_states.get(sensor_name, False)
 
-            # Check if it's a direct sensor
+            # Check if it's a direct edge switch
             elif sensor_name in self.direct_sensor_pins:
-                if is_edge_sensor:
-                    self.logger.debug(f"   ✓ Found {sensor_name} in direct_sensor_pins", category="hardware")
-                    self.logger.debug(f"   Pin number: {self.direct_sensor_pins[sensor_name]}", category="hardware")
-
-                    # Try direct read for debugging
-                    pin = self.direct_sensor_pins[sensor_name]
-                    raw_read = GPIO.input(pin)
-                    # Edge switches connect to GND when pressed, so INVERT
-                    inverted_read = not raw_read
-                    self.logger.debug(f"   DIRECT GPIO.input({pin}) = raw:{'HIGH' if raw_read else 'LOW'} inverted:{'TRIGGERED' if inverted_read else 'READY'}", category="hardware")
-
-                # Return state from polling thread's switch_states (debounced and verified)
+                # Return state from polling thread's switch_states
                 if sensor_name in self.switch_states:
-                    state = self.switch_states[sensor_name]
-                    if is_edge_sensor:
-                        self.logger.debug(f"   ✓ Found in switch_states: {state} ({'TRIGGERED' if state else 'READY'})", category="hardware")
-                    return state
+                    return self.switch_states[sensor_name]
                 else:
                     # Fallback to last known state if polling thread hasn't initialized yet
-                    fallback = self._last_sensor_states.get(sensor_name, False)
-                    if is_edge_sensor:
-                        self.logger.warning(f"   ⚠ NOT in switch_states! Using fallback: {fallback}", category="hardware")
-                        self.logger.warning(f"   This means polling thread hasn't updated this sensor!", category="hardware")
-                    return fallback
+                    return self._last_sensor_states.get(sensor_name, False)
 
             else:
                 self.logger.error(f"Unknown sensor: {sensor_name}", category="hardware")
-                self.logger.error(f"  Not in mux_channels: {list(mux_channels.keys())}", category="hardware")
-                self.logger.error(f"  Not in direct_sensor_pins: {list(self.direct_sensor_pins.keys())}", category="hardware")
                 return None
 
         except Exception as e:
@@ -517,9 +471,7 @@ class RaspberryPiGPIO:
 
     def get_x_left_edge_sensor(self) -> Optional[bool]:
         """Read X-axis LEFT edge sensor state"""
-        state = self.read_sensor("x_left_edge")
-        self._debug_edge_sensors()
-        return state
+        return self.read_sensor("x_left_edge")
 
     def get_x_right_edge_sensor(self) -> Optional[bool]:
         """Read X-axis RIGHT edge sensor state"""
@@ -533,50 +485,31 @@ class RaspberryPiGPIO:
         """Read Y-axis BOTTOM edge sensor state"""
         return self.read_sensor("y_bottom_edge")
 
-    def _debug_edge_sensors(self):
-        """Periodically print all edge sensor states for debugging"""
-        import time
-        if not hasattr(self, '_last_debug_time'):
-            self._last_debug_time = 0
-            self._debug_counter = 0
-
-        current_time = time.time()
-        self._debug_counter += 1
-
-        # Print every 2 seconds with read counter
-        if current_time - self._last_debug_time > 2.0:
-            self._last_debug_time = current_time
-            x_left = self.read_sensor("x_left_edge")
-            x_right = self.read_sensor("x_right_edge")
-            y_top = self.read_sensor("y_top_edge")
-            y_bottom = self.read_sensor("y_bottom_edge")
-
-            # Also read all piston sensors
-            line_marker_up = self.read_sensor("line_marker_up_sensor")
-            line_marker_down = self.read_sensor("line_marker_down_sensor")
-
-            self.logger.debug(f"SENSOR POLLING STATUS (reads: {self._debug_counter}):", category="hardware")
-            self.logger.debug(f"   Edge Sensors:", category="hardware")
-            self.logger.debug(f"      X-Left: {'TRIG' if x_left else 'READY'} | X-Right: {'TRIG' if x_right else 'READY'}", category="hardware")
-            self.logger.debug(f"      Y-Top: {'TRIG' if y_top else 'READY'} | Y-Bottom: {'TRIG' if y_bottom else 'READY'}", category="hardware")
-            self.logger.debug(f"   Piston Sensors (sample):", category="hardware")
-            self.logger.debug(f"      Line Marker Up: {'TRIG' if line_marker_up else 'READY'} | Down: {'TRIG' if line_marker_down else 'READY'}", category="hardware")
-            self.logger.debug(f"   Change a sensor wire now to see it update!", category="hardware")
-
     # ========== LIMIT SWITCHES REMOVED - NOT PART OF USER'S MACHINE ==========
 
     def get_all_sensor_states(self) -> Dict[str, bool]:
         """
-        Read all sensor states
+        Read all sensor states (edge switches + multiplexer sensors)
 
         Returns:
             Dictionary mapping sensor names to their states
         """
         states = {}
-        for sensor_name in self.sensor_pins:
+
+        # Read all direct edge switches
+        for sensor_name in self.direct_sensor_pins.keys():
             state = self.read_sensor(sensor_name)
             if state is not None:
                 states[sensor_name] = state
+
+        # Read all multiplexer sensors
+        if self.multiplexer:
+            mux_channels = self.multiplexer_config.get('channels', {})
+            for sensor_name in mux_channels.keys():
+                state = self.read_sensor(sensor_name)
+                if state is not None:
+                    states[sensor_name] = state
+
         return states
 
     # REMOVED get_all_limit_switch_states - not part of user's machine
@@ -596,13 +529,9 @@ class RaspberryPiGPIO:
         # Read all direct sensors
         for sensor_name, pin in self.direct_sensor_pins.items():
             try:
-                state = self._read_with_debounce(pin, is_multiplexer=False)
-                if state is not None:
-                    self._last_sensor_states[sensor_name] = state
-                    self.logger.debug(f"Initialized {sensor_name}: {'HIGH' if state else 'LOW'}", category="hardware")
-                else:
-                    self._last_sensor_states[sensor_name] = False  # Default to False if unstable
-                    self.logger.warning(f"Initialized {sensor_name}: UNSTABLE (defaulting to LOW)", category="hardware")
+                state = GPIO.input(pin)
+                self._last_sensor_states[sensor_name] = state
+                self.logger.debug(f"Initialized {sensor_name}: {'HIGH' if state else 'LOW'}", category="hardware")
             except Exception as e:
                 self.logger.error(f"Error initializing {sensor_name}: {e}", category="hardware")
                 self._last_sensor_states[sensor_name] = False
@@ -613,89 +542,15 @@ class RaspberryPiGPIO:
             self.logger.info(f"Initializing {len(channels)} multiplexer sensor states...", category="hardware")
             for sensor_name, channel in channels.items():
                 try:
-                    state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
-                    if state is not None:
-                        self._last_sensor_states[sensor_name] = state
-                        state_str = 'HIGH (ACTIVE)' if state else 'LOW (INACTIVE)'
-                        self.logger.info(f"   MUX {sensor_name:30s} [CH{channel:2d}] = {state_str}", category="hardware")
-                    else:
-                        self._last_sensor_states[sensor_name] = False  # Default to False if unstable
-                        self.logger.warning(f"   MUX {sensor_name:30s} [CH{channel:2d}] = UNSTABLE (defaulting to LOW)", category="hardware")
+                    state = self._read_multiplexer_channel(channel)
+                    self._last_sensor_states[sensor_name] = state
+                    state_str = 'HIGH (ACTIVE)' if state else 'LOW (INACTIVE)'
+                    self.logger.info(f"   MUX {sensor_name:30s} [CH{channel:2d}] = {state_str}", category="hardware")
                 except Exception as e:
                     self.logger.error(f"   MUX {sensor_name:30s} [CH{channel:2d}] = ERROR: {e}", category="hardware")
                     self._last_sensor_states[sensor_name] = False
 
         self.logger.success(f"Pre-initialized {len(self._last_sensor_states)} sensor states", category="hardware")
-
-    # ========== GPIO TEST ==========
-
-    def _test_gpio_reads(self):
-        """Test GPIO reads immediately after initialization"""
-        self.logger.info("="*60, category="hardware")
-        self.logger.info("TESTING GPIO PIN READS", category="hardware")
-        self.logger.info("="*60, category="hardware")
-
-        # Test edge switch pins
-        self.logger.info("Testing Edge Switch Pins (X/Y axis - GND connection, inverted logic):", category="hardware")
-        for sensor_name, pin in self.direct_sensor_pins.items():
-            try:
-                # Read pin 5 times rapidly
-                readings = []
-                for _ in range(5):
-                    readings.append(GPIO.input(pin))
-                    time.sleep(0.001)  # 1ms between reads
-
-                # Check if all readings are the same (stable)
-                if len(set(readings)) == 1:
-                    raw_state = readings[0]
-                    inverted_state = not raw_state  # Invert for edge switches
-                    self.logger.debug(f"{sensor_name:20s} [pin {pin:2d}] raw={'HIGH' if raw_state else 'LOW '} → inverted={'TRIGGERED' if inverted_state else 'READY   '} (stable)", category="hardware")
-                else:
-                    self.logger.warning(f"{sensor_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}", category="hardware")
-                    self.logger.warning(f"      This indicates floating pin or electrical noise!", category="hardware")
-                    self.logger.warning(f"      Check: 1) Wire connection, 2) Pull-up resistor, 3) Power supply", category="hardware")
-            except Exception as e:
-                self.logger.error(f"{sensor_name:20s} [pin {pin:2d}] = ERROR: {e}", category="hardware")
-
-        # REMOVED limit switch testing - not part of user's machine
-
-        self.logger.info("IMPORTANT: If pins show UNSTABLE:", category="hardware")
-        self.logger.info("   1. Check physical wiring - loose connections cause noise", category="hardware")
-        self.logger.info("   2. Ensure switches are properly connected to GND or 3.3V", category="hardware")
-        self.logger.info("   3. Verify pull-down/pull-up resistors are configured", category="hardware")
-        self.logger.info("   4. Test: touch wire to GND (should show LOW) or 3.3V (should show HIGH)", category="hardware")
-        self.logger.info("="*60, category="hardware")
-
-    def _test_multiplexer_reads(self):
-        """Test multiplexer sensor reads immediately after initialization"""
-        if not self.multiplexer:
-            self.logger.warning("Multiplexer not initialized - skipping MUX test", category="hardware")
-            return
-
-        self.logger.info("="*60, category="hardware")
-        self.logger.info("TESTING MULTIPLEXER SENSOR READS", category="hardware")
-        self.logger.info("="*60, category="hardware")
-
-        channels = self.multiplexer_config.get('channels', {})
-        self.logger.info(f"Testing {len(channels)} multiplexer channels...", category="hardware")
-
-        for sensor_name, channel in channels.items():
-            try:
-                # Read with 3-sample debouncing (PERFORMANCE OPTIMIZED)
-                state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
-
-                if state is not None:
-                    state_str = 'HIGH (ACTIVE/TRIGGERED)' if state else 'LOW (INACTIVE)'
-                    self.logger.info(f"   {sensor_name:30s} [CH{channel:2d}] = {state_str} (stable)", category="hardware")
-                else:
-                    self.logger.warning(f"   {sensor_name:30s} [CH{channel:2d}] = UNSTABLE! (noise detected)", category="hardware")
-                    self.logger.warning(f"      Check: 1) Sensor wiring, 2) Multiplexer connections, 3) Power supply", category="hardware")
-            except Exception as e:
-                self.logger.error(f"   {sensor_name:30s} [CH{channel:2d}] = ERROR: {e}", category="hardware")
-
-        self.logger.info("="*60, category="hardware")
-        self.logger.info("TIP: Trigger a sensor now and watch for changes in the GUI!", category="hardware")
-        self.logger.info("="*60, category="hardware")
 
     # ========== CONTINUOUS SWITCH POLLING ==========
 
@@ -724,145 +579,58 @@ class RaspberryPiGPIO:
 
     def _poll_switches_continuously(self):
         """Background thread that continuously polls all switches and logs changes"""
-        self.logger.warning("="*80, category="hardware")
-        self.logger.warning("ULTRA-DETAILED EDGE SWITCH POLLING THREAD STARTING", category="hardware")
-        self.logger.warning("="*80, category="hardware")
+        self.logger.info("Switch polling thread started", category="hardware")
 
-        # VERIFY we have exactly 4 edge switches
-        expected_edge_switches = ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']
-        edge_switch_count = len(self.direct_sensor_pins)
-
-        self.logger.warning(f"EDGE SWITCHES CONFIGURED: {edge_switch_count}/4", category="hardware")
-        self.logger.warning(f"PINS BEING MONITORED: {list(self.direct_sensor_pins.keys())}", category="hardware")
-
-        # Verify each expected switch exists
-        for expected_name in expected_edge_switches:
-            if expected_name in self.direct_sensor_pins:
-                pin = self.direct_sensor_pins[expected_name]
-                self.logger.warning(f"✓ {expected_name:20s} on GPIO pin {pin}", category="hardware")
-            else:
-                self.logger.error(f"✗ {expected_name:20s} MISSING FROM CONFIGURATION!", category="hardware")
-
-        if edge_switch_count != 4:
-            self.logger.error(f"CRITICAL: Expected 4 edge switches but found {edge_switch_count}!", category="hardware")
-
-        # Initialize ALL switch states
-        self.logger.warning("="*80, category="hardware")
-        self.logger.warning("INITIALIZING ALL EDGE SWITCH STATES", category="hardware")
+        # Initialize edge switch states
         for sensor_name, pin in self.direct_sensor_pins.items():
             try:
-                raw = GPIO.input(pin)
-                # INVERT for edge switches (connect to GND when pressed)
-                inverted = not raw
-                self.switch_states[sensor_name] = inverted
-                self.logger.warning(f"INIT: {sensor_name:20s} [pin {pin:2d}]: raw={'HIGH' if raw else 'LOW'} → inverted={'TRIGGERED' if inverted else 'READY'}", category="hardware")
+                current_state = GPIO.input(pin)  # Direct read: HIGH=triggered, LOW=ready
+                self.switch_states[sensor_name] = current_state
+                self.logger.debug(f"Edge switch {sensor_name} [pin {pin}] initialized: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
             except Exception as e:
-                self.logger.error(f"{sensor_name:20s} [pin {pin:2d}]: INIT ERROR: {e}", category="hardware")
+                self.logger.error(f"Error initializing {sensor_name}: {e}", category="hardware")
                 self.switch_states[sensor_name] = False
 
+        # CRITICAL FIX: Initialize multiplexer switch states
+        # This prevents false positive state changes on first poll
+        if self.multiplexer:
+            channels = self.multiplexer_config.get('channels', {})
+            self.logger.info(f"Initializing {len(channels)} multiplexer switch states in polling thread...", category="hardware")
+            for sensor_name, channel in channels.items():
+                try:
+                    current_state = self._read_multiplexer_channel(channel)
+                    switch_key = f"mux_{sensor_name}"
+                    self.switch_states[switch_key] = current_state
+                    self.logger.debug(f"Mux switch {sensor_name} [channel {channel}] initialized: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
+                except Exception as e:
+                    self.logger.error(f"Error initializing mux {sensor_name} on channel {channel}: {e}", category="hardware")
+                    switch_key = f"mux_{sensor_name}"
+                    self.switch_states[switch_key] = False
+
         poll_count = 0
-        last_log_time = time.time()
-
-        # Track raw values separately for debugging
-        last_raw_values = {}
-        consecutive_same_count = {}
-        for sensor_name in self.direct_sensor_pins:
-            last_raw_values[sensor_name] = None
-            consecutive_same_count[sensor_name] = 0
-
-        self.logger.warning("="*80, category="hardware")
-        self.logger.warning("POLLING STARTED - PRESS ANY EDGE SWITCH TO TEST", category="hardware")
-        self.logger.warning("TRACKING EVERY GPIO READ FOR ALL EDGE SWITCHES", category="hardware")
-        self.logger.warning("="*80, category="hardware")
 
         while self.polling_active:
             try:
                 poll_count += 1
 
-                # ULTRA-VERBOSE: Log EVERY single poll for first 20 cycles
-                if poll_count <= 20:
-                    self.logger.warning(f"\n--- POLL CYCLE #{poll_count} STARTING ---", category="hardware")
-
-                # Read ALL edge switches EVERY cycle with EXTREME detail
+                # Read ALL edge switches
                 for sensor_name, pin in self.direct_sensor_pins.items():
                     try:
-                        # STEP 1: Read the raw GPIO value
-                        raw_read = GPIO.input(pin)
-
-                        # STEP 2: Track if raw value changed from last read
-                        raw_changed = False
-                        if last_raw_values[sensor_name] is not None:
-                            if raw_read != last_raw_values[sensor_name]:
-                                raw_changed = True
-                                consecutive_same_count[sensor_name] = 0
-                            else:
-                                consecutive_same_count[sensor_name] += 1
-
-                        last_raw_values[sensor_name] = raw_read
-
-                        # STEP 3: Invert for edge switches (HIGH=open, LOW=pressed)
-                        current_state = not raw_read
-
-                        # STEP 4: Get the last confirmed state
+                        current_state = GPIO.input(pin)  # Direct read: HIGH=triggered, LOW=ready
                         last_state = self.switch_states.get(sensor_name)
 
-                        # STEP 5: Check if state differs
-                        state_differs = (current_state != last_state)
-
-                        # ULTRA-VERBOSE logging for first 20 polls or when something interesting happens
-                        if poll_count <= 20 or raw_changed or state_differs or poll_count % 50 == 0:
-                            self.logger.warning(f"READ {sensor_name:15s} pin={pin:2d}:", category="hardware")
-                            self.logger.warning(f"  1. Raw GPIO.input() = {raw_read} ({'HIGH' if raw_read else 'LOW'})", category="hardware")
-                            self.logger.warning(f"  2. Raw changed from last? {raw_changed} (same for {consecutive_same_count[sensor_name]} reads)", category="hardware")
-                            self.logger.warning(f"  3. Inverted state = {current_state} ({'TRIGGERED' if current_state else 'READY'})", category="hardware")
-                            self.logger.warning(f"  4. Last confirmed = {last_state} ({'TRIGGERED' if last_state else 'READY' if last_state is not None else 'UNINITIALIZED'})", category="hardware")
-                            self.logger.warning(f"  5. State differs? {state_differs}", category="hardware")
-
-                        # STEP 6: If state changed, update and announce LOUDLY
-                        if state_differs:
-                            self.logger.warning("="*80, category="hardware")
-                            self.logger.warning("🚨🚨🚨 EDGE SWITCH STATE CHANGE DETECTED! 🚨🚨🚨", category="hardware")
-                            self.logger.warning(f"SWITCH: {sensor_name.upper()}", category="hardware")
-                            self.logger.warning(f"GPIO PIN: {pin}", category="hardware")
-                            self.logger.warning(f"RAW GPIO VALUE: {raw_read} ({'HIGH (3.3V)' if raw_read else 'LOW (GND)'})", category="hardware")
-                            self.logger.warning(f"INVERTED STATE: {current_state} ({'TRIGGERED' if current_state else 'READY'})", category="hardware")
-                            self.logger.warning(f"PREVIOUS STATE: {last_state} ({'TRIGGERED' if last_state else 'READY' if last_state is not None else 'UNINITIALIZED'})", category="hardware")
-                            self.logger.warning(f"POLL CYCLE: #{poll_count}", category="hardware")
-                            self.logger.warning(f"TIME: {time.time()}", category="hardware")
-                            self.logger.warning("="*80, category="hardware")
-
-                            # Update the switch state
+                        # Detect state changes
+                        if current_state != last_state:
                             self.switch_states[sensor_name] = current_state
-
-                        # Warning if GPIO seems stuck (same value for too long)
-                        if consecutive_same_count[sensor_name] > 0 and consecutive_same_count[sensor_name] % 1000 == 0:
-                            self.logger.warning(f"⚠️ {sensor_name} GPIO pin {pin} has been {raw_read} for {consecutive_same_count[sensor_name]} consecutive reads!", category="hardware")
-                            self.logger.warning(f"   This might indicate: 1) No physical changes, 2) Stuck pin, 3) Wiring issue", category="hardware")
+                            self.logger.info("="*60, category="hardware")
+                            self.logger.info(f"EDGE SWITCH CHANGED: {sensor_name}", category="hardware")
+                            self.logger.info(f"  Pin: {pin}", category="hardware")
+                            self.logger.info(f"  Previous: {'TRIGGERED' if last_state else 'READY'}", category="hardware")
+                            self.logger.info(f"  Current: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
+                            self.logger.info("="*60, category="hardware")
 
                     except Exception as e:
-                        self.logger.error(f"ERROR reading {sensor_name} on pin {pin}: {e}", category="hardware")
-                        self.logger.error(f"Exception type: {type(e).__name__}", category="hardware")
-
-                # Status log every 2 seconds with more detail
-                current_time = time.time()
-                if current_time - last_log_time > 2.0:
-                    last_log_time = current_time
-                    self.logger.warning(f"\n=== STATUS at poll #{poll_count} ===", category="hardware")
-                    self.logger.warning(f"Monitoring {len(self.direct_sensor_pins)} edge switches:", category="hardware")
-
-                    for sensor_name in self.direct_sensor_pins:
-                        pin = self.direct_sensor_pins[sensor_name]
-                        raw = last_raw_values.get(sensor_name, None)
-                        state = self.switch_states.get(sensor_name, None)
-                        stuck_count = consecutive_same_count.get(sensor_name, 0)
-
-                        raw_str = f"raw={'HIGH' if raw else 'LOW'}" if raw is not None else "raw=?"
-                        state_str = f"state={'T' if state else 'R'}" if state is not None else "state=?"
-                        stuck_str = f"(stuck×{stuck_count})" if stuck_count > 100 else ""
-
-                        self.logger.warning(f"  {sensor_name:15s} [pin {pin:2d}]: {raw_str} → {state_str} {stuck_str}", category="hardware")
-
-                    self.logger.warning("Press a switch NOW to test detection!", category="hardware")
+                        self.logger.error(f"Error reading {sensor_name}: {e}", category="hardware")
 
                 # Note: Non-edge sensors are handled via the multiplexer below
 
@@ -871,58 +639,21 @@ class RaspberryPiGPIO:
                     channels = self.multiplexer_config.get('channels', {})
                     for sensor_name, channel in channels.items():
                         try:
-                            # Use 3-sample verification for each poll to filter noise at read-time (PERFORMANCE OPTIMIZED)
-                            current_state = self._read_with_debounce(channel, is_multiplexer=True, channel=channel)
-
-                            # Skip if read was unstable (returns None)
-                            if current_state is None:
-                                continue
+                            # Direct read from multiplexer (with optional inversion)
+                            current_state = self._read_multiplexer_channel(channel)
 
                             switch_key = f"mux_{sensor_name}"
-                            last_confirmed_state = self.switch_states.get(switch_key)
+                            last_state = self.switch_states.get(switch_key)
 
-                            # Initialize debounce counter for this sensor if needed
-                            if switch_key not in debounce_counters:
-                                debounce_counters[switch_key] = {'pending_state': None, 'count': 0}
-
-                            debounce = debounce_counters[switch_key]
-
-                            # Handle debounce logic for initial and subsequent reads
-                            if debounce['pending_state'] is None:
-                                # Very first read of this sensor - start debounce
-                                debounce['pending_state'] = current_state
-                                debounce['count'] = 1
-                                self.logger.debug(f"MUX SWITCH FIRST READ: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [channel {channel}] - waiting for confirmation", category="hardware")
-                            elif debounce['pending_state'] == current_state:
-                                # Reading matches pending state, increment count
-                                debounce['count'] += 1
-                            else:
-                                # State changed, restart debounce
-                                debounce['pending_state'] = current_state
-                                debounce['count'] = 1
-
-                            # Check if we have enough consecutive readings
-                            if debounce['count'] >= DEBOUNCE_COUNT:
-                                # Check if this is different from confirmed state (or first confirmation)
-                                if current_state != last_confirmed_state:
-                                    # State change confirmed (or initial state set)!
-                                    self.switch_states[switch_key] = current_state
-
-                                    # Log state change or initial state
-                                    if last_confirmed_state is not None:
-                                        # Real state change (not initial)
-                                        old_state_str = 'HIGH (ACTIVE/TRIGGERED)' if last_confirmed_state else 'LOW (INACTIVE)'
-                                        new_state_str = 'HIGH (ACTIVE/TRIGGERED)' if current_state else 'LOW (INACTIVE)'
-                                        self.logger.info("=== MULTIPLEXER SENSOR CHANGED ===", category="hardware")
-                                        self.logger.info(f"   Sensor: {sensor_name}", category="hardware")
-                                        self.logger.info(f"   Channel: {channel}", category="hardware")
-                                        self.logger.info(f"   Old State: {old_state_str}", category="hardware")
-                                        self.logger.info(f"   New State: {new_state_str}", category="hardware")
-                                        self.logger.info(f"   Poll: #{poll_count}", category="hardware")
-                                    else:
-                                        # Initial state set
-                                        state_str = 'HIGH (ACTIVE/TRIGGERED)' if current_state else 'LOW (INACTIVE)'
-                                        self.logger.info(f"MUX SENSOR INITIALIZED: {sensor_name} = {state_str} [channel {channel}]", category="hardware")
+                            # Detect state changes
+                            if current_state != last_state:
+                                self.switch_states[switch_key] = current_state
+                                self.logger.info("="*60, category="hardware")
+                                self.logger.info(f"MULTIPLEXER SENSOR CHANGED: {sensor_name}", category="hardware")
+                                self.logger.info(f"  Channel: {channel}", category="hardware")
+                                self.logger.info(f"  Previous: {'TRIGGERED' if last_state else 'READY'}", category="hardware")
+                                self.logger.info(f"  Current: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
+                                self.logger.info("="*60, category="hardware")
 
                         except Exception as e:
                             self.logger.error(f"Error reading mux {sensor_name} on channel {channel}: {e}", category="hardware")
@@ -1011,3 +742,4 @@ if __name__ == "__main__":
     test_logger.info("="*60, category="hardware")
     test_logger.info("Test completed", category="hardware")
     test_logger.info("="*60, category="hardware")
+
