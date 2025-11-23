@@ -16,6 +16,15 @@ Usage:
 import json
 import os
 
+# Import bidi for proper RTL (Right-to-Left) text display
+try:
+    from bidi.algorithm import get_display
+    BIDI_AVAILABLE = True
+except ImportError:
+    BIDI_AVAILABLE = False
+    print("WARNING: python-bidi not installed. Hebrew text may display incorrectly.")
+    print("Install with: pip3 install python-bidi")
+
 # Hebrew translations dictionary
 # Organized by category for maintainability
 HEBREW_TRANSLATIONS = {
@@ -497,18 +506,18 @@ def get_language():
 
 def t(text, **kwargs):
     """
-    Translate text to Hebrew
+    Translate text to Hebrew with proper RTL display formatting
 
     Args:
         text: English text to translate
         **kwargs: Format arguments for f-string style formatting
 
     Returns:
-        Translated text (or original if translation not found)
+        Translated text with RTL formatting (or original if translation not found)
 
     Examples:
-        t("Connect Hardware")  # Returns: "התחבר לחומרה"
-        t("X: {x:.2f} cm", x=5.5)  # Returns: "X: 5.50 ס״מ"
+        t("Connect Hardware")  # Returns: "התחבר לחומרה" (with RTL formatting)
+        t("X: {x:.2f} cm", x=5.5)  # Returns: "X: 5.50 ס״מ" (with RTL formatting)
     """
     # If language is English, return original
     if _current_language == "en":
@@ -527,6 +536,13 @@ def t(text, **kwargs):
             # If formatting fails, return original with formatting
             print(f"Translation formatting error for '{text}': {e}")
             return text.format(**kwargs)
+
+    # Apply RTL (Right-to-Left) formatting for proper Hebrew display
+    if BIDI_AVAILABLE and _current_language == "he":
+        try:
+            translated = get_display(translated)
+        except Exception as e:
+            print(f"RTL formatting error for '{text}': {e}")
 
     return translated
 

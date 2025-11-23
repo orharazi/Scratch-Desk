@@ -161,14 +161,14 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": false,
+    "use_real_hardware": true,
     "start_with_grbl": false,
     "raspberry_pi": {
       "gpio_mode": "BCM",
       "pistons": {
         "line_marker_piston": 11,
         "line_cutter_piston": 10,
-        "line_motor_piston": 3,
+        "line_motor_piston": 21,
         "row_marker_piston": 15,
         "row_cutter_piston": 14
       },
