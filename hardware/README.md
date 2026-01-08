@@ -22,14 +22,16 @@ Real hardware interface for CNC Scratch Desk control system.
 │ raspberry_pi_gpio.py│  │   arduino_grbl.py           │
 │                     │  │                             │
 │ - Pistons (OUTPUT)  │  │ - Motor Control (G-code)    │
-│ - Sensors (INPUT)   │  │ - X/Y Motors                │
-│ - Limit Switches    │  │ - Position Tracking         │
+│ - RS485 Sensors     │  │ - X/Y Motors                │
+│ - Direct GPIO       │  │ - Position Tracking         │
+│ - Limit Switches    │  │                             │
 └──────────┬──────────┘  └──────────┬──────────────────┘
            │                        │
            ▼                        ▼
     ┌─────────────┐          ┌──────────────┐
     │ Raspberry Pi│          │Arduino + GRBL│
     │    GPIO     │          │   (Serial)   │
+    │  + RS485    │          │              │
     └─────────────┘          └──────────────┘
 ```
 
@@ -46,23 +48,36 @@ All hardware settings are configured in `settings.json`:
 - `row_marker_piston`: GPIO 23
 - `row_cutter_piston`: GPIO 24
 
-**Sensors (Input Pins with Pull-up):**
-- `line_marker_state`: GPIO 5
-- `line_cutter_state`: GPIO 6
-- `line_motor_piston_sensor`: GPIO 13
-- `row_marker_state`: GPIO 19
-- `row_cutter_state`: GPIO 26
-- `x_left_edge`: GPIO 20
-- `x_right_edge`: GPIO 21
-- `y_top_edge`: GPIO 16
-- `y_bottom_edge`: GPIO 12
+**RS485 Sensors (via Modbus RTU):**
+12 piston position sensors connected via RS485 Modbus:
+- Line tools: marker (up/down), cutter (up/down), motor left/right (up/down)
+- Row tools: marker (up/down), cutter (up/down)
+- Serial Port: `/dev/ttyAMA0` (default)
+- Protocol: Modbus RTU
+- Baud Rate: 9600 (default)
+- Each sensor has a unique Modbus slave address (1-12)
 
-**Limit Switches (Input Pins with Pull-up):**
-- `rows_door`: GPIO 25
+**Direct GPIO Sensors (Input Pins with Pull-down):**
+- `x_left_edge`: GPIO 4
+- `x_right_edge`: GPIO 17
+- `y_top_edge`: GPIO 7
+- `y_bottom_edge`: GPIO 8
+
+**Limit Switches:**
+- Door switch: Via Arduino GRBL (moved from Raspberry Pi GPIO)
+
+### RS485 Modbus Configuration
+
+- **Serial Port**: `/dev/ttyAMA0` (Raspberry Pi UART)
+- **Baud Rate**: 9600
+- **Protocol**: Modbus RTU
+- **Data Format**: 8N1 (8 data bits, no parity, 1 stop bit)
+- **Timeout**: 1.0 second
+- **Sensor Addresses**: Configurable in settings.json (1-12 by default)
 
 ### Arduino GRBL Configuration
 
-- **Serial Port**: `/dev/ttyACM0` (Linux/Raspberry Pi)
+- **Serial Port**: `/dev/ttyACM0` or `/dev/ttyUSB0` (Linux/Raspberry Pi)
 - **Baud Rate**: 115200
 - **Units**: Millimeters (converted from cm internally)
 - **Feed Rate**: 1000 mm/min
@@ -109,10 +124,14 @@ if hardware.initialize():
 
 ### 3. Test Individual Components
 
-**Test GPIO (Pistons & Sensors):**
+**Test RS485 Sensors:**
 ```bash
-cd hardware
-python3 test_gpio.py
+python3 tests/test_rs485_sensors.py
+```
+
+**Test RS485 Sensors with GUI:**
+```bash
+python3 tests/test_mux_sensor_gui.py
 ```
 
 **Test Motor Movement:**
@@ -123,14 +142,14 @@ python3 test_motor_movement.py
 
 **Test Individual Modules:**
 ```bash
-# Test GPIO only
-python3 -m hardware.raspberry_pi_gpio
+# Test GPIO + RS485
+python3 -m hardware.implementations.real.raspberry_pi.raspberry_pi_gpio
 
 # Test GRBL only
-python3 -m hardware.arduino_grbl
+python3 -m hardware.implementations.real.arduino_grbl.arduino_grbl
 
-# Test unified interface
-python3 -m hardware.hardware_interface
+# Test RS485 interface only
+python3 -m hardware.implementations.real.raspberry_pi.rs485_modbus
 ```
 
 ## Pin Configuration Reference
@@ -139,13 +158,19 @@ python3 -m hardware.hardware_interface
 - **HIGH (3.3V)** = Piston extended (DOWN position)
 - **LOW (0V)** = Piston retracted (UP position)
 
-### Sensor Reading (Pull-up enabled)
-- **LOW (0V)** = Sensor triggered (detected)
-- **HIGH (3.3V)** = Sensor not triggered (normal state)
+### RS485 Sensor Reading (Modbus RTU)
+- **Modbus Read Discrete Inputs** (Function Code 02)
+- **TRUE** = Sensor triggered (HIGH signal)
+- **FALSE** = Sensor not triggered (LOW signal)
+- Each sensor has unique Modbus slave address (1-247)
+- Register address: 0 (configurable)
 
-### Limit Switch Reading (Pull-up enabled)
-- **LOW (0V)** = Switch activated (pressed/closed)
-- **HIGH (3.3V)** = Switch inactive (open)
+### Direct GPIO Sensor Reading (Pull-down enabled)
+- **HIGH (3.3V)** = Sensor triggered (detected)
+- **LOW (0V)** = Sensor not triggered (normal state)
+
+### Limit Switch Reading (via Arduino GRBL)
+- Queried through GRBL status commands
 
 ## G-code Commands Used
 
@@ -185,6 +210,26 @@ The Arduino GRBL interface uses standard G-code:
   pip3 install RPi.GPIO
   ```
 
+### RS485 Issues
+
+**Error: "pymodbus library not available"**
+- Solution: Install pymodbus library:
+  ```bash
+  pip3 install pymodbus
+  ```
+
+**Error: "Failed to connect to RS485"**
+- Check RS485 adapter is connected to correct serial port
+- Verify serial port in settings.json (`/dev/ttyAMA0` or `/dev/ttyUSB0`)
+- Check permissions: `ls -l /dev/ttyAMA0`
+- Add user to dialout group: `sudo usermod -a -G dialout $USER`
+
+**Error: "Modbus read error"**
+- Verify sensor Modbus slave addresses match settings.json
+- Check RS485 bus wiring (A, B, GND)
+- Verify baud rate matches sensor configuration (default 9600)
+- Check RS485 termination resistors if bus is long
+
 ### GRBL Issues
 
 **Error: "Serial port not found"**
@@ -203,9 +248,9 @@ The Arduino GRBL interface uses standard G-code:
 - Check limit switches are connected
 - Disable homing in GRBL settings if not needed
 
-## Customizing Pin Configuration
+## Customizing Configuration
 
-To change GPIO pins, edit `settings.json`:
+To change GPIO pins or RS485 settings, edit `settings.json`:
 
 ```json
 {
@@ -213,8 +258,17 @@ To change GPIO pins, edit `settings.json`:
     "raspberry_pi": {
       "gpio_mode": "BCM",
       "pistons": {
-        "line_marker_piston": 17,  // Change pin number here
+        "line_marker_piston": 11,  // Change pin number here
         // ... other pistons
+      },
+      "rs485": {
+        "enabled": true,
+        "serial_port": "/dev/ttyAMA0",  // Change serial port
+        "baudrate": 9600,               // Change baud rate
+        "sensor_addresses": {
+          "line_marker_up_sensor": 1,   // Change Modbus addresses
+          // ... other sensors
+        }
       }
     }
   }
@@ -249,10 +303,11 @@ def move_x(position):
 - **Python 3.7+**
 - **RPi.GPIO** (for Raspberry Pi GPIO)
 - **pyserial** (for Arduino serial communication)
+- **pymodbus** (for RS485 Modbus RTU communication)
 
 Install dependencies:
 ```bash
-pip3 install RPi.GPIO pyserial
+pip3 install RPi.GPIO pyserial pymodbus
 ```
 
 ## Notes
@@ -260,5 +315,6 @@ pip3 install RPi.GPIO pyserial
 - All positions are in **centimeters** (automatically converted to mm for GRBL)
 - GPIO pins use **BCM numbering** by default
 - Piston control is **inverted** (HIGH = extended, LOW = retracted)
-- Sensor inputs use **pull-up resistors** (triggered = LOW)
-- Thread-safe serial communication with command locks
+- RS485 sensors use **Modbus RTU protocol** with unique slave addresses
+- Direct GPIO sensors use **pull-down resistors** (triggered = HIGH)
+- Thread-safe serial communication with command locks for both GRBL and RS485

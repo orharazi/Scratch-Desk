@@ -12,7 +12,7 @@ import json
 import time
 import threading
 from typing import Dict, Optional
-from hardware.implementations.real.raspberry_pi.multiplexer import CD74HC4067Multiplexer
+from hardware.implementations.real.raspberry_pi.rs485_modbus import RS485ModbusInterface
 from core.logger import get_logger
 
 # Module-level logger
@@ -89,11 +89,10 @@ class RaspberryPiGPIO:
 
         # Pin mappings from settings
         self.piston_pins = self.gpio_config.get("pistons", {})
-        self.multiplexer_config = self.gpio_config.get("multiplexer", {})
+        self.rs485_config = self.gpio_config.get("rs485", {})
         self.direct_sensor_pins = self.gpio_config.get("direct_sensors", {})
-        # REMOVED limit_switch_pins - not part of user's machine
-        self.multiplexer = None  # Will be initialized later
-        self.invert_mux_readings = self.multiplexer_config.get("invert_readings", False)
+        self.limit_switch_pins = self.gpio_config.get("limit_switches", {})
+        self.rs485 = None  # Will be initialized later
 
         # Initialize state tracking dictionary
         self._last_sensor_states = {}  # Initialize state tracking dictionary
@@ -121,7 +120,7 @@ class RaspberryPiGPIO:
             self.logger.warning("="*40, category="hardware")
 
         self.logger.debug(f"Piston pins: {self.piston_pins}", category="hardware")
-        self.logger.debug(f"Multiplexer config: {self.multiplexer_config}", category="hardware")
+        self.logger.debug(f"RS485 config: {self.rs485_config}", category="hardware")
         self.logger.debug(f"Direct sensor pins: {self.direct_sensor_pins}", category="hardware")
         # REMOVED limit switch logging - not part of user's machine
         self.logger.info("="*60, category="hardware")
@@ -197,50 +196,35 @@ class RaspberryPiGPIO:
                     GPIO.output(pin, GPIO.LOW)
                     self.logger.debug(f"Piston '{piston_name}' on GPIO {pin}", category="hardware")
                 except Exception as e:
-                    error_msg = str(e)
-                    if "busy" in error_msg.lower():
-                        # GPIO busy - try recovery
-                        self.logger.warning(f"GPIO {pin} ({piston_name}) is busy, attempting recovery...", category="hardware")
-                        try:
-                            GPIO.cleanup(pin)
-                            time.sleep(0.05)
-                            GPIO.setup(pin, GPIO.OUT)
-                            GPIO.output(pin, GPIO.LOW)
-                            self.logger.success(f"Recovered GPIO {pin} ({piston_name})", category="hardware")
-                        except Exception as recovery_error:
-                            self.logger.error(f"Could not recover GPIO {pin} for piston '{piston_name}': {recovery_error}", category="hardware")
-                            self.logger.warning(f"Piston '{piston_name}' will not be available", category="hardware")
-                            failed_pistons.append(piston_name)
-                    else:
-                        self.logger.error(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {e}", category="hardware")
-                        failed_pistons.append(piston_name)
+                    raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
 
-            if failed_pistons:
-                self.logger.warning(f"Some pistons failed to initialize: {failed_pistons}. Continuing with sensors...", category="hardware")
-
-            # Initialize multiplexer for sensor reading
-            if self.multiplexer_config:
-                self.logger.info("Initializing multiplexer for sensor reading...", category="hardware")
+            # Initialize RS485 for sensor reading
+            if self.rs485_config and self.rs485_config.get('enabled', True):
+                self.logger.info("Initializing RS485 Modbus RTU for sensor reading...", category="hardware")
                 try:
-                    self.multiplexer = CD74HC4067Multiplexer(
-                        GPIO,
-                        self.multiplexer_config['s0'],
-                        self.multiplexer_config['s1'],
-                        self.multiplexer_config['s2'],
-                        self.multiplexer_config['s3'],
-                        self.multiplexer_config['sig']
+                    self.rs485 = RS485ModbusInterface(
+                        port=self.rs485_config.get('serial_port', '/dev/ttyAMA0'),
+                        baudrate=self.rs485_config.get('baudrate', 9600),
+                        bytesize=self.rs485_config.get('bytesize', 8),
+                        parity=self.rs485_config.get('parity', 'N'),
+                        stopbits=self.rs485_config.get('stopbits', 1),
+                        timeout=self.rs485_config.get('timeout', 1.0),
+                        sensor_addresses=self.rs485_config.get('sensor_addresses', {})
                     )
-                    channels = self.multiplexer_config.get('channels', {})
-                    self.logger.debug("Multiplexer initialized", category="hardware")
-                    self.logger.debug(f"Control pins: S0={self.multiplexer_config['s0']}, S1={self.multiplexer_config['s1']}, S2={self.multiplexer_config['s2']}, S3={self.multiplexer_config['s3']}", category="hardware")
-                    self.logger.debug(f"Signal pin: {self.multiplexer_config['sig']}", category="hardware")
-                    self.logger.debug(f"Configured channels: {len(channels)}", category="hardware")
-                    if self.invert_mux_readings:
-                        self.logger.info("Multiplexer sensor inversion ENABLED (handling backwards wiring)", category="hardware")
+
+                    # Connect to RS485 bus
+                    if not self.rs485.connect():
+                        raise RuntimeError("Failed to connect to RS485 bus")
+
+                    sensor_count = len(self.rs485_config.get('sensor_addresses', {}))
+                    self.logger.debug("RS485 initialized", category="hardware")
+                    self.logger.debug(f"Serial port: {self.rs485_config.get('serial_port')}", category="hardware")
+                    self.logger.debug(f"Baudrate: {self.rs485_config.get('baudrate')}", category="hardware")
+                    self.logger.debug(f"Configured sensors: {sensor_count}", category="hardware")
                 except KeyError as e:
-                    raise RuntimeError(f"Multiplexer config missing required key: {str(e)}. Check settings.json")
+                    raise RuntimeError(f"RS485 config missing required key: {str(e)}. Check settings.json")
                 except Exception as e:
-                    raise RuntimeError(f"Failed to initialize multiplexer: {str(e)}")
+                    raise RuntimeError(f"Failed to initialize RS485: {str(e)}")
 
             # Setup direct sensor pins as inputs (external pull resistors assumed)
             if self.direct_sensor_pins:
@@ -273,6 +257,12 @@ class RaspberryPiGPIO:
 
             self.is_initialized = True
             self.logger.success("Raspberry Pi GPIO initialized successfully", category="hardware")
+
+            # Test GPIO reads immediately
+            self._test_gpio_reads()
+
+            # Test RS485 reads specifically
+            self._test_rs485_reads()
 
             # Pre-initialize sensor states before starting polling thread
             self._initialize_sensor_states()
@@ -352,25 +342,56 @@ class RaspberryPiGPIO:
 
     # ========== SENSOR READING METHODS ==========
 
-    def _read_multiplexer_channel(self, channel: int) -> bool:
+    def _read_with_debounce(self, pin_or_channel, is_rs485=False, sensor_name=None, samples=3, delay=0.001):
         """
-        Read from multiplexer with optional inversion based on configuration
+        Read GPIO or RS485 with debouncing
 
         Args:
-            channel: Multiplexer channel number
+            pin_or_channel: GPIO pin number (for direct GPIO)
+            is_rs485: True if reading from RS485
+            sensor_name: Sensor name for RS485 lookup (if is_rs485=True)
+            samples: Number of consistent reads required (default 3)
+            delay: Delay between reads in seconds (default 1ms)
 
         Returns:
-            Boolean sensor state (inverted if configured)
+            Stable boolean state or None if reads are inconsistent
         """
-        raw_value = self.multiplexer.read_channel(channel)
-        # Invert reading if configured (handles backwards wiring)
-        if self.invert_mux_readings:
-            return not raw_value
-        return raw_value
+        import time
+
+        # PERFORMANCE FIX: Reduced RS485 debouncing for lower latency while still filtering noise
+        if is_rs485:
+            samples = 3  # 3 samples for RS485 (similar to old MUX)
+            delay = 0.001  # 1ms between samples
+
+        readings = []
+        for i in range(samples):
+            if is_rs485 and self.rs485:
+                # For RS485, read via Modbus
+                register_address = self.rs485_config.get('register_address', 0)
+                value = self.rs485.read_sensor(sensor_name, register_address)
+                if value is None:
+                    # RS485 read failed - return None
+                    return None
+            else:
+                # For direct GPIO
+                value = GPIO.input(pin_or_channel)
+
+            readings.append(value)
+
+            if i < samples - 1:  # Don't delay after last read
+                time.sleep(delay)
+
+        # Check if all readings are consistent
+        if all(r == readings[0] for r in readings):
+            return bool(readings[0])
+        else:
+            # Inconsistent reads - sensor is bouncing/noisy
+            # Return None to indicate unstable read
+            return None
 
     def read_sensor(self, sensor_name: str) -> Optional[bool]:
         """
-        Read sensor state (via multiplexer or direct GPIO)
+        Read sensor state (via RS485 or direct GPIO)
 
         Args:
             sensor_name: Name of sensor (e.g., 'line_marker_up_sensor')
@@ -383,11 +404,19 @@ class RaspberryPiGPIO:
             return None
 
         try:
-            # Check if sensor is connected via multiplexer
-            mux_channels = self.multiplexer_config.get('channels', {})
-            if sensor_name in mux_channels:
-                # Return state from polling thread's switch_states
-                switch_key = f"mux_{sensor_name}"
+            # AGGRESSIVE LOGGING for edge sensors
+            is_edge_sensor = sensor_name in ['x_left_edge', 'x_right_edge', 'y_top_edge', 'y_bottom_edge']
+
+            if is_edge_sensor:
+                self.logger.debug(f"🔍 read_sensor() called for EDGE SENSOR: {sensor_name}", category="hardware")
+                self.logger.debug(f"   Direct sensor pins: {list(self.direct_sensor_pins.keys())}", category="hardware")
+                self.logger.debug(f"   Switch states keys: {list(self.switch_states.keys())}", category="hardware")
+
+            # Check if sensor is connected via RS485
+            rs485_addresses = self.rs485_config.get('sensor_addresses', {})
+            if sensor_name in rs485_addresses:
+                # Return state from polling thread's switch_states (debounced and verified)
+                switch_key = f"rs485_{sensor_name}"
                 if switch_key in self.switch_states:
                     return self.switch_states[switch_key]
                 else:
@@ -405,6 +434,8 @@ class RaspberryPiGPIO:
 
             else:
                 self.logger.error(f"Unknown sensor: {sensor_name}", category="hardware")
+                self.logger.error(f"  Not in rs485_addresses: {list(rs485_addresses.keys())}", category="hardware")
+                self.logger.error(f"  Not in direct_sensor_pins: {list(self.direct_sensor_pins.keys())}", category="hardware")
                 return None
 
         except Exception as e:
@@ -536,21 +567,111 @@ class RaspberryPiGPIO:
                 self.logger.error(f"Error initializing {sensor_name}: {e}", category="hardware")
                 self._last_sensor_states[sensor_name] = False
 
-        # Read all multiplexer sensors
-        if self.multiplexer:
-            channels = self.multiplexer_config.get('channels', {})
-            self.logger.info(f"Initializing {len(channels)} multiplexer sensor states...", category="hardware")
-            for sensor_name, channel in channels.items():
+        # Read all RS485 sensors
+        if self.rs485:
+            sensor_addresses = self.rs485_config.get('sensor_addresses', {})
+            self.logger.info(f"Initializing {len(sensor_addresses)} RS485 sensor states...", category="hardware")
+            for sensor_name, slave_address in sensor_addresses.items():
                 try:
-                    state = self._read_multiplexer_channel(channel)
-                    self._last_sensor_states[sensor_name] = state
-                    state_str = 'HIGH (ACTIVE)' if state else 'LOW (INACTIVE)'
-                    self.logger.info(f"   MUX {sensor_name:30s} [CH{channel:2d}] = {state_str}", category="hardware")
+                    state = self._read_with_debounce(None, is_rs485=True, sensor_name=sensor_name)
+                    if state is not None:
+                        self._last_sensor_states[sensor_name] = state
+                        state_str = 'HIGH (ACTIVE)' if state else 'LOW (INACTIVE)'
+                        self.logger.info(f"   RS485 {sensor_name:30s} [ADDR{slave_address:2d}] = {state_str}", category="hardware")
+                    else:
+                        self._last_sensor_states[sensor_name] = False  # Default to False if unstable
+                        self.logger.warning(f"   RS485 {sensor_name:30s} [ADDR{slave_address:2d}] = UNSTABLE (defaulting to LOW)", category="hardware")
                 except Exception as e:
-                    self.logger.error(f"   MUX {sensor_name:30s} [CH{channel:2d}] = ERROR: {e}", category="hardware")
+                    self.logger.error(f"   RS485 {sensor_name:30s} [ADDR{slave_address:2d}] = ERROR: {e}", category="hardware")
                     self._last_sensor_states[sensor_name] = False
 
         self.logger.success(f"Pre-initialized {len(self._last_sensor_states)} sensor states", category="hardware")
+
+    # ========== GPIO TEST ==========
+
+    def _test_gpio_reads(self):
+        """Test GPIO reads immediately after initialization"""
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("TESTING GPIO PIN READS", category="hardware")
+        self.logger.info("="*60, category="hardware")
+
+        # Test edge sensor pins
+        self.logger.info("Testing Edge Sensor Pins (X/Y axis):", category="hardware")
+        for sensor_name, pin in self.direct_sensor_pins.items():
+            try:
+                # Read pin 5 times rapidly
+                readings = []
+                for _ in range(5):
+                    readings.append(GPIO.input(pin))
+                    time.sleep(0.001)  # 1ms between reads
+
+                # Check if all readings are the same (stable)
+                if len(set(readings)) == 1:
+                    state = readings[0]
+                    self.logger.debug(f"{sensor_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} (stable)", category="hardware")
+                else:
+                    self.logger.warning(f"{sensor_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}", category="hardware")
+                    self.logger.warning(f"      This indicates floating pin or electrical noise!", category="hardware")
+                    self.logger.warning(f"      Check: 1) Wire connection, 2) Pull-down resistor, 3) Power supply", category="hardware")
+            except Exception as e:
+                self.logger.error(f"{sensor_name:20s} [pin {pin:2d}] = ERROR: {e}", category="hardware")
+
+        # Test limit switch pins
+        if self.limit_switch_pins:
+            self.logger.info("Testing Limit Switch Pins:", category="hardware")
+            for switch_name, pin in self.limit_switch_pins.items():
+                try:
+                    readings = []
+                    for _ in range(5):
+                        readings.append(GPIO.input(pin))
+                        time.sleep(0.001)
+
+                    if len(set(readings)) == 1:
+                        state = readings[0]
+                        inverted = not state
+                        self.logger.debug(f"{switch_name:20s} [pin {pin:2d}] = {'HIGH' if state else 'LOW '} -> {'ACTIVATED' if inverted else 'INACTIVE'} (stable)", category="hardware")
+                    else:
+                        self.logger.warning(f"{switch_name:20s} [pin {pin:2d}] = UNSTABLE! Readings: {readings}", category="hardware")
+                except Exception as e:
+                    self.logger.error(f"{switch_name:20s} [pin {pin:2d}] = ERROR: {e}", category="hardware")
+
+        self.logger.info("IMPORTANT: If pins show UNSTABLE:", category="hardware")
+        self.logger.info("   1. Check physical wiring - loose connections cause noise", category="hardware")
+        self.logger.info("   2. Ensure switches are properly connected to GND or 3.3V", category="hardware")
+        self.logger.info("   3. Verify pull-down/pull-up resistors are configured", category="hardware")
+        self.logger.info("   4. Test: touch wire to GND (should show LOW) or 3.3V (should show HIGH)", category="hardware")
+        self.logger.info("="*60, category="hardware")
+
+    def _test_rs485_reads(self):
+        """Test RS485 sensor reads immediately after initialization"""
+        if not self.rs485:
+            self.logger.warning("RS485 not initialized - skipping RS485 test", category="hardware")
+            return
+
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("TESTING RS485 SENSOR READS", category="hardware")
+        self.logger.info("="*60, category="hardware")
+
+        sensor_addresses = self.rs485_config.get('sensor_addresses', {})
+        self.logger.info(f"Testing {len(sensor_addresses)} RS485 sensors...", category="hardware")
+
+        for sensor_name, slave_address in sensor_addresses.items():
+            try:
+                # Read with 3-sample debouncing (PERFORMANCE OPTIMIZED)
+                state = self._read_with_debounce(None, is_rs485=True, sensor_name=sensor_name)
+
+                if state is not None:
+                    state_str = 'HIGH (ACTIVE/TRIGGERED)' if state else 'LOW (INACTIVE)'
+                    self.logger.info(f"   {sensor_name:30s} [ADDR{slave_address:2d}] = {state_str} (stable)", category="hardware")
+                else:
+                    self.logger.warning(f"   {sensor_name:30s} [ADDR{slave_address:2d}] = UNSTABLE! (read failed)", category="hardware")
+                    self.logger.warning(f"      Check: 1) Sensor wiring, 2) RS485 connections, 3) Modbus address, 4) Power supply", category="hardware")
+            except Exception as e:
+                self.logger.error(f"   {sensor_name:30s} [ADDR{slave_address:2d}] = ERROR: {e}", category="hardware")
+
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("TIP: Trigger a sensor now and watch for changes in the GUI!", category="hardware")
+        self.logger.info("="*60, category="hardware")
 
     # ========== CONTINUOUS SWITCH POLLING ==========
 
@@ -630,42 +751,97 @@ class RaspberryPiGPIO:
                             self.logger.info("="*60, category="hardware")
 
                     except Exception as e:
-                        self.logger.error(f"Error reading {sensor_name}: {e}", category="hardware")
+                        self.logger.error(f"Error reading {sensor_name} on pin {pin}: {e}", category="hardware")
 
-                # Note: Non-edge sensors are handled via the multiplexer below
-
-                # Poll multiplexer switches (piston position sensors)
-                if self.multiplexer:
-                    channels = self.multiplexer_config.get('channels', {})
-                    for sensor_name, channel in channels.items():
+                # Poll RS485 switches (piston position sensors)
+                if self.rs485:
+                    sensor_addresses = self.rs485_config.get('sensor_addresses', {})
+                    for sensor_name, slave_address in sensor_addresses.items():
                         try:
-                            # Direct read from multiplexer (with optional inversion)
-                            current_state = self._read_multiplexer_channel(channel)
+                            # Use 3-sample verification for each poll to filter noise at read-time (PERFORMANCE OPTIMIZED)
+                            current_state = self._read_with_debounce(None, is_rs485=True, sensor_name=sensor_name)
 
-                            switch_key = f"mux_{sensor_name}"
-                            last_state = self.switch_states.get(switch_key)
+                            # Skip if read was unstable (returns None)
+                            if current_state is None:
+                                continue
 
-                            # Detect state changes
-                            if current_state != last_state:
-                                self.switch_states[switch_key] = current_state
-                                self.logger.info("="*60, category="hardware")
-                                self.logger.info(f"MULTIPLEXER SENSOR CHANGED: {sensor_name}", category="hardware")
-                                self.logger.info(f"  Channel: {channel}", category="hardware")
-                                self.logger.info(f"  Previous: {'TRIGGERED' if last_state else 'READY'}", category="hardware")
-                                self.logger.info(f"  Current: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
-                                self.logger.info("="*60, category="hardware")
+                            switch_key = f"rs485_{sensor_name}"
+                            last_confirmed_state = self.switch_states.get(switch_key)
+
+                            # Initialize debounce counter for this sensor if needed
+                            if switch_key not in debounce_counters:
+                                debounce_counters[switch_key] = {'pending_state': None, 'count': 0}
+
+                            debounce = debounce_counters[switch_key]
+
+                            # Handle debounce logic for initial and subsequent reads
+                            if debounce['pending_state'] is None:
+                                # Very first read of this sensor - start debounce
+                                debounce['pending_state'] = current_state
+                                debounce['count'] = 1
+                                self.logger.debug(f"RS485 SWITCH FIRST READ: {sensor_name} = {'HIGH (CLOSED/ON)' if current_state else 'LOW (OPEN/OFF)'} [address {slave_address}] - waiting for confirmation", category="hardware")
+                            elif debounce['pending_state'] == current_state:
+                                # Reading matches pending state, increment count
+                                debounce['count'] += 1
+                            else:
+                                # State changed, restart debounce
+                                debounce['pending_state'] = current_state
+                                debounce['count'] = 1
+
+                            # Check if we have enough consecutive readings
+                            if debounce['count'] >= DEBOUNCE_COUNT:
+                                # Check if this is different from confirmed state (or first confirmation)
+                                if current_state != last_confirmed_state:
+                                    # State change confirmed (or initial state set)!
+                                    self.switch_states[switch_key] = current_state
+
+                                    # Log state change or initial state
+                                    if last_confirmed_state is not None:
+                                        # Real state change (not initial)
+                                        old_state_str = 'HIGH (ACTIVE/TRIGGERED)' if last_confirmed_state else 'LOW (INACTIVE)'
+                                        new_state_str = 'HIGH (ACTIVE/TRIGGERED)' if current_state else 'LOW (INACTIVE)'
+                                        self.logger.info("=== RS485 SENSOR CHANGED ===", category="hardware")
+                                        self.logger.info(f"   Sensor: {sensor_name}", category="hardware")
+                                        self.logger.info(f"   Modbus Address: {slave_address}", category="hardware")
+                                        self.logger.info(f"   Old State: {old_state_str}", category="hardware")
+                                        self.logger.info(f"   New State: {new_state_str}", category="hardware")
+                                        self.logger.info(f"   Poll: #{poll_count}", category="hardware")
+                                    else:
+                                        # Initial state set
+                                        state_str = 'HIGH (ACTIVE/TRIGGERED)' if current_state else 'LOW (INACTIVE)'
+                                        self.logger.info(f"RS485 SENSOR INITIALIZED: {sensor_name} = {state_str} [address {slave_address}]", category="hardware")
 
                         except Exception as e:
-                            self.logger.error(f"Error reading mux {sensor_name} on channel {channel}: {e}", category="hardware")
+                            self.logger.error(f"Error reading RS485 {sensor_name} at address {slave_address}: {e}", category="hardware")
 
-                # NO LIMIT SWITCHES - removed per user request
+                # Poll limit switches
+                for switch_name, pin in self.limit_switch_pins.items():
+                    try:
+                        raw_state = GPIO.input(pin)
+                        current_state = not raw_state  # Inverted: LOW = activated
+                        switch_key = f"limit_{switch_name}"
+                        last_state = self.switch_states.get(switch_key)
+
+                        # Log state change
+                        if last_state is None:
+                            # First read - initialize
+                            self.switch_states[switch_key] = current_state
+                            self.logger.debug(f"LIMIT SWITCH INITIAL: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}]", category="hardware")
+                        elif last_state != current_state:
+                            # State changed!
+                            self.switch_states[switch_key] = current_state
+                            self.logger.info(f"LIMIT SWITCH CHANGED: {switch_name} = {'ACTIVATED (CLOSED)' if current_state else 'INACTIVE (OPEN)'} [pin {pin}] (poll #{poll_count})", category="hardware")
+
+                    except Exception as e:
+                        self.logger.error(f"Error reading limit switch {switch_name} on pin {pin}: {e}", category="hardware")
 
                 # Status update every 400 polls (10 seconds at 25ms interval)
                 if poll_count % 400 == 0:
                     edge_count = len(self.direct_sensor_pins)
-                    mux_count = len(self.multiplexer_config.get('channels', {})) if self.multiplexer else 0
-                    total = edge_count + mux_count
-                    self.logger.debug(f"Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {mux_count} mux)", category="hardware")
+                    rs485_count = len(self.rs485_config.get('sensor_addresses', {})) if self.rs485 else 0
+                    limit_count = len(self.limit_switch_pins)
+                    total = edge_count + rs485_count + limit_count
+                    self.logger.debug(f"Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {rs485_count} rs485 + {limit_count} limit)", category="hardware")
 
                 # PERFORMANCE FIX: Sleep 25ms between polls (40 Hz) - reduced from 100ms
                 time.sleep(0.025)
@@ -693,10 +869,10 @@ class RaspberryPiGPIO:
                     self.piston_up(piston_name)
                 time.sleep(0.1)
 
-                # Cleanup multiplexer
-                if self.multiplexer:
-                    self.multiplexer.cleanup()
-                    self.logger.info("Multiplexer cleanup completed", category="hardware")
+                # Cleanup RS485
+                if self.rs485:
+                    self.rs485.cleanup()
+                    self.logger.info("RS485 cleanup completed", category="hardware")
 
                 GPIO.cleanup()
                 self.is_initialized = False
