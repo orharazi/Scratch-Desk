@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
 """
-RS485 Modbus RTU Interface for Sensor Reading
-==============================================
+RS485 Modbus RTU Interface for N4DIH32 Sensor Reading
+======================================================
 
-This module handles communication with sensors connected via RS485 using Modbus RTU protocol.
-Each sensor is a separate Modbus slave device on the RS485 bus.
+This module handles communication with N4DIH32 32-channel digital input module via RS485 Modbus RTU.
 
-Hardware Connection:
-- RS485 adapter connected to Raspberry Pi UART (e.g., /dev/ttyAMA0)
-- Up to 247 Modbus slave devices can be connected on the bus
-- Each sensor has a unique slave address (configurable in settings.json)
+Hardware: N4DIH32 32-Channel Optically Isolated Digital Input Module
+- RS485 adapter connected to Raspberry Pi (e.g., /dev/ttyUSB0)
+- Device ID configured via DIP switches (1=ON, 2-6=OFF = Device ID 1)
+- 32 digital inputs (X00-X31)
 
 Protocol:
 - Modbus RTU (binary protocol over RS485)
-- Function Code 02 (Read Discrete Inputs) for digital sensor reading
+- Function Code 03 (Read Holding Registers) - N4DIH32 specific!
 - Default: 9600 baud, 8N1 (8 data bits, no parity, 1 stop bit)
+- Bulk read: Read 2 holding registers in one call
 
-The RS485 interface allows reading 12 piston position sensors through serial communication,
-replacing the multiplexer approach.
+N4DIH32 Register Layout:
+- Register 0x00C0 (192): Contains inputs X00-X15 as individual bits
+- Register 0x00C1 (193): Contains inputs X16-X31 as individual bits
+- Each bit in the register represents one input (bit 0 = X00/X16, bit 15 = X15/X31)
+
+Address Mapping:
+- Input X14 = Bit 14 of register 0x00C0
+- Input X15 = Bit 15 of register 0x00C0
 """
 
 import time
@@ -47,7 +53,10 @@ class RS485ModbusInterface:
         parity: str = 'N',
         stopbits: int = 1,
         timeout: float = 1.0,
-        sensor_addresses: Optional[Dict[str, int]] = None
+        sensor_addresses: Optional[Dict[str, int]] = None,
+        device_id: int = 1,
+        input_count: int = 32,
+        bulk_read_enabled: bool = True
     ):
         """
         Initialize RS485 Modbus RTU interface
@@ -59,7 +68,10 @@ class RS485ModbusInterface:
             parity: Parity bit - 'N'=None, 'E'=Even, 'O'=Odd (default: N)
             stopbits: Stop bits (default: 1)
             timeout: Read timeout in seconds (default: 1.0)
-            sensor_addresses: Dictionary mapping sensor names to Modbus slave addresses
+            sensor_addresses: Dictionary mapping sensor names to Modbus input addresses (0-based)
+            device_id: Modbus device/slave ID (default: 1)
+            input_count: Total number of inputs on the device (default: 32)
+            bulk_read_enabled: Use bulk read optimization (default: True)
         """
         self.logger = get_logger()
         self.port = port
@@ -69,6 +81,9 @@ class RS485ModbusInterface:
         self.stopbits = stopbits
         self.timeout = timeout
         self.sensor_addresses = sensor_addresses or {}
+        self.device_id = device_id
+        self.input_count = input_count
+        self.bulk_read_enabled = bulk_read_enabled
 
         # Modbus client
         self.client: Optional[ModbusSerialClient] = None
@@ -76,6 +91,11 @@ class RS485ModbusInterface:
 
         # Thread lock for serial communication
         self.lock = threading.Lock()
+
+        # Bulk read cache
+        self.bulk_read_cache: Optional[list] = None
+        self.bulk_read_timestamp = 0
+        self.bulk_read_max_age = 0.025  # 25ms max cache age
 
         # Check if pymodbus is available
         if not MODBUS_AVAILABLE:
@@ -87,6 +107,7 @@ class RS485ModbusInterface:
             f"RS485 Modbus RTU interface initialized: port={port}, baudrate={baudrate}, format={bytesize}{parity}{stopbits}",
             category="hardware"
         )
+        self.logger.info(f"Modbus Device ID: {device_id}, Input Count: {input_count}, Bulk Read: {bulk_read_enabled}", category="hardware")
         self.logger.debug(f"Configured sensors: {len(self.sensor_addresses)}", category="hardware")
 
     def connect(self) -> bool:
@@ -110,8 +131,8 @@ class RS485ModbusInterface:
                 bytesize=self.bytesize,
                 parity=self.parity,
                 stopbits=self.stopbits,
-                timeout=self.timeout,
-                method='rtu'  # Modbus RTU protocol
+                timeout=self.timeout
+                # Note: pymodbus 3.x - ModbusSerialClient is RTU by default, no 'method' parameter needed
             )
 
             # Connect to the bus
@@ -135,13 +156,102 @@ class RS485ModbusInterface:
             self.is_connected = False
             self.logger.success("RS485 disconnected", category="hardware")
 
+    def read_all_inputs_bulk(self) -> Optional[list]:
+        """
+        Read all inputs from N4DIH32 device using holding registers
+
+        The N4DIH32 stores its 32 digital inputs in two 16-bit holding registers:
+        - Register 0x00C0 (192): Contains inputs X00-X15
+        - Register 0x00C1 (193): Contains inputs X16-X31
+
+        Returns:
+            List of 32 boolean values for all inputs (X00-X31), or None on error
+        """
+        if not self.is_connected:
+            self.logger.error("RS485 not connected - cannot read inputs", category="hardware")
+            return None
+
+        try:
+            with self.lock:
+                # Read 2 holding registers from N4DIH32 (Function Code 03)
+                response = self.client.read_holding_registers(
+                    address=0x00C0,  # Start register: 192 (contains X00-X15)
+                    count=2,          # Read 2 registers (X00-X15 and X16-X31)
+                    device_id=self.device_id
+                )
+
+                # Check if read was successful
+                if response.isError():
+                    self.logger.error(
+                        f"N4DIH32 read error (device {self.device_id}): {response}",
+                        category="hardware"
+                    )
+                    return None
+
+                # Extract the two 16-bit registers
+                reg0 = response.registers[0]  # X00-X15
+                reg1 = response.registers[1]  # X16-X31
+
+                # Convert registers to list of 32 boolean values
+                inputs = []
+
+                # Extract X00-X15 from reg0 (bits 0-15)
+                for i in range(16):
+                    bit_value = (reg0 >> i) & 1
+                    inputs.append(bool(bit_value))
+
+                # Extract X16-X31 from reg1 (bits 0-15)
+                for i in range(16):
+                    bit_value = (reg1 >> i) & 1
+                    inputs.append(bool(bit_value))
+
+                return inputs
+
+        except ModbusException as e:
+            self.logger.error(f"Modbus exception during bulk read: {e}", category="hardware")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error during bulk read: {e}", category="hardware")
+            return None
+
+    def refresh_bulk_cache(self) -> bool:
+        """
+        Refresh the bulk read cache with current input states
+
+        Returns:
+            True if cache was refreshed successfully, False otherwise
+        """
+        inputs = self.read_all_inputs_bulk()
+        if inputs is not None:
+            self.bulk_read_cache = inputs
+            self.bulk_read_timestamp = time.time()
+            return True
+        return False
+
+    def get_cached_bulk_read(self) -> Optional[list]:
+        """
+        Get bulk read from cache, refreshing if needed
+
+        Returns:
+            List of input states, or None on error
+        """
+        # Check if cache needs refresh
+        cache_age = time.time() - self.bulk_read_timestamp
+        if self.bulk_read_cache is None or cache_age > self.bulk_read_max_age:
+            if not self.refresh_bulk_cache():
+                return None
+
+        return self.bulk_read_cache
+
     def read_sensor(self, sensor_name: str, register_address: int = 0) -> Optional[bool]:
         """
         Read digital sensor value via Modbus RTU
 
+        Uses bulk read optimization if enabled, otherwise reads individual input.
+
         Args:
             sensor_name: Name of sensor (used for logging and address lookup)
-            register_address: Modbus register/coil address to read (default: 0)
+            register_address: Unused (kept for backwards compatibility)
 
         Returns:
             True if sensor is triggered (HIGH), False if not triggered (LOW), None on error
@@ -150,37 +260,53 @@ class RS485ModbusInterface:
             self.logger.error("RS485 not connected - cannot read sensor", category="hardware")
             return None
 
-        # Get slave address for this sensor
-        slave_address = self.sensor_addresses.get(sensor_name)
-        if slave_address is None:
+        # Get Modbus input address for this sensor (0-based)
+        input_address = self.sensor_addresses.get(sensor_name)
+        if input_address is None:
             self.logger.error(f"No RS485 address configured for sensor: {sensor_name}", category="hardware")
             return None
 
-        try:
-            with self.lock:
-                # Read Discrete Input (function code 02) - for digital sensors
-                # Read 1 bit from the specified register address
-                response = self.client.read_discrete_inputs(
-                    address=register_address,
-                    count=1,
-                    slave=slave_address
-                )
+        # Use bulk read if enabled
+        if self.bulk_read_enabled:
+            try:
+                # Get cached bulk read (auto-refreshes if needed)
+                inputs = self.get_cached_bulk_read()
+                if inputs is None:
+                    return None
 
-                # Check if read was successful
-                if response.isError():
+                # Check if address is valid
+                if input_address >= len(inputs):
                     self.logger.error(
-                        f"Modbus read error for {sensor_name} (slave {slave_address}): {response}",
+                        f"Invalid input address {input_address} for sensor {sensor_name} (max: {len(inputs)-1})",
                         category="hardware"
                     )
                     return None
 
-                # Extract boolean value from response
-                sensor_state = bool(response.bits[0])
-                return sensor_state
+                # Return the specific input state from bulk read
+                return inputs[input_address]
 
-        except ModbusException as e:
-            self.logger.error(f"Modbus exception reading {sensor_name}: {e}", category="hardware")
-            return None
+            except Exception as e:
+                self.logger.error(f"Error reading sensor {sensor_name} from bulk cache: {e}", category="hardware")
+                return None
+
+        # Fallback: For N4DIH32, there's no efficient individual read
+        # We always use bulk read since the device stores inputs in registers
+        # If bulk_read is disabled, perform a fresh bulk read for this sensor
+        try:
+            inputs = self.read_all_inputs_bulk()
+            if inputs is None:
+                return None
+
+            # Check if address is valid
+            if input_address >= len(inputs):
+                self.logger.error(
+                    f"Invalid input address {input_address} for sensor {sensor_name} (max: {len(inputs)-1})",
+                    category="hardware"
+                )
+                return None
+
+            return inputs[input_address]
+
         except Exception as e:
             self.logger.error(f"Error reading sensor {sensor_name}: {e}", category="hardware")
             return None

@@ -69,6 +69,8 @@ except (ImportError, RuntimeError):
 
     GPIO = MockGPIO()
 
+# Constants for switch debouncing
+DEBOUNCE_COUNT = 3  # Number of consecutive identical readings required to confirm a state change
 
 class RaspberryPiGPIO:
     """
@@ -209,7 +211,10 @@ class RaspberryPiGPIO:
                         parity=self.rs485_config.get('parity', 'N'),
                         stopbits=self.rs485_config.get('stopbits', 1),
                         timeout=self.rs485_config.get('timeout', 1.0),
-                        sensor_addresses=self.rs485_config.get('sensor_addresses', {})
+                        sensor_addresses=self.rs485_config.get('sensor_addresses', {}),
+                        device_id=self.rs485_config.get('modbus_device_id', 1),
+                        input_count=self.rs485_config.get('input_count', 32),
+                        bulk_read_enabled=self.rs485_config.get('bulk_read_enabled', True)
                     )
 
                     # Connect to RS485 bus
@@ -258,14 +263,40 @@ class RaspberryPiGPIO:
             self.is_initialized = True
             self.logger.success("Raspberry Pi GPIO initialized successfully", category="hardware")
 
-            # Test GPIO reads immediately
-            self._test_gpio_reads()
+            # Check if we should skip initial sensor tests (POC mode)
+            skip_tests = self.config.get("hardware_config", {}).get("skip_initial_sensor_tests", False)
+            poc_mode = self.config.get("hardware_config", {}).get("poc_mode", False)
 
-            # Test RS485 reads specifically
-            self._test_rs485_reads()
+            if skip_tests or poc_mode:
+                self.logger.info("="*60, category="hardware")
+                self.logger.info("POC MODE: Skipping initial sensor tests", category="hardware")
+                self.logger.info("Sensors will be available but not tested during initialization", category="hardware")
+                self.logger.info("="*60, category="hardware")
 
-            # Pre-initialize sensor states before starting polling thread
-            self._initialize_sensor_states()
+                # Initialize sensor state tracking dictionaries without reading
+                # This allows the polling thread to detect changes
+                if not hasattr(self, '_last_sensor_states'):
+                    self._last_sensor_states = {}
+
+                # Initialize all sensor entries to False (will be updated by polling thread)
+                for sensor_name in self.direct_sensor_pins.keys():
+                    self._last_sensor_states[sensor_name] = False
+
+                if self.rs485:
+                    sensor_addresses = self.rs485_config.get('sensor_addresses', {})
+                    for sensor_name in sensor_addresses.keys():
+                        self._last_sensor_states[sensor_name] = False
+
+                self.logger.info(f"POC MODE: Initialized {len(self._last_sensor_states)} sensor tracking entries", category="hardware")
+            else:
+                # Test GPIO reads immediately
+                self._test_gpio_reads()
+
+                # Test RS485 reads specifically
+                self._test_rs485_reads()
+
+                # Pre-initialize sensor states before starting polling thread
+                self._initialize_sensor_states()
 
             # Start continuous polling thread for all switches
             self.start_switch_polling()
@@ -296,7 +327,7 @@ class RaspberryPiGPIO:
 
         Note:
             This method includes comprehensive recovery mechanisms to prevent
-            persistent false positives on multiplexer channels. The fix addresses
+            persistent false positives on sensor channels. The fix addresses
             GPIO pin corruption that can persist indefinitely after piston operations.
         """
         if not self.is_initialized:
@@ -360,7 +391,7 @@ class RaspberryPiGPIO:
 
         # PERFORMANCE FIX: Reduced RS485 debouncing for lower latency while still filtering noise
         if is_rs485:
-            samples = 3  # 3 samples for RS485 (similar to old MUX)
+            samples = 3  # 3 samples for RS485
             delay = 0.001  # 1ms between samples
 
         readings = []
@@ -520,7 +551,7 @@ class RaspberryPiGPIO:
 
     def get_all_sensor_states(self) -> Dict[str, bool]:
         """
-        Read all sensor states (edge switches + multiplexer sensors)
+        Read all sensor states (edge switches + RS485 sensors)
 
         Returns:
             Dictionary mapping sensor names to their states
@@ -533,10 +564,10 @@ class RaspberryPiGPIO:
             if state is not None:
                 states[sensor_name] = state
 
-        # Read all multiplexer sensors
-        if self.multiplexer:
-            mux_channels = self.multiplexer_config.get('channels', {})
-            for sensor_name in mux_channels.keys():
+        # Read all RS485 sensors
+        if self.rs485:
+            sensor_addresses = self.rs485_config.get('sensor_addresses', {})
+            for sensor_name in sensor_addresses.keys():
                 state = self.read_sensor(sensor_name)
                 if state is not None:
                     states[sensor_name] = state
@@ -712,21 +743,8 @@ class RaspberryPiGPIO:
                 self.logger.error(f"Error initializing {sensor_name}: {e}", category="hardware")
                 self.switch_states[sensor_name] = False
 
-        # CRITICAL FIX: Initialize multiplexer switch states
-        # This prevents false positive state changes on first poll
-        if self.multiplexer:
-            channels = self.multiplexer_config.get('channels', {})
-            self.logger.info(f"Initializing {len(channels)} multiplexer switch states in polling thread...", category="hardware")
-            for sensor_name, channel in channels.items():
-                try:
-                    current_state = self._read_multiplexer_channel(channel)
-                    switch_key = f"mux_{sensor_name}"
-                    self.switch_states[switch_key] = current_state
-                    self.logger.debug(f"Mux switch {sensor_name} [channel {channel}] initialized: {'TRIGGERED' if current_state else 'READY'}", category="hardware")
-                except Exception as e:
-                    self.logger.error(f"Error initializing mux {sensor_name} on channel {channel}: {e}", category="hardware")
-                    switch_key = f"mux_{sensor_name}"
-                    self.switch_states[switch_key] = False
+        # Initialize debounce counters for RS485 sensors
+        debounce_counters = {}
 
         poll_count = 0
 

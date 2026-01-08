@@ -164,6 +164,8 @@
   "hardware_config": {
     "use_real_hardware": true,
     "start_with_grbl": false,
+    "poc_mode": true,
+    "skip_initial_sensor_tests": false,
     "raspberry_pi": {
       "gpio_mode": "BCM",
       "pistons": {
@@ -175,33 +177,36 @@
       },
       "rs485": {
         "enabled": true,
-        "serial_port": "/dev/ttyAMA0",
+        "serial_port": "/dev/ttyUSB0",
         "baudrate": 9600,
         "bytesize": 8,
         "parity": "N",
         "stopbits": 1,
         "timeout": 1.0,
         "protocol": "modbus_rtu",
+        "modbus_device_id": 1,
+        "input_count": 32,
+        "bulk_read_enabled": true,
         "sensor_addresses": {
-          "line_marker_up_sensor": 1,
-          "line_marker_down_sensor": 2,
-          "line_cutter_up_sensor": 3,
-          "line_cutter_down_sensor": 4,
-          "row_cutter_up_sensor": 5,
-          "row_cutter_down_sensor": 6,
-          "row_marker_up_sensor": 7,
-          "row_marker_down_sensor": 8,
-          "line_motor_left_up_sensor": 9,
-          "line_motor_left_down_sensor": 10,
-          "line_motor_right_up_sensor": 11,
-          "line_motor_right_down_sensor": 12
+          "line_marker_up_sensor": 14,
+          "line_marker_down_sensor": 15,
+          "line_cutter_up_sensor": 2,
+          "line_cutter_down_sensor": 3,
+          "row_cutter_up_sensor": 4,
+          "row_cutter_down_sensor": 5,
+          "row_marker_up_sensor": 6,
+          "row_marker_down_sensor": 7,
+          "line_motor_left_up_sensor": 8,
+          "line_motor_left_down_sensor": 9,
+          "line_motor_right_up_sensor": 10,
+          "line_motor_right_down_sensor": 11
         },
         "register_address": 0
       },
       "direct_sensors": {
-        "x_left_edge": 23, 
-        "x_right_edge": 24, 
-        "y_top_edge": 18, 
+        "x_left_edge": 23,
+        "x_right_edge": 24,
+        "y_top_edge": 18,
         "y_bottom_edge": 22
       }
     },

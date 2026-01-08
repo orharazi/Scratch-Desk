@@ -49,6 +49,9 @@ class UltimateHardwareTestGUI:
         self.command_queue = queue.Queue()
         self.log_queue = queue.Queue()
 
+        # Serial port variables
+        self.selected_rs485_port = tk.StringVar()
+
         # Initialize centralized logger
         self.logger = get_logger()
 
@@ -109,12 +112,12 @@ class UltimateHardwareTestGUI:
             for name, pin in pistons.items():
                 mappings[name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
 
-            # Multiplexer sensors
-            mux_channels = rpi_config.get('multiplexer', {}).get('channels', {})
-            for name, channel in mux_channels.items():
-                mappings[name] = {'type': 'MUX', 'port': f'MUX-CH{channel}', 'pin': channel}
+            # RS485 sensors (piston position sensors)
+            rs485_sensors = rpi_config.get('rs485', {}).get('sensor_addresses', {})
+            for name, address in rs485_sensors.items():
+                mappings[name] = {'type': 'RS485', 'port': f'RS485-ADDR{address}', 'pin': address}
 
-            # Direct sensors
+            # Direct sensors (edge switches)
             direct_sensors = rpi_config.get('direct_sensors', {})
             for name, pin in direct_sensors.items():
                 # Map to the sensor name format used in UI
@@ -180,9 +183,12 @@ class UltimateHardwareTestGUI:
         top_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 0))
         top_frame.columnconfigure(1, weight=1)
 
+        # Configure row to expand with content
+        top_frame.rowconfigure(0, minsize=80)
+
         # Connection status section
         conn_frame = ttk.Frame(top_frame)
-        conn_frame.grid(row=0, column=0, padx=10, pady=5)
+        conn_frame.grid(row=0, column=0, padx=10, pady=15, sticky="nw")
 
         ttk.Label(conn_frame, text=t("Hardware:"), font=("Arial", 10, "bold")).grid(row=0, column=0, padx=(0, 5))
         self.hw_status_label = ttk.Label(conn_frame, text=t("Not Connected"), foreground="red", font=("Arial", 10))
@@ -192,34 +198,39 @@ class UltimateHardwareTestGUI:
         self.grbl_status_label = ttk.Label(conn_frame, text=t("Not Connected"), foreground="red", font=("Arial", 10))
         self.grbl_status_label.grid(row=0, column=3, padx=5)
 
-        # Port selection dropdown
-        ttk.Label(conn_frame, text=t("Port:"), font=("Arial", 10, "bold")).grid(row=0, column=4, padx=(20, 5))
+        # Arduino/GRBL Port selection dropdown
+        ttk.Label(conn_frame, text=t("GRBL Port:"), font=("Arial", 10, "bold")).grid(row=0, column=4, padx=(20, 5))
         self.port_combo = ttk.Combobox(conn_frame, textvariable=self.selected_port, state="readonly", width=20)
         self.port_combo.grid(row=0, column=5, padx=5)
 
-        # Refresh ports button
-        ttk.Button(conn_frame, text="🔄", width=3, command=self.scan_ports).grid(row=0, column=6, padx=2)
+        # RS485 Port selection dropdown
+        ttk.Label(conn_frame, text=t("RS485 Port:"), font=("Arial", 10, "bold")).grid(row=1, column=4, padx=(20, 5), pady=(8, 0))
+        self.rs485_port_combo = ttk.Combobox(conn_frame, textvariable=self.selected_rs485_port, state="readonly", width=20)
+        self.rs485_port_combo.grid(row=1, column=5, padx=5, pady=(8, 0))
 
-        # Hardware mode toggle
-        ttk.Label(conn_frame, text=t("Mode:"), font=("Arial", 10, "bold")).grid(row=0, column=7, padx=(20, 5))
+        # Refresh ports button (spans both rows)
+        ttk.Button(conn_frame, text="🔄", width=3, command=self.scan_ports).grid(row=0, column=6, rowspan=2, padx=2)
+
+        # Hardware mode toggle (spans both rows)
+        ttk.Label(conn_frame, text=t("Mode:"), font=("Arial", 10, "bold")).grid(row=0, column=7, rowspan=2, padx=(20, 5))
         self.hardware_mode_check = ttk.Checkbutton(
             conn_frame,
             text=t("Use Real Hardware"),
             variable=self.use_real_hardware,
             command=self.on_hardware_mode_changed
         )
-        self.hardware_mode_check.grid(row=0, column=8, padx=5)
+        self.hardware_mode_check.grid(row=0, column=8, rowspan=2, padx=5)
 
-        # Connect/Disconnect button
+        # Connect/Disconnect button (spans both rows)
         self.connect_btn = ttk.Button(conn_frame, text=t("Connect Hardware"), command=self.toggle_connection)
-        self.connect_btn.grid(row=0, column=9, padx=20)
+        self.connect_btn.grid(row=0, column=9, rowspan=2, padx=20)
 
         # Scan ports on startup
         self.scan_ports()
 
         # Mode indicator
         mode_frame = ttk.Frame(top_frame)
-        mode_frame.grid(row=0, column=1, padx=10, pady=5)
+        mode_frame.grid(row=0, column=1, padx=10, pady=15, sticky="nw")
 
         self.mode_label = ttk.Label(mode_frame, text=t("Mode: Unknown"), font=("Arial", 10))
         self.mode_label.pack()
@@ -229,8 +240,8 @@ class UltimateHardwareTestGUI:
                                        command=self.emergency_stop,
                                        bg="red", fg="white",
                                        font=("Arial", 12, "bold"),
-                                       width=15, height=1)
-        self.emergency_btn.grid(row=0, column=2, padx=10, pady=5)
+                                       width=15, height=2)
+        self.emergency_btn.grid(row=0, column=2, padx=10, pady=15, sticky="n")
 
     def create_motors_tab(self):
         """Create motors control tab with jogging and presets"""
@@ -842,8 +853,9 @@ class UltimateHardwareTestGUI:
                 port_name = f"{port.device} - {port.description}"
                 self.available_ports.append(port_name)
 
-            # Update combobox
+            # Update both comboboxes
             self.port_combo['values'] = self.available_ports
+            self.rs485_port_combo['values'] = self.available_ports
 
             if len(self.available_ports) > 1:
                 self.log("INFO", t("Found {count} serial port(s)", count=len(self.available_ports)-1))
@@ -854,6 +866,7 @@ class UltimateHardwareTestGUI:
             self.log("ERROR", t("Error scanning ports: {error}", error=str(e)))
             self.available_ports = [t("Auto-detect")]
             self.port_combo['values'] = self.available_ports
+            self.rs485_port_combo['values'] = self.available_ports
 
     def auto_initialize(self):
         """Auto-initialize hardware on startup"""
@@ -872,32 +885,56 @@ class UltimateHardwareTestGUI:
         try:
             self.log("INFO", t("Connecting to hardware..."))
 
-            # Get selected port
+            # Load config once
+            import json
+            try:
+                with open('config/settings.json', 'r') as f:
+                    config = json.load(f)
+            except Exception as e:
+                self.log("ERROR", t("Could not load config: {error}", error=str(e)))
+                config = {}
+
+            # Get selected GRBL port
             selected = self.selected_port.get()
             if selected and selected != t("Auto-detect"):
                 # Extract just the port device (e.g., "/dev/ttyACM0" from "/dev/ttyACM0 - Arduino...")
                 port_device = selected.split(" - ")[0]
-                self.log("INFO", t("Using selected port: {port}", port=port_device))
+                self.log("INFO", t("Using selected GRBL port: {port}", port=port_device))
 
-                # Load config and temporarily override port if specified
-                import json
-                try:
-                    with open('config/settings.json', 'r') as f:
-                        config = json.load(f)
-                    # Override the serial port in config - use correct path
-                    if 'hardware_config' not in config:
-                        config['hardware_config'] = {}
-                    if 'arduino_grbl' not in config['hardware_config']:
-                        config['hardware_config']['arduino_grbl'] = {}
-                    config['hardware_config']['arduino_grbl']['serial_port'] = port_device
-                    # Save with proper formatting
-                    with open('config/settings.json', 'w') as f:
-                        json.dump(config, f, indent=2)
-                    self.log("INFO", t("Configured GRBL port: {port}", port=port_device))
-                except Exception as e:
-                    self.log("WARNING", t("Could not update port in config: {error}", error=str(e)))
+                # Override the serial port in config
+                if 'hardware_config' not in config:
+                    config['hardware_config'] = {}
+                if 'arduino_grbl' not in config['hardware_config']:
+                    config['hardware_config']['arduino_grbl'] = {}
+                config['hardware_config']['arduino_grbl']['serial_port'] = port_device
             else:
-                self.log("INFO", t("Using auto-detect mode"))
+                self.log("INFO", t("Using auto-detect mode for GRBL"))
+
+            # Get selected RS485 port
+            selected_rs485 = self.selected_rs485_port.get()
+            if selected_rs485 and selected_rs485 != t("Auto-detect"):
+                # Extract just the port device
+                rs485_port_device = selected_rs485.split(" - ")[0]
+                self.log("INFO", t("Using selected RS485 port: {port}", port=rs485_port_device))
+
+                # Override the RS485 serial port in config
+                if 'hardware_config' not in config:
+                    config['hardware_config'] = {}
+                if 'raspberry_pi' not in config['hardware_config']:
+                    config['hardware_config']['raspberry_pi'] = {}
+                if 'rs485' not in config['hardware_config']['raspberry_pi']:
+                    config['hardware_config']['raspberry_pi']['rs485'] = {}
+                config['hardware_config']['raspberry_pi']['rs485']['serial_port'] = rs485_port_device
+            else:
+                self.log("INFO", t("Using auto-detect mode for RS485"))
+
+            # Save updated config
+            try:
+                with open('config/settings.json', 'w') as f:
+                    json.dump(config, f, indent=2)
+                self.log("INFO", t("Configuration updated"))
+            except Exception as e:
+                self.log("WARNING", t("Could not save config: {error}", error=str(e)))
 
             # Get hardware interface
             self.hardware = get_hardware_interface()
