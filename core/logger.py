@@ -108,6 +108,9 @@ class ScratchDeskLogger:
         self.use_colors = self.config.get("use_colors", True)
         self.use_icons = self.config.get("use_icons", True)
 
+        # Queue configuration
+        self.queue_timeout = self.config.get("queue_timeout_seconds", 0.1)
+
         # GUI callback for displaying logs in GUI widgets
         self.gui_callback: Optional[Callable] = None
 
@@ -195,7 +198,7 @@ class ScratchDeskLogger:
             try:
                 # Get message from queue (block with timeout)
                 try:
-                    timestamp, level, category, message = self.log_queue.get(timeout=0.1)
+                    timestamp, level, category, message = self.log_queue.get(timeout=self.queue_timeout)
                 except queue.Empty:
                     continue
 
