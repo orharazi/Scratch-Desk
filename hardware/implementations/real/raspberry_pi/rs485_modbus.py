@@ -57,11 +57,7 @@ class RS485ModbusInterface:
         device_id: int = 1,
         input_count: int = 32,
         bulk_read_enabled: bool = True,
-        bulk_read_cache_age_ms: int = 10,
-        default_retry_count: int = 2,
-        register_address_low: int = 192,
-        bulk_read_register_count: int = 2,
-        retry_delay: float = 0.01
+        nc_sensors: Optional[list] = None
     ):
         """
         Initialize RS485 Modbus RTU interface
@@ -77,11 +73,7 @@ class RS485ModbusInterface:
             device_id: Modbus device/slave ID (default: 1)
             input_count: Total number of inputs on the device (default: 32)
             bulk_read_enabled: Use bulk read optimization (default: True)
-            bulk_read_cache_age_ms: Max age of bulk cache in milliseconds (default: 10)
-            default_retry_count: Number of retries for failed reads (default: 2)
-            register_address_low: Starting register address for N4DIH32 (default: 192/0x00C0)
-            bulk_read_register_count: Number of registers to read in bulk (default: 2)
-            retry_delay: Delay between retries in seconds (default: 0.01)
+            nc_sensors: List of NC (Normally Closed) sensor names to invert (default: None)
         """
         self.logger = get_logger()
         self.port = port
@@ -94,10 +86,7 @@ class RS485ModbusInterface:
         self.device_id = device_id
         self.input_count = input_count
         self.bulk_read_enabled = bulk_read_enabled
-        self.default_retry_count = default_retry_count
-        self.register_address_low = register_address_low
-        self.bulk_read_register_count = bulk_read_register_count
-        self.retry_delay = retry_delay
+        self.nc_sensors = set(nc_sensors or [])  # Convert to set for fast lookup
 
         # Modbus client
         self.client: Optional[ModbusSerialClient] = None
@@ -109,7 +98,7 @@ class RS485ModbusInterface:
         # Bulk read cache - configurable via settings
         self.bulk_read_cache: Optional[list] = None
         self.bulk_read_timestamp = 0
-        self.bulk_read_max_age = bulk_read_cache_age_ms / 1000.0  # Convert ms to seconds
+        self.bulk_read_max_age = 0.010  # 10ms max cache age for real-time response
 
         # Check if pymodbus is available
         if not MODBUS_AVAILABLE:
@@ -296,8 +285,14 @@ class RS485ModbusInterface:
                     )
                     return None
 
-                # Return the specific input state from bulk read
-                return inputs[input_address]
+                # Get raw input state
+                raw_state = inputs[input_address]
+
+                # Invert for NC (Normally Closed) sensors
+                if sensor_name in self.nc_sensors:
+                    return not raw_state
+
+                return raw_state
 
             except Exception as e:
                 self.logger.error(f"Error reading sensor {sensor_name} from bulk cache: {e}", category="hardware")
@@ -319,7 +314,14 @@ class RS485ModbusInterface:
                 )
                 return None
 
-            return inputs[input_address]
+            # Get raw input state
+            raw_state = inputs[input_address]
+
+            # Invert for NC (Normally Closed) sensors
+            if sensor_name in self.nc_sensors:
+                return not raw_state
+
+            return raw_state
 
         except Exception as e:
             self.logger.error(f"Error reading sensor {sensor_name}: {e}", category="hardware")

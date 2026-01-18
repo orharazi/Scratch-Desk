@@ -112,17 +112,10 @@ class UltimateHardwareTestGUI:
             for name, pin in pistons.items():
                 mappings[name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
 
-            # RS485 sensors (piston position sensors)
+            # RS485 sensors (all sensors now on RS485)
             rs485_sensors = rpi_config.get('rs485', {}).get('sensor_addresses', {})
             for name, address in rs485_sensors.items():
                 mappings[name] = {'type': 'RS485', 'port': f'RS485-ADDR{address}', 'pin': address}
-
-            # Direct sensors (edge switches)
-            direct_sensors = rpi_config.get('direct_sensors', {})
-            for name, pin in direct_sensors.items():
-                # Map to the sensor name format used in UI
-                sensor_name = f"{name}_sensor"
-                mappings[sensor_name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
 
             # Limit switches (placeholder - may not be in config yet)
             limit_switches = rpi_config.get('limit_switches', {})

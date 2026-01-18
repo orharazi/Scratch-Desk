@@ -70,7 +70,7 @@ except (ImportError, RuntimeError):
     GPIO = MockGPIO()
 
 # Constants for switch debouncing
-# DEBOUNCE_COUNT is now configurable via settings.json (raspberry_pi.debounce_count)
+DEBOUNCE_COUNT = 2  # Number of consecutive identical readings required to confirm a state change (reduced for faster response)
 
 class RaspberryPiGPIO:
     """
@@ -228,11 +228,7 @@ class RaspberryPiGPIO:
                         device_id=self.rs485_config.get('modbus_device_id', 1),
                         input_count=self.rs485_config.get('input_count', 32),
                         bulk_read_enabled=self.rs485_config.get('bulk_read_enabled', True),
-                        bulk_read_cache_age_ms=self.rs485_config.get('bulk_read_cache_age_ms', 10),
-                        default_retry_count=self.rs485_config.get('default_retry_count', 2),
-                        register_address_low=self.rs485_config.get('register_address_low', 192),
-                        bulk_read_register_count=self.rs485_config.get('bulk_read_register_count', 2),
-                        retry_delay=timing_config.get('rs485_retry_delay', 0.01)
+                        nc_sensors=self.rs485_config.get('nc_sensors', [])
                     )
 
                     # Connect to RS485 bus
@@ -275,6 +271,8 @@ class RaspberryPiGPIO:
                                 self.logger.warning(f"Will attempt to read {sensor_name} anyway", category="hardware")
                         else:
                             raise RuntimeError(f"Failed to setup sensor '{sensor_name}' on GPIO {pin}: {str(e)}")
+            else:
+                self.logger.info("No direct GPIO sensors - all sensors connected via RS485", category="hardware")
 
             # REMOVED limit switch initialization - not part of user's machine
 
@@ -738,7 +736,7 @@ class RaspberryPiGPIO:
 
         self.logger.info("Starting continuous switch polling thread...", category="hardware")
         self.logger.info("   This thread will monitor ALL switches and log state changes", category="hardware")
-        self.logger.info("   Poll interval: 25ms (40 times per second) - PERFORMANCE OPTIMIZED", category="hardware")
+        self.logger.info("   Poll interval: 10ms (100 times per second) - REAL-TIME OPTIMIZED", category="hardware")
 
         self.polling_active = True
         self.polling_thread = threading.Thread(target=self._poll_switches_continuously, daemon=True)
@@ -877,16 +875,16 @@ class RaspberryPiGPIO:
                     except Exception as e:
                         self.logger.error(f"Error reading limit switch {switch_name} on pin {pin}: {e}", category="hardware")
 
-                # Status update every N polls (configurable via settings.json)
-                if poll_count % self._polling_status_update_freq == 0:
+                # Status update every 1000 polls (10 seconds at 10ms interval)
+                if poll_count % 1000 == 0:
                     edge_count = len(self.direct_sensor_pins)
                     rs485_count = len(self.rs485_config.get('sensor_addresses', {})) if self.rs485 else 0
                     limit_count = len(self.limit_switch_pins)
                     total = edge_count + rs485_count + limit_count
                     self.logger.debug(f"Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {rs485_count} rs485 + {limit_count} limit)", category="hardware")
 
-                # OPTIMIZED: Sleep between polls (configurable via settings.json)
-                time.sleep(self._switch_polling_interval)
+                # REAL-TIME: Sleep 10ms between polls (100 Hz) for maximum responsiveness
+                time.sleep(0.010)
 
             except Exception as e:
                 self.logger.error(f"Polling thread error: {e}", category="hardware")

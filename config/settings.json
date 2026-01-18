@@ -185,11 +185,11 @@
       "gpio_mode": "BCM",
       "debounce_count": 2,
       "pistons": {
-        "line_marker_piston": 11,
-        "line_cutter_piston": 10,
-        "line_motor_piston": 2,
-        "row_marker_piston": 15,
-        "row_cutter_piston": 14
+        "line_marker_piston": 5,
+        "line_cutter_piston": 6,
+        "line_motor_piston": 13,
+        "row_marker_piston": 16,
+        "row_cutter_piston": 19
       },
       "rs485": {
         "enabled": true,
@@ -209,26 +209,30 @@
         "register_address_low": 192,
         "bulk_read_register_count": 2,
         "sensor_addresses": {
-          "line_marker_up_sensor": 14,
-          "line_marker_down_sensor": 15,
-          "line_cutter_up_sensor": 2,
-          "line_cutter_down_sensor": 3,
-          "row_cutter_up_sensor": 4,
-          "row_cutter_down_sensor": 5,
-          "row_marker_up_sensor": 6,
-          "row_marker_down_sensor": 7,
-          "line_motor_left_up_sensor": 8,
-          "line_motor_left_down_sensor": 9,
-          "line_motor_right_up_sensor": 10,
-          "line_motor_right_down_sensor": 11
+          "line_marker_up_sensor": 28,
+          "line_marker_down_sensor": 27,
+          "line_cutter_up_sensor": 25,
+          "line_cutter_down_sensor": 29,
+          "row_cutter_up_sensor": 24,
+          "row_cutter_down_sensor": 26,
+          "row_marker_up_sensor": 22,
+          "row_marker_down_sensor": 23,
+          "line_motor_left_up_sensor": 21,
+          "line_motor_left_down_sensor": 19,
+          "line_motor_right_up_sensor": 18,
+          "line_motor_right_down_sensor": 20,
+          "x_left_edge": 17,
+          "x_right_edge": 16,
+          "y_top_edge": 31,
+          "y_bottom_edge": 30
         },
+        "nc_sensors": [
+          "x_left_edge",
+          "x_right_edge",
+          "y_top_edge",
+          "y_bottom_edge"
+        ],
         "register_address": 0
-      },
-      "direct_sensors": {
-        "x_left_edge": 23,
-        "x_right_edge": 24,
-        "y_top_edge": 18,
-        "y_bottom_edge": 22
       }
     },
     "arduino_grbl": {
