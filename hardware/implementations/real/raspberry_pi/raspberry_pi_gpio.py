@@ -70,7 +70,7 @@ except (ImportError, RuntimeError):
     GPIO = MockGPIO()
 
 # Constants for switch debouncing
-DEBOUNCE_COUNT = 3  # Number of consecutive identical readings required to confirm a state change
+# DEBOUNCE_COUNT is now configurable via settings.json (raspberry_pi.debounce_count)
 
 class RaspberryPiGPIO:
     """
@@ -104,8 +104,21 @@ class RaspberryPiGPIO:
         self.polling_active = False
         self.switch_states = {}  # Track last known state of all switches
 
-        # Piston settling time
-        self._piston_settling_time = self.config.get("timing", {}).get("piston_gpio_settling_delay", 0.05)  # 50ms default
+        # Load all timing config values
+        timing_config = self.config.get("timing", {})
+        self._piston_settling_time = timing_config.get("piston_gpio_settling_delay", 0.05)
+        self._gpio_cleanup_delay = timing_config.get("gpio_cleanup_delay", 0.1)
+        self._gpio_busy_recovery_delay = timing_config.get("gpio_busy_recovery_delay", 0.05)
+        self._gpio_debounce_samples = timing_config.get("gpio_debounce_samples", 3)
+        self._gpio_debounce_delay = timing_config.get("gpio_debounce_delay_ms", 1) / 1000.0
+        self._gpio_test_read_delay = timing_config.get("gpio_test_read_delay_ms", 1) / 1000.0
+        self._polling_thread_join_timeout = timing_config.get("polling_thread_join_timeout", 1.0)
+        self._switch_polling_interval = timing_config.get("switch_polling_interval_ms", 10) / 1000.0
+        self._polling_status_update_freq = timing_config.get("polling_status_update_frequency", 1000)
+        self._polling_error_recovery_delay = timing_config.get("polling_error_recovery_delay", 0.1)
+
+        # Load debounce count from raspberry_pi config
+        self._debounce_count = self.gpio_config.get("debounce_count", 2)
 
         self.logger.info("="*60, category="hardware")
         self.logger.info("Raspberry Pi GPIO Configuration", category="hardware")
@@ -162,7 +175,7 @@ class RaspberryPiGPIO:
             try:
                 self.logger.info("Performing aggressive GPIO cleanup...", category="hardware")
                 GPIO.cleanup()
-                time.sleep(0.1)  # Give GPIO time to release
+                time.sleep(self._gpio_cleanup_delay)  # Give GPIO time to release
                 self.logger.debug("Cleaned up existing GPIO state", category="hardware")
             except Exception as cleanup_error:
                 self.logger.debug(f"Initial cleanup: {cleanup_error}", category="hardware")
@@ -214,7 +227,12 @@ class RaspberryPiGPIO:
                         sensor_addresses=self.rs485_config.get('sensor_addresses', {}),
                         device_id=self.rs485_config.get('modbus_device_id', 1),
                         input_count=self.rs485_config.get('input_count', 32),
-                        bulk_read_enabled=self.rs485_config.get('bulk_read_enabled', True)
+                        bulk_read_enabled=self.rs485_config.get('bulk_read_enabled', True),
+                        bulk_read_cache_age_ms=self.rs485_config.get('bulk_read_cache_age_ms', 10),
+                        default_retry_count=self.rs485_config.get('default_retry_count', 2),
+                        register_address_low=self.rs485_config.get('register_address_low', 192),
+                        bulk_read_register_count=self.rs485_config.get('bulk_read_register_count', 2),
+                        retry_delay=timing_config.get('rs485_retry_delay', 0.01)
                     )
 
                     # Connect to RS485 bus
@@ -248,7 +266,7 @@ class RaspberryPiGPIO:
                             try:
                                 # Force cleanup this specific pin and retry
                                 GPIO.cleanup(pin)
-                                time.sleep(0.05)
+                                time.sleep(self._gpio_busy_recovery_delay)
                                 GPIO.setup(pin, GPIO.IN)
                                 self.logger.success(f"Recovered GPIO {pin} ({sensor_name})", category="hardware")
                             except Exception as recovery_error:
@@ -373,7 +391,7 @@ class RaspberryPiGPIO:
 
     # ========== SENSOR READING METHODS ==========
 
-    def _read_with_debounce(self, pin_or_channel, is_rs485=False, sensor_name=None, samples=3, delay=0.001):
+    def _read_with_debounce(self, pin_or_channel, is_rs485=False, sensor_name=None, samples=None, delay=None):
         """
         Read GPIO or RS485 with debouncing
 
@@ -381,18 +399,24 @@ class RaspberryPiGPIO:
             pin_or_channel: GPIO pin number (for direct GPIO)
             is_rs485: True if reading from RS485
             sensor_name: Sensor name for RS485 lookup (if is_rs485=True)
-            samples: Number of consistent reads required (default 3)
-            delay: Delay between reads in seconds (default 1ms)
+            samples: Number of consistent reads required (defaults to configured value)
+            delay: Delay between reads in seconds (defaults to configured value)
 
         Returns:
             Stable boolean state or None if reads are inconsistent
         """
         import time
 
-        # PERFORMANCE FIX: Reduced RS485 debouncing for lower latency while still filtering noise
+        # Use configured values if not provided
+        if samples is None:
+            samples = self._gpio_debounce_samples
+        if delay is None:
+            delay = self._gpio_debounce_delay
+
+        # PERFORMANCE OPTIMIZED: Minimal RS485 debouncing for 50ms trigger detection
         if is_rs485:
-            samples = 3  # 3 samples for RS485
-            delay = 0.001  # 1ms between samples
+            samples = 1  # Single read for RS485 (bulk read already filtered by hardware)
+            delay = 0  # No delay needed for single sample
 
         readings = []
         for i in range(samples):
@@ -634,7 +658,7 @@ class RaspberryPiGPIO:
                 readings = []
                 for _ in range(5):
                     readings.append(GPIO.input(pin))
-                    time.sleep(0.001)  # 1ms between reads
+                    time.sleep(self._gpio_test_read_delay)  # 1ms between reads (configurable)
 
                 # Check if all readings are the same (stable)
                 if len(set(readings)) == 1:
@@ -655,7 +679,7 @@ class RaspberryPiGPIO:
                     readings = []
                     for _ in range(5):
                         readings.append(GPIO.input(pin))
-                        time.sleep(0.001)
+                        time.sleep(self._gpio_test_read_delay)
 
                     if len(set(readings)) == 1:
                         state = readings[0]
@@ -726,7 +750,7 @@ class RaspberryPiGPIO:
             self.logger.info("Stopping switch polling thread...", category="hardware")
             self.polling_active = False
             if self.polling_thread:
-                self.polling_thread.join(timeout=1.0)
+                self.polling_thread.join(timeout=self._polling_thread_join_timeout)
             self.logger.info("Polling thread stopped", category="hardware")
 
     def _poll_switches_continuously(self):
@@ -776,7 +800,7 @@ class RaspberryPiGPIO:
                     sensor_addresses = self.rs485_config.get('sensor_addresses', {})
                     for sensor_name, slave_address in sensor_addresses.items():
                         try:
-                            # Use 3-sample verification for each poll to filter noise at read-time (PERFORMANCE OPTIMIZED)
+                            # Direct read from bulk cache (no debouncing - optimized for 50ms triggers)
                             current_state = self._read_with_debounce(None, is_rs485=True, sensor_name=sensor_name)
 
                             # Skip if read was unstable (returns None)
@@ -807,7 +831,7 @@ class RaspberryPiGPIO:
                                 debounce['count'] = 1
 
                             # Check if we have enough consecutive readings
-                            if debounce['count'] >= DEBOUNCE_COUNT:
+                            if debounce['count'] >= self._debounce_count:
                                 # Check if this is different from confirmed state (or first confirmation)
                                 if current_state != last_confirmed_state:
                                     # State change confirmed (or initial state set)!
@@ -853,20 +877,20 @@ class RaspberryPiGPIO:
                     except Exception as e:
                         self.logger.error(f"Error reading limit switch {switch_name} on pin {pin}: {e}", category="hardware")
 
-                # Status update every 400 polls (10 seconds at 25ms interval)
-                if poll_count % 400 == 0:
+                # Status update every N polls (configurable via settings.json)
+                if poll_count % self._polling_status_update_freq == 0:
                     edge_count = len(self.direct_sensor_pins)
                     rs485_count = len(self.rs485_config.get('sensor_addresses', {})) if self.rs485 else 0
                     limit_count = len(self.limit_switch_pins)
                     total = edge_count + rs485_count + limit_count
                     self.logger.debug(f"Polling heartbeat: {poll_count} polls completed, monitoring {total} switches ({edge_count} edge + {rs485_count} rs485 + {limit_count} limit)", category="hardware")
 
-                # PERFORMANCE FIX: Sleep 25ms between polls (40 Hz) - reduced from 100ms
-                time.sleep(0.025)
+                # OPTIMIZED: Sleep between polls (configurable via settings.json)
+                time.sleep(self._switch_polling_interval)
 
             except Exception as e:
                 self.logger.error(f"Polling thread error: {e}", category="hardware")
-                time.sleep(0.1)
+                time.sleep(self._polling_error_recovery_delay)
 
         self.logger.info("Polling thread exiting", category="hardware")
 
@@ -885,7 +909,7 @@ class RaspberryPiGPIO:
                 # Set all pistons to retracted/up position before cleanup
                 for piston_name in self.piston_pins:
                     self.piston_up(piston_name)
-                time.sleep(0.1)
+                time.sleep(self._gpio_cleanup_delay)
 
                 # Cleanup RS485
                 if self.rs485:

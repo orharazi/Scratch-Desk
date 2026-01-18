@@ -27,6 +27,7 @@
     "file_path": "logs/scratch_desk.log",
     "use_colors": true,
     "use_icons": true,
+    "queue_timeout_seconds": 0.1,
     "categories": {
       "hardware": "INFO",
       "execution": "INFO",
@@ -67,7 +68,21 @@
     "transition_monitor_interval": 0.1,
     "thread_join_timeout_execution": 2.0,
     "thread_join_timeout_safety": 1.0,
-    "piston_gpio_settling_delay": 0.05
+    "piston_gpio_settling_delay": 0.05,
+    "gpio_cleanup_delay": 0.1,
+    "gpio_busy_recovery_delay": 0.05,
+    "gpio_debounce_samples": 3,
+    "gpio_debounce_delay_ms": 1,
+    "gpio_test_read_delay_ms": 1,
+    "limit_switch_test_read_delay_ms": 1,
+    "polling_thread_join_timeout": 1.0,
+    "switch_polling_interval_ms": 10,
+    "polling_status_update_frequency": 1000,
+    "polling_error_recovery_delay": 0.1,
+    "grbl_initialization_delay": 2,
+    "grbl_serial_poll_delay": 0.01,
+    "grbl_reset_delay": 2,
+    "rs485_retry_delay": 0.01
   },
   "sensor_timeouts": {
     "sensor_override_timeout_rows": 3000,
@@ -168,6 +183,7 @@
     "skip_initial_sensor_tests": false,
     "raspberry_pi": {
       "gpio_mode": "BCM",
+      "debounce_count": 2,
       "pistons": {
         "line_marker_piston": 11,
         "line_cutter_piston": 10,
@@ -185,8 +201,13 @@
         "timeout": 1.0,
         "protocol": "modbus_rtu",
         "modbus_device_id": 1,
+        "modbus_function_code": 3,
         "input_count": 32,
         "bulk_read_enabled": true,
+        "bulk_read_cache_age_ms": 10,
+        "default_retry_count": 2,
+        "register_address_low": 192,
+        "bulk_read_register_count": 2,
         "sensor_addresses": {
           "line_marker_up_sensor": 14,
           "line_marker_down_sensor": 15,
@@ -215,8 +236,11 @@
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
+      "homing_timeout": 30.0,
+      "door_switch_read_timeout": 1.0,
       "grbl_settings": {
         "units": "mm",
+        "positioning_mode": "G90",
         "feed_rate": 1000,
         "rapid_rate": 3000,
         "acceleration": 50

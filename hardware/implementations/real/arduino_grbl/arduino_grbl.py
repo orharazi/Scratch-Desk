@@ -83,6 +83,12 @@ class ArduinoGRBL:
         self.limit_switches = self.grbl_config.get("limit_switches", {})
         self.door_switch_config = self.limit_switches.get("door", {})
 
+        # Load timing configuration values
+        timing_config = self.config.get("timing", {})
+        self._grbl_init_delay = timing_config.get("grbl_initialization_delay", 2)
+        self._grbl_serial_poll_delay = timing_config.get("grbl_serial_poll_delay", 0.01)
+        self._grbl_reset_delay = timing_config.get("grbl_reset_delay", 2)
+
         self.serial_connection: Optional[serial.Serial] = None
         self.is_connected = False
         self.command_lock = Lock()  # Thread safety for serial commands
@@ -169,7 +175,7 @@ class ArduinoGRBL:
 
             # Wait for GRBL to initialize (it sends startup message)
             self.logger.debug("Waiting for GRBL to initialize...", category="grbl")
-            time.sleep(2)
+            time.sleep(self._grbl_init_delay)
 
             # Flush any startup messages
             self.serial_connection.flushInput()
@@ -213,15 +219,18 @@ class ArduinoGRBL:
         """Initialize GRBL with required settings"""
         self.logger.info("Initializing GRBL...", category="grbl")
 
-        # Set to absolute positioning mode
-        self._send_command("G90")
+        # Set positioning mode (absolute/relative)
+        positioning_mode = self.grbl_settings.get("positioning_mode", "G90")
+        self._send_command(positioning_mode)
 
-        # Set units to mm
-        self._send_command("G21")
+        # Set units (mm/inch)
+        units_mode = "G21" if self.grbl_settings.get("units", "mm") == "mm" else "G20"
+        self._send_command(units_mode)
 
         # Home the machine (if homing is enabled)
         self.logger.info("Homing machine... (This may take a few seconds)", category="grbl")
-        response = self._send_command("$H", timeout=30.0)
+        homing_timeout = self.grbl_config.get("homing_timeout", 30.0)
+        response = self._send_command("$H", timeout=homing_timeout)
         if response and "ok" in response.lower():
             self.logger.success("Homing completed", category="grbl")
         else:
@@ -283,7 +292,7 @@ class ArduinoGRBL:
                                 response = "\n".join(response_lines)
                                 return response
 
-                    time.sleep(0.01)
+                    time.sleep(self._grbl_serial_poll_delay)
 
                 self.logger.debug(f"Command timeout after {timeout}s", category="grbl")
                 return "\n".join(response_lines) if response_lines else None
@@ -364,7 +373,8 @@ class ArduinoGRBL:
 
         try:
             self.logger.info("Homing machine...", category="grbl")
-            response = self._send_command("$H", timeout=30.0)
+            homing_timeout = self.grbl_config.get("homing_timeout", 30.0)
+            response = self._send_command("$H", timeout=homing_timeout)
 
             if response and "ok" in response.lower():
                 self.current_x = 0.0
@@ -467,7 +477,7 @@ class ArduinoGRBL:
         try:
             # Send reset character (Ctrl-X)
             self.serial_connection.write(b"\x18")
-            time.sleep(2)  # Wait for reset
+            time.sleep(self._grbl_reset_delay)  # Wait for reset
             self.logger.success("GRBL reset", category="grbl")
             return True
         except Exception as e:
@@ -493,7 +503,8 @@ class ArduinoGRBL:
             # Send custom M-code to read digital pin
             # This requires custom firmware on Arduino to support reading digital pins
             # Format: M119 for GRBL built-in limit switch status
-            response = self._send_command("M119", timeout=1.0)
+            door_switch_timeout = self.grbl_config.get("door_switch_read_timeout", 1.0)
+            response = self._send_command("M119", timeout=door_switch_timeout)
 
             if response:
                 # Parse door switch status from response

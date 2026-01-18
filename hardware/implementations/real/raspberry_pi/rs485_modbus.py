@@ -56,7 +56,12 @@ class RS485ModbusInterface:
         sensor_addresses: Optional[Dict[str, int]] = None,
         device_id: int = 1,
         input_count: int = 32,
-        bulk_read_enabled: bool = True
+        bulk_read_enabled: bool = True,
+        bulk_read_cache_age_ms: int = 10,
+        default_retry_count: int = 2,
+        register_address_low: int = 192,
+        bulk_read_register_count: int = 2,
+        retry_delay: float = 0.01
     ):
         """
         Initialize RS485 Modbus RTU interface
@@ -72,6 +77,11 @@ class RS485ModbusInterface:
             device_id: Modbus device/slave ID (default: 1)
             input_count: Total number of inputs on the device (default: 32)
             bulk_read_enabled: Use bulk read optimization (default: True)
+            bulk_read_cache_age_ms: Max age of bulk cache in milliseconds (default: 10)
+            default_retry_count: Number of retries for failed reads (default: 2)
+            register_address_low: Starting register address for N4DIH32 (default: 192/0x00C0)
+            bulk_read_register_count: Number of registers to read in bulk (default: 2)
+            retry_delay: Delay between retries in seconds (default: 0.01)
         """
         self.logger = get_logger()
         self.port = port
@@ -84,6 +94,10 @@ class RS485ModbusInterface:
         self.device_id = device_id
         self.input_count = input_count
         self.bulk_read_enabled = bulk_read_enabled
+        self.default_retry_count = default_retry_count
+        self.register_address_low = register_address_low
+        self.bulk_read_register_count = bulk_read_register_count
+        self.retry_delay = retry_delay
 
         # Modbus client
         self.client: Optional[ModbusSerialClient] = None
@@ -92,10 +106,10 @@ class RS485ModbusInterface:
         # Thread lock for serial communication
         self.lock = threading.Lock()
 
-        # Bulk read cache
+        # Bulk read cache - configurable via settings
         self.bulk_read_cache: Optional[list] = None
         self.bulk_read_timestamp = 0
-        self.bulk_read_max_age = 0.025  # 25ms max cache age
+        self.bulk_read_max_age = bulk_read_cache_age_ms / 1000.0  # Convert ms to seconds
 
         # Check if pymodbus is available
         if not MODBUS_AVAILABLE:
@@ -173,10 +187,10 @@ class RS485ModbusInterface:
 
         try:
             with self.lock:
-                # Read 2 holding registers from N4DIH32 (Function Code 03)
+                # Read holding registers from N4DIH32 (Function Code 03)
                 response = self.client.read_holding_registers(
-                    address=0x00C0,  # Start register: 192 (contains X00-X15)
-                    count=2,          # Read 2 registers (X00-X15 and X16-X31)
+                    address=self.register_address_low,  # Start register (configurable, default: 192/0x00C0)
+                    count=self.bulk_read_register_count,  # Number of registers (configurable, default: 2)
                     device_id=self.device_id
                 )
 
@@ -315,7 +329,7 @@ class RS485ModbusInterface:
         self,
         sensor_name: str,
         register_address: int = 0,
-        retries: int = 2
+        retries: Optional[int] = None
     ) -> Optional[bool]:
         """
         Read sensor with automatic retry on failure
@@ -323,11 +337,14 @@ class RS485ModbusInterface:
         Args:
             sensor_name: Name of sensor
             register_address: Modbus register address
-            retries: Number of retry attempts on failure
+            retries: Number of retry attempts on failure (uses default_retry_count if None)
 
         Returns:
             Sensor state or None on error
         """
+        if retries is None:
+            retries = self.default_retry_count
+
         for attempt in range(retries + 1):
             result = self.read_sensor(sensor_name, register_address)
             if result is not None:
@@ -338,7 +355,7 @@ class RS485ModbusInterface:
                     f"Retry {attempt + 1}/{retries} for sensor {sensor_name}",
                     category="hardware"
                 )
-                time.sleep(0.01)  # 10ms delay before retry
+                time.sleep(self.retry_delay)  # Configurable delay before retry
 
         return None
 
