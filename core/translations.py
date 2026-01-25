@@ -91,6 +91,7 @@ HEBREW_TRANSLATIONS = {
     "Left Limit": "גבול שמאלי",
     "Right Limit": "גבול ימני",
     "Rows Limit": "גבול שורות",
+    "Door Sensor": "חיישן דלת",
     "OPEN": "פתוח",
     "CLOSED": "סגור",
 

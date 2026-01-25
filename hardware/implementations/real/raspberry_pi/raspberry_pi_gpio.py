@@ -99,6 +99,9 @@ class RaspberryPiGPIO:
         # Initialize state tracking dictionary
         self._last_sensor_states = {}  # Initialize state tracking dictionary
 
+        # Track piston GPIO output pin states (for displaying actual piston control state)
+        self._piston_pin_states = {}  # Maps piston_name -> current GPIO state ("up" or "down")
+
         # Polling thread for continuous switch monitoring
         self.polling_thread = None
         self.polling_active = False
@@ -209,6 +212,8 @@ class RaspberryPiGPIO:
                 try:
                     GPIO.setup(pin, GPIO.OUT)
                     GPIO.output(pin, GPIO.LOW)
+                    # Track initial state: GPIO.LOW = up (retracted)
+                    self._piston_pin_states[piston_name] = "up"
                     self.logger.debug(f"Piston '{piston_name}' on GPIO {pin}", category="hardware")
                 except Exception as e:
                     raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
@@ -228,7 +233,11 @@ class RaspberryPiGPIO:
                         device_id=self.rs485_config.get('modbus_device_id', 1),
                         input_count=self.rs485_config.get('input_count', 32),
                         bulk_read_enabled=self.rs485_config.get('bulk_read_enabled', True),
-                        nc_sensors=self.rs485_config.get('nc_sensors', [])
+                        nc_sensors=self.rs485_config.get('nc_sensors', []),
+                        register_address_low=self.rs485_config.get('register_address_low', 192),
+                        bulk_read_register_count=self.rs485_config.get('bulk_read_register_count', 2),
+                        default_retry_count=self.rs485_config.get('default_retry_count', 2),
+                        retry_delay=self.config.get('timing_parameters', {}).get('rs485_retry_delay', 0.01)
                     )
 
                     # Connect to RS485 bus
@@ -359,6 +368,10 @@ class RaspberryPiGPIO:
             # HIGH = extended/down, LOW = retracted/up
             gpio_state = GPIO.HIGH if state == "down" else GPIO.LOW
             GPIO.output(pin, gpio_state)
+
+            # Track the actual GPIO pin state
+            self._piston_pin_states[piston_name] = state
+
             self.logger.debug(f"Piston '{piston_name}' set to {state.upper()} (GPIO {pin} = {'HIGH' if gpio_state else 'LOW'})", category="hardware")
 
             # Settling delay to allow electrical noise to dissipate
@@ -376,6 +389,26 @@ class RaspberryPiGPIO:
     def piston_down(self, piston_name: str) -> bool:
         """Extend piston (set to DOWN position)"""
         return self.set_piston(piston_name, "down")
+
+    def get_piston_pin_state(self, piston_name: str) -> str:
+        """
+        Get the actual GPIO output pin state of a piston (not the sensor state)
+
+        Args:
+            piston_name: Name of piston (e.g., 'line_marker_piston')
+
+        Returns:
+            "up", "down", or "unknown" if piston not found or not initialized
+        """
+        if not self.is_initialized:
+            return "unknown"
+
+        if piston_name not in self.piston_pins:
+            self.logger.warning(f"Unknown piston: {piston_name}", category="hardware")
+            return "unknown"
+
+        # Return the tracked state (what we last set the GPIO pin to)
+        return self._piston_pin_states.get(piston_name, "unknown")
 
     # ========== LINE MOTOR PISTON CONTROL (Single GPIO for both sides) ==========
 
@@ -568,6 +601,10 @@ class RaspberryPiGPIO:
     def get_y_bottom_edge_sensor(self) -> Optional[bool]:
         """Read Y-axis BOTTOM edge sensor state"""
         return self.read_sensor("y_bottom_edge")
+
+    def get_door_sensor(self) -> Optional[bool]:
+        """Read door sensor state (moved from Arduino to RS485)"""
+        return self.read_sensor("door_sensor")
 
     # ========== LIMIT SWITCHES REMOVED - NOT PART OF USER'S MACHINE ==========
 

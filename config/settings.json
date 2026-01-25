@@ -178,7 +178,7 @@
   },
   "hardware_config": {
     "use_real_hardware": true,
-    "start_with_grbl": false,
+    "start_with_grbl": true,
     "poc_mode": true,
     "skip_initial_sensor_tests": false,
     "raspberry_pi": {
@@ -187,13 +187,13 @@
       "pistons": {
         "line_marker_piston": 5,
         "line_cutter_piston": 6,
-        "line_motor_piston": 13,
-        "row_marker_piston": 16,
-        "row_cutter_piston": 19
+        "line_motor_piston": 19,
+        "row_marker_piston": 13,
+        "row_cutter_piston": 16
       },
       "rs485": {
         "enabled": true,
-        "serial_port": "/dev/ttyUSB0",
+        "serial_port": "/dev/ttyUSB1",
         "baudrate": 9600,
         "bytesize": 8,
         "parity": "N",
@@ -224,7 +224,8 @@
           "x_left_edge": 17,
           "x_right_edge": 16,
           "y_top_edge": 31,
-          "y_bottom_edge": 30
+          "y_bottom_edge": 30,
+          "door_sensor": 15
         },
         "nc_sensors": [
           "x_left_edge",
@@ -248,6 +249,42 @@
         "feed_rate": 1000,
         "rapid_rate": 3000,
         "acceleration": 50
+      },
+      "grbl_configuration": {
+        "$0": 10,
+        "$1": 25,
+        "$2": 0,
+        "$3": 1,
+        "$4": 0,
+        "$5": 1,
+        "$6": 0,
+        "$10": 1,
+        "$11": 0.01,
+        "$12": 0.002,
+        "$13": 0,
+        "$20": 0,
+        "$21": 1,
+        "$22": 1,
+        "$23": 3,
+        "$24": 25.0,
+        "$25": 500.0,
+        "$26": 100,
+        "$27": 10.0,
+        "$30": 1000,
+        "$31": 0,
+        "$32": 0,
+        "$100": 14.74,
+        "$101": 14.5,
+        "$102": 250.0,
+        "$110": 2000.0,
+        "$111": 2000.0,
+        "$112": 500.0,
+        "$120": 10.0,
+        "$121": 10.0,
+        "$122": 10.0,
+        "$130": 1000.0,
+        "$131": 1000.0,
+        "$132": 0.0
       },
       "limit_switches": {
         "door": {

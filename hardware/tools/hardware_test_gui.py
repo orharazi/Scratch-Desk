@@ -244,21 +244,40 @@ class UltimateHardwareTestGUI:
         self.motors_tab.rowconfigure(0, weight=0)  # Position display - don't expand
         self.motors_tab.rowconfigure(1, weight=1)  # Main content - can expand
 
-        # Position display at top
-        pos_frame = ttk.LabelFrame(self.motors_tab, text=t("Current Position"), padding="10")
-        pos_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        # Position and status display at top
+        status_frame = ttk.LabelFrame(self.motors_tab, text=t("GRBL Status & Position"), padding="10")
+        status_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+
+        # Left side - Position display
+        pos_display_frame = ttk.Frame(status_frame)
+        pos_display_frame.grid(row=0, column=0, sticky="w", padx=10)
 
         # Large position display
         self.x_pos_var = tk.StringVar(value=t("X: {x:.2f} cm", x=0.00))
         self.y_pos_var = tk.StringVar(value=t("Y: {y:.2f} cm", y=0.00))
 
-        ttk.Label(pos_frame, textvariable=self.x_pos_var, font=("Arial", 20, "bold")).grid(row=0, column=0, padx=20)
-        ttk.Label(pos_frame, textvariable=self.y_pos_var, font=("Arial", 20, "bold")).grid(row=0, column=1, padx=20)
+        ttk.Label(pos_display_frame, textvariable=self.x_pos_var, font=("Arial", 20, "bold")).grid(row=0, column=0, padx=20)
+        ttk.Label(pos_display_frame, textvariable=self.y_pos_var, font=("Arial", 20, "bold")).grid(row=0, column=1, padx=20)
 
-        # Status indicators
-        ttk.Label(pos_frame, text=t("Status:"), font=("Arial", 10)).grid(row=0, column=2, padx=(40, 5))
-        self.motor_status_label = ttk.Label(pos_frame, text=t("Idle"), font=("Arial", 10, "bold"), foreground="green")
-        self.motor_status_label.grid(row=0, column=3, padx=5)
+        # Middle - Status indicators
+        status_display_frame = ttk.Frame(status_frame)
+        status_display_frame.grid(row=0, column=1, sticky="w", padx=40)
+
+        ttk.Label(status_display_frame, text=t("State:"), font=("Arial", 10)).grid(row=0, column=0, padx=(0, 5), sticky="w")
+        self.motor_status_label = ttk.Label(status_display_frame, text=t("Idle"), font=("Arial", 10, "bold"), foreground="green")
+        self.motor_status_label.grid(row=0, column=1, padx=5, sticky="w")
+
+        ttk.Label(status_display_frame, text=t("Work Pos:"), font=("Arial", 10)).grid(row=1, column=0, padx=(0, 5), sticky="w")
+        self.grbl_work_pos_label = ttk.Label(status_display_frame, text=t("X: 0.00 Y: 0.00"), font=("Arial", 10))
+        self.grbl_work_pos_label.grid(row=1, column=1, padx=5, sticky="w")
+
+        # Right side - Homing button
+        homing_frame = ttk.Frame(status_frame)
+        homing_frame.grid(row=0, column=2, sticky="e", padx=10)
+
+        ttk.Button(homing_frame, text=t("🏠 Start Homing Sequence"),
+                  command=self.start_homing_sequence,
+                  style="Accent.TButton").pack(pady=5)
 
         # Left side - Manual control and jogging
         left_frame = ttk.Frame(self.motors_tab)
@@ -355,7 +374,8 @@ class UltimateHardwareTestGUI:
             (t("Bottom Limit"), "bottom_limit_switch"),
             (t("Left Limit"), "left_limit_switch"),
             (t("Right Limit"), "right_limit_switch"),
-            (t("Rows Limit"), "rows_limit_switch")
+            (t("Rows Limit"), "rows_limit_switch"),
+            (t("Door Sensor"), "door_sensor")
         ]
 
         for i, (name, switch_id) in enumerate(limit_switches):
@@ -1013,6 +1033,36 @@ class UltimateHardwareTestGUI:
                         if isinstance(child, (ttk.Button, ttk.Entry)):
                             child.config(state=state)
 
+    def update_position_display(self):
+        """Force update position display from GRBL"""
+        if not self.grbl_connected or not hasattr(self.hardware, 'grbl') or not self.hardware.grbl:
+            return
+
+        try:
+            # Query GRBL for current position (log_changes_only=False to force logging)
+            status = self.hardware.grbl.get_status(log_changes_only=False)
+
+            if status:
+                new_x = status.get('x', 0)
+                new_y = status.get('y', 0)
+
+                self.current_x = new_x
+                self.current_y = new_y
+
+                # Update display immediately
+                self.x_pos_var.set(t("X: {x:.2f} cm", x=self.current_x))
+                self.y_pos_var.set(t("Y: {y:.2f} cm", y=self.current_y))
+
+                # Update work position label
+                work_pos_text = f"X: {new_x:.2f} Y: {new_y:.2f}"
+                self.grbl_work_pos_label.config(text=work_pos_text)
+
+                # Only log explicit updates (from button clicks, not from monitor loop)
+                self.log("SUCCESS", t("✓ Position updated: X={x:.2f}cm, Y={y:.2f}cm", x=new_x, y=new_y))
+
+        except Exception as e:
+            self.log("ERROR", t("Error updating position: {error}", error=str(e)))
+
     def monitor_loop(self):
         """Monitor sensors and positions in background"""
         self.log("INFO", t("Monitor loop started - updating sensors at 10Hz"))
@@ -1038,10 +1088,15 @@ class UltimateHardwareTestGUI:
                                 self.root.after_idle(lambda: self.x_pos_var.set(t("X: {x:.2f} cm", x=self.current_x)))
                                 self.root.after_idle(lambda: self.y_pos_var.set(t("Y: {y:.2f} cm", y=self.current_y)))
 
+                            # Update state
                             state = status.get('state', 'Unknown')
                             state_text = t(state) if state in ['Idle', 'Run', 'Unknown'] else state
                             color = "green" if state == "Idle" else "orange" if state == "Run" else "red"
                             self.root.after_idle(lambda s=state_text, c=color: self.motor_status_label.config(text=s, foreground=c))
+
+                            # Update work position label
+                            work_pos_text = f"X: {new_x:.2f} Y: {new_y:.2f}"
+                            self.root.after_idle(lambda t=work_pos_text: self.grbl_work_pos_label.config(text=t))
                     elif self.is_connected and hasattr(self.hardware, 'get_current_x') and hasattr(self.hardware, 'get_current_y'):
                         # Get position from hardware interface (mock or real without GRBL)
                         try:
@@ -1073,12 +1128,12 @@ class UltimateHardwareTestGUI:
                                     conn_widget = self.sensor_connection_widgets[sensor_id]
                                     self.root.after_idle(lambda w=conn_widget: w.config(fg="#27AE60"))  # Green
 
-                                # Different display for limit switches
-                                if "limit_switch" in sensor_id:
+                                # Different display for limit switches and door sensor
+                                if "limit_switch" in sensor_id or sensor_id == "door_sensor":
                                     if state:
-                                        self.root.after_idle(lambda w=widget: w.config(text=t("CLOSED"), background="#E74C3C", foreground="white"))  # Red when triggered
+                                        self.root.after_idle(lambda w=widget: w.config(text=t("CLOSED"), background="#27AE60", foreground="white"))  # Green when closed
                                     else:
-                                        self.root.after_idle(lambda w=widget: w.config(text=t("OPEN"), background="#95A5A6", foreground="white"))  # Gray when open
+                                        self.root.after_idle(lambda w=widget: w.config(text=t("OPEN"), background="#E74C3C", foreground="white"))  # Red when open
                                 else:
                                     # Regular sensors
                                     if state:
@@ -1155,6 +1210,11 @@ class UltimateHardwareTestGUI:
                 self.log("INFO", t("Jogging Y by {delta:.2f}cm to {pos:.2f}cm", delta=step * direction, pos=new_pos))
                 self.hardware.move_y(new_pos)
 
+            # Wait for movement to complete, then force position update
+            self.log("INFO", "Waiting 0.5s for movement to complete...")
+            time.sleep(0.5)
+            self.update_position_display()
+
         except Exception as e:
             self.log("ERROR", t("Jog error: {error}", error=str(e)))
 
@@ -1171,6 +1231,10 @@ class UltimateHardwareTestGUI:
             self.log("INFO", t("Moving to position X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
             if self.hardware.move_to(x, y):
                 self.log("SUCCESS", t("Moved to X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
+                # Wait for movement to complete, then force position update
+                self.log("INFO", "Waiting 0.5s for movement to complete...")
+                time.sleep(0.5)
+                self.update_position_display()
             else:
                 self.log("ERROR", t("Move command failed"))
 
@@ -1187,6 +1251,10 @@ class UltimateHardwareTestGUI:
         self.log("INFO", t("Moving to preset position X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
         if self.hardware.move_to(x, y):
             self.log("SUCCESS", t("Moved to preset X={x:.2f}cm, Y={y:.2f}cm", x=x, y=y))
+            # Wait for movement to complete, then force position update
+            self.log("INFO", "Waiting 0.5s for movement to complete...")
+            time.sleep(0.5)
+            self.update_position_display()
         else:
             self.log("ERROR", t("Move to preset failed"))
 
@@ -1218,6 +1286,144 @@ class UltimateHardwareTestGUI:
                                  t("All motors stopped!\nClick OK to resume."))
             self.hardware.resume_operation()
             self.log("INFO", t("Emergency stop cleared, operation resumed"))
+
+    def start_homing_sequence(self):
+        """Start the complete homing sequence with step-by-step progress dialog"""
+        if not self.is_connected:
+            messagebox.showwarning(t("Not Connected"), t("Please connect hardware first"))
+            return
+
+        if not self.grbl_connected:
+            messagebox.showwarning(t("GRBL Not Connected"), t("GRBL is not connected. Cannot perform homing."))
+            return
+
+        # Confirm with user
+        if not messagebox.askyesno(t("Start Homing Sequence"),
+                                   t("This will perform a complete homing sequence:\n\n"
+                                     "1. Apply GRBL configuration\n"
+                                     "2. Check door is open\n"
+                                     "3. Lift line motor pistons\n"
+                                     "4. Run GRBL homing ($H)\n"
+                                     "5. Reset work coordinates to (0, 0)\n"
+                                     "6. Lower line motor pistons\n\n"
+                                     "Make sure the machine is clear and ready.\n\n"
+                                     "Continue?")):
+            return
+
+        self.log("INFO", t("Starting complete homing sequence..."))
+
+        # Create progress dialog with step tracking
+        progress_window = tk.Toplevel(self.root)
+        progress_window.title(t("Homing in Progress"))
+        progress_window.geometry("500x350")
+        progress_window.transient(self.root)
+        progress_window.grab_set()
+
+        # Center the window
+        progress_window.update_idletasks()
+        x = (progress_window.winfo_screenwidth() // 2) - (250)
+        y = (progress_window.winfo_screenheight() // 2) - (175)
+        progress_window.geometry(f"500x350+{x}+{y}")
+
+        # Title
+        ttk.Label(progress_window, text=t("⏳ Homing in Progress..."),
+                 font=("Arial", 14, "bold")).pack(pady=15)
+
+        # Frame for steps
+        steps_frame = ttk.Frame(progress_window)
+        steps_frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+
+        # Define all steps
+        steps = [
+            "1. Apply GRBL configuration",
+            "2. Check door is open",
+            "3. Lift line motor pistons",
+            "4. Run GRBL homing ($H)",
+            "5. Reset work coordinates to (0,0)",
+            "6. Lower line motor pistons"
+        ]
+
+        # Create step labels with status indicators
+        step_labels = {}
+        step_status_labels = {}
+
+        for i, step_text in enumerate(steps, 1):
+            step_row = ttk.Frame(steps_frame)
+            step_row.pack(fill=tk.X, pady=3)
+
+            # Status indicator (emoji)
+            status_label = ttk.Label(step_row, text="⏸", font=("Arial", 12), width=3)
+            status_label.pack(side=tk.LEFT)
+            step_status_labels[i] = status_label
+
+            # Step text
+            text_label = ttk.Label(step_row, text=step_text, font=("Arial", 10))
+            text_label.pack(side=tk.LEFT, padx=5)
+            step_labels[i] = text_label
+
+        # Progress callback to update step status
+        def update_progress(step_number, step_name, status):
+            """Called from homing thread to update GUI"""
+            def update_gui():
+                if step_number in step_status_labels:
+                    label = step_status_labels[step_number]
+                    text_label = step_labels[step_number]
+
+                    if status == "running":
+                        label.config(text="⏳", foreground="blue")
+                        text_label.config(foreground="blue", font=("Arial", 10, "bold"))
+                    elif status == "done":
+                        label.config(text="✓", foreground="green")
+                        text_label.config(foreground="green", font=("Arial", 10))
+                    elif status == "error":
+                        label.config(text="✗", foreground="red")
+                        text_label.config(foreground="red", font=("Arial", 10, "bold"))
+
+            # Schedule GUI update on main thread
+            self.root.after(0, update_gui)
+
+        # Run homing in a separate thread to avoid blocking the GUI
+        def homing_thread():
+            success = False
+            error_msg = None
+
+            try:
+                # Execute the complete homing sequence with progress callback
+                success = self.hardware.perform_complete_homing_sequence(progress_callback=update_progress)
+
+            except Exception as e:
+                error_msg = str(e)
+                self.log("ERROR", t("Homing sequence error: {error}", error=error_msg))
+
+            # Schedule completion on main thread (AFTER homing finishes)
+            def finish_homing():
+                # Close progress window
+                progress_window.grab_release()
+                progress_window.destroy()
+
+                # Now show result dialog AFTER progress window closes
+                if error_msg:
+                    messagebox.showerror(t("Homing Error"),
+                                        t("Error during homing: {error}", error=error_msg))
+                elif success:
+                    self.log("SUCCESS", t("Complete homing sequence finished successfully!"))
+                    # Force position update
+                    self.update_position_display()
+                    messagebox.showinfo(t("Homing Complete"),
+                                       t("Homing sequence completed successfully!\n\n"
+                                         "Machine is now at home position (0, 0)."))
+                else:
+                    self.log("ERROR", t("Homing sequence failed!"))
+                    messagebox.showerror(t("Homing Failed"),
+                                        t("Homing sequence failed.\n\n"
+                                          "Check the console for error details."))
+
+            # Execute completion on main thread AFTER all steps are done
+            self.root.after(0, finish_homing)
+
+        # Start the homing thread
+        homing_task = threading.Thread(target=homing_thread, daemon=True)
+        homing_task.start()
 
     # Piston control methods
     def piston_up(self, piston_key):

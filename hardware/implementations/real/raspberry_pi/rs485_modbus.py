@@ -57,7 +57,11 @@ class RS485ModbusInterface:
         device_id: int = 1,
         input_count: int = 32,
         bulk_read_enabled: bool = True,
-        nc_sensors: Optional[list] = None
+        nc_sensors: Optional[list] = None,
+        register_address_low: int = 192,
+        bulk_read_register_count: int = 2,
+        default_retry_count: int = 2,
+        retry_delay: float = 0.01
     ):
         """
         Initialize RS485 Modbus RTU interface
@@ -74,6 +78,10 @@ class RS485ModbusInterface:
             input_count: Total number of inputs on the device (default: 32)
             bulk_read_enabled: Use bulk read optimization (default: True)
             nc_sensors: List of NC (Normally Closed) sensor names to invert (default: None)
+            register_address_low: Starting Modbus register address (default: 192/0x00C0)
+            bulk_read_register_count: Number of registers to read in bulk (default: 2)
+            default_retry_count: Number of retry attempts on read failure (default: 2)
+            retry_delay: Delay in seconds between retry attempts (default: 0.01)
         """
         self.logger = get_logger()
         self.port = port
@@ -87,6 +95,14 @@ class RS485ModbusInterface:
         self.input_count = input_count
         self.bulk_read_enabled = bulk_read_enabled
         self.nc_sensors = set(nc_sensors or [])  # Convert to set for fast lookup
+
+        # Modbus register configuration
+        self.register_address_low = register_address_low
+        self.bulk_read_register_count = bulk_read_register_count
+
+        # Retry configuration
+        self.default_retry_count = default_retry_count
+        self.retry_delay = retry_delay
 
         # Modbus client
         self.client: Optional[ModbusSerialClient] = None
@@ -127,6 +143,13 @@ class RS485ModbusInterface:
         try:
             self.logger.info(f"Connecting to RS485 on {self.port}...", category="hardware")
 
+            # Check if port exists
+            import os
+            if not os.path.exists(self.port):
+                self.logger.error(f"Serial port {self.port} does not exist! Check physical connection.", category="hardware")
+                self.logger.error("Run: ls -la /dev/ttyUSB* to see available ports", category="hardware")
+                return False
+
             # Create Modbus RTU client
             self.client = ModbusSerialClient(
                 port=self.port,
@@ -142,9 +165,30 @@ class RS485ModbusInterface:
             if self.client.connect():
                 self.is_connected = True
                 self.logger.success(f"RS485 connected on {self.port}", category="hardware")
+
+                # Try a test read to verify device is responding
+                self.logger.info(f"Testing communication with device ID {self.device_id}...", category="hardware")
+                test_result = self.read_all_inputs_bulk()
+                if test_result is None:
+                    self.logger.warning(
+                        f"RS485 port opened but device ID {self.device_id} is NOT responding!",
+                        category="hardware"
+                    )
+                    self.logger.warning(
+                        "TROUBLESHOOTING: Check power, wiring (A/B), and DIP switches on N4DIH32",
+                        category="hardware"
+                    )
+                    self.logger.warning(
+                        "See RS485_TROUBLESHOOTING.md for detailed help",
+                        category="hardware"
+                    )
+                else:
+                    self.logger.success(f"Device responding! Read {len(test_result)} inputs successfully", category="hardware")
+
                 return True
             else:
                 self.logger.error(f"Failed to connect to RS485 on {self.port}", category="hardware")
+                self.logger.error("This could mean: wrong port, permission issue, or port in use", category="hardware")
                 return False
 
         except Exception as e:

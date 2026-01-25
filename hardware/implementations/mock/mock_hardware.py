@@ -1233,6 +1233,88 @@ class MockHardware:
         move_y(0.0)
         return True
 
+    def perform_complete_homing_sequence(self, progress_callback=None) -> bool:
+        """
+        Perform complete homing sequence (mock implementation)
+
+        Mock version simulates the full sequence without real hardware.
+
+        Args:
+            progress_callback: Optional callback function(step_number, step_name, status)
+        """
+        self.logger.info("="*60, category="hardware")
+        self.logger.info("MOCK: Starting complete homing sequence", category="hardware")
+        self.logger.info("="*60, category="hardware")
+
+        # Simulate configuration
+        if progress_callback:
+            progress_callback(1, "Apply GRBL configuration", "running")
+        self.logger.info("Step 1: (Simulated) Applying GRBL configuration", category="hardware")
+        time.sleep(0.2)
+        if progress_callback:
+            progress_callback(1, "Apply GRBL configuration", "done")
+
+        # Simulate door check
+        if progress_callback:
+            progress_callback(2, "Check door is open", "running")
+        self.logger.info("Step 2: (Simulated) Checking door sensor - OK", category="hardware")
+        time.sleep(0.1)
+        if progress_callback:
+            progress_callback(2, "Check door is open", "done")
+
+        # Simulate lifting pistons
+        if progress_callback:
+            progress_callback(3, "Lift line motor pistons", "running")
+        self.logger.info("Step 3: (Simulated) Lifting line motor pistons", category="hardware")
+        line_motor_piston_up()
+        time.sleep(0.5)
+        if progress_callback:
+            progress_callback(3, "Lift line motor pistons", "done")
+
+        # Simulate homing
+        if progress_callback:
+            progress_callback(4, "Run GRBL homing ($H)", "running")
+        self.logger.info("Step 4: (Simulated) Running GRBL homing", category="hardware")
+        move_x(0.0)
+        move_y(0.0)
+        time.sleep(1.0)
+        if progress_callback:
+            progress_callback(4, "Run GRBL homing ($H)", "done")
+
+        # Simulate coordinate reset
+        if progress_callback:
+            progress_callback(5, "Reset work coordinates to (0,0)", "running")
+        self.logger.info("Step 5: (Simulated) Resetting work coordinates to (0, 0)", category="hardware")
+        time.sleep(0.2)
+        if progress_callback:
+            progress_callback(5, "Reset work coordinates to (0,0)", "done")
+
+        # Simulate lowering pistons
+        if progress_callback:
+            progress_callback(6, "Lower line motor pistons", "running")
+        self.logger.info("Step 6: (Simulated) Lowering line motor pistons", category="hardware")
+        line_motor_piston_down()
+        time.sleep(0.5)
+        if progress_callback:
+            progress_callback(6, "Lower line motor pistons", "done")
+
+        self.logger.success("MOCK: Complete homing sequence finished", category="hardware")
+        self.logger.info("="*60, category="hardware")
+        return True
+
+    def apply_grbl_configuration(self) -> bool:
+        """Apply GRBL configuration (mock implementation)"""
+        self.logger.info("MOCK: Applying GRBL configuration (simulation)", category="hardware")
+        return True
+
+    def get_grbl_status(self):
+        """Get GRBL status (mock implementation)"""
+        return {
+            'state': 'Idle',
+            'x': get_current_x(),
+            'y': get_current_y()
+        }
+
     # ========== POSITION GETTERS ==========
     def get_current_x(self) -> float:
         return get_current_x()
@@ -1405,6 +1487,10 @@ class MockHardware:
 
     # ========== LIMIT SWITCHES ==========
     def get_door_switch(self) -> bool:
+        return get_limit_switch_state("rows_door")
+
+    def get_door_sensor(self) -> bool:
+        """Alias for get_door_switch for consistency with other sensors"""
         return get_limit_switch_state("rows_door")
 
     def get_rows_door_switch(self) -> bool:

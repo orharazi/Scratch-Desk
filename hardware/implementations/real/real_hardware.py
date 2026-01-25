@@ -175,7 +175,7 @@ class RealHardware:
 
     def home_motors(self) -> bool:
         """
-        Home all motors
+        Home all motors (basic $H command)
 
         Returns:
             True if successful, False otherwise
@@ -185,6 +185,56 @@ class RealHardware:
             return False
 
         return self.grbl.home()
+
+    def perform_complete_homing_sequence(self, progress_callback=None) -> bool:
+        """
+        Perform complete homing sequence with configuration and safety checks
+
+        This is the comprehensive homing procedure that:
+        1. Applies GRBL configuration from settings.json
+        2. Checks door is open
+        3. Lifts line motor pistons
+        4. Runs GRBL homing ($H)
+        5. Resets work coordinates to (0, 0)
+        6. Lowers line motor pistons
+
+        Args:
+            progress_callback: Optional callback function(step_number, step_name, status)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.is_initialized or not self.grbl:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        # Pass self as hardware_interface so GRBL can control pistons and check door
+        return self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback)
+
+    def apply_grbl_configuration(self) -> bool:
+        """
+        Apply GRBL configuration from settings.json
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.is_initialized or not self.grbl:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.grbl.apply_grbl_configuration()
+
+    def get_grbl_status(self) -> Optional[Dict]:
+        """
+        Get current GRBL status including position and state
+
+        Returns:
+            Dictionary with status info (state, x, y) or None if not available
+        """
+        if not self.is_initialized or not self.grbl:
+            return None
+
+        return self.grbl.get_status()
 
     # ========== PISTON CONTROL (via GPIO) ==========
 
@@ -424,20 +474,29 @@ class RealHardware:
 
     def get_door_switch(self) -> bool:
         """
-        Read door limit switch state (from Arduino GRBL)
+        Read door sensor state (from RS485 via GPIO interface)
 
         Returns:
             True if door is closed, False if open
         """
-        if not self.is_initialized or not self.grbl:
+        if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.grbl.get_door_switch_state()
+        state = self.gpio.get_door_sensor()
         return state if state is not None else False
+
+    def get_door_sensor(self) -> bool:
+        """
+        Read door sensor state (alias for get_door_switch for consistency with other sensors)
+
+        Returns:
+            True if door is closed, False if open
+        """
+        return self.get_door_switch()
 
     def get_rows_door_switch(self) -> bool:
         """
-        Read rows door limit switch state (legacy method - now routes to Arduino)
+        Read rows door switch state (legacy method)
 
         DEPRECATED: Use get_door_switch() instead
         """
@@ -603,35 +662,34 @@ class RealHardware:
             return "unknown"
 
     def get_line_marker_piston_state(self) -> str:
-        """Get line marker piston state"""
-        return self.get_line_marker_state()
+        """Get line marker piston actual GPIO pin state (not sensor state)"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_piston_pin_state("line_marker_piston")
 
     def get_line_cutter_piston_state(self) -> str:
-        """Get line cutter piston state"""
-        return self.get_line_cutter_state()
+        """Get line cutter piston actual GPIO pin state (not sensor state)"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_piston_pin_state("line_cutter_piston")
 
     def get_line_motor_piston_state(self) -> str:
-        """Get line motor piston state (both sides move together, check both sensors)"""
-        left_up = self.get_line_motor_left_up_sensor()
-        left_down = self.get_line_motor_left_down_sensor()
-        right_up = self.get_line_motor_right_up_sensor()
-        right_down = self.get_line_motor_right_down_sensor()
-
-        # Both sides should be in same state (single piston control)
-        if left_up and right_up:
-            return "up"
-        elif left_down and right_down:
-            return "down"
-        else:
-            return "unknown"  # Mismatch - possible sensor error
+        """Get line motor piston actual GPIO pin state (not sensor state)"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_piston_pin_state("line_motor_piston")
 
     def get_row_marker_piston_state(self) -> str:
-        """Get row marker piston state"""
-        return self.get_row_marker_state()
+        """Get row marker piston actual GPIO pin state (not sensor state)"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_piston_pin_state("row_marker_piston")
 
     def get_row_cutter_piston_state(self) -> str:
-        """Get row cutter piston state"""
-        return self.get_row_cutter_state()
+        """Get row cutter piston actual GPIO pin state (not sensor state)"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_piston_pin_state("row_cutter_piston")
 
     # ========== EDGE SENSOR GETTERS (compatibility wrappers) ==========
 
