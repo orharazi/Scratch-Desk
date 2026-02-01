@@ -239,8 +239,8 @@ class CanvasSetup:
         # Paper offset coordinates from settings
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
         PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
-        PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
-        
+        PAPER_OFFSET_Y = hardware_limits.get("paper_start_y", 15.0)
+
         max_y_cm = sim_settings.get("max_display_y", 80)
         
         # Calculate sensor positions on desk

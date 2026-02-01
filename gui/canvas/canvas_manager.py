@@ -44,7 +44,67 @@ class CanvasManager:
         main_app.canvas_operations = self.canvas_operations
         main_app.canvas_position = self.canvas_position
         main_app.canvas_tools = self.canvas_tools
-    
+
+    def full_reset(self):
+        """Comprehensive reset of all canvas state for new program or execution reset"""
+        self.logger.debug("Canvas full reset initiated", category="gui")
+
+        # Reset motor operation mode and positions
+        self.motor_operation_mode = "idle"
+        self.lines_motor_position = 0.0
+        self.rows_motor_position = 0.0
+
+        # Clear sensor override state
+        self.sensor_override_active = False
+        self.sensor_position_x = 0.0
+        self.sensor_position_y = 0.0
+
+        # Cancel any pending sensor override timer
+        if self.sensor_override_timer:
+            try:
+                self.main_app.root.after_cancel(self.sensor_override_timer)
+            except Exception:
+                pass
+            self.sensor_override_timer = None
+
+        # Reset sensor highlights
+        self.reset_sensor_highlights()
+
+        # Clear sensor override through the sensor module
+        self.clear_sensor_override()
+
+        # Ensure all tools show as up
+        self.ensure_all_tools_up()
+
+        self.logger.debug("Canvas full reset completed", category="gui")
+
+    def prepare_for_new_program(self):
+        """Prepare canvas state when switching to a new program (without moving hardware)"""
+        self.logger.debug("Preparing canvas for new program", category="gui")
+
+        # Reset canvas visualization state but don't touch hardware
+        self.motor_operation_mode = "idle"
+        self.lines_motor_position = 0.0
+        self.rows_motor_position = 0.0
+
+        # Clear sensor state
+        self.sensor_override_active = False
+        self.sensor_position_x = 0.0
+        self.sensor_position_y = 0.0
+
+        # Cancel any pending sensor override timer
+        if self.sensor_override_timer:
+            try:
+                self.main_app.root.after_cancel(self.sensor_override_timer)
+            except Exception:
+                pass
+            self.sensor_override_timer = None
+
+        # Reset sensor highlights
+        self.reset_sensor_highlights()
+
+        self.logger.debug("Canvas prepared for new program", category="gui")
+
     def set_motor_operation_mode(self, mode):
         """Set the motor operation mode for proper visualization"""
         if mode in ["idle", "lines", "rows"]:

@@ -13,7 +13,23 @@ class ExecutionController:
         self.main_app = main_app
         self.transition_dialog = None
         self.logger = get_logger()
-    
+
+    def cleanup_for_reset(self):
+        """Clean up controller state during system reset"""
+        # Destroy any open transition dialog and clear widget references
+        if self.transition_dialog:
+            try:
+                self.transition_dialog.destroy()
+            except Exception:
+                pass  # Dialog may already be destroyed
+            self.transition_dialog = None
+
+        # Clear widget references to prevent access after destroy
+        if hasattr(self, 'transition_limit_switch_label'):
+            self.transition_limit_switch_label = None
+
+        self.logger.debug("ExecutionController cleaned up for reset", category="gui")
+
     def on_execution_status(self, status, info=None):
         """Handle execution status updates"""
         if hasattr(self.main_app, 'progress_label'):
@@ -31,7 +47,10 @@ class ExecutionController:
         
         # Update operation label if available
         if hasattr(self.main_app, 'operation_label'):
-            if status == 'step_executing':
+            if status == 'running':
+                # Reset operation label when resuming (e.g., after safety wait)
+                self.main_app.operation_label.config(text=t("Running..."), fg='green')
+            elif status == 'step_executing':
                 # Get English description for internal processing
                 step_info = info.get('description', t('Executing step...')) if info else t('Executing step...')
                 # Get Hebrew description for UI display
@@ -292,7 +311,62 @@ class ExecutionController:
         # Handle safety violations
         if status == 'safety_violation':
             self.handle_safety_violation(info)
-    
+
+        # Handle safety waiting (auto-resume when condition clears)
+        if status == 'safety_waiting':
+            self.handle_safety_waiting(info)
+
+    def handle_safety_waiting(self, info):
+        """Handle safety waiting state - show popup and update UI while waiting for condition to clear"""
+        if not info:
+            return
+
+        violation_message = info.get('violation_message', t('Unknown safety violation'))
+        safety_code = info.get('safety_code', 'UNKNOWN')
+        step = info.get('step', {})
+        step_description = step.get('hebDescription', step.get('description', t('Unknown step')))
+
+        # Update progress label with safety waiting state
+        if hasattr(self.main_app, 'progress_label'):
+            self.main_app.progress_label.config(text=t("⏸️ SAFETY - Waiting for condition to clear..."), fg='orange')
+
+        # Update operation label
+        if hasattr(self.main_app, 'operation_label'):
+            self.main_app.operation_label.config(text=t("SAFETY WAIT - Will auto-resume"), fg='orange')
+
+        # Show waiting alert dialog (non-blocking info)
+        self.show_safety_waiting_alert(violation_message, safety_code, step_description)
+
+    def show_safety_waiting_alert(self, violation_message, safety_code, step_description):
+        """Show safety waiting alert dialog"""
+        try:
+            alert_title = t("⏸️ SAFETY - Waiting for condition")
+
+            # Determine the required action based on the safety code
+            if "ROWS" in safety_code or "rows" in violation_message.lower():
+                required_action = t("Open the rows door (set row marker DOWN) to continue rows operations.")
+            elif "LINES" in safety_code or "lines" in violation_message.lower():
+                required_action = t("Close the rows door (set row marker UP) to continue lines operations.")
+            else:
+                required_action = t("Resolve the safety condition to continue.")
+
+            alert_message = t("""⏸️ SAFETY CONDITION DETECTED
+
+{violation_message}
+
+REQUIRED ACTION:
+{required_action}
+
+The system will AUTOMATICALLY RESUME when the condition is resolved.""",
+                            violation_message=violation_message,
+                            required_action=required_action)
+
+            # Show warning dialog (not error - it's waiting, not stopped)
+            messagebox.showwarning(alert_title, alert_message)
+
+        except Exception as e:
+            self.logger.error(f"Error showing safety waiting alert: {e}", category="gui")
+
     def handle_safety_violation(self, info):
         """Handle safety violation with immediate alerts and execution stop"""
         if not info:
@@ -510,6 +584,25 @@ The system will remain stopped until you manually address this issue.""",
         if not hasattr(self, 'transition_dialog') or not self.transition_dialog:
             return
 
+        # Check if dialog widget still exists (not destroyed)
+        try:
+            if not self.transition_dialog.winfo_exists():
+                self.transition_dialog = None
+                return
+        except Exception:
+            self.transition_dialog = None
+            return
+
+        # Check if label widget still exists
+        if not hasattr(self, 'transition_limit_switch_label') or not self.transition_limit_switch_label:
+            return
+
+        try:
+            if not self.transition_limit_switch_label.winfo_exists():
+                return
+        except Exception:
+            return
+
         try:
             # Update status label with current limit switch state
             # limit_switch_state is "down" (ON/CLOSED) or "up" (OFF/OPEN)
@@ -524,6 +617,7 @@ The system will remain stopped until you manually address this issue.""",
                 text=status_text,
                 fg=status_color
             )
-            
+
         except Exception as e:
-            self.logger.error(f"Error updating transition dialog: {e}", category="gui")
+            # Dialog was destroyed, clear reference
+            self.transition_dialog = None

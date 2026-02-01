@@ -225,18 +225,48 @@ class LeftPanel:
             self.on_program_selected()
 
     def on_program_selected(self, event=None):
-        """Handle program selection"""
+        """Handle program selection - resets execution state for new program"""
         if not self.program_combo.get():
             return
 
         try:
             selected_index = self.program_combo.current()
             if 0 <= selected_index < len(self.main_app.programs):
+                # Stop execution if running
+                if hasattr(self.main_app, 'execution_engine') and self.main_app.execution_engine.is_running:
+                    self.main_app.execution_engine.stop_execution()
+                    self.logger.info("Stopped running execution for program switch", category="gui")
+
+                # Clear old execution state (steps, step index, etc.)
+                if hasattr(self.main_app, 'execution_engine'):
+                    self.main_app.execution_engine.reset_execution(clear_steps=True)
+                    self.main_app.steps = []
+
+                # Prepare canvas for new program (clear sensor state, timers, etc.)
+                if hasattr(self.main_app, 'canvas_manager'):
+                    self.main_app.canvas_manager.prepare_for_new_program()
+
+                # Set the new program
                 self.main_app.current_program = self.main_app.programs[selected_index]
                 self.update_program_details()
-                self.main_app.canvas_manager.update_canvas_paper_area()
-        except (ValueError, IndexError):
-            pass
+
+                # Initialize operation states for new program
+                if hasattr(self.main_app, 'canvas_manager'):
+                    self.main_app.canvas_manager.initialize_operation_states(self.main_app.current_program)
+                    self.main_app.canvas_manager.update_canvas_paper_area()
+
+                # Update step display to show empty/cleared state
+                if hasattr(self.main_app, 'right_panel'):
+                    self.main_app.right_panel.update_step_display()
+
+                    # Update button states (no steps = can't run)
+                    self.main_app.right_panel.run_btn.config(state=tk.DISABLED)
+                    self.main_app.right_panel.pause_btn.config(state=tk.DISABLED)
+                    self.main_app.right_panel.stop_btn.config(state=tk.DISABLED)
+
+                self.logger.info(f"Switched to program: {self.main_app.current_program.program_name}", category="gui")
+        except (ValueError, IndexError) as e:
+            self.logger.error(f"Error selecting program: {e}", category="gui")
 
     def update_program_details(self):
         """Update input fields with current program details"""

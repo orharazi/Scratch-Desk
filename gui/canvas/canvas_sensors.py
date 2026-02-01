@@ -41,7 +41,7 @@ class CanvasSensors:
         # Calculate sensor positions from settings
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
         PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
-        PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
+        PAPER_OFFSET_Y = hardware_limits.get("paper_start_y", 15.0)
 
         # Store current hardware positions
         current_x = self.hardware.get_current_x()
@@ -112,8 +112,8 @@ class CanvasSensors:
         self.logger.debug(f" SENSOR OVERRIDE ACTIVATED: Pointer locked at ({self.canvas_manager.sensor_position_x:.1f}, {self.canvas_manager.sensor_position_y:.1f})", category="gui")
         
         # Initialize hardware position tracking for move detection
-        self.canvas_manager._last_displayed_hardware_x = get_current_x()
-        self.canvas_manager._last_displayed_hardware_y = get_current_y()
+        self.canvas_manager._last_displayed_hardware_x = self.hardware.get_current_x()
+        self.canvas_manager._last_displayed_hardware_y = self.hardware.get_current_y()
         
         # Clear sensor override timer - extend for rows operations to keep pointer at sensor positions
         # During rows operations, extend timer to prevent pointer from returning to 0 too quickly

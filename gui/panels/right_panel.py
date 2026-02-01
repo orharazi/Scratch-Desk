@@ -15,6 +15,9 @@ class RightPanel:
         self.hardware = main_app.hardware
         self.logger = get_logger()
 
+        # Track scheduled callbacks for cleanup during reset
+        self.scheduled_callbacks = []
+
         # Responsive font sizing based on window width
         self.update_font_sizes()
 
@@ -300,9 +303,16 @@ class RightPanel:
         self.test_controls_frame = tk.Frame(self.scrollable_frame, relief=tk.RIDGE, bd=2, bg='#F0F8FF')
         self.test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # Title
-        tk.Label(self.test_controls_frame, text=t("🧪 TEST CONTROLS"), font=('Arial', 9, 'bold'),
-                bg='#F0F8FF', fg='#003366').pack(pady=(5, 8))
+        # Title with mode indicator
+        self.test_controls_title = tk.Label(self.test_controls_frame, text=t("🧪 TEST CONTROLS"),
+                font=('Arial', 9, 'bold'), bg='#F0F8FF', fg='#003366')
+        self.test_controls_title.pack(pady=(5, 2))
+
+        # Disabled indicator label (hidden by default, shown on real hardware)
+        self.test_controls_disabled_label = tk.Label(self.test_controls_frame,
+                text=t("⚠️ Disabled - Real Hardware Mode"), font=('Arial', 8, 'italic'),
+                bg='#F0F8FF', fg='#CC0000')
+        # Don't pack yet - will be shown/hidden by update_test_controls_state()
 
         # EDGE SENSORS Section
         sensors_frame = tk.Frame(self.test_controls_frame, bg='#F0F8FF')
@@ -449,13 +459,31 @@ class RightPanel:
         """Generate steps for current program"""
         if not self.main_app.current_program:
             return
-        
+
+        # Don't allow generating steps while execution is running
+        if self.main_app.execution_engine.is_running:
+            self.logger.warning("Cannot generate steps while execution is running - stop first", category="gui")
+            self.main_app.operation_label.config(text=t("Stop execution first!"), fg='red')
+            return
+
+        # Validate paper size fits within work surface
+        validation_error = self._validate_paper_size(self.main_app.current_program)
+        if validation_error:
+            self.logger.error(validation_error, category="gui")
+            self.main_app.operation_label.config(text=validation_error, fg='red')
+            self.step_info_label.config(text=t("❌ Invalid program - paper too large"))
+            return
+
         try:
+            # Prepare canvas for fresh execution
+            if hasattr(self.main_app, 'canvas_manager'):
+                self.main_app.canvas_manager.prepare_for_new_program()
+
             # Generate complete steps for the program
             self.main_app.steps = generate_complete_program_steps(self.main_app.current_program)
-            
+
             # No premature alert - let execution handle transitional safety checks
-            
+
             # Reset execution engine with new steps
             self.main_app.execution_engine.load_steps(self.main_app.steps)
             
@@ -607,7 +635,9 @@ class RightPanel:
             self.run_btn.config(state=tk.DISABLED)
             self.pause_btn.config(state=tk.NORMAL)
             self.stop_btn.config(state=tk.NORMAL)
-            
+            self.reset_btn.config(state=tk.DISABLED)  # Disable reset while running
+            self.gen_steps_btn.config(state=tk.DISABLED)  # Disable generate while running
+
             # Force immediate canvas position update when execution starts
             if hasattr(self.main_app, 'canvas_manager'):
                 self.main_app.canvas_manager.update_position_display()
@@ -624,39 +654,62 @@ class RightPanel:
             self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
             self.pause_btn.config(state=tk.DISABLED)
             self.stop_btn.config(state=tk.DISABLED)
+            self.reset_btn.config(state=tk.NORMAL)  # Enable reset when stopped
+            self.gen_steps_btn.config(state=tk.NORMAL)  # Enable generate when stopped
             self.main_app.operation_label.config(text=t("Execution Stopped"), fg='red')
     
-    def reset_execution(self):
-        """Reset execution and UI state"""
-        # Reset execution engine
-        self.main_app.execution_engine.reset_execution()
+    def reset_execution(self, clear_steps=False):
+        """Reset execution and UI state
+
+        Args:
+            clear_steps: If True, also clears the steps list (for new program loading)
+        """
+        # Safety check: Don't reset while running (button should be disabled, but check anyway)
+        if self.main_app.execution_engine.is_running:
+            self.logger.warning("Cannot reset while execution is running - stop first", category="gui")
+            self.main_app.operation_label.config(text=t("Stop execution first!"), fg='red')
+            return
+
+        # Clean up execution controller (close transition dialogs, etc.)
+        if hasattr(self.main_app, 'execution_controller'):
+            self.main_app.execution_controller.cleanup_for_reset()
+
+        # Reset execution engine (with optional steps clearing)
+        self.main_app.execution_engine.reset_execution(clear_steps=clear_steps)
+
+        # Clear steps in main_app if requested
+        if clear_steps:
+            self.main_app.steps = []
 
         # Reset hardware state (position, tools, sensors)
         self.hardware.reset_hardware()
 
+        # Flush all hardware sensor buffers to clear stale triggers
+        if hasattr(self.hardware, 'flush_all_sensor_buffers'):
+            self.hardware.flush_all_sensor_buffers()
+
         # Move hardware to motor home positions (0, 0)
         self.hardware.move_x(0.0)  # Rows motor home position
         self.hardware.move_y(0.0)  # Lines motor home position
-        
-        # Reset operation states to pending
+
+        # Reset operation states to pending (always clear, then repopulate if program exists)
         if hasattr(self.main_app, 'operation_states'):
-            # Clear and reset line states
+            # Always clear all states first
             self.main_app.operation_states['lines'].clear()
+            self.main_app.operation_states['cuts'].clear()
+            self.main_app.operation_states['pages'].clear()
+
+            # Reset cut states (always - they don't depend on program)
+            for cut_name in ['top', 'bottom', 'left', 'right']:
+                self.main_app.operation_states['cuts'][cut_name] = 'pending'
+
+            # Repopulate line and page states only if program exists
             if self.main_app.current_program:
                 for line_num in range(1, self.main_app.current_program.number_of_lines + 1):
                     self.main_app.operation_states['lines'][line_num] = 'pending'
-            
-            # Clear and reset cut states  
-            self.main_app.operation_states['cuts'].clear()
-            for cut_name in ['top', 'bottom', 'left', 'right']:
-                self.main_app.operation_states['cuts'][cut_name] = 'pending'
-                
-            # Clear and reset page states
-            self.main_app.operation_states['pages'].clear()
-            if self.main_app.current_program:
                 for page_num in range(self.main_app.current_program.number_of_pages):
                     self.main_app.operation_states['pages'][page_num] = 'pending'
-        
+
         # Reset progress bar
         if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
             self.main_app.progress['value'] = 0
@@ -667,49 +720,59 @@ class RightPanel:
 
         # Reset progress label
         self.progress_label.config(text=t("Ready"), fg='darkblue')
-        
-        # Reset sensor status label (cancel any pending updates)
-        try:
-            # Cancel any pending sensor label updates
-            self.main_app.root.after_cancel()
-        except:
-            pass  # Ignore if no pending tasks
+
+        # Cancel all scheduled callbacks (sensor label updates, etc.)
+        for callback_id in self.scheduled_callbacks:
+            try:
+                self.main_app.root.after_cancel(callback_id)
+            except Exception:
+                pass  # Ignore if callback already executed or invalid
+        self.scheduled_callbacks.clear()
+
+        # Reset sensor status label
         self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen')
 
         # Reset state label
         self.state_label.config(text=t("State: Idle"), fg='darkred')
-        
-        # Reset canvas and refresh colors to show all as pending
+
+        # Full canvas reset (clears sensor overrides, timers, motor positions, etc.)
         if hasattr(self.main_app, 'canvas_manager'):
-            # Reset motor operation mode to idle
-            self.main_app.canvas_manager.set_motor_operation_mode("idle")
-            
+            # Comprehensive canvas state reset
+            self.main_app.canvas_manager.full_reset()
+
             # Update position display to show reset position
             self.main_app.canvas_manager.update_position_display()
-            
+
             # Refresh all work line colors
             self.main_app.canvas_manager.refresh_work_lines_colors()
-            
+
             # Update canvas with current program (pointer stays at starting position)
             self.main_app.canvas_manager.update_canvas_paper_area()
-        
+
         # Update step display
         self.update_step_display()
-        
+
         # Reset button states
         self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
         self.pause_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.DISABLED)
-        
+
         self.logger.info("Complete system reset - All components restored to initial state", category="gui")
     
+    def _schedule_sensor_label_reset(self):
+        """Schedule sensor label reset and track the callback for cleanup"""
+        callback_id = self.main_app.root.after(
+            1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen')
+        )
+        self.scheduled_callbacks.append(callback_id)
+
     def trigger_x_left(self):
         """Trigger X left sensor - only sets event, does NOT move motors or canvas"""
         self.hardware.trigger_x_left_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text=t("Sensor: X-Left Triggered"), fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
+            self._schedule_sensor_label_reset()
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -720,7 +783,7 @@ class RightPanel:
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text=t("Sensor: X-Right Triggered"), fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
+            self._schedule_sensor_label_reset()
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -731,7 +794,7 @@ class RightPanel:
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text=t("Sensor: Y-Top Triggered"), fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
+            self._schedule_sensor_label_reset()
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -742,7 +805,7 @@ class RightPanel:
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
             self.sensor_label.config(text=t("Sensor: Y-Bottom Triggered"), fg='red')
-            self.main_app.root.after(1000, lambda: self.sensor_label.config(text=t("Sensor: Ready"), fg='darkgreen'))
+            self._schedule_sensor_label_reset()
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
@@ -851,11 +914,44 @@ class RightPanel:
         if is_real_hardware:
             # Disable all test controls on real hardware
             self._set_frame_state(self.test_controls_frame, tk.DISABLED)
+
+            # Show disabled indicator and change colors
+            if hasattr(self, 'test_controls_disabled_label'):
+                self.test_controls_disabled_label.pack(pady=(0, 5))
+            if hasattr(self, 'test_controls_title'):
+                self.test_controls_title.config(fg='#888888')  # Gray out title
+            # Change background to indicate disabled state
+            self._set_frame_background(self.test_controls_frame, '#E0E0E0')  # Light gray
+
             self.logger.info(t("Test controls DISABLED - Real hardware mode active"), category="gui")
         else:
             # Enable test controls in simulation mode
             self._set_frame_state(self.test_controls_frame, tk.NORMAL)
+
+            # Hide disabled indicator and restore colors
+            if hasattr(self, 'test_controls_disabled_label'):
+                self.test_controls_disabled_label.pack_forget()
+            if hasattr(self, 'test_controls_title'):
+                self.test_controls_title.config(fg='#003366')  # Original color
+            # Restore original background
+            self._set_frame_background(self.test_controls_frame, '#F0F8FF')  # Original light blue
+
             self.logger.info(t("Test controls ENABLED - Simulation mode active"), category="gui")
+
+    def _set_frame_background(self, frame, color):
+        """Recursively set background color of all widgets in a frame"""
+        try:
+            frame.config(bg=color)
+        except tk.TclError:
+            pass
+        for child in frame.winfo_children():
+            widget_type = child.winfo_class()
+            try:
+                child.config(bg=color)
+                if widget_type in ('Frame', 'LabelFrame'):
+                    self._set_frame_background(child, color)
+            except tk.TclError:
+                pass  # Some widgets don't support bg
 
     def _set_frame_state(self, frame, state):
         """Recursively set state of all widgets in a frame"""
@@ -870,6 +966,44 @@ class RightPanel:
             except tk.TclError:
                 # Some widgets don't support state, skip them
                 pass
+
+    def _validate_paper_size(self, program):
+        """Validate that paper size fits within the work surface.
+
+        Returns None if valid, or an error message string if invalid.
+        """
+        # Get work surface limits from settings
+        hardware_limits = self.main_app.settings.get("hardware_limits", {})
+        simulation = self.main_app.settings.get("simulation", {})
+
+        paper_start_x = hardware_limits.get("paper_start_x", 15.0)
+        paper_start_y = hardware_limits.get("paper_start_y", 31.0)
+        max_x = simulation.get("max_display_x", 120.0)
+        max_y = simulation.get("max_display_y", 80.0)
+
+        # Calculate available work area
+        available_width = max_x - paper_start_x
+        available_height = max_y - paper_start_y
+
+        # Calculate total paper size (with repeats)
+        paper_width = program.width * program.repeat_rows
+        paper_height = program.high * program.repeat_lines
+
+        # Check if paper fits
+        errors = []
+
+        if paper_width > available_width:
+            errors.append(t("Paper width ({width}cm) exceeds surface ({available}cm)",
+                          width=paper_width, available=available_width))
+
+        if paper_height > available_height:
+            errors.append(t("Paper height ({height}cm) exceeds surface ({available}cm)",
+                          height=paper_height, available=available_height))
+
+        if errors:
+            return " | ".join(errors)
+
+        return None  # Valid
 
     def set_controls_enabled(self, enabled: bool):
         """Enable or disable execution controls (used during homing/mode switching)"""

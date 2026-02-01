@@ -8,7 +8,7 @@
     "paper_start_x": 15.0,
     "safe_movement_speed": 10.0,
     "max_acceleration": 5.0,
-    "paper_start_y": 31.0
+    "paper_start_y": 15.0
   },
   "gui_settings": {
     "update_interval_ms": 500,
@@ -67,9 +67,8 @@
     "safety_check_interval": 0.02,
     "execution_loop_delay": 0.01,
     "transition_monitor_interval": 0.1,
-    "thread_join_timeout_execution": 5.0,
-    "thread_join_timeout_safety": 2.0,
-    "sensor_wait_timeout": 300.0,
+    "thread_join_timeout_execution": 2.0,
+    "thread_join_timeout_safety": 1.0,
     "piston_gpio_settling_delay": 0.05,
     "gpio_cleanup_delay": 0.1,
     "gpio_busy_recovery_delay": 0.05,

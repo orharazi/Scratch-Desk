@@ -1,0 +1,1634 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-02-01",
+  "sections": {
+    "hardware_limits": {
+      "title": "Hardware Limits",
+      "title_he": "מגבלות חומרה",
+      "description": "Physical machine dimension constraints and movement boundaries",
+      "settings": {
+        "max_x_position": {
+          "description": "Maximum X-axis travel distance (desk width in cm)",
+          "description_he": "מרחק מקסימלי לציר X (רוחב השולחן בס\"מ)",
+          "type": "float",
+          "unit": "cm",
+          "min": 50.0,
+          "max": 200.0,
+          "default": 120.0,
+          "category": "critical"
+        },
+        "max_y_position": {
+          "description": "Maximum Y-axis travel distance (desk height in cm)",
+          "description_he": "מרחק מקסימלי לציר Y (גובה השולחן בס\"מ)",
+          "type": "float",
+          "unit": "cm",
+          "min": 30.0,
+          "max": 150.0,
+          "default": 80.0,
+          "category": "critical"
+        },
+        "min_x_position": {
+          "description": "Minimum X-axis position (home position)",
+          "type": "float",
+          "unit": "cm",
+          "default": 0.0,
+          "category": "critical"
+        },
+        "min_y_position": {
+          "description": "Minimum Y-axis position (home position)",
+          "type": "float",
+          "unit": "cm",
+          "default": 0.0,
+          "category": "critical"
+        },
+        "paper_start_x": {
+          "description": "X offset where paper/material begins on desk",
+          "description_he": "היסט X שבו הנייר מתחיל על השולחן",
+          "type": "float",
+          "unit": "cm",
+          "min": 0.0,
+          "max": 50.0,
+          "default": 15.0,
+          "category": "important"
+        },
+        "paper_start_y": {
+          "description": "Y offset where paper/material begins on desk",
+          "description_he": "היסט Y שבו הנייר מתחיל על השולחן",
+          "type": "float",
+          "unit": "cm",
+          "min": 0.0,
+          "max": 50.0,
+          "default": 15.0,
+          "category": "important"
+        },
+        "safe_movement_speed": {
+          "description": "Maximum safe movement speed for motors",
+          "type": "float",
+          "unit": "cm/s",
+          "default": 10.0,
+          "category": "important"
+        },
+        "max_acceleration": {
+          "description": "[TODO: Add description for max_acceleration]",
+          "type": "float",
+          "default": 5.0,
+          "category": "important"
+        }
+      }
+    },
+    "timing": {
+      "title": "Timing Parameters",
+      "title_he": "פרמטרי זמן",
+      "description": "All timing delays and intervals for hardware operations",
+      "settings": {
+        "motor_movement_delay_per_cm": {
+          "description": "Delay per cm of motor travel for simulation smoothness",
+          "type": "float",
+          "unit": "seconds",
+          "min": 0.001,
+          "max": 0.1,
+          "default": 0.002,
+          "category": "performance"
+        },
+        "tool_action_delay": {
+          "description": "Delay after piston/tool actions",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.02,
+          "category": "important"
+        },
+        "tool_positioning_delay": {
+          "description": "Delay for tool positioning operations",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.05,
+          "category": "performance"
+        },
+        "sensor_poll_timeout": {
+          "description": "Timeout for sensor polling operations",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.01,
+          "category": "performance"
+        },
+        "safety_check_interval": {
+          "description": "Interval between safety system checks",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.02,
+          "category": "important"
+        },
+        "grbl_init_delay": {
+          "description": "Delay for GRBL initialization",
+          "type": "float",
+          "unit": "seconds",
+          "default": 2.0,
+          "category": "important"
+        },
+        "execution_loop_delay": {
+          "description": "Main execution loop delay",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.1,
+          "category": "performance"
+        },
+        "grbl_post_config_delay": {
+          "description": "Delay after GRBL configuration commands",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.3,
+          "category": "important"
+        },
+        "grbl_operation_delay": {
+          "description": "Default delay for GRBL operations",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.5,
+          "category": "important"
+        },
+        "piston_full_operation_time": {
+          "description": "Time for full piston extend/retract operation",
+          "type": "float",
+          "unit": "seconds",
+          "default": 2.0,
+          "category": "important"
+        },
+        "homing_poll_interval": {
+          "description": "Polling interval during homing operations",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.5,
+          "category": "performance"
+        },
+        "gpio_busy_recovery_delay": {
+          "description": "[TODO: Add description for gpio_busy_recovery_delay]",
+          "type": "float",
+          "default": 0.05,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "gpio_cleanup_delay": {
+          "description": "[TODO: Add description for gpio_cleanup_delay]",
+          "type": "float",
+          "default": 0.1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "gpio_debounce_delay_ms": {
+          "description": "[TODO: Add description for gpio_debounce_delay_ms]",
+          "type": "int",
+          "default": 1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "gpio_debounce_samples": {
+          "description": "[TODO: Add description for gpio_debounce_samples]",
+          "type": "int",
+          "default": 3,
+          "category": "critical"
+        },
+        "gpio_test_read_delay_ms": {
+          "description": "[TODO: Add description for gpio_test_read_delay_ms]",
+          "type": "int",
+          "default": 1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "grbl_initialization_delay": {
+          "description": "[TODO: Add description for grbl_initialization_delay]",
+          "type": "int",
+          "default": 2,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "grbl_reset_delay": {
+          "description": "[TODO: Add description for grbl_reset_delay]",
+          "type": "int",
+          "default": 2,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "grbl_serial_poll_delay": {
+          "description": "[TODO: Add description for grbl_serial_poll_delay]",
+          "type": "float",
+          "default": 0.01,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "limit_switch_test_read_delay_ms": {
+          "description": "[TODO: Add description for limit_switch_test_read_delay_ms]",
+          "type": "int",
+          "default": 1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "max_motor_movement_delay": {
+          "description": "[TODO: Add description for max_motor_movement_delay]",
+          "type": "float",
+          "default": 0.1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "piston_gpio_settling_delay": {
+          "description": "[TODO: Add description for piston_gpio_settling_delay]",
+          "type": "float",
+          "default": 0.05,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "polling_error_recovery_delay": {
+          "description": "[TODO: Add description for polling_error_recovery_delay]",
+          "type": "float",
+          "default": 0.1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "polling_status_update_frequency": {
+          "description": "[TODO: Add description for polling_status_update_frequency]",
+          "type": "int",
+          "default": 1000,
+          "category": "important"
+        },
+        "polling_thread_join_timeout": {
+          "description": "[TODO: Add description for polling_thread_join_timeout]",
+          "type": "float",
+          "default": 1.0,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "row_marker_stable_delay": {
+          "description": "[TODO: Add description for row_marker_stable_delay]",
+          "type": "float",
+          "default": 0.05,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "rs485_retry_delay": {
+          "description": "[TODO: Add description for rs485_retry_delay]",
+          "type": "float",
+          "default": 0.01,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "switch_polling_interval_ms": {
+          "description": "[TODO: Add description for switch_polling_interval_ms]",
+          "type": "int",
+          "default": 10,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "thread_join_timeout_execution": {
+          "description": "[TODO: Add description for thread_join_timeout_execution]",
+          "type": "float",
+          "default": 2.0,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "thread_join_timeout_safety": {
+          "description": "[TODO: Add description for thread_join_timeout_safety]",
+          "type": "float",
+          "default": 1.0,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "transition_monitor_interval": {
+          "description": "[TODO: Add description for transition_monitor_interval]",
+          "type": "float",
+          "default": 0.1,
+          "category": "important",
+          "unit": "seconds"
+        }
+      }
+    },
+    "hardware_config": {
+      "title": "Hardware Configuration",
+      "title_he": "הגדרות חומרה",
+      "description": "Hardware interface and connection settings",
+      "subsections": {
+        "use_real_hardware": {
+          "description": "Enable real hardware mode (false = mock/simulation mode)",
+          "type": "bool",
+          "default": false,
+          "category": "critical"
+        },
+        "raspberry_pi": {
+          "title": "Raspberry Pi GPIO",
+          "settings": {
+            "gpio_mode": {
+              "description": "GPIO pin numbering mode (BCM or BOARD)",
+              "type": "enum",
+              "options": [
+                "BCM",
+                "BOARD"
+              ],
+              "default": "BCM",
+              "category": "critical"
+            },
+            "debounce_count": {
+              "description": "Number of consistent reads for debouncing",
+              "type": "int",
+              "default": 2,
+              "category": "performance"
+            },
+            "line_cutter_piston": {
+              "description": "[TODO: Add description for line_cutter_piston]",
+              "type": "int",
+              "default": 16,
+              "category": "important"
+            },
+            "line_marker_piston": {
+              "description": "[TODO: Add description for line_marker_piston]",
+              "type": "int",
+              "default": 6,
+              "category": "important"
+            },
+            "line_motor_piston": {
+              "description": "[TODO: Add description for line_motor_piston]",
+              "type": "int",
+              "default": 13,
+              "category": "important"
+            },
+            "row_cutter_piston": {
+              "description": "[TODO: Add description for row_cutter_piston]",
+              "type": "int",
+              "default": 19,
+              "category": "important"
+            },
+            "row_marker_piston": {
+              "description": "[TODO: Add description for row_marker_piston]",
+              "type": "int",
+              "default": 5,
+              "category": "important"
+            },
+            "baudrate": {
+              "description": "[TODO: Add description for baudrate]",
+              "type": "int",
+              "default": 9600,
+              "category": "important"
+            },
+            "bulk_read_cache_age_ms": {
+              "description": "[TODO: Add description for bulk_read_cache_age_ms]",
+              "type": "int",
+              "default": 10,
+              "category": "important"
+            },
+            "bulk_read_enabled": {
+              "description": "[TODO: Add description for bulk_read_enabled]",
+              "type": "bool",
+              "default": true,
+              "category": "important"
+            },
+            "bulk_read_register_count": {
+              "description": "[TODO: Add description for bulk_read_register_count]",
+              "type": "int",
+              "default": 2,
+              "category": "important"
+            },
+            "bytesize": {
+              "description": "[TODO: Add description for bytesize]",
+              "type": "int",
+              "default": 8,
+              "category": "important"
+            },
+            "default_retry_count": {
+              "description": "[TODO: Add description for default_retry_count]",
+              "type": "int",
+              "default": 2,
+              "category": "important"
+            },
+            "enabled": {
+              "description": "[TODO: Add description for enabled]",
+              "type": "bool",
+              "default": true,
+              "category": "important"
+            },
+            "input_count": {
+              "description": "[TODO: Add description for input_count]",
+              "type": "int",
+              "default": 32,
+              "category": "important"
+            },
+            "modbus_device_id": {
+              "description": "[TODO: Add description for modbus_device_id]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "modbus_function_code": {
+              "description": "[TODO: Add description for modbus_function_code]",
+              "type": "int",
+              "default": 3,
+              "category": "important"
+            },
+            "nc_sensors": {
+              "description": "[TODO: Add description for nc_sensors]",
+              "type": "list",
+              "default": [
+                "x_left_edge",
+                "x_right_edge",
+                "y_top_edge",
+                "y_bottom_edge"
+              ],
+              "category": "important"
+            },
+            "parity": {
+              "description": "[TODO: Add description for parity]",
+              "type": "string",
+              "default": "N",
+              "category": "important"
+            },
+            "protocol": {
+              "description": "[TODO: Add description for protocol]",
+              "type": "string",
+              "default": "modbus_rtu",
+              "category": "important"
+            },
+            "register_address": {
+              "description": "[TODO: Add description for register_address]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "register_address_low": {
+              "description": "[TODO: Add description for register_address_low]",
+              "type": "int",
+              "default": 192,
+              "category": "important"
+            },
+            "door_sensor": {
+              "description": "[TODO: Add description for door_sensor]",
+              "type": "int",
+              "default": 15,
+              "category": "important"
+            },
+            "line_cutter_down_sensor": {
+              "description": "[TODO: Add description for line_cutter_down_sensor]",
+              "type": "int",
+              "default": 29,
+              "category": "important"
+            },
+            "line_cutter_up_sensor": {
+              "description": "[TODO: Add description for line_cutter_up_sensor]",
+              "type": "int",
+              "default": 25,
+              "category": "important"
+            },
+            "line_marker_down_sensor": {
+              "description": "[TODO: Add description for line_marker_down_sensor]",
+              "type": "int",
+              "default": 27,
+              "category": "important"
+            },
+            "line_marker_up_sensor": {
+              "description": "[TODO: Add description for line_marker_up_sensor]",
+              "type": "int",
+              "default": 28,
+              "category": "important"
+            },
+            "line_motor_left_down_sensor": {
+              "description": "[TODO: Add description for line_motor_left_down_sensor]",
+              "type": "int",
+              "default": 19,
+              "category": "important"
+            },
+            "line_motor_left_up_sensor": {
+              "description": "[TODO: Add description for line_motor_left_up_sensor]",
+              "type": "int",
+              "default": 21,
+              "category": "important"
+            },
+            "line_motor_right_down_sensor": {
+              "description": "[TODO: Add description for line_motor_right_down_sensor]",
+              "type": "int",
+              "default": 20,
+              "category": "important"
+            },
+            "line_motor_right_up_sensor": {
+              "description": "[TODO: Add description for line_motor_right_up_sensor]",
+              "type": "int",
+              "default": 18,
+              "category": "important"
+            },
+            "row_cutter_down_sensor": {
+              "description": "[TODO: Add description for row_cutter_down_sensor]",
+              "type": "int",
+              "default": 26,
+              "category": "important"
+            },
+            "row_cutter_up_sensor": {
+              "description": "[TODO: Add description for row_cutter_up_sensor]",
+              "type": "int",
+              "default": 24,
+              "category": "important"
+            },
+            "row_marker_down_sensor": {
+              "description": "[TODO: Add description for row_marker_down_sensor]",
+              "type": "int",
+              "default": 23,
+              "category": "important"
+            },
+            "row_marker_up_sensor": {
+              "description": "[TODO: Add description for row_marker_up_sensor]",
+              "type": "int",
+              "default": 22,
+              "category": "important"
+            },
+            "x_left_edge": {
+              "description": "[TODO: Add description for x_left_edge]",
+              "type": "int",
+              "default": 17,
+              "category": "important"
+            },
+            "x_right_edge": {
+              "description": "[TODO: Add description for x_right_edge]",
+              "type": "int",
+              "default": 16,
+              "category": "important"
+            },
+            "y_bottom_edge": {
+              "description": "[TODO: Add description for y_bottom_edge]",
+              "type": "int",
+              "default": 30,
+              "category": "important"
+            },
+            "y_top_edge": {
+              "description": "[TODO: Add description for y_top_edge]",
+              "type": "int",
+              "default": 31,
+              "category": "important"
+            },
+            "serial_port": {
+              "description": "[TODO: Add description for serial_port]",
+              "type": "string",
+              "default": "/dev/ttyUSB1",
+              "category": "critical"
+            },
+            "stopbits": {
+              "description": "[TODO: Add description for stopbits]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "timeout": {
+              "description": "[TODO: Add description for timeout]",
+              "type": "float",
+              "default": 1.0,
+              "category": "important",
+              "unit": "seconds"
+            }
+          }
+        },
+        "arduino_grbl": {
+          "title": "Arduino GRBL Motor Control",
+          "settings": {
+            "serial_port": {
+              "description": "Serial port for Arduino GRBL connection",
+              "type": "string",
+              "default": "/dev/ttyUSB0",
+              "category": "critical"
+            },
+            "baud_rate": {
+              "description": "Serial communication baud rate",
+              "type": "enum",
+              "options": [
+                9600,
+                19200,
+                38400,
+                57600,
+                115200
+              ],
+              "default": 115200,
+              "category": "critical"
+            },
+            "timeout": {
+              "description": "Serial communication timeout",
+              "type": "float",
+              "unit": "seconds",
+              "default": 1.0,
+              "category": "important"
+            },
+            "command_timeout": {
+              "description": "[TODO: Add description for command_timeout]",
+              "type": "float",
+              "default": 10.0,
+              "category": "important",
+              "unit": "seconds"
+            },
+            "connection_timeout": {
+              "description": "[TODO: Add description for connection_timeout]",
+              "type": "float",
+              "default": 5.0,
+              "category": "important",
+              "unit": "seconds"
+            },
+            "door_switch_read_timeout": {
+              "description": "[TODO: Add description for door_switch_read_timeout]",
+              "type": "float",
+              "default": 1.0,
+              "category": "important",
+              "unit": "seconds"
+            },
+            "$0": {
+              "description": "[TODO: Add description for $0]",
+              "type": "int",
+              "default": 10,
+              "category": "important"
+            },
+            "$1": {
+              "description": "[TODO: Add description for $1]",
+              "type": "int",
+              "default": 25,
+              "category": "important"
+            },
+            "$10": {
+              "description": "[TODO: Add description for $10]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "$100": {
+              "description": "[TODO: Add description for $100]",
+              "type": "float",
+              "default": 14.74,
+              "category": "important"
+            },
+            "$101": {
+              "description": "[TODO: Add description for $101]",
+              "type": "float",
+              "default": 14.5,
+              "category": "important"
+            },
+            "$102": {
+              "description": "[TODO: Add description for $102]",
+              "type": "float",
+              "default": 250.0,
+              "category": "important"
+            },
+            "$11": {
+              "description": "[TODO: Add description for $11]",
+              "type": "float",
+              "default": 0.01,
+              "category": "important"
+            },
+            "$110": {
+              "description": "[TODO: Add description for $110]",
+              "type": "float",
+              "default": 2000.0,
+              "category": "important"
+            },
+            "$111": {
+              "description": "[TODO: Add description for $111]",
+              "type": "float",
+              "default": 2000.0,
+              "category": "important"
+            },
+            "$112": {
+              "description": "[TODO: Add description for $112]",
+              "type": "float",
+              "default": 500.0,
+              "category": "important"
+            },
+            "$12": {
+              "description": "[TODO: Add description for $12]",
+              "type": "float",
+              "default": 0.002,
+              "category": "important"
+            },
+            "$120": {
+              "description": "[TODO: Add description for $120]",
+              "type": "float",
+              "default": 10.0,
+              "category": "important"
+            },
+            "$121": {
+              "description": "[TODO: Add description for $121]",
+              "type": "float",
+              "default": 10.0,
+              "category": "important"
+            },
+            "$122": {
+              "description": "[TODO: Add description for $122]",
+              "type": "float",
+              "default": 10.0,
+              "category": "important"
+            },
+            "$13": {
+              "description": "[TODO: Add description for $13]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "$130": {
+              "description": "[TODO: Add description for $130]",
+              "type": "float",
+              "default": 1000.0,
+              "category": "important"
+            },
+            "$131": {
+              "description": "[TODO: Add description for $131]",
+              "type": "float",
+              "default": 1000.0,
+              "category": "important"
+            },
+            "$132": {
+              "description": "[TODO: Add description for $132]",
+              "type": "float",
+              "default": 0.0,
+              "category": "important"
+            },
+            "$2": {
+              "description": "[TODO: Add description for $2]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "$20": {
+              "description": "[TODO: Add description for $20]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "$21": {
+              "description": "[TODO: Add description for $21]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "$22": {
+              "description": "[TODO: Add description for $22]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "$23": {
+              "description": "[TODO: Add description for $23]",
+              "type": "int",
+              "default": 3,
+              "category": "important"
+            },
+            "$24": {
+              "description": "[TODO: Add description for $24]",
+              "type": "float",
+              "default": 25.0,
+              "category": "important"
+            },
+            "$25": {
+              "description": "[TODO: Add description for $25]",
+              "type": "float",
+              "default": 500.0,
+              "category": "important"
+            },
+            "$26": {
+              "description": "[TODO: Add description for $26]",
+              "type": "int",
+              "default": 100,
+              "category": "important"
+            },
+            "$27": {
+              "description": "[TODO: Add description for $27]",
+              "type": "float",
+              "default": 10.0,
+              "category": "important"
+            },
+            "$3": {
+              "description": "[TODO: Add description for $3]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "$30": {
+              "description": "[TODO: Add description for $30]",
+              "type": "int",
+              "default": 1000,
+              "category": "important"
+            },
+            "$31": {
+              "description": "[TODO: Add description for $31]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "$32": {
+              "description": "[TODO: Add description for $32]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "$4": {
+              "description": "[TODO: Add description for $4]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "$5": {
+              "description": "[TODO: Add description for $5]",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "$6": {
+              "description": "[TODO: Add description for $6]",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "acceleration": {
+              "description": "[TODO: Add description for acceleration]",
+              "type": "int",
+              "default": 50,
+              "category": "important"
+            },
+            "feed_rate": {
+              "description": "[TODO: Add description for feed_rate]",
+              "type": "int",
+              "default": 1000,
+              "category": "important"
+            },
+            "positioning_mode": {
+              "description": "[TODO: Add description for positioning_mode]",
+              "type": "string",
+              "default": "G90",
+              "category": "important",
+              "unit": "cm"
+            },
+            "rapid_rate": {
+              "description": "[TODO: Add description for rapid_rate]",
+              "type": "int",
+              "default": 3000,
+              "category": "important"
+            },
+            "units": {
+              "description": "[TODO: Add description for units]",
+              "type": "string",
+              "default": "mm",
+              "category": "important"
+            },
+            "homing_timeout": {
+              "description": "[TODO: Add description for homing_timeout]",
+              "type": "float",
+              "default": 120.0,
+              "category": "important",
+              "unit": "seconds"
+            },
+            "pin": {
+              "description": "[TODO: Add description for pin]",
+              "type": "string",
+              "default": "D2",
+              "category": "critical"
+            },
+            "pull_up": {
+              "description": "[TODO: Add description for pull_up]",
+              "type": "bool",
+              "default": true,
+              "category": "important"
+            },
+            "type": {
+              "description": "[TODO: Add description for type]",
+              "type": "string",
+              "default": "normally_open",
+              "category": "important"
+            },
+            "movement_poll_interval": {
+              "description": "[TODO: Add description for movement_poll_interval]",
+              "type": "float",
+              "default": 0.1,
+              "category": "important",
+              "unit": "seconds"
+            },
+            "movement_timeout": {
+              "description": "[TODO: Add description for movement_timeout]",
+              "type": "float",
+              "default": 60.0,
+              "category": "important",
+              "unit": "seconds"
+            },
+            "position_tolerance_cm": {
+              "description": "[TODO: Add description for position_tolerance_cm]",
+              "type": "float",
+              "default": 0.1,
+              "category": "important",
+              "unit": "cm"
+            }
+          }
+        }
+      },
+      "settings": {
+        "poc_mode": {
+          "description": "[TODO: Add description for poc_mode]",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        },
+        "skip_initial_sensor_tests": {
+          "description": "[TODO: Add description for skip_initial_sensor_tests]",
+          "type": "bool",
+          "default": false,
+          "category": "important"
+        },
+        "start_with_grbl": {
+          "description": "[TODO: Add description for start_with_grbl]",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        }
+      }
+    },
+    "mock_hardware": {
+      "title": "Mock Hardware Timing",
+      "title_he": "תזמון חומרה מדומה",
+      "description": "Timing settings for simulated hardware operations",
+      "settings": {
+        "homing_step_delay": {
+          "description": "Delay between homing sequence steps",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.2,
+          "category": "performance"
+        },
+        "door_check_delay": {
+          "description": "Delay for door state checks",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.1,
+          "category": "performance"
+        },
+        "piston_operation_delay": {
+          "description": "Delay for piston operations",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.5,
+          "category": "performance"
+        },
+        "grbl_homing_delay": {
+          "description": "Delay for simulated GRBL homing",
+          "type": "float",
+          "unit": "seconds",
+          "default": 1.0,
+          "category": "performance"
+        },
+        "coordinate_reset_delay": {
+          "description": "Delay after coordinate reset",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.2,
+          "category": "performance"
+        }
+      }
+    },
+    "logging": {
+      "title": "Logging Configuration",
+      "title_he": "הגדרות לוג",
+      "description": "Log output settings",
+      "settings": {
+        "level": {
+          "description": "Minimum log level to display",
+          "type": "enum",
+          "options": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ],
+          "default": "INFO",
+          "category": "important"
+        },
+        "file_output": {
+          "description": "Enable logging to file",
+          "type": "bool",
+          "default": false,
+          "category": "important"
+        },
+        "console_output": {
+          "description": "[TODO: Add description for console_output]",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        },
+        "file_path": {
+          "description": "[TODO: Add description for file_path]",
+          "type": "string",
+          "default": "logs/scratch_desk.log",
+          "category": "important"
+        },
+        "queue_timeout_seconds": {
+          "description": "[TODO: Add description for queue_timeout_seconds]",
+          "type": "float",
+          "default": 0.1,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "show_thread_names": {
+          "description": "[TODO: Add description for show_thread_names]",
+          "type": "bool",
+          "default": false,
+          "category": "important"
+        },
+        "show_timestamps": {
+          "description": "[TODO: Add description for show_timestamps]",
+          "type": "bool",
+          "default": true,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "use_colors": {
+          "description": "[TODO: Add description for use_colors]",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        },
+        "use_icons": {
+          "description": "[TODO: Add description for use_icons]",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        }
+      },
+      "subsections": {
+        "categories": {
+          "title": "Categories",
+          "settings": {
+            "execution": {
+              "description": "[TODO: Add description for execution]",
+              "type": "string",
+              "default": "INFO",
+              "category": "important"
+            },
+            "grbl": {
+              "description": "[TODO: Add description for grbl]",
+              "type": "string",
+              "default": "INFO",
+              "category": "important"
+            },
+            "gui": {
+              "description": "[TODO: Add description for gui]",
+              "type": "string",
+              "default": "WARNING",
+              "category": "important"
+            },
+            "hardware": {
+              "description": "[TODO: Add description for hardware]",
+              "type": "string",
+              "default": "INFO",
+              "category": "important"
+            }
+          }
+        }
+      }
+    },
+    "gui_settings": {
+      "title": "GUI Settings",
+      "title_he": "הגדרות ממשק",
+      "description": "User interface configuration including language and theme",
+      "settings": {
+        "auto_load_csv": {
+          "description": "[TODO: Add description for auto_load_csv]",
+          "type": "string",
+          "default": "sample_programs.csv",
+          "category": "important"
+        },
+        "canvas_margin_bottom": {
+          "description": "[TODO: Add description for canvas_margin_bottom]",
+          "type": "int",
+          "default": 50,
+          "category": "important"
+        },
+        "canvas_margin_left": {
+          "description": "[TODO: Add description for canvas_margin_left]",
+          "type": "int",
+          "default": 60,
+          "category": "important"
+        },
+        "canvas_margin_right": {
+          "description": "[TODO: Add description for canvas_margin_right]",
+          "type": "int",
+          "default": 30,
+          "category": "important"
+        },
+        "canvas_margin_top": {
+          "description": "[TODO: Add description for canvas_margin_top]",
+          "type": "int",
+          "default": 40,
+          "category": "important"
+        },
+        "canvas_min_scale": {
+          "description": "[TODO: Add description for canvas_min_scale]",
+          "type": "float",
+          "default": 3.5,
+          "category": "important"
+        },
+        "update_interval_ms": {
+          "description": "[TODO: Add description for update_interval_ms]",
+          "type": "int",
+          "default": 500,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "language": {
+          "description": "Interface language",
+          "type": "enum",
+          "options": [
+            "en",
+            "he"
+          ],
+          "default": "he",
+          "category": "ui"
+        },
+        "theme": {
+          "description": "GUI color theme",
+          "type": "string",
+          "default": "default",
+          "category": "ui"
+        }
+      }
+    },
+    "hardware_monitor": {
+      "title": "Hardware Monitor",
+      "title_he": "[תרגום: hardware_monitor]",
+      "description": "[TODO: Add description for hardware_monitor section]",
+      "settings": {
+        "background_color": {
+          "description": "[TODO: Add description for background_color]",
+          "type": "string",
+          "default": "#2C3E50",
+          "category": "important"
+        },
+        "label_color": {
+          "description": "[TODO: Add description for label_color]",
+          "type": "string",
+          "default": "#BDC3C7",
+          "category": "important"
+        },
+        "panel_height": {
+          "description": "[TODO: Add description for panel_height]",
+          "type": "int",
+          "default": 120,
+          "category": "important",
+          "unit": "cm"
+        },
+        "section_bg_color": {
+          "description": "[TODO: Add description for section_bg_color]",
+          "type": "string",
+          "default": "#34495E",
+          "category": "important"
+        },
+        "separator_color": {
+          "description": "[TODO: Add description for separator_color]",
+          "type": "string",
+          "default": "#7F8C8D",
+          "category": "important"
+        },
+        "text_color": {
+          "description": "[TODO: Add description for text_color]",
+          "type": "string",
+          "default": "#ECF0F1",
+          "category": "important"
+        },
+        "update_interval_ms": {
+          "description": "[TODO: Add description for update_interval_ms]",
+          "type": "int",
+          "default": 200,
+          "category": "important",
+          "unit": "seconds"
+        }
+      },
+      "subsections": {
+        "status_colors": {
+          "title": "Status Colors",
+          "settings": {
+            "active": {
+              "description": "[TODO: Add description for active]",
+              "type": "string",
+              "default": "#27AE60",
+              "category": "important"
+            },
+            "critical": {
+              "description": "[TODO: Add description for critical]",
+              "type": "string",
+              "default": "#E74C3C",
+              "category": "important"
+            },
+            "inactive": {
+              "description": "[TODO: Add description for inactive]",
+              "type": "string",
+              "default": "#95A5A6",
+              "category": "important"
+            },
+            "line_tools": {
+              "description": "[TODO: Add description for line_tools]",
+              "type": "string",
+              "default": "#3498DB",
+              "category": "important"
+            },
+            "motor_x": {
+              "description": "[TODO: Add description for motor_x]",
+              "type": "string",
+              "default": "#E74C3C",
+              "category": "important"
+            },
+            "motor_y": {
+              "description": "[TODO: Add description for motor_y]",
+              "type": "string",
+              "default": "#3498DB",
+              "category": "important"
+            },
+            "row_tools": {
+              "description": "[TODO: Add description for row_tools]",
+              "type": "string",
+              "default": "#E74C3C",
+              "category": "important"
+            },
+            "sensor_triggered_x": {
+              "description": "[TODO: Add description for sensor_triggered_x]",
+              "type": "string",
+              "default": "#FF3300",
+              "category": "important"
+            },
+            "sensor_triggered_y": {
+              "description": "[TODO: Add description for sensor_triggered_y]",
+              "type": "string",
+              "default": "#00FF00",
+              "category": "important"
+            },
+            "sensors_x": {
+              "description": "[TODO: Add description for sensors_x]",
+              "type": "string",
+              "default": "#F39C12",
+              "category": "important"
+            },
+            "sensors_y": {
+              "description": "[TODO: Add description for sensors_y]",
+              "type": "string",
+              "default": "#27AE60",
+              "category": "important"
+            },
+            "system": {
+              "description": "[TODO: Add description for system]",
+              "type": "string",
+              "default": "#8E44AD",
+              "category": "important"
+            }
+          }
+        }
+      }
+    },
+    "operation_colors": {
+      "title": "Operation Colors",
+      "title_he": "[תרגום: operation_colors]",
+      "description": "[TODO: Add description for operation_colors section]",
+      "settings": {},
+      "subsections": {
+        "cuts": {
+          "title": "Cuts",
+          "settings": {
+            "completed": {
+              "description": "[TODO: Add description for completed]",
+              "type": "string",
+              "default": "#AA00AA",
+              "category": "important"
+            },
+            "in_progress": {
+              "description": "[TODO: Add description for in_progress]",
+              "type": "string",
+              "default": "#FF0088",
+              "category": "important"
+            },
+            "pending": {
+              "description": "[TODO: Add description for pending]",
+              "type": "string",
+              "default": "#8800FF",
+              "category": "important"
+            }
+          }
+        },
+        "mark": {
+          "title": "Mark",
+          "settings": {
+            "completed": {
+              "description": "[TODO: Add description for completed]",
+              "type": "string",
+              "default": "#00AA00",
+              "category": "important"
+            },
+            "in_progress": {
+              "description": "[TODO: Add description for in_progress]",
+              "type": "string",
+              "default": "#FF8800",
+              "category": "important"
+            },
+            "pending": {
+              "description": "[TODO: Add description for pending]",
+              "type": "string",
+              "default": "#880808",
+              "category": "important"
+            }
+          }
+        }
+      }
+    },
+    "sensor_timeouts": {
+      "title": "Sensor Timeouts",
+      "title_he": "[תרגום: sensor_timeouts]",
+      "description": "[TODO: Add description for sensor_timeouts section]",
+      "settings": {
+        "sensor_highlight_duration": {
+          "description": "[TODO: Add description for sensor_highlight_duration]",
+          "type": "int",
+          "default": 500,
+          "category": "important"
+        },
+        "sensor_override_timeout_lines": {
+          "description": "[TODO: Add description for sensor_override_timeout_lines]",
+          "type": "int",
+          "default": 1000,
+          "category": "important",
+          "unit": "seconds"
+        },
+        "sensor_override_timeout_rows": {
+          "description": "[TODO: Add description for sensor_override_timeout_rows]",
+          "type": "int",
+          "default": 3000,
+          "category": "important",
+          "unit": "seconds"
+        }
+      }
+    },
+    "simulation": {
+      "title": "Simulation",
+      "title_he": "[תרגום: simulation]",
+      "description": "[TODO: Add description for simulation section]",
+      "settings": {
+        "grid_spacing": {
+          "description": "[TODO: Add description for grid_spacing]",
+          "type": "int",
+          "default": 20,
+          "category": "important"
+        },
+        "max_display_x": {
+          "description": "[TODO: Add description for max_display_x]",
+          "type": "int",
+          "default": 120,
+          "category": "important"
+        },
+        "max_display_y": {
+          "description": "[TODO: Add description for max_display_y]",
+          "type": "int",
+          "default": 80,
+          "category": "important"
+        },
+        "show_grid": {
+          "description": "[TODO: Add description for show_grid]",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        }
+      }
+    },
+    "ui_fonts": {
+      "title": "Ui Fonts",
+      "title_he": "[תרגום: ui_fonts]",
+      "description": "[TODO: Add description for ui_fonts section]",
+      "settings": {
+        "dialog_label": {
+          "description": "[TODO: Add description for dialog_label]",
+          "type": "list",
+          "default": [
+            "Arial",
+            10
+          ],
+          "category": "important"
+        },
+        "dialog_message": {
+          "description": "[TODO: Add description for dialog_message]",
+          "type": "list",
+          "default": [
+            "Arial",
+            11
+          ],
+          "category": "important"
+        },
+        "dialog_title": {
+          "description": "[TODO: Add description for dialog_title]",
+          "type": "list",
+          "default": [
+            "Arial",
+            14,
+            "bold"
+          ],
+          "category": "important"
+        },
+        "heading": {
+          "description": "[TODO: Add description for heading]",
+          "type": "list",
+          "default": [
+            "Arial",
+            10,
+            "bold"
+          ],
+          "category": "important"
+        },
+        "label": {
+          "description": "[TODO: Add description for label]",
+          "type": "list",
+          "default": [
+            "Arial",
+            8,
+            "bold"
+          ],
+          "category": "important"
+        },
+        "normal": {
+          "description": "[TODO: Add description for normal]",
+          "type": "list",
+          "default": [
+            "Arial",
+            9
+          ],
+          "category": "important"
+        },
+        "title": {
+          "description": "[TODO: Add description for title]",
+          "type": "list",
+          "default": [
+            "Arial",
+            12,
+            "bold"
+          ],
+          "category": "important"
+        }
+      }
+    },
+    "ui_spacing": {
+      "title": "Ui Spacing",
+      "title_he": "[תרגום: ui_spacing]",
+      "description": "[TODO: Add description for ui_spacing section]",
+      "settings": {
+        "button_padding_x": {
+          "description": "[TODO: Add description for button_padding_x]",
+          "type": "int",
+          "default": 10,
+          "category": "important"
+        },
+        "button_padding_y": {
+          "description": "[TODO: Add description for button_padding_y]",
+          "type": "int",
+          "default": 5,
+          "category": "important"
+        },
+        "dialog_padding": {
+          "description": "[TODO: Add description for dialog_padding]",
+          "type": "int",
+          "default": 20,
+          "category": "important"
+        },
+        "frame_padding": {
+          "description": "[TODO: Add description for frame_padding]",
+          "type": "int",
+          "default": 5,
+          "category": "important"
+        },
+        "widget_padding": {
+          "description": "[TODO: Add description for widget_padding]",
+          "type": "int",
+          "default": 3,
+          "category": "important"
+        }
+      }
+    },
+    "validation": {
+      "title": "Validation",
+      "title_he": "[תרגום: validation]",
+      "description": "[TODO: Add description for validation section]",
+      "settings": {
+        "strict_mode": {
+          "description": "[TODO: Add description for strict_mode]",
+          "type": "bool",
+          "default": false,
+          "category": "important"
+        },
+        "tolerance": {
+          "description": "[TODO: Add description for tolerance]",
+          "type": "float",
+          "default": 0.01,
+          "category": "important"
+        }
+      }
+    },
+    "visualization": {
+      "title": "Visualization",
+      "title_he": "[תרגום: visualization]",
+      "description": "[TODO: Add description for visualization section]",
+      "settings": {
+        "dash_pattern_completed": {
+          "description": "[TODO: Add description for dash_pattern_completed]",
+          "type": "list",
+          "default": [
+            10,
+            2
+          ],
+          "category": "important"
+        },
+        "dash_pattern_in_progress": {
+          "description": "[TODO: Add description for dash_pattern_in_progress]",
+          "type": "list",
+          "default": [
+            8,
+            4
+          ],
+          "category": "important"
+        },
+        "dash_pattern_pending": {
+          "description": "[TODO: Add description for dash_pattern_pending]",
+          "type": "list",
+          "default": [
+            5,
+            5
+          ],
+          "category": "important"
+        },
+        "line_width_cuts": {
+          "description": "[TODO: Add description for line_width_cuts]",
+          "type": "int",
+          "default": 4,
+          "category": "important",
+          "unit": "cm"
+        },
+        "line_width_marks": {
+          "description": "[TODO: Add description for line_width_marks]",
+          "type": "int",
+          "default": 3,
+          "category": "important",
+          "unit": "cm"
+        },
+        "motor_intersection_size": {
+          "description": "[TODO: Add description for motor_intersection_size]",
+          "type": "int",
+          "default": 4,
+          "category": "important"
+        },
+        "motor_line_color_x": {
+          "description": "[TODO: Add description for motor_line_color_x]",
+          "type": "string",
+          "default": "red",
+          "category": "important"
+        },
+        "motor_line_color_y": {
+          "description": "[TODO: Add description for motor_line_color_y]",
+          "type": "string",
+          "default": "blue",
+          "category": "important"
+        },
+        "sensor_highlight_color": {
+          "description": "[TODO: Add description for sensor_highlight_color]",
+          "type": "string",
+          "default": "#FF0000",
+          "category": "important"
+        },
+        "sensor_highlight_outline": {
+          "description": "[TODO: Add description for sensor_highlight_outline]",
+          "type": "string",
+          "default": "#8B0000",
+          "category": "important"
+        },
+        "sensor_highlight_width": {
+          "description": "[TODO: Add description for sensor_highlight_width]",
+          "type": "int",
+          "default": 3,
+          "category": "important",
+          "unit": "cm"
+        },
+        "sensor_indicator_size": {
+          "description": "[TODO: Add description for sensor_indicator_size]",
+          "type": "int",
+          "default": 3,
+          "category": "important"
+        }
+      }
+    }
+  },
+  "categories": {
+    "critical": {
+      "label": "Critical",
+      "label_he": "קריטי",
+      "color": "#E74C3C",
+      "description": "Settings that affect machine safety or core operation"
+    },
+    "important": {
+      "label": "Important",
+      "label_he": "חשוב",
+      "color": "#F39C12",
+      "description": "Settings that significantly affect behavior"
+    },
+    "performance": {
+      "label": "Performance",
+      "label_he": "ביצועים",
+      "color": "#3498DB",
+      "description": "Settings that affect speed and responsiveness"
+    },
+    "ui": {
+      "label": "User Interface",
+      "label_he": "ממשק משתמש",
+      "color": "#27AE60",
+      "description": "Visual and UI-related settings"
+    }
+  }
+}

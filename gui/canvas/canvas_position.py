@@ -37,8 +37,8 @@ class CanvasPosition:
         # Paper coordinates from settings
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
         PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
-        PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
-        
+        PAPER_OFFSET_Y = hardware_limits.get("paper_start_y", 15.0)
+
         # Move to first line position
         first_line_x = PAPER_OFFSET_X + (program.width / 2)  # Center of paper width
         first_line_y = PAPER_OFFSET_Y + program.top_margin  # First line position
@@ -176,8 +176,8 @@ class CanvasPosition:
         program = self.main_app.current_program
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
         PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
-        PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
-        
+        PAPER_OFFSET_Y = hardware_limits.get("paper_start_y", 15.0)
+
         # Check if within paper boundaries
         paper_left = PAPER_OFFSET_X
         paper_right = PAPER_OFFSET_X + program.width

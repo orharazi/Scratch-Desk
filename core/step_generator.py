@@ -3,25 +3,44 @@
 # Updated step generation system for new CSV structure
 # Uses new field names: high, top_padding, bottom_padding, width, left_margin, etc.
 
+import json
+import os
+
 from core.logger import get_logger
 
 # Module-level logger for functions
 logger = get_logger()
 
+
+def _load_paper_offsets():
+    """Load paper offsets from settings.json"""
+    try:
+        settings_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'settings.json')
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+        limits = settings.get('hardware_limits', {})
+        return limits.get('paper_start_x', 15.0), limits.get('paper_start_y', 15.0)
+    except Exception:
+        return 15.0, 15.0  # Defaults
+
+
+# Load paper offsets from config
+PAPER_OFFSET_X, PAPER_OFFSET_Y = _load_paper_offsets()
+
 # Hebrew translations for step UI display
 HEBREW_TRANSLATIONS = {
     # Operations
-    'move_x': 'הזזת מנוע שורות',
-    'move_y': 'הזזת מנוע קווים',
+    'move_x': 'הזזת מנוע עמודות',
+    'move_y': 'הזזת מנוע שורות',
     'program_start': 'התחלת תוכנית',
     'program_complete': 'סיום תוכנית',
 
     # Tools
-    'line_motor_piston': 'בוכנת מנוע קווים',
-    'line_cutter': 'חותך קווים',
-    'line_marker': 'סמן קווים',
-    'row_cutter': 'חותך שורות',
-    'row_marker': 'סמן שורות',
+    'line_motor_piston': 'בוכנת מנוע שורות',
+    'line_cutter': 'חותך שורות',
+    'line_marker': 'סמן שורות',
+    'row_cutter': 'חותך עמודות',
+    'row_marker': 'סמן עמודות',
 
     # Actions
     'up': 'למעלה',
@@ -45,11 +64,11 @@ def _generate_heb_operation_title(operation, parameters):
     """Generate user-friendly Hebrew title for operation"""
     if operation == 'move_x':
         pos = parameters.get('position', 0)
-        return f"הזזת מנוע שורות למיקום {pos:.1f}ס״מ"
+        return f"הזזת מנוע עמודות למיקום {pos:.1f}ס״מ"
 
     elif operation == 'move_y':
         pos = parameters.get('position', 0)
-        return f"הזזת מנוע קווים למיקום {pos:.1f}ס״מ"
+        return f"הזזת מנוע שורות למיקום {pos:.1f}ס״מ"
 
     elif operation == 'tool_action':
         tool = parameters.get('tool', '')
@@ -102,33 +121,33 @@ def _translate_description_to_hebrew(description):
     """Translate English description to Hebrew"""
     # Simple translation mappings for common patterns
     translations = {
-        'Init: Move rows motor to home position (X=0)': 'אתחול: הזז מנוע שורות למיקום בית (X=0)',
-        'Init: Move lines motor to home position (Y=0)': 'אתחול: הזז מנוע קווים למיקום בית (Y=0)',
-        'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת מנוע קווים למטה (מכלול מנוע Y הונמך למצב ברירת מחדל)',
+        'Init: Move rows motor to home position (X=0)': 'אתחול: הזז מנוע עמודות למיקום בית (X=0)',
+        'Init: Move lines motor to home position (Y=0)': 'אתחול: הזז מנוע שורות למיקום בית (Y=0)',
+        'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת מנוע שורות למטה (מכלול מנוע Y הונמך למצב ברירת מחדל)',
 
         'Cut top edge: Wait for LEFT X sensor': 'חיתוך קצה עליון: המתן לחיישן X שמאלי',
-        'Cut top edge: Open line cutter': 'חיתוך קצה עליון: פתח חותך קווים',
+        'Cut top edge: Open line cutter': 'חיתוך קצה עליון: פתח חותך שורות',
         'Cut top edge: Wait for RIGHT X sensor': 'חיתוך קצה עליון: המתן לחיישן X ימני',
-        'Cut top edge: Close line cutter': 'חיתוך קצה עליון: סגור חותך קווים',
+        'Cut top edge: Close line cutter': 'חיתוך קצה עליון: סגור חותך שורות',
 
         'Cut bottom edge: Wait for LEFT X sensor': 'חיתוך קצה תחתון: המתן לחיישן X שמאלי',
-        'Cut bottom edge: Open line cutter': 'חיתוך קצה תחתון: פתח חותך קווים',
+        'Cut bottom edge: Open line cutter': 'חיתוך קצה תחתון: פתח חותך שורות',
         'Cut bottom edge: Wait for RIGHT X sensor': 'חיתוך קצה תחתון: המתן לחיישן X ימני',
-        'Cut bottom edge: Close line cutter': 'חיתוך קצה תחתון: סגור חותך קווים',
+        'Cut bottom edge: Close line cutter': 'חיתוך קצה תחתון: סגור חותך שורות',
 
         'Cut RIGHT paper edge: Wait for TOP Y sensor': 'חיתוך קצה ימני: המתן לחיישן Y עליון',
-        'Cut RIGHT paper edge: Open row cutter': 'חיתוך קצה ימני: פתח חותך שורות',
+        'Cut RIGHT paper edge: Open row cutter': 'חיתוך קצה ימני: פתח חותך עמודות',
         'Cut RIGHT paper edge: Wait for BOTTOM Y sensor': 'חיתוך קצה ימני: המתן לחיישן Y תחתון',
-        'Cut RIGHT paper edge: Close row cutter': 'חיתוך קצה ימני: סגור חותך שורות',
+        'Cut RIGHT paper edge: Close row cutter': 'חיתוך קצה ימני: סגור חותך עמודות',
 
         'Cut LEFT paper edge: Wait for TOP Y sensor': 'חיתוך קצה שמאלי: המתן לחיישן Y עליון',
-        'Cut LEFT paper edge: Open row cutter': 'חיתוך קצה שמאלי: פתח חותך שורות',
+        'Cut LEFT paper edge: Open row cutter': 'חיתוך קצה שמאלי: פתח חותך עמודות',
         'Cut LEFT paper edge: Wait for BOTTOM Y sensor': 'חיתוך קצה שמאלי: המתן לחיישן Y תחתון',
-        'Cut LEFT paper edge: Close row cutter': 'חיתוך קצה שמאלי: סגור חותך שורות',
+        'Cut LEFT paper edge: Close row cutter': 'חיתוך קצה שמאלי: סגור חותך עמודות',
 
-        'Lines complete: Move lines motor to home position (Y=0)': 'קווים הושלמו: הזז מנוע קווים למיקום בית (Y=0)',
-        'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת שורות: ודא שמנוע קווים במיקום בית (Y=0)',
-        'Rows complete: Move rows motor to home position (X=0)': 'שורות הושלמו: הזז מנוע שורות למיקום בית (X=0)',
+        'Lines complete: Move lines motor to home position (Y=0)': 'שורות הושלמו: הזז מנוע שורות למיקום בית (Y=0)',
+        'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שמנוע שורות במיקום בית (Y=0)',
+        'Rows complete: Move rows motor to home position (X=0)': 'עמודות הושלמו: הזז מנוע עמודות למיקום בית (X=0)',
     }
 
     # Check for exact match first
@@ -163,11 +182,11 @@ def _translate_description_to_hebrew(description):
             if 'wait for left x sensor' in desc_lower:
                 return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): המתן לחיישן X שמאלי"
             elif 'open line marker' in desc_lower:
-                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): פתח סמן קווים"
+                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): פתח סמן שורות"
             elif 'wait for right x sensor' in desc_lower:
                 return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): המתן לחיישן X ימני"
             elif 'close line marker' in desc_lower:
-                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): סגור סמן קווים"
+                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): סגור סמן שורות"
 
     # Pattern: "Move to cut between sections X and Y: Z cm"
     if 'move to cut between sections' in desc_lower:
@@ -186,11 +205,11 @@ def _translate_description_to_hebrew(description):
             if 'wait for left x sensor' in desc_lower:
                 return f"חיתוך בין חלקים {s1} ו-{s2}: המתן לחיישן X שמאלי"
             elif 'open line cutter' in desc_lower:
-                return f"חיתוך בין חלקים {s1} ו-{s2}: פתח חותך קווים"
+                return f"חיתוך בין חלקים {s1} ו-{s2}: פתח חותך שורות"
             elif 'wait for right x sensor' in desc_lower:
                 return f"חיתוך בין חלקים {s1} ו-{s2}: המתן לחיישן X ימני"
             elif 'close line cutter' in desc_lower:
-                return f"חיתוך בין חלקים {s1} ו-{s2}: סגור חותך קווים"
+                return f"חיתוך בין חלקים {s1} ו-{s2}: סגור חותך שורות"
             elif ': move to' in desc_lower:
                 match2 = re.search(r'to ([\d.]+)cm', description)
                 if match2:
@@ -235,11 +254,11 @@ def _translate_description_to_hebrew(description):
             elif 'wait top y sensor (right edge)' in desc_lower:
                 return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y עליון (קצה ימני)"
             elif 'open row marker (right edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): פתח סמן שורות (קצה ימני)"
+                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): פתח סמן עמודות (קצה ימני)"
             elif 'wait bottom y sensor (right edge)' in desc_lower:
                 return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y תחתון (קצה ימני)"
             elif 'close row marker (right edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן שורות (קצה ימני)"
+                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן עמודות (קצה ימני)"
             elif 'left edge:' in desc_lower and 'move to' in desc_lower:
                 match2 = re.search(r': ([\d.]+)cm', description)
                 if match2:
@@ -248,11 +267,11 @@ def _translate_description_to_hebrew(description):
             elif 'wait top y sensor (left edge)' in desc_lower:
                 return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y עליון (קצה שמאלי)"
             elif 'open row marker (left edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): פתח סמן שורות (קצה שמאלי)"
+                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): פתח סמן עמודות (קצה שמאלי)"
             elif 'wait bottom y sensor (left edge)' in desc_lower:
                 return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y תחתון (קצה שמאלי)"
             elif 'close row marker (left edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן שורות (קצה שמאלי)"
+                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן עמודות (קצה שמאלי)"
 
     # Pattern: "Move to cut between row sections X and Y: Z cm"
     if 'move to cut between row sections' in desc_lower:
@@ -260,7 +279,7 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'sections (\d+) and (\d+): ([\d.]+)cm', description)
         if match:
             s1, s2, pos = match.groups()
-            return f"עבור לחיתוך בין חלקי שורות {s1} ו-{s2}: {pos}ס״מ"
+            return f"עבור לחיתוך בין חלקי עמודות {s1} ו-{s2}: {pos}ס״מ"
 
     # Pattern: "Cut between row sections X and Y: ..."
     if 'cut between row sections' in desc_lower:
@@ -269,18 +288,18 @@ def _translate_description_to_hebrew(description):
         if match:
             s1, s2 = match.groups()
             if 'wait for top y sensor' in desc_lower:
-                return f"חיתוך בין חלקי שורות {s1} ו-{s2}: המתן לחיישן Y עליון"
+                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: המתן לחיישן Y עליון"
             elif 'open row cutter' in desc_lower:
-                return f"חיתוך בין חלקי שורות {s1} ו-{s2}: פתח חותך שורות"
+                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: פתח חותך עמודות"
             elif 'wait for bottom y sensor' in desc_lower:
-                return f"חיתוך בין חלקי שורות {s1} ו-{s2}: המתן לחיישן Y תחתון"
+                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: המתן לחיישן Y תחתון"
             elif 'close row cutter' in desc_lower:
-                return f"חיתוך בין חלקי שורות {s1} ו-{s2}: סגור חותך שורות"
+                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: סגור חותך עמודות"
             elif ': move to' in desc_lower:
                 match2 = re.search(r': ([\d.]+)cm', description)
                 if match2:
                     pos = match2.group(1)
-                    return f"עבור לחיתוך בין חלקי שורות {s1} ו-{s2}: {pos}ס״מ"
+                    return f"עבור לחיתוך בין חלקי עמודות {s1} ו-{s2}: {pos}ס״מ"
 
     # Pattern: "⚠️ Lifting line motor piston UP..."
     if 'lifting line motor piston up' in desc_lower:
@@ -288,7 +307,7 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'to ([\d.]+)cm', description)
         if match:
             pos = match.group(1)
-            return f"⚠️ הרמת בוכנת מנוע קווים למעלה (הכנה לתנועה עליונה ל-{pos}ס״מ)"
+            return f"⚠️ הרמת בוכנת מנוע שורות למעלה (הכנה לתנועה עליונה ל-{pos}ס״מ)"
 
     # Pattern: "Init: Move Y motor to X cm..."
     if 'init: move y motor to' in desc_lower:
@@ -353,14 +372,10 @@ def generate_lines_marking_steps(program):
     - width, repeat_rows -> ACTUAL WIDTH = width * repeat_rows  
     - top_padding, bottom_padding, number_of_lines (unchanged)
     
-    Coordinates: Program coordinates are relative to paper position (15, 15)
+    Coordinates: Program coordinates are relative to paper position (loaded from settings)
     """
     steps = []
-    
-    # Paper offset - program coordinates start at (15, 15) on desk
-    PAPER_OFFSET_X = 15.0
-    PAPER_OFFSET_Y = 15.0
-    
+
     # CALCULATE ACTUAL PAPER DIMENSIONS WITH REPEATS
     actual_paper_width = program.width * program.repeat_rows
     actual_paper_height = program.high * program.repeat_lines
@@ -602,16 +617,12 @@ def generate_row_marking_steps(program):
     - high, repeat_lines -> ACTUAL HEIGHT = high * repeat_lines
     - left_margin, right_margin, page_width, number_of_pages, buffer_between_pages
     
-    Coordinates: Program coordinates are relative to paper position (15, 15)
+    Coordinates: Program coordinates are relative to paper position (loaded from settings)
     """
     steps = []
-    
+
     # Note: Safety checks for rows operations happen during execution, not step generation
-    
-    # Paper offset - program coordinates start at (15, 15) on desk
-    PAPER_OFFSET_X = 15.0
-    PAPER_OFFSET_Y = 15.0
-    
+
     # CALCULATE ACTUAL PAPER DIMENSIONS WITH REPEATS
     actual_paper_width = program.width * program.repeat_rows
     actual_paper_height = program.high * program.repeat_lines

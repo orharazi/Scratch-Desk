@@ -149,6 +149,10 @@ class ExecutionEngine:
         self.stop_event.set()
         self.pause_event.set()  # Ensure thread can proceed to check stop event
 
+        # Signal all sensor events to unblock any waiting threads
+        if hasattr(self.hardware, 'signal_all_sensor_events'):
+            self.hardware.signal_all_sensor_events()
+
         # Stop safety monitoring
         self.safety_monitor_stop.set()
 
@@ -164,8 +168,12 @@ class ExecutionEngine:
         self._update_status("stopped")
         return True
 
-    def reset_execution(self):
-        """Reset execution to beginning - fully reset all state"""
+    def reset_execution(self, clear_steps=False):
+        """Reset execution to beginning - fully reset all state
+
+        Args:
+            clear_steps: If True, also clears the steps list (for new program loading)
+        """
         if self.is_running:
             self.logger.warning("Cannot reset while running - stop execution first", category="execution")
             return False
@@ -177,6 +185,11 @@ class ExecutionEngine:
         self.end_time = None
         self.is_paused = False
         self.is_running = False
+
+        # Optionally clear steps list (when loading new program)
+        if clear_steps:
+            self.steps = []
+            self.logger.debug("Steps list cleared for new program", category="execution")
 
         # Reset threading events to initial state
         self.stop_event.clear()
@@ -457,31 +470,60 @@ class ExecutionEngine:
         self.logger.info(f"Executing: {description}", category="execution")
 
         # SAFETY CHECK: Validate step safety before execution (skip during transitions)
+        # If safety violation occurs, wait for condition to clear instead of stopping
         if not self.in_transition:
-            try:
-                check_step_safety(step)
-            except SafetyViolation as e:
-                self.logger.error(f"SAFETY VIOLATION DETECTED!", category="execution")
-                self.logger.error(f"Step blocked: {description}", category="execution")
-                self.logger.error(f"Safety violation: {e.message}", category="execution")
+            safety_wait_interval = 0.5  # Check every 500ms
+            max_safety_wait = 300  # Maximum wait time (5 minutes)
+            safety_wait_time = 0
 
-                # Don't call stop_execution() here as it causes thread join issues
-                # The execution loop will handle the safety violation result
+            while True:
+                try:
+                    check_step_safety(step)
+                    # Safety check passed, continue execution
+                    if safety_wait_time > 0:
+                        self.logger.success(f"Safety condition cleared! Continuing execution.", category="execution")
+                        self._update_status("running", {'step': step})
+                    break
+                except SafetyViolation as e:
+                    if safety_wait_time == 0:
+                        # First violation - log once and notify UI
+                        self.logger.warning(
+                            f"⏸️ SAFETY WAIT: {e.safety_code} - Step paused, waiting for condition to clear...",
+                            category="execution"
+                        )
 
-                # Update status with safety error
-                self._update_status("safety_violation", {
-                    'step': step,
-                    'violation_message': e.message,
-                    'safety_code': e.safety_code
-                })
+                        # Update status to show waiting (triggers UI popup)
+                        self._update_status("safety_waiting", {
+                            'step': step,
+                            'violation_message': e.message,
+                            'safety_code': e.safety_code
+                        })
 
-                return {
-                    'success': False,
-                    'error': 'Safety violation',
-                    'safety_violation': True,
-                    'violation_message': e.message,
-                    'safety_code': e.safety_code
-                }
+                    # Check if execution was stopped or paused externally
+                    if self.safety_monitor_stop.is_set() or not self.is_running:
+                        self.logger.info("Execution stopped while waiting for safety condition", category="execution")
+                        return {
+                            'success': False,
+                            'error': 'Execution stopped',
+                            'safety_violation': True,
+                            'violation_message': e.message,
+                            'safety_code': e.safety_code
+                        }
+
+                    # Check timeout
+                    if safety_wait_time >= max_safety_wait:
+                        self.logger.error(f"Safety wait timeout after {max_safety_wait}s", category="execution")
+                        return {
+                            'success': False,
+                            'error': 'Safety timeout',
+                            'safety_violation': True,
+                            'violation_message': e.message,
+                            'safety_code': e.safety_code
+                        }
+
+                    # Wait and retry
+                    time.sleep(safety_wait_interval)
+                    safety_wait_time += safety_wait_interval
         else:
             self.logger.debug(f"TRANSITION: Skipping safety check for step during transition: {description[:50]}...", category="execution")
 

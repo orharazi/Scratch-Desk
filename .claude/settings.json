@@ -1,0 +1,23 @@
+{
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python3 index.py)",
+      "Bash(python3 admin_tool.py)",
+      "Bash(python3 quick_rs485_test.py)",
+      "Bash(python3 comprehensive_rs485_test.py)",
+      "Bash(python3 hardware/tools/hardware_test_gui.py)",
+      "Bash(python3 scripts/verify_config_alignment.py*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(pip3 install *)",
+      "Bash(ls *)"
+    ]
+  }
+}

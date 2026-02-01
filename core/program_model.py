@@ -1,16 +1,30 @@
+import json
+import os
+
+def _load_hardware_limits():
+    """Load hardware limits from settings.json"""
+    try:
+        settings_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'settings.json')
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+        return settings.get('hardware_limits', {})
+    except Exception:
+        return {}
+
 class ScratchDeskProgram:
     """
     Updated ScratchDeskProgram class with new CSV structure and validation formulas.
-    
+
     New Structure:
     - Lines Pattern: high, number_of_lines, top_padding, bottom_padding
     - Row Pattern: width, left_margin, right_margin, page_width, number_of_pages, buffer_between_pages
     - Generate Settings: repeat_rows, repeat_lines
     """
-    
-    # System constants for desk size constraints (updated to real values)
-    MAX_WIDTH_OF_DESK = 120.0  # cm (real desk width)
-    MAX_HEIGHT_OF_DESK = 80.0   # cm (real desk height)
+
+    # System constants loaded from settings.json
+    _limits = _load_hardware_limits()
+    MAX_WIDTH_OF_DESK = _limits.get('max_x_position', 120.0)  # cm (from settings)
+    MAX_HEIGHT_OF_DESK = _limits.get('max_y_position', 80.0)   # cm (from settings)
     
     def __init__(self, program_number=0, program_name="", 
                  # Lines Pattern Settings

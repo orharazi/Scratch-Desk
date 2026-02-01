@@ -174,6 +174,7 @@ def reset_hardware():
     global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
     global limit_switch_states
     global x_left_edge, x_right_edge, y_top_edge, y_bottom_edge
+    global sensor_trigger_states, sensor_trigger_timers, execution_engine_reference
 
     current_x_position = 0.0
     current_y_position = 0.0
@@ -219,6 +220,17 @@ def reset_hardware():
 
     sensor_results['x_sensor'] = None
     sensor_results['y_sensor'] = None
+
+    # Reset sensor trigger states (for live monitoring visualization)
+    for key in sensor_trigger_states:
+        sensor_trigger_states[key] = False
+
+    # Reset sensor trigger timers
+    for key in sensor_trigger_timers:
+        sensor_trigger_timers[key] = 0
+
+    # Clear execution engine reference to prevent stale callbacks
+    execution_engine_reference = None
 
     logger = get_logger()
     logger.info("Hardware reset to initial state", category="hardware")
@@ -438,8 +450,23 @@ def wait_for_x_left_sensor():
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['x_left'].clear()
 
+    # Track start time for timeout
+    start_time = time.time()
+    max_timeout = timing_settings.get("sensor_wait_timeout", 300.0)
+
     # Wait specifically for left sensor
     while True:
+        # Check for stop event FIRST (critical for proper stop/reset)
+        if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
+            if current_execution_engine.stop_event.is_set():
+                logger.warning("X LEFT sensor wait aborted - stop requested", category="hardware")
+                return None
+
+        # Check for timeout
+        if time.time() - start_time > max_timeout:
+            logger.warning(f"X LEFT sensor wait timeout after {max_timeout}s", category="hardware")
+            return None
+
         if sensor_events['x_left'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
@@ -466,8 +493,23 @@ def wait_for_x_right_sensor():
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['x_right'].clear()
 
+    # Track start time for timeout
+    start_time = time.time()
+    max_timeout = timing_settings.get("sensor_wait_timeout", 300.0)
+
     # Wait specifically for right sensor
     while True:
+        # Check for stop event FIRST (critical for proper stop/reset)
+        if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
+            if current_execution_engine.stop_event.is_set():
+                logger.warning("X RIGHT sensor wait aborted - stop requested", category="hardware")
+                return None
+
+        # Check for timeout
+        if time.time() - start_time > max_timeout:
+            logger.warning(f"X RIGHT sensor wait timeout after {max_timeout}s", category="hardware")
+            return None
+
         if sensor_events['x_right'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
@@ -494,8 +536,23 @@ def wait_for_y_top_sensor():
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['y_top'].clear()
 
+    # Track start time for timeout
+    start_time = time.time()
+    max_timeout = timing_settings.get("sensor_wait_timeout", 300.0)
+
     # Wait specifically for top sensor
     while True:
+        # Check for stop event FIRST (critical for proper stop/reset)
+        if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
+            if current_execution_engine.stop_event.is_set():
+                logger.warning("Y TOP sensor wait aborted - stop requested", category="hardware")
+                return None
+
+        # Check for timeout
+        if time.time() - start_time > max_timeout:
+            logger.warning(f"Y TOP sensor wait timeout after {max_timeout}s", category="hardware")
+            return None
+
         if sensor_events['y_top'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
@@ -522,8 +579,23 @@ def wait_for_y_bottom_sensor():
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
     sensor_events['y_bottom'].clear()
 
+    # Track start time for timeout
+    start_time = time.time()
+    max_timeout = timing_settings.get("sensor_wait_timeout", 300.0)
+
     # Wait specifically for bottom sensor
     while True:
+        # Check for stop event FIRST (critical for proper stop/reset)
+        if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
+            if current_execution_engine.stop_event.is_set():
+                logger.warning("Y BOTTOM sensor wait aborted - stop requested", category="hardware")
+                return None
+
+        # Check for timeout
+        if time.time() - start_time > max_timeout:
+            logger.warning(f"Y BOTTOM sensor wait timeout after {max_timeout}s", category="hardware")
+            return None
+
         if sensor_events['y_bottom'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
@@ -552,8 +624,23 @@ def wait_for_x_sensor():
     sensor_events['x_left'].clear()
     sensor_events['x_right'].clear()
 
+    # Track start time for timeout
+    start_time = time.time()
+    max_timeout = timing_settings.get("sensor_wait_timeout", 300.0)
+
     # Wait for either left or right sensor
     while True:
+        # Check for stop event FIRST (critical for proper stop/reset)
+        if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
+            if current_execution_engine.stop_event.is_set():
+                logger.warning("X sensor wait aborted - stop requested", category="hardware")
+                return None
+
+        # Check for timeout
+        if time.time() - start_time > max_timeout:
+            logger.warning(f"X sensor wait timeout after {max_timeout}s", category="hardware")
+            return None
+
         if sensor_events['x_left'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
@@ -588,8 +675,23 @@ def wait_for_y_sensor():
     sensor_events['y_top'].clear()
     sensor_events['y_bottom'].clear()
 
+    # Track start time for timeout
+    start_time = time.time()
+    max_timeout = timing_settings.get("sensor_wait_timeout", 300.0)
+
     # Wait for either top or bottom sensor
     while True:
+        # Check for stop event FIRST (critical for proper stop/reset)
+        if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
+            if current_execution_engine.stop_event.is_set():
+                logger.warning("Y sensor wait aborted - stop requested", category="hardware")
+                return None
+
+        # Check for timeout
+        if time.time() - start_time > max_timeout:
+            logger.warning(f"Y sensor wait timeout after {max_timeout}s", category="hardware")
+            return None
+
         if sensor_events['y_top'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
@@ -623,6 +725,13 @@ def flush_all_sensor_buffers():
             logger.debug(f"    Flushing {sensor_name} sensor buffer", category="hardware")
         event.clear()
     logger.success("All sensor buffers cleared - ready for post-resume triggers", category="hardware")
+
+def signal_all_sensor_events():
+    """Signal all sensor events to unblock waiting threads during stop"""
+    logger = get_logger()
+    logger.info("SIGNAL: Waking all sensor wait threads for stop", category="hardware")
+    for event in sensor_events.values():
+        event.set()
 
 # Manual sensor triggers for testing
 def trigger_x_left_sensor():
@@ -1575,6 +1684,10 @@ class MockHardware:
     def flush_all_sensor_buffers(self):
         """Flush all sensor buffers"""
         flush_all_sensor_buffers()
+
+    def signal_all_sensor_events(self):
+        """Signal all sensor events to unblock waiting threads during stop"""
+        signal_all_sensor_events()
 
     def shutdown(self):
         """Shutdown mock hardware"""

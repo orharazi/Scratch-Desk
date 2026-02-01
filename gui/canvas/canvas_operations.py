@@ -52,7 +52,7 @@ class CanvasOperations:
         # Paper coordinates from settings (bottom-left corner at paper_start_x)
         hardware_limits = self.main_app.settings.get("hardware_limits", {})
         PAPER_OFFSET_X = hardware_limits.get("paper_start_x", 15.0)
-        PAPER_OFFSET_Y = PAPER_OFFSET_X  # Use same value for Y start
+        PAPER_OFFSET_Y = hardware_limits.get("paper_start_y", 15.0)
         paper_bottom_left_x = PAPER_OFFSET_X
         paper_bottom_left_y = PAPER_OFFSET_Y
         
@@ -545,7 +545,7 @@ class CanvasOperations:
             # Change to completed ONLY when closing the marker
             elif any(keyword in step_desc for keyword in [
                 'close line marker',  # English
-                'סגור סמן קווים'  # Hebrew: close line marker
+                'סגור סמן שורות'  # Hebrew: close line marker
             ]):
                 self.update_operation_state('lines', line_num, 'completed')
                 self.logger.info(f" Line {line_num} → COMPLETED (marker closed)", category="gui")
@@ -556,7 +556,7 @@ class CanvasOperations:
         # ONLY change color on sensor/tool actions, NOT on move operations
         # ONLY track row MARKING operations, not cutting operations
         rtl_page_match = re.search(r'(?:rtl page|עמוד rtl)\s*(\d+)', step_desc, re.IGNORECASE)
-        if rtl_page_match and any(keyword in step_desc for keyword in ['row marker', 'סמן שורות']):  # Only for row marking, not cutting
+        if rtl_page_match and any(keyword in step_desc for keyword in ['row marker', 'סמן עמודות']):  # Only for row marking, not cutting
             rtl_page_num = int(rtl_page_match.group(1))
 
             # Calculate total pages to convert RTL numbering to canvas position
@@ -608,14 +608,14 @@ class CanvasOperations:
                     # Change to in_progress when OPENING the row marker (marking starts)
                     if any(keyword in step_desc for keyword in [
                         'open row marker',  # English
-                        'פתח סמן שורות'  # Hebrew: open row marker
+                        'פתח סמן עמודות'  # Hebrew: open row marker
                     ]):
                         self.update_operation_state('rows', row_key, 'in_progress')
                         self.logger.debug(f" Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → IN PROGRESS", category="gui")
                     # Change to completed when closing the row marker (marking finishes)
                     elif any(keyword in step_desc for keyword in [
                         'close row marker',  # English
-                        'סגור סמן שורות'  # Hebrew: close row marker
+                        'סגור סמן עמודות'  # Hebrew: close row marker
                     ]):
                         self.update_operation_state('rows', row_key, 'completed')
                         self.logger.info(f" Row {row_num} (RTL Page {rtl_page_num}, canvas page {canvas_page_num}) → COMPLETED", category="gui")
@@ -623,7 +623,7 @@ class CanvasOperations:
         # Track cut edge operations - ONLY for actual cutting operations
         # Pattern "cut X" (e.g. "cut top", "cut right") ensures we only match cutting steps
         # This excludes "row marker (RIGHT edge)" because it doesn't have "cut right"
-        if not any(keyword in step_desc for keyword in ['row marker', 'סמן שורות']):  # Extra safety: exclude row marking steps
+        if not any(keyword in step_desc for keyword in ['row marker', 'סמן עמודות']):  # Extra safety: exclude row marking steps
             # Track intermediate LINE section cuts (e.g., "Cut between sections 1 and 2" or "חיתוך בין חלקים")
             section_cut_match = re.search(r'(?:cut between sections|חיתוך בין חלקים)\s+(\d+)\s+(?:and|ו-)\s*(\d+)', step_desc, re.IGNORECASE)
             if section_cut_match:
@@ -638,8 +638,8 @@ class CanvasOperations:
                     self.update_operation_state('cuts', cut_name, 'in_progress')
                     self.logger.debug(f" Line section cut {section_1}-{section_2} → IN PROGRESS", category="gui")
 
-            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2" or "חיתוך בין חלקי שורות")
-            row_section_cut_match = re.search(r'(?:cut between row sections|חיתוך בין חלקי שורות)\s+(\d+)\s+(?:and|ו-)\s*(\d+)', step_desc, re.IGNORECASE)
+            # Track intermediate ROW section cuts (e.g., "Cut between row sections 1 and 2" or "חיתוך בין חלקי עמודות")
+            row_section_cut_match = re.search(r'(?:cut between row sections|חיתוך בין חלקי עמודות)\s+(\d+)\s+(?:and|ו-)\s*(\d+)', step_desc, re.IGNORECASE)
             if row_section_cut_match:
                 section_1 = int(row_section_cut_match.group(1))
                 section_2 = int(row_section_cut_match.group(2))
