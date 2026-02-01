@@ -85,6 +85,76 @@ def reset_hardware_interface():
     _hardware_instance = None
 
 
+def switch_hardware_mode(use_real: bool, config_path: str = "config/settings.json"):
+    """
+    Switch hardware mode at runtime (hot-swap).
+
+    This function handles the complete hardware switch process:
+    1. Shutdown existing hardware instance cleanly
+    2. Create new hardware instance (Mock or Real)
+    3. Update the global singleton reference
+
+    Args:
+        use_real: True for real hardware, False for mock/simulation
+        config_path: Path to settings.json configuration file
+
+    Returns:
+        Tuple of (new_hardware_instance, success: bool, error_message: str)
+    """
+    global _hardware_instance
+
+    logger.info("=" * 60, category="hardware")
+    logger.info("HARDWARE HOT-SWAP - Switching Hardware Mode", category="hardware")
+    logger.info("=" * 60, category="hardware")
+    logger.info(f"Target mode: {'REAL HARDWARE' if use_real else 'MOCK/SIMULATION'}", category="hardware")
+
+    # Step 1: Shutdown existing hardware if any
+    if _hardware_instance is not None:
+        logger.info("Shutting down existing hardware instance...", category="hardware")
+        try:
+            if hasattr(_hardware_instance, 'shutdown'):
+                _hardware_instance.shutdown()
+                logger.info("Hardware shutdown completed", category="hardware")
+            elif hasattr(_hardware_instance, 'cleanup'):
+                _hardware_instance.cleanup()
+                logger.info("Hardware cleanup completed", category="hardware")
+        except Exception as e:
+            logger.warning(f"Warning during hardware shutdown: {e}", category="hardware")
+        _hardware_instance = None
+
+    # Step 2: Create new hardware instance
+    try:
+        if use_real:
+            logger.info("Creating Real Hardware instance...", category="hardware")
+            from hardware.implementations.real.real_hardware import RealHardware
+            _hardware_instance = RealHardware(config_path)
+
+            # Check if initialization was successful
+            if hasattr(_hardware_instance, 'is_initialized') and not _hardware_instance.is_initialized:
+                error_msg = getattr(_hardware_instance, 'initialization_error', 'Unknown initialization error')
+                logger.error(f"Real hardware initialization failed: {error_msg}", category="hardware")
+                return _hardware_instance, False, error_msg
+
+            logger.info("Real Hardware instance created successfully", category="hardware")
+        else:
+            logger.info("Creating Mock Hardware instance...", category="hardware")
+            from hardware.implementations.mock.mock_hardware import MockHardware
+            _hardware_instance = MockHardware(config_path)
+            logger.info("Mock Hardware instance created successfully", category="hardware")
+
+        logger.info("=" * 60, category="hardware")
+        logger.info("HARDWARE HOT-SWAP COMPLETE", category="hardware")
+        logger.info("=" * 60, category="hardware")
+
+        return _hardware_instance, True, ""
+
+    except Exception as e:
+        error_msg = f"Failed to create hardware instance: {str(e)}"
+        logger.error(error_msg, category="hardware")
+        logger.info("=" * 60, category="hardware")
+        return None, False, error_msg
+
+
 if __name__ == "__main__":
     """Test hardware factory"""
     logger.info("="*60, category="hardware")

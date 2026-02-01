@@ -2,6 +2,7 @@ import tkinter as tk
 import json
 from core.logger import get_logger
 from core.translations import t
+from core.machine_state import MachineState, get_state_manager
 
 
 class HardwareStatusPanel:
@@ -434,6 +435,39 @@ class HardwareStatusPanel:
 
     def _update_operation_mode(self):
         """Update operation mode with status and explanation"""
+        # Check machine state manager first (takes priority)
+        state_manager = get_state_manager()
+        current_state = state_manager.state
+
+        # Handle special machine states first
+        if current_state == MachineState.HOMING:
+            status = t("HOMING")
+            explanation = t("Running homing sequence...")
+            color = '#E67E22'  # Orange
+            self._update_widget('operation_mode', status, color)
+            if 'operation_explanation' in self.status_widgets:
+                self.status_widgets['operation_explanation']['label'].config(text=explanation)
+            return
+
+        if current_state == MachineState.SWITCHING_MODE:
+            status = t("SWITCHING")
+            explanation = t("Changing hardware mode...")
+            color = '#9B59B6'  # Purple
+            self._update_widget('operation_mode', status, color)
+            if 'operation_explanation' in self.status_widgets:
+                self.status_widgets['operation_explanation']['label'].config(text=explanation)
+            return
+
+        if current_state == MachineState.ERROR:
+            status = t("ERROR")
+            explanation = state_manager.error_message or t("Check hardware connection")
+            color = '#C0392B'  # Dark red
+            self._update_widget('operation_mode', status, color)
+            if 'operation_explanation' in self.status_widgets:
+                self.status_widgets['operation_explanation']['label'].config(text=explanation)
+            return
+
+        # Normal execution engine status
         if hasattr(self.main_app, 'execution_engine'):
             engine = self.main_app.execution_engine
 

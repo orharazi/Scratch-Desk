@@ -185,11 +185,11 @@
       "gpio_mode": "BCM",
       "debounce_count": 2,
       "pistons": {
-        "line_marker_piston": 5,
-        "line_cutter_piston": 6,
-        "line_motor_piston": 19,
-        "row_marker_piston": 13,
-        "row_cutter_piston": 16
+        "line_marker_piston": 6,
+        "line_cutter_piston": 16,
+        "line_motor_piston": 13,
+        "row_marker_piston": 5,
+        "row_cutter_piston": 19
       },
       "rs485": {
         "enabled": true,
@@ -241,8 +241,11 @@
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
-      "homing_timeout": 30.0,
+      "homing_timeout": 120.0,
       "door_switch_read_timeout": 1.0,
+      "position_tolerance_cm": 0.1,
+      "movement_timeout": 60.0,
+      "movement_poll_interval": 0.1,
       "grbl_settings": {
         "units": "mm",
         "positioning_mode": "G90",

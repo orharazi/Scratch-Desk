@@ -9,6 +9,7 @@ This class contains ONLY real hardware implementation.
 """
 
 import json
+import time
 from typing import Optional, Dict
 from hardware.implementations.real.raspberry_pi.raspberry_pi_gpio import RaspberryPiGPIO
 from hardware.implementations.real.arduino_grbl.arduino_grbl import ArduinoGRBL
@@ -40,6 +41,14 @@ class RealHardware:
         self.grbl: Optional[ArduinoGRBL] = None
         self.is_initialized = False
         self.initialization_error = None
+
+        # Execution engine reference for pause checking during sensor waits
+        self.execution_engine = None
+
+        # Timing settings for sensor polling
+        timing_config = self.config.get("timing", {})
+        self.sensor_poll_interval = timing_config.get("sensor_poll_timeout", 0.05)  # 50ms default
+        self.sensor_wait_timeout = timing_config.get("sensor_wait_timeout", 300.0)  # 5 minutes max wait
 
         self.logger.info("="*60, category="hardware")
         self.logger.info("Real Hardware Interface Configuration", category="hardware")
@@ -186,7 +195,7 @@ class RealHardware:
 
         return self.grbl.home()
 
-    def perform_complete_homing_sequence(self, progress_callback=None) -> bool:
+    def perform_complete_homing_sequence(self, progress_callback=None) -> tuple[bool, str]:
         """
         Perform complete homing sequence with configuration and safety checks
 
@@ -199,14 +208,15 @@ class RealHardware:
         6. Lowers line motor pistons
 
         Args:
-            progress_callback: Optional callback function(step_number, step_name, status)
+            progress_callback: Optional callback function(step_number, step_name, status, message=None)
 
         Returns:
-            True if successful, False otherwise
+            Tuple of (success: bool, error_message: str)
         """
         if not self.is_initialized or not self.grbl:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
+            error_msg = "Hardware not initialized"
+            self.logger.error(error_msg, category="hardware")
+            return False, error_msg
 
         # Pass self as hardware_interface so GRBL can control pistons and check door
         return self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback)
@@ -762,28 +772,230 @@ class RealHardware:
     # ========== WAIT FOR SENSOR METHODS ==========
 
     def wait_for_x_sensor(self):
-        """Wait for X sensor trigger (not supported in real hardware mode)"""
-        pass
+        """
+        Wait for X sensor trigger (either left or right edge).
+        Blocks until sensor is triggered.
+
+        Returns:
+            'left' if left edge triggered, 'right' if right edge triggered
+        """
+        self.logger.info("Waiting for X sensor (left or right edge)...", category="hardware")
+        start_time = time.time()
+
+        while True:
+            # Check if execution is paused
+            if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
+                time.sleep(self.sensor_poll_interval)
+                continue
+
+            # Check for stop signal
+            if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
+                if self.execution_engine.stop_event.is_set():
+                    self.logger.warning("X sensor wait aborted - stop requested", category="hardware")
+                    return None
+
+            # Check left edge sensor
+            if self.get_x_left_edge_sensor():
+                self.logger.info("X sensor triggered: LEFT edge detected", category="hardware")
+                return 'left'
+
+            # Check right edge sensor
+            if self.get_x_right_edge_sensor():
+                self.logger.info("X sensor triggered: RIGHT edge detected", category="hardware")
+                return 'right'
+
+            # Check timeout
+            if time.time() - start_time > self.sensor_wait_timeout:
+                self.logger.warning(f"X sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                return None
+
+            # Small delay before next poll
+            time.sleep(self.sensor_poll_interval)
 
     def wait_for_y_sensor(self):
-        """Wait for Y sensor trigger (not supported in real hardware mode)"""
-        pass
+        """
+        Wait for Y sensor trigger (either top or bottom edge).
+        Blocks until sensor is triggered.
+
+        Returns:
+            'top' if top edge triggered, 'bottom' if bottom edge triggered
+        """
+        self.logger.info("Waiting for Y sensor (top or bottom edge)...", category="hardware")
+        start_time = time.time()
+
+        while True:
+            # Check if execution is paused
+            if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
+                time.sleep(self.sensor_poll_interval)
+                continue
+
+            # Check for stop signal
+            if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
+                if self.execution_engine.stop_event.is_set():
+                    self.logger.warning("Y sensor wait aborted - stop requested", category="hardware")
+                    return None
+
+            # Check top edge sensor
+            if self.get_y_top_edge_sensor():
+                self.logger.info("Y sensor triggered: TOP edge detected", category="hardware")
+                return 'top'
+
+            # Check bottom edge sensor
+            if self.get_y_bottom_edge_sensor():
+                self.logger.info("Y sensor triggered: BOTTOM edge detected", category="hardware")
+                return 'bottom'
+
+            # Check timeout
+            if time.time() - start_time > self.sensor_wait_timeout:
+                self.logger.warning(f"Y sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                return None
+
+            # Small delay before next poll
+            time.sleep(self.sensor_poll_interval)
 
     def wait_for_x_left_sensor(self):
-        """Wait for X left sensor trigger (not supported in real hardware mode)"""
-        pass
+        """
+        Wait specifically for X LEFT edge sensor.
+        Blocks until sensor is triggered.
+
+        Returns:
+            'left' when triggered, None on timeout
+        """
+        self.logger.info("Waiting for X LEFT edge sensor...", category="hardware")
+        start_time = time.time()
+
+        while True:
+            # Check if execution is paused
+            if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
+                time.sleep(self.sensor_poll_interval)
+                continue
+
+            # Check for stop signal
+            if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
+                if self.execution_engine.stop_event.is_set():
+                    self.logger.warning("X left sensor wait aborted - stop requested", category="hardware")
+                    return None
+
+            # Check left edge sensor
+            if self.get_x_left_edge_sensor():
+                self.logger.info("X LEFT edge sensor triggered", category="hardware")
+                return 'left'
+
+            # Check timeout
+            if time.time() - start_time > self.sensor_wait_timeout:
+                self.logger.warning(f"X left sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                return None
+
+            # Small delay before next poll
+            time.sleep(self.sensor_poll_interval)
 
     def wait_for_x_right_sensor(self):
-        """Wait for X right sensor trigger (not supported in real hardware mode)"""
-        pass
+        """
+        Wait specifically for X RIGHT edge sensor.
+        Blocks until sensor is triggered.
+
+        Returns:
+            'right' when triggered, None on timeout
+        """
+        self.logger.info("Waiting for X RIGHT edge sensor...", category="hardware")
+        start_time = time.time()
+
+        while True:
+            # Check if execution is paused
+            if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
+                time.sleep(self.sensor_poll_interval)
+                continue
+
+            # Check for stop signal
+            if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
+                if self.execution_engine.stop_event.is_set():
+                    self.logger.warning("X right sensor wait aborted - stop requested", category="hardware")
+                    return None
+
+            # Check right edge sensor
+            if self.get_x_right_edge_sensor():
+                self.logger.info("X RIGHT edge sensor triggered", category="hardware")
+                return 'right'
+
+            # Check timeout
+            if time.time() - start_time > self.sensor_wait_timeout:
+                self.logger.warning(f"X right sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                return None
+
+            # Small delay before next poll
+            time.sleep(self.sensor_poll_interval)
 
     def wait_for_y_top_sensor(self):
-        """Wait for Y top sensor trigger (not supported in real hardware mode)"""
-        pass
+        """
+        Wait specifically for Y TOP edge sensor.
+        Blocks until sensor is triggered.
+
+        Returns:
+            'top' when triggered, None on timeout
+        """
+        self.logger.info("Waiting for Y TOP edge sensor...", category="hardware")
+        start_time = time.time()
+
+        while True:
+            # Check if execution is paused
+            if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
+                time.sleep(self.sensor_poll_interval)
+                continue
+
+            # Check for stop signal
+            if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
+                if self.execution_engine.stop_event.is_set():
+                    self.logger.warning("Y top sensor wait aborted - stop requested", category="hardware")
+                    return None
+
+            # Check top edge sensor
+            if self.get_y_top_edge_sensor():
+                self.logger.info("Y TOP edge sensor triggered", category="hardware")
+                return 'top'
+
+            # Check timeout
+            if time.time() - start_time > self.sensor_wait_timeout:
+                self.logger.warning(f"Y top sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                return None
+
+            # Small delay before next poll
+            time.sleep(self.sensor_poll_interval)
 
     def wait_for_y_bottom_sensor(self):
-        """Wait for Y bottom sensor trigger (not supported in real hardware mode)"""
-        pass
+        """
+        Wait specifically for Y BOTTOM edge sensor.
+        Blocks until sensor is triggered.
+
+        Returns:
+            'bottom' when triggered, None on timeout
+        """
+        self.logger.info("Waiting for Y BOTTOM edge sensor...", category="hardware")
+        start_time = time.time()
+
+        while True:
+            # Check if execution is paused
+            if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
+                time.sleep(self.sensor_poll_interval)
+                continue
+
+            # Check for stop signal
+            if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
+                if self.execution_engine.stop_event.is_set():
+                    self.logger.warning("Y bottom sensor wait aborted - stop requested", category="hardware")
+                    return None
+
+            # Check bottom edge sensor
+            if self.get_y_bottom_edge_sensor():
+                self.logger.info("Y BOTTOM edge sensor triggered", category="hardware")
+                return 'bottom'
+
+            # Check timeout
+            if time.time() - start_time > self.sensor_wait_timeout:
+                self.logger.warning(f"Y bottom sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                return None
+
+            # Small delay before next poll
+            time.sleep(self.sensor_poll_interval)
 
     # ========== HARDWARE STATUS ==========
 
@@ -849,8 +1061,12 @@ class RealHardware:
     # ========== MOCK-SPECIFIC METHODS (no-op for real hardware) ==========
 
     def set_execution_engine_reference(self, engine):
-        """Set execution engine reference (only used by mock hardware for sensor waiting)"""
-        pass
+        """
+        Set execution engine reference for sensor waiting.
+        Used to check pause/stop state during blocking sensor waits.
+        """
+        self.execution_engine = engine
+        self.logger.debug("Execution engine reference set", category="hardware")
 
     def flush_all_sensor_buffers(self):
         """Flush sensor buffers (only used by mock hardware)"""

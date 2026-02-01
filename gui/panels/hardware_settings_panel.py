@@ -1,9 +1,10 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import json
 import serial.tools.list_ports
 from core.logger import get_logger
 from core.translations import t
+from core.machine_state import MachineState, get_state_manager
 
 
 class HardwareSettingsPanel:
@@ -281,19 +282,79 @@ class HardwareSettingsPanel:
             )
 
     def apply_settings(self):
-        """Apply settings to current session (requires restart)"""
+        """Apply settings with hot-swap (no restart required)"""
         mode = self.mode_var.get()
         selected_port = self.port_var.get()
+        use_real = (mode == "real")
 
         self.logger.debug(f"\n{'='*60}", category="gui")
-        self.logger.info("⚙ APPLYING HARDWARE SETTINGS", category="gui")
+        self.logger.info("APPLYING HARDWARE SETTINGS (HOT-SWAP)", category="gui")
         self.logger.debug(f"{'='*60}", category="gui")
         self.logger.debug(f"Mode: {mode.upper()}", category="gui")
         self.logger.debug(f"Port: {selected_port}", category="gui")
 
-        # Update settings in memory
-        use_real = (mode == "real")
+        # Check if mode is actually changing
+        from hardware.implementations.real.real_hardware import RealHardware
+        current_is_real = isinstance(self.main_app.hardware, RealHardware)
 
+        if use_real == current_is_real:
+            messagebox.showinfo(
+                t("No Change"),
+                t("Hardware mode unchanged. Already in {mode} mode.",
+                  mode=t("Real Hardware") if use_real else t("Simulation"))
+            )
+            self.apply_btn.config(state=tk.DISABLED)
+            return
+
+        # Check if safe to switch
+        can_switch, reason = self._can_switch_mode()
+        if not can_switch:
+            messagebox.showwarning(t("Cannot Switch"), reason)
+            return
+
+        # Confirm the switch
+        if use_real:
+            if not messagebox.askyesno(
+                t("Switch to Real Hardware"),
+                t("This will:\n"
+                  "1. Switch to real hardware mode\n"
+                  "2. Connect to Arduino/GPIO\n"
+                  "3. Run homing sequence\n\n"
+                  "Make sure the machine is clear and ready.\n\n"
+                  "Continue?")
+            ):
+                return
+        else:
+            if not messagebox.askyesno(
+                t("Switch to Simulation"),
+                t("Switch to simulation mode?\n\n"
+                  "This will disconnect from real hardware.")
+            ):
+                return
+
+        # Update settings.json first
+        self._update_settings_file(use_real, selected_port)
+
+        # Perform the hot-swap
+        self._perform_hardware_switch(use_real, selected_port)
+
+    def _can_switch_mode(self):
+        """Check if it's safe to switch hardware mode"""
+        state_manager = get_state_manager()
+        can_switch, reason = state_manager.can_switch_mode()
+
+        if not can_switch:
+            return False, t(reason)
+
+        # Also check execution engine
+        if hasattr(self.main_app, 'execution_engine'):
+            if self.main_app.execution_engine.is_running:
+                return False, t("Cannot switch while execution is in progress")
+
+        return True, ""
+
+    def _update_settings_file(self, use_real, selected_port):
+        """Update settings.json with new hardware configuration"""
         if "hardware_config" not in self.settings:
             self.settings["hardware_config"] = {}
 
@@ -304,33 +365,131 @@ class HardwareSettingsPanel:
 
         self.settings["hardware_config"]["arduino_grbl"]["serial_port"] = selected_port
 
-        self.logger.debug(f" Settings updated in memory", category="gui")
-        self.logger.info(f" RESTART APPLICATION to apply hardware changes", category="gui")
-        self.logger.debug(f"{'='*60}\n", category="gui")
+        # Write to file
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(self.settings, f, indent=2)
+            self.logger.info(f"Settings saved to {self.settings_file}", category="gui")
+        except Exception as e:
+            self.logger.error(f"Error saving settings: {e}", category="gui")
 
-        # Show info message
-        from tkinter import messagebox
-        messagebox.showinfo(
-            t("Settings Applied"),
-            t("Hardware settings updated:\n\n"
-              "Mode: {mode}\n"
-              "Port: {port}\n\n"
-              "⚠️ Please RESTART the application\n"
-              "to switch hardware modes.",
-              mode=mode.upper(),
-              port=selected_port)
+    def _perform_hardware_switch(self, use_real, port):
+        """Perform the actual hardware switch"""
+        from hardware.interfaces.hardware_factory import switch_hardware_mode
+        from gui.dialogs.homing_dialog import HomingProgressDialog
+
+        state_manager = get_state_manager()
+
+        # Set machine state to switching
+        state_manager.set_state(MachineState.SWITCHING_MODE)
+
+        # Disable UI during switch
+        self._set_ui_enabled(False)
+        self.status_label.config(
+            text=t("Switching hardware mode..."),
+            fg='#9B59B6'  # Purple
         )
+        self.main_app.root.update()
 
-        # Disable buttons after applying
-        self.apply_btn.config(state=tk.DISABLED)
+        try:
+            # Switch hardware
+            new_hardware, success, error = switch_hardware_mode(use_real)
+
+            if not success:
+                state_manager.set_state(MachineState.ERROR, error)
+                messagebox.showerror(
+                    t("Hardware Switch Failed"),
+                    t("Failed to switch hardware:\n\n{error}", error=error)
+                )
+                self._set_ui_enabled(True)
+                self.update_ui_state()
+                return
+
+            # Update all references
+            self._update_hardware_references(new_hardware)
+
+            # If switching to real hardware, run homing
+            if use_real:
+                state_manager.set_state(MachineState.HOMING)
+
+                # Show homing dialog
+                homing_dialog = HomingProgressDialog(self.main_app.root, new_hardware)
+                homing_success, homing_error = homing_dialog.show()
+
+                if not homing_success:
+                    state_manager.set_state(MachineState.ERROR, homing_error)
+                    # Hardware is connected but homing failed
+                    # Keep real hardware mode but in error state
+                    self._set_ui_enabled(True)
+                    self.update_ui_state()
+                    return
+
+            # Success
+            state_manager.set_state(MachineState.IDLE)
+
+            self.logger.info(f"Hardware switched to {'Real' if use_real else 'Simulation'} mode", category="gui")
+
+            messagebox.showinfo(
+                t("Hardware Switched"),
+                t("Successfully switched to {mode} mode.",
+                  mode=t("Real Hardware") if use_real else t("Simulation"))
+            )
+
+        except Exception as e:
+            state_manager.set_state(MachineState.ERROR, str(e))
+            self.logger.error(f"Hardware switch error: {e}", category="gui")
+            messagebox.showerror(t("Error"), str(e))
+        finally:
+            self._set_ui_enabled(True)
+            self.apply_btn.config(state=tk.DISABLED)
+            self.update_ui_state()
+
+    def _update_hardware_references(self, new_hardware):
+        """Update all hardware references throughout the application"""
+        self.logger.debug("Updating hardware references...", category="gui")
+
+        # Update main app
+        self.main_app.hardware = new_hardware
+
+        # Update execution engine
+        if hasattr(self.main_app, 'execution_engine'):
+            self.main_app.execution_engine.hardware = new_hardware
+
+        # Update hardware status panel
+        if hasattr(self.main_app, 'hardware_status_panel'):
+            self.main_app.hardware_status_panel.hardware = new_hardware
+
+        # Update right panel (test controls)
+        if hasattr(self.main_app, 'right_panel'):
+            self.main_app.right_panel.refresh_hardware_reference()
+
+        # Set execution engine reference in hardware for sensor positioning
+        if hasattr(new_hardware, 'set_execution_engine_reference'):
+            new_hardware.set_execution_engine_reference(self.main_app.execution_engine)
+
+        # Update canvas manager if it has a hardware reference
+        if hasattr(self.main_app, 'canvas_manager'):
+            if hasattr(self.main_app.canvas_manager, 'hardware'):
+                self.main_app.canvas_manager.hardware = new_hardware
+
+        self.logger.debug("Hardware references updated", category="gui")
+
+    def _set_ui_enabled(self, enabled):
+        """Enable or disable UI elements during switch"""
+        state = tk.NORMAL if enabled else tk.DISABLED
+        self.sim_radio.config(state=state)
+        self.real_radio.config(state=state)
+        self.port_dropdown.config(state='readonly' if enabled else tk.DISABLED)
+        self.refresh_btn.config(state=state)
+        self.save_btn.config(state=state)
 
     def save_settings(self):
-        """Save settings to settings.json file"""
+        """Save settings to settings.json file (for next app launch)"""
         mode = self.mode_var.get()
         selected_port = self.port_var.get()
 
         self.logger.debug(f"\n{'='*60}", category="gui")
-        self.logger.debug("💾 SAVING HARDWARE SETTINGS TO CONFIG", category="gui")
+        self.logger.debug("SAVING HARDWARE SETTINGS TO CONFIG", category="gui")
         self.logger.debug(f"{'='*60}", category="gui")
         self.logger.debug(f"Mode: {mode.upper()}", category="gui")
         self.logger.debug(f"Port: {selected_port}", category="gui")
@@ -352,30 +511,26 @@ class HardwareSettingsPanel:
         try:
             with open(self.settings_file, 'w') as f:
                 json.dump(self.settings, f, indent=2)
-            self.logger.info(f" Settings saved to {self.settings_file}", category="gui")
-            self.logger.info(f" RESTART APPLICATION to apply hardware changes", category="gui")
+            self.logger.info(f"Settings saved to {self.settings_file}", category="gui")
             self.logger.debug(f"{'='*60}\n", category="gui")
 
             # Show success message
-            from tkinter import messagebox
             messagebox.showinfo(
                 t("Settings Saved"),
                 t("Hardware settings saved to config:\n\n"
                   "Mode: {mode}\n"
                   "Port: {port}\n\n"
-                  "⚠️ Please RESTART the application\n"
-                  "to switch hardware modes.",
+                  "Use 'Apply Settings' to switch now,\n"
+                  "or settings will be used on next app launch.",
                   mode=mode.upper(),
                   port=selected_port)
             )
 
-            # Disable buttons after saving
-            self.apply_btn.config(state=tk.DISABLED)
+            # Keep apply enabled but disable save
             self.save_btn.config(state=tk.DISABLED)
 
         except Exception as e:
-            self.logger.error(f" Error saving settings: {e}", category="gui")
-            from tkinter import messagebox
+            self.logger.error(f"Error saving settings: {e}", category="gui")
             messagebox.showerror(
                 t("Save Error"),
                 t("Failed to save settings:\n{error}", error=e)

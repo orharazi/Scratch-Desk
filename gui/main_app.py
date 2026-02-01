@@ -14,6 +14,7 @@ from core.translations import t
 from core.csv_parser import CSVParser
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.execution_engine import ExecutionEngine
+from core.machine_state import MachineState, get_state_manager
 from hardware.interfaces.hardware_factory import get_hardware_interface
 
 # Import GUI components
@@ -49,6 +50,10 @@ class ScratchDeskGUI:
 
         # Initialize hardware interface
         self.hardware = get_hardware_interface()
+
+        # Initialize machine state manager
+        self.state_manager = get_state_manager()
+        self.state_manager.add_observer(self._on_machine_state_changed)
 
         # Load settings
         self.settings = self.load_settings()
@@ -112,17 +117,26 @@ class ScratchDeskGUI:
         # Set execution engine reference in hardware for sensor positioning
         self.hardware.set_execution_engine_reference(self.execution_engine)
 
-        # Set initial position to motor home positions (0, 0)
-        # Motors start at home positions, not paper positions
-        self.hardware.move_x(0.0)  # Rows motor home position
-        self.hardware.move_y(0.0)  # Lines motor home position
-        self.canvas_manager.update_position_display()
+        # Check if we're using real hardware - if so, we need to run homing first
+        # Don't try to move motors before homing on real hardware
+        from hardware.implementations.real.real_hardware import RealHardware
+        self.is_real_hardware = isinstance(self.hardware, RealHardware)
+
+        if not self.is_real_hardware:
+            # Simulation mode - can move directly
+            self.hardware.move_x(0.0)  # Rows motor home position
+            self.hardware.move_y(0.0)  # Lines motor home position
+            self.canvas_manager.update_position_display()
 
         # Start position update timer
         self.schedule_position_update()
 
         # Initial load
         self.load_csv_file_by_path("data/sample_programs.csv")
+
+        # If using real hardware, schedule homing after GUI is fully loaded
+        if self.is_real_hardware:
+            self.root.after(500, self._run_startup_homing)
 
     def load_settings(self):
         """Load settings from config/settings.json"""
@@ -214,8 +228,84 @@ class ScratchDeskGUI:
 
     def schedule_position_update(self):
         """Schedule regular position updates"""
-        self.canvas_manager.update_position_display()
+        # Skip updates during sensitive operations
+        if self.state_manager.state not in [MachineState.HOMING, MachineState.SWITCHING_MODE]:
+            self.canvas_manager.update_position_display()
         self.root.after(500, self.schedule_position_update)  # Update every 500ms
+
+    def _on_machine_state_changed(self, old_state: MachineState, new_state: MachineState):
+        """Handle machine state changes"""
+        self.logger.debug(f"Machine state changed: {old_state.value} -> {new_state.value}", category="gui")
+
+        # Update UI based on state
+        if new_state == MachineState.HOMING:
+            self._disable_controls_during_operation()
+        elif new_state == MachineState.SWITCHING_MODE:
+            self._disable_controls_during_operation()
+        elif new_state == MachineState.IDLE:
+            self._enable_controls()
+        elif new_state == MachineState.ERROR:
+            self._enable_controls()
+            # Status panel will show error state
+
+    def _disable_controls_during_operation(self):
+        """Disable controls during homing or mode switching"""
+        # Disable execution controls in right panel
+        if hasattr(self, 'right_panel'):
+            self.right_panel.set_controls_enabled(False)
+
+    def _enable_controls(self):
+        """Re-enable controls after operation completes"""
+        # Re-enable execution controls in right panel
+        if hasattr(self, 'right_panel'):
+            self.right_panel.set_controls_enabled(True)
+
+    def _run_startup_homing(self):
+        """Run homing sequence on startup when using real hardware"""
+        from tkinter import messagebox
+        from gui.dialogs.homing_dialog import HomingProgressDialog
+
+        self.logger.info("Real hardware detected - starting homing sequence", category="gui")
+
+        # Ask user to confirm homing
+        if not messagebox.askyesno(
+            t("Homing Required"),
+            t("Real hardware mode is active.\n\n"
+              "The machine needs to be homed before operation.\n"
+              "This will:\n"
+              "1. Apply GRBL configuration\n"
+              "2. Check door is open\n"
+              "3. Lift line motor pistons\n"
+              "4. Run GRBL homing ($H)\n"
+              "5. Reset work coordinates\n"
+              "6. Lower line motor pistons\n\n"
+              "Make sure the machine is clear and ready.\n\n"
+              "Run homing now?")
+        ):
+            self.logger.warning("User skipped startup homing - machine not homed", category="gui")
+            messagebox.showwarning(
+                t("Warning"),
+                t("Machine was NOT homed.\n\n"
+                  "You can run homing later from the Hardware Test GUI\n"
+                  "or by switching hardware modes in the settings panel.")
+            )
+            return
+
+        # Set machine state to homing
+        self.state_manager.set_state(MachineState.HOMING)
+
+        # Show homing dialog
+        homing_dialog = HomingProgressDialog(self.root, self.hardware)
+        homing_success, homing_error = homing_dialog.show()
+
+        if homing_success:
+            self.state_manager.set_state(MachineState.IDLE)
+            self.logger.info("Startup homing completed successfully", category="gui")
+            # Update position display after homing
+            self.canvas_manager.update_position_display()
+        else:
+            self.state_manager.set_state(MachineState.ERROR, homing_error)
+            self.logger.error(f"Startup homing failed: {homing_error}", category="gui")
 
     def on_execution_status(self, status, info=None):
         """Handle execution status updates"""

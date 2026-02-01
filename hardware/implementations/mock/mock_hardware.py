@@ -1233,14 +1233,17 @@ class MockHardware:
         move_y(0.0)
         return True
 
-    def perform_complete_homing_sequence(self, progress_callback=None) -> bool:
+    def perform_complete_homing_sequence(self, progress_callback=None) -> tuple[bool, str]:
         """
         Perform complete homing sequence (mock implementation)
 
         Mock version simulates the full sequence without real hardware.
 
         Args:
-            progress_callback: Optional callback function(step_number, step_name, status)
+            progress_callback: Optional callback function(step_number, step_name, status, message=None)
+
+        Returns:
+            Tuple of (success: bool, error_message: str)
         """
         self.logger.info("="*60, category="hardware")
         self.logger.info("MOCK: Starting complete homing sequence", category="hardware")
@@ -1300,7 +1303,7 @@ class MockHardware:
 
         self.logger.success("MOCK: Complete homing sequence finished", category="hardware")
         self.logger.info("="*60, category="hardware")
-        return True
+        return True, ""
 
     def apply_grbl_configuration(self) -> bool:
         """Apply GRBL configuration (mock implementation)"""

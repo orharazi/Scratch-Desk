@@ -1361,8 +1361,12 @@ class UltimateHardwareTestGUI:
             text_label.pack(side=tk.LEFT, padx=5)
             step_labels[i] = text_label
 
+        # Status label below steps for waiting messages
+        waiting_label = ttk.Label(steps_frame, text="", font=("Arial", 10), foreground="orange", wraplength=450)
+        waiting_label.pack(pady=10)
+
         # Progress callback to update step status
-        def update_progress(step_number, step_name, status):
+        def update_progress(step_number, step_name, status, message=None):
             """Called from homing thread to update GUI"""
             def update_gui():
                 if step_number in step_status_labels:
@@ -1372,12 +1376,21 @@ class UltimateHardwareTestGUI:
                     if status == "running":
                         label.config(text="⏳", foreground="blue")
                         text_label.config(foreground="blue", font=("Arial", 10, "bold"))
+                        waiting_label.config(text="")  # Clear waiting message
                     elif status == "done":
                         label.config(text="✓", foreground="green")
                         text_label.config(foreground="green", font=("Arial", 10))
+                        waiting_label.config(text="")  # Clear waiting message
                     elif status == "error":
                         label.config(text="✗", foreground="red")
                         text_label.config(foreground="red", font=("Arial", 10, "bold"))
+                        waiting_label.config(text="")  # Clear waiting message
+                    elif status == "waiting":
+                        label.config(text="⏸", foreground="orange")
+                        text_label.config(foreground="orange", font=("Arial", 10, "bold"))
+                        # Show waiting message if provided
+                        if message:
+                            waiting_label.config(text=f"⚠ {message}")
 
             # Schedule GUI update on main thread
             self.root.after(0, update_gui)
@@ -1385,14 +1398,15 @@ class UltimateHardwareTestGUI:
         # Run homing in a separate thread to avoid blocking the GUI
         def homing_thread():
             success = False
-            error_msg = None
+            error_msg = ""
 
             try:
                 # Execute the complete homing sequence with progress callback
-                success = self.hardware.perform_complete_homing_sequence(progress_callback=update_progress)
+                # Returns tuple: (success: bool, error_message: str)
+                success, error_msg = self.hardware.perform_complete_homing_sequence(progress_callback=update_progress)
 
             except Exception as e:
-                error_msg = str(e)
+                error_msg = f"Unexpected exception: {str(e)}"
                 self.log("ERROR", t("Homing sequence error: {error}", error=error_msg))
 
             # Schedule completion on main thread (AFTER homing finishes)
@@ -1402,21 +1416,18 @@ class UltimateHardwareTestGUI:
                 progress_window.destroy()
 
                 # Now show result dialog AFTER progress window closes
-                if error_msg:
-                    messagebox.showerror(t("Homing Error"),
-                                        t("Error during homing: {error}", error=error_msg))
-                elif success:
+                if not success:
+                    # Show specific error message
+                    self.log("ERROR", t("Homing sequence failed: {error}", error=error_msg))
+                    messagebox.showerror(t("Homing Failed"),
+                                        t("Homing sequence failed!\n\nError: {error}", error=error_msg))
+                else:
                     self.log("SUCCESS", t("Complete homing sequence finished successfully!"))
                     # Force position update
                     self.update_position_display()
                     messagebox.showinfo(t("Homing Complete"),
                                        t("Homing sequence completed successfully!\n\n"
                                          "Machine is now at home position (0, 0)."))
-                else:
-                    self.log("ERROR", t("Homing sequence failed!"))
-                    messagebox.showerror(t("Homing Failed"),
-                                        t("Homing sequence failed.\n\n"
-                                          "Check the console for error details."))
 
             # Execute completion on main thread AFTER all steps are done
             self.root.after(0, finish_homing)

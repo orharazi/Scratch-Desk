@@ -96,6 +96,11 @@ class ArduinoGRBL:
         self.current_x = 0.0  # Current X position in mm
         self.current_y = 0.0  # Current Y position in mm
 
+        # Position verification settings (from config or defaults)
+        self.position_tolerance = self.grbl_config.get("position_tolerance_cm", 0.1)  # cm
+        self.movement_timeout = self.grbl_config.get("movement_timeout", 60.0)  # seconds
+        self.movement_poll_interval = self.grbl_config.get("movement_poll_interval", 0.1)  # seconds
+
         # For change detection (only log when values change)
         self._last_logged_x = None
         self._last_logged_y = None
@@ -228,6 +233,17 @@ class ArduinoGRBL:
         """Initialize GRBL with required settings"""
         self.logger.info("Initializing GRBL...", category="grbl")
 
+        # IMPORTANT: Apply GRBL configuration from settings.json FIRST
+        # This ensures the machine has correct settings before any movement/homing
+        self.logger.info("Applying GRBL configuration from settings.json...", category="grbl")
+        if self.apply_grbl_configuration():
+            self.logger.success("GRBL configuration applied successfully", category="grbl")
+        else:
+            self.logger.warning("Failed to apply some GRBL configuration settings", category="grbl")
+
+        # Small delay to ensure settings are written to EEPROM
+        time.sleep(0.3)
+
         # Set positioning mode (absolute/relative)
         positioning_mode = self.grbl_settings.get("positioning_mode", "G90")
         self._send_command(positioning_mode)
@@ -337,7 +353,7 @@ class ArduinoGRBL:
             self.logger.error(f"Error sending command: {e}", category="grbl")
             return None
 
-    def move_to(self, x: float, y: float, rapid: bool = False) -> bool:
+    def move_to(self, x: float, y: float, rapid: bool = False, wait_for_completion: bool = True) -> bool:
         """
         Move to absolute position
 
@@ -345,6 +361,7 @@ class ArduinoGRBL:
             x: Target X position in cm (will be converted to mm for GRBL)
             y: Target Y position in cm (will be converted to mm for GRBL)
             rapid: Use rapid movement (G0) instead of feed rate (G1)
+            wait_for_completion: If True, blocks until motor reaches target position (default True)
 
         Returns:
             True if successful, False otherwise
@@ -378,10 +395,31 @@ class ArduinoGRBL:
             response = self._send_command(command)
 
             if response and "ok" in response.lower():
-                self.current_x = x
-                self.current_y = y
-                self.logger.success(f"✓ Moved to X={x:.2f}cm, Y={y:.2f}cm (GRBL X{x_mm:.1f}mm, Y{y_mm:.1f}mm)", category="grbl")
-                return True
+                # Command was accepted by GRBL
+                self.logger.debug(f"GRBL accepted move command", category="grbl")
+
+                if wait_for_completion:
+                    # Wait for actual movement to complete
+                    self.logger.debug(f"Waiting for motor to reach position...", category="grbl")
+                    if self.wait_for_movement_complete(x, y):
+                        self.current_x = x
+                        self.current_y = y
+                        self.logger.success(f"✓ Movement complete: X={x:.2f}cm, Y={y:.2f}cm", category="grbl")
+                        return True
+                    else:
+                        self.logger.error(f"Movement did not complete properly", category="grbl")
+                        # Update position from GRBL status anyway
+                        status = self.get_status(log_changes_only=False)
+                        if status:
+                            self.current_x = status.get('x', self.current_x)
+                            self.current_y = status.get('y', self.current_y)
+                        return False
+                else:
+                    # Don't wait - just update expected position
+                    self.current_x = x
+                    self.current_y = y
+                    self.logger.success(f"✓ Move command sent: X={x:.2f}cm, Y={y:.2f}cm (not waiting)", category="grbl")
+                    return True
             else:
                 self.logger.warning(f"Move command failed: {response}", category="grbl")
                 return False
@@ -535,6 +573,96 @@ class ArduinoGRBL:
         except Exception as e:
             self.logger.error(f"Error getting status: {e}", category="grbl")
             return None
+
+    def wait_for_movement_complete(self, target_x: float, target_y: float, timeout: float = None) -> bool:
+        """
+        Wait for GRBL to complete movement to target position.
+
+        Polls GRBL status until:
+        1. State is "Idle" (not "Run" or "Home")
+        2. Position is within tolerance of target
+
+        Args:
+            target_x: Target X position in cm
+            target_y: Target Y position in cm
+            timeout: Maximum wait time in seconds (uses default if None)
+
+        Returns:
+            True if movement completed successfully, False on timeout or error
+        """
+        if not self.is_connected:
+            return False
+
+        if timeout is None:
+            timeout = self.movement_timeout
+
+        start_time = time.time()
+        last_log_time = 0
+
+        self.logger.debug(f"Waiting for movement to complete: target X={target_x:.2f}cm, Y={target_y:.2f}cm", category="grbl")
+
+        while (time.time() - start_time) < timeout:
+            status = self.get_status(log_changes_only=True)
+
+            if not status:
+                time.sleep(self.movement_poll_interval)
+                continue
+
+            current_state = status.get('state', 'Unknown')
+            current_x = status.get('x', 0.0)
+            current_y = status.get('y', 0.0)
+
+            # Log progress every 2 seconds
+            current_time = time.time()
+            if current_time - last_log_time >= 2.0:
+                distance_remaining = ((target_x - current_x)**2 + (target_y - current_y)**2)**0.5
+                self.logger.debug(f"Movement progress: X={current_x:.2f}cm, Y={current_y:.2f}cm, "
+                                 f"distance remaining: {distance_remaining:.2f}cm, state: {current_state}",
+                                 category="grbl")
+                last_log_time = current_time
+
+            # Check if GRBL is idle
+            if current_state == 'Idle':
+                # Verify position is within tolerance
+                x_ok = abs(current_x - target_x) <= self.position_tolerance
+                y_ok = abs(current_y - target_y) <= self.position_tolerance
+
+                if x_ok and y_ok:
+                    self.logger.debug(f"Movement complete: arrived at X={current_x:.2f}cm, Y={current_y:.2f}cm", category="grbl")
+                    return True
+                else:
+                    # GRBL is idle but not at target - this could be a problem
+                    self.logger.warning(
+                        f"GRBL idle but not at target position. "
+                        f"Current: ({current_x:.2f}, {current_y:.2f}), "
+                        f"Target: ({target_x:.2f}, {target_y:.2f}), "
+                        f"Tolerance: {self.position_tolerance}cm",
+                        category="grbl"
+                    )
+                    # Still return True since GRBL is idle - movement is complete even if position differs
+                    return True
+
+            elif current_state == 'Alarm':
+                self.logger.error("GRBL entered ALARM state during movement!", category="grbl")
+                return False
+
+            # Still running, wait before next poll
+            time.sleep(self.movement_poll_interval)
+
+        # Timeout reached
+        elapsed = time.time() - start_time
+        status = self.get_status(log_changes_only=False)
+        if status:
+            self.logger.error(
+                f"Movement timeout after {elapsed:.1f}s. "
+                f"Current position: X={status.get('x', 0):.2f}cm, Y={status.get('y', 0):.2f}cm, "
+                f"Target: X={target_x:.2f}cm, Y={target_y:.2f}cm, State: {status.get('state', 'Unknown')}",
+                category="grbl"
+            )
+        else:
+            self.logger.error(f"Movement timeout after {elapsed:.1f}s - no status available", category="grbl")
+
+        return False
 
     def stop(self) -> bool:
         """
@@ -737,7 +865,7 @@ class ArduinoGRBL:
             self.logger.warning(f"Applied {success_count} settings, {fail_count} failed", category="grbl")
             return False
 
-    def perform_complete_homing_sequence(self, hardware_interface=None, progress_callback=None) -> bool:
+    def perform_complete_homing_sequence(self, hardware_interface=None, progress_callback=None) -> tuple[bool, str]:
         """
         Perform complete homing sequence with door check and line motor management
 
@@ -752,15 +880,16 @@ class ArduinoGRBL:
 
         Args:
             hardware_interface: Reference to hardware interface (for piston control)
-            progress_callback: Optional callback function(step_number, step_name, status) to report progress
-                             status can be: 'running', 'done', 'error'
+            progress_callback: Optional callback function(step_number, step_name, status, message=None) to report progress
+                             status can be: 'running', 'done', 'error', 'waiting'
 
         Returns:
-            True if homing completed successfully, False otherwise
+            Tuple of (success: bool, error_message: str)
         """
         if not self.is_connected:
-            self.logger.error("Not connected to GRBL", category="grbl")
-            return False
+            error_msg = "Not connected to GRBL"
+            self.logger.error(error_msg, category="grbl")
+            return False, error_msg
 
         try:
             self.logger.info("="*60, category="grbl")
@@ -771,25 +900,75 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(1, "Apply GRBL configuration", "running")
             self.logger.info("Step 1: Applying GRBL configuration from settings.json...", category="grbl")
+
+            # First, send a soft reset to ensure GRBL is in a clean state
+            self.logger.info("Sending soft reset to GRBL...", category="grbl")
+            try:
+                self.serial_connection.write(b'\x18')  # Ctrl+X soft reset
+                self.serial_connection.flush()
+                time.sleep(self._grbl_reset_delay)  # Wait for GRBL to reset and initialize
+                self.serial_connection.flushInput()  # Clear any startup messages
+                self.logger.info("Soft reset sent, GRBL should be ready", category="grbl")
+            except Exception as e:
+                self.logger.warning(f"Soft reset warning (non-fatal): {e}", category="grbl")
+
+            # Check current GRBL state and clear alarm if needed
+            status = self.get_status(log_changes_only=False)
+            if status:
+                current_state = status.get('state', 'Unknown')
+                self.logger.info(f"Current GRBL state: {current_state}", category="grbl")
+                if 'Alarm' in current_state:
+                    self.logger.warning("GRBL is in Alarm state, attempting to clear with $X...", category="grbl")
+                    unlock_response = self._send_command("$X")
+                    self.logger.info(f"Unlock response: {unlock_response}", category="grbl")
+                    time.sleep(0.5)
+
+            # Now apply the GRBL configuration
             if not self.apply_grbl_configuration():
-                self.logger.error("Failed to apply GRBL configuration", category="grbl")
+                error_msg = "Failed to apply GRBL configuration from settings.json"
+                self.logger.error(error_msg, category="grbl")
                 if progress_callback:
                     progress_callback(1, "Apply GRBL configuration", "error")
-                return False
+                return False, error_msg
+
+            # Small delay to ensure all settings are written to EEPROM
+            time.sleep(0.5)
+            self.logger.info("GRBL configuration applied successfully", category="grbl")
+
             if progress_callback:
                 progress_callback(1, "Apply GRBL configuration", "done")
 
-            # Step 2: Check door is open
+            # Step 2: Check door is open (wait for user to open if closed)
             if progress_callback:
                 progress_callback(2, "Check door is open", "running")
             self.logger.info("Step 2: Checking door sensor...", category="grbl")
             if hardware_interface:
                 door_state = hardware_interface.get_door_sensor()
                 if door_state:
-                    self.logger.error("SAFETY ERROR: Door is closed! Open the door before homing.", category="grbl")
+                    # Door is closed - wait for user to open it
+                    self.logger.warning("Door is closed! Waiting for door to be opened...", category="grbl")
                     if progress_callback:
-                        progress_callback(2, "Check door is open", "error")
-                    return False
+                        progress_callback(2, "Check door is open", "waiting", "Door is closed - please open the door to continue")
+
+                    # Poll door sensor until it opens (check every 0.5 seconds)
+                    max_wait = 300  # 5 minutes maximum wait
+                    wait_time = 0
+                    while door_state and wait_time < max_wait:
+                        time.sleep(0.5)
+                        wait_time += 0.5
+                        door_state = hardware_interface.get_door_sensor()
+                        if not door_state:
+                            break
+
+                    # Check if door was opened or timeout
+                    if door_state:
+                        error_msg = "Timeout waiting for door to open (waited 5 minutes)"
+                        self.logger.error(error_msg, category="grbl")
+                        if progress_callback:
+                            progress_callback(2, "Check door is open", "error")
+                        return False, error_msg
+
+                    self.logger.success("Door opened - safe to proceed", category="grbl")
                 else:
                     self.logger.success("Door is open - safe to proceed", category="grbl")
             else:
@@ -807,10 +986,11 @@ class ArduinoGRBL:
                 self.logger.info(f"Piston up result: {result}", category="grbl")
 
                 if not result:
-                    self.logger.error("Failed to lift line motor pistons", category="grbl")
+                    error_msg = "Failed to lift line motor pistons"
+                    self.logger.error(error_msg, category="grbl")
                     if progress_callback:
                         progress_callback(3, "Lift line motor pistons", "error")
-                    return False
+                    return False, error_msg
 
                 self.logger.success("✓ Line motor pistons commanded UP", category="grbl")
                 self.logger.info("Waiting 2 seconds for pistons to fully lift...", category="grbl")
@@ -835,8 +1015,8 @@ class ArduinoGRBL:
 
             # Check for OK response (command accepted)
             if not response or "ok" not in response.lower():
-                self.logger.error("GRBL homing command failed or timed out", category="grbl")
-                self.logger.error(f"Response: {response}", category="grbl")
+                error_msg = f"GRBL homing command failed or timed out. Response: {response}"
+                self.logger.error(error_msg, category="grbl")
 
                 if progress_callback:
                     progress_callback(4, "Run GRBL homing ($H)", "error")
@@ -846,7 +1026,7 @@ class ArduinoGRBL:
                     self.logger.info("Lowering line motor pistons...", category="grbl")
                     hardware_interface.line_motor_piston_down()
 
-                return False
+                return False, error_msg
 
             self.logger.success("GRBL homing command accepted - waiting for homing to complete...", category="grbl")
 
@@ -855,6 +1035,7 @@ class ArduinoGRBL:
             max_wait_time = homing_timeout + 5.0  # Extra buffer time
             start_time = time.time()
             homing_complete = False
+            last_state = None
 
             while (time.time() - start_time) < max_wait_time:
                 time.sleep(0.5)  # Poll every 500ms
@@ -862,6 +1043,7 @@ class ArduinoGRBL:
 
                 if status:
                     current_state = status.get('state', 'Unknown')
+                    last_state = current_state
                     self.logger.debug(f"Homing status check: {current_state}", category="grbl")
 
                     if current_state == 'Idle':
@@ -871,7 +1053,8 @@ class ArduinoGRBL:
                         break
                     elif current_state == 'Alarm':
                         # Homing failed
-                        self.logger.error("GRBL entered ALARM state during homing!", category="grbl")
+                        error_msg = "GRBL entered ALARM state during homing - check limit switches and machine setup"
+                        self.logger.error(error_msg, category="grbl")
                         break
                     elif current_state in ['Home', 'Run']:
                         # Still homing, continue waiting
@@ -882,7 +1065,14 @@ class ArduinoGRBL:
                         self.logger.warning(f"Unexpected state during homing: {current_state}", category="grbl")
 
             if not homing_complete:
-                self.logger.error("Homing did not complete successfully!", category="grbl")
+                if last_state == 'Alarm':
+                    error_msg = "GRBL homing failed - GRBL is in ALARM state (check limit switches and machine configuration)"
+                elif last_state:
+                    error_msg = f"GRBL homing did not complete - machine stuck in '{last_state}' state"
+                else:
+                    error_msg = "GRBL homing timed out - no response from GRBL controller"
+
+                self.logger.error(error_msg, category="grbl")
                 if progress_callback:
                     progress_callback(4, "Run GRBL homing ($H)", "error")
 
@@ -891,7 +1081,7 @@ class ArduinoGRBL:
                     self.logger.info("Lowering line motor pistons...", category="grbl")
                     hardware_interface.line_motor_piston_down()
 
-                return False
+                return False, error_msg
 
             # Mark homing as done ONLY after it's actually complete
             if progress_callback:
@@ -944,10 +1134,11 @@ class ArduinoGRBL:
             self.logger.success("COMPLETE HOMING SEQUENCE FINISHED SUCCESSFULLY", category="grbl")
             self.logger.info("="*60, category="grbl")
 
-            return True
+            return True, ""
 
         except Exception as e:
-            self.logger.error(f"Error during homing sequence: {e}", category="grbl")
+            error_msg = f"Unexpected error during homing sequence: {str(e)}"
+            self.logger.error(error_msg, category="grbl")
 
             # Safety: try to lower pistons
             if hardware_interface:
@@ -957,7 +1148,7 @@ class ArduinoGRBL:
                 except:
                     pass
 
-            return False
+            return False, error_msg
 
     def disconnect(self):
         """

@@ -870,3 +870,36 @@ class RightPanel:
             except tk.TclError:
                 # Some widgets don't support state, skip them
                 pass
+
+    def set_controls_enabled(self, enabled: bool):
+        """Enable or disable execution controls (used during homing/mode switching)"""
+        state = tk.NORMAL if enabled else tk.DISABLED
+
+        # Execution buttons
+        if hasattr(self, 'run_btn') and self.main_app.steps:
+            self.run_btn.config(state=state if enabled else tk.DISABLED)
+        if hasattr(self, 'pause_btn'):
+            self.pause_btn.config(state=tk.DISABLED)  # Always disabled unless running
+        if hasattr(self, 'stop_btn'):
+            self.stop_btn.config(state=tk.DISABLED)  # Always disabled unless running
+        if hasattr(self, 'reset_btn'):
+            self.reset_btn.config(state=state)
+
+        # Navigation buttons
+        if hasattr(self, 'prev_btn'):
+            self.prev_btn.config(state=tk.DISABLED)  # Keep disabled unless steps loaded
+        if hasattr(self, 'next_btn'):
+            self.next_btn.config(state=tk.DISABLED if not enabled else (tk.NORMAL if self.main_app.steps else tk.DISABLED))
+
+        # Generate steps button
+        if hasattr(self, 'gen_steps_btn'):
+            self.gen_steps_btn.config(state=state)
+
+        # Test controls frame
+        if hasattr(self, 'test_controls_frame'):
+            self._set_frame_state(self.test_controls_frame, state)
+
+    def refresh_hardware_reference(self):
+        """Update hardware reference after hot-swap"""
+        self.hardware = self.main_app.hardware
+        self.update_test_controls_state()
