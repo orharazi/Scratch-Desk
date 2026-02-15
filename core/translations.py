@@ -743,6 +743,23 @@ HEBREW_TRANSLATIONS = {
     "Homing error: {error}": "שגיאת ביות: {error}",
 
     # ============================================================================
+    # HOMING DIALOG
+    # ============================================================================
+    "Homing in Progress": "ביות בתהליך",
+    "Homing in Progress...": "ביות בתהליך...",
+    "1. Apply GRBL configuration": "1. החלת הגדרות GRBL",
+    "2. Check door is open": "2. בדיקה שהדלת פתוחה",
+    "3. Lift line motor pistons": "3. הרמת בוכנות מנוע שורות",
+    "4. Run GRBL homing ($H)": "4. הפעלת ביות GRBL ($H)",
+    "5. Reset work coordinates to (0,0)": "5. איפוס קואורדינטות עבודה ל-(0,0)",
+    "6. Lower line motor pistons": "6. הורדת בוכנות מנוע שורות",
+    "Homing Failed": "הביות נכשל",
+    "Homing sequence failed!\n\nError: {error}": "תהליך הביות נכשל!\n\nשגיאה: {error}",
+    "Homing Complete": "הביות הושלם",
+    "Homing sequence completed successfully!\n\nMachine is now at home position (0, 0).": "תהליך הביות הושלם בהצלחה!\n\nהמכונה נמצאת כעת במיקום בית (0, 0).",
+    "Door is closed - please open the door to continue": "הדלת סגורה - נא לפתוח את הדלת כדי להמשיך",
+
+    # ============================================================================
     # ADMIN TOOL - Piston Control Messages
     # ============================================================================
     "Raising {name}": "מרים {name}",

@@ -358,13 +358,13 @@ class ProgramPanel:
             return
 
         p = self.main_app.current_program
-        # Use RLM + RLE for Hebrew program name in entry field to force RTL direction
+        # Use RLI (Right-to-Left Isolate) for Hebrew program name in entry field
+        # RLI/PDI are modern Unicode 6.3 isolate chars with better platform support than RLE/PDF
         # (cannot use rtl/get_display here as it reorders chars, breaking read-back)
-        RLM = '\u200F'  # Right-to-Left Mark
-        RLE = '\u202B'  # Right-to-Left Embedding
-        PDF = '\u202C'  # Pop Directional Formatting
+        RLI = '\u2067'  # Right-to-Left Isolate
+        PDI = '\u2069'  # Pop Directional Isolate
         field_values = {
-            'program_name': f"{RLM}{RLE}{p.program_name}{PDF}",
+            'program_name': f"{RLI}{p.program_name}{PDI}",
             'program_number': str(p.program_number),
             'high': str(p.high),
             'number_of_lines': str(p.number_of_lines),
@@ -422,8 +422,10 @@ class ProgramPanel:
 
     def _strip_rtl_chars(self, text):
         """Strip RTL control characters from text for saving"""
-        # Remove RLE, PDF, RLM, LRM control characters
-        return text.replace('\u202B', '').replace('\u202C', '').replace('\u200F', '').replace('\u200E', '').strip()
+        # Remove RLE, PDF, RLM, LRM, RLI, PDI control characters
+        return (text.replace('\u202B', '').replace('\u202C', '')
+                    .replace('\u200F', '').replace('\u200E', '')
+                    .replace('\u2067', '').replace('\u2069', '').strip())
 
     def _build_program_from_fields(self):
         """Build a temporary ScratchDeskProgram from current field values for validation"""

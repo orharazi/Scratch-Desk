@@ -94,6 +94,11 @@ class ExecutionController:
                     self.main_app.program_panel.set_locked(False)
             except Exception as e:
                 self.logger.error(f"Failed to unlock panel: {e}", category="gui")
+            finally:
+                # Fail-safe: ALWAYS unlock program panel for terminal states
+                if hasattr(self.main_app, 'program_panel'):
+                    self.main_app.program_panel.set_locked(False)
+            return  # Terminal states fully handled above
 
         if hasattr(self.main_app, 'progress_label'):
             if status == 'running':
@@ -647,14 +652,13 @@ class ExecutionController:
             # Separator
             tk.Frame(main_frame, bg=accent, height=3).pack(fill=tk.X, pady=(0, 15))
 
-            # Message
+            # Message (use explicit line breaks - wraplength breaks RTL visual reordering)
             tk.Label(
                 main_frame,
-                text=rtl("\u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05d4\u05d5\u05d6\u05d6 \u05dc\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d4\u05ea\u05d7\u05dc\u05d4.\n\n\u05d0\u05e0\u05d0 \u05e1\u05d2\u05d5\u05e8 \u05d0\u05ea \u05d3\u05dc\u05ea \u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05db\u05d3\u05d9 \u05dc\u05d4\u05de\u05e9\u05d9\u05da \u05d1\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea."),
+                text=rtl("\u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05d4\u05d5\u05d6\u05d6 \u05dc\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d4\u05ea\u05d7\u05dc\u05d4.\n\n\u05d0\u05e0\u05d0 \u05e1\u05d2\u05d5\u05e8 \u05d0\u05ea \u05d3\u05dc\u05ea \u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea\n\u05db\u05d3\u05d9 \u05dc\u05d4\u05de\u05e9\u05d9\u05da \u05d1\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea."),
                 font=('Arial', 14),
                 fg='white',
                 bg=bg,
-                wraplength=600,
                 justify=tk.RIGHT,
                 anchor='e'
             ).pack(pady=(0, 20), fill=tk.X)
@@ -666,7 +670,6 @@ class ExecutionController:
                 font=('Arial', 13, 'bold'),
                 fg='#66cc66',
                 bg=bg,
-                wraplength=600,
                 justify=tk.RIGHT,
                 anchor='e'
             ).pack(pady=(0, 25), fill=tk.X)

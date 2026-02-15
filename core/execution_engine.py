@@ -105,12 +105,12 @@ class ExecutionEngine:
         self.hardware.set_execution_engine_reference(self)
 
         # Start execution thread
-        self.execution_thread = threading.Thread(target=self._execution_loop, daemon=False)
+        self.execution_thread = threading.Thread(target=self._execution_loop, daemon=True)
         self.execution_thread.start()
 
         # Start safety monitoring thread
         self.safety_monitor_stop.clear()
-        self.safety_monitor_thread = threading.Thread(target=self._safety_monitor_loop, daemon=False)
+        self.safety_monitor_thread = threading.Thread(target=self._safety_monitor_loop, daemon=True)
         self.safety_monitor_thread.start()
 
         self.logger.info("Execution started with real-time safety monitoring", category="execution")
@@ -209,10 +209,10 @@ class ExecutionEngine:
         # Clean up threads if they're still around
         if self.execution_thread and self.execution_thread.is_alive():
             self.logger.warning("Warning: Execution thread still alive during reset - waiting for cleanup", category="execution")
-            self.execution_thread.join(timeout=1.0)
+            self.execution_thread.join(timeout=0.5)
         if self.safety_monitor_thread and self.safety_monitor_thread.is_alive():
             self.logger.warning("Warning: Safety monitor thread still alive during reset - waiting for cleanup", category="execution")
-            self.safety_monitor_thread.join(timeout=1.0)
+            self.safety_monitor_thread.join(timeout=0.5)
 
         self.execution_thread = None
         self.safety_monitor_thread = None

@@ -688,6 +688,16 @@ class ControlsPanel:
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)
 
+            # Reset all operation states to pending so canvas shows fresh colors
+            if hasattr(self.main_app, 'operation_states'):
+                for state_dict in self.main_app.operation_states.values():
+                    for key in state_dict:
+                        state_dict[key] = 'pending'
+
+            # Refresh canvas colors to reflect pending state
+            if hasattr(self.main_app, 'canvas_manager'):
+                self.main_app.canvas_manager.refresh_work_lines_colors()
+
             # Update step display to show step 1 again
             self.update_step_display()
 
@@ -759,7 +769,7 @@ class ControlsPanel:
             self.main_app.operation_label.config(text=t("Execution Stopped - press Run to restart"), fg='orange')
     
     def auto_reload_after_completion(self):
-        """Show success for 5 seconds, then auto-reload program for next run"""
+        """Show success message and immediately unlock for next run"""
         # Show success state
         self.progress_label.config(text=t("Program Completed Successfully!"), fg='green')
         self.main_app.operation_label.config(text=t("Program Completed Successfully!"), fg='green')
@@ -768,19 +778,19 @@ class ControlsPanel:
             self.main_app.progress['value'] = 100
             self.main_app.progress_text.config(text=t("100% Complete - Success!"))
 
-        # Disable all buttons during success display
-        self.run_btn.config(state=tk.DISABLED)
-        self.pause_btn.config(state=tk.DISABLED)
-        self.stop_btn.config(state=tk.DISABLED)
-        self.reset_btn.config(state=tk.DISABLED)
-
-        # After 5 seconds, reload for next run
-        self.main_app.root.after(5000, self._reload_after_success)
-
-    def _reload_after_success(self):
-        """Called after 5s success display - prepares program for next run"""
+        # Unlock immediately so user can interact right away
         self._prepare_for_new_run()
-        self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
+
+        # After 5 seconds, update labels to "ready" state (cosmetic only)
+        self.main_app.root.after(5000, self._update_labels_after_success)
+
+    def _update_labels_after_success(self):
+        """Called after 5s success display - updates labels to ready state (cosmetic only)"""
+        try:
+            self.progress_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
+            self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
+        except Exception:
+            pass  # Widget may have been destroyed
 
     def reset_execution(self, clear_steps=False):
         """Reset execution and UI state

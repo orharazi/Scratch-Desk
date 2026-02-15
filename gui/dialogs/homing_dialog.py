@@ -161,7 +161,7 @@ class HomingProgressDialog:
                 status_label.config(text="⏸", foreground="orange")
                 text_label.config(foreground="orange", font=("Arial", 10, "bold"))
                 if message:
-                    self.waiting_label.config(text=f"⚠ {message}")
+                    self.waiting_label.config(text=f"⚠ {t(message)}")
 
         # Schedule GUI update on main thread
         self.parent.after(0, update_gui)
