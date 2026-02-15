@@ -296,6 +296,31 @@ class RealHardware:
 
         return self.gpio.line_motor_piston_up()
 
+    # ========== AIR PRESSURE VALVE CONTROL ==========
+
+    def air_pressure_valve_down(self) -> bool:
+        """Open air pressure valve (allow air flow)"""
+        if not self.is_initialized or not self.gpio:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.gpio.air_pressure_valve_down()
+
+    def air_pressure_valve_up(self) -> bool:
+        """Close air pressure valve (stop air flow)"""
+        if not self.is_initialized or not self.gpio:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.gpio.air_pressure_valve_up()
+
+    def get_air_pressure_valve_state(self) -> str:
+        """Get air pressure valve state"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+
+        return self.gpio.get_air_pressure_valve_state()
+
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
         if not self.is_initialized or not self.gpio:

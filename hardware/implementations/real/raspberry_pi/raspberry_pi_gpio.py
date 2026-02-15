@@ -427,6 +427,20 @@ class RaspberryPiGPIO:
         """Extend line motor piston (both sides move together - single GPIO control)"""
         return self.piston_down("line_motor_piston")
 
+    # ========== AIR PRESSURE VALVE CONTROL ==========
+
+    def air_pressure_valve_down(self) -> bool:
+        """Open air pressure valve (allow air flow)"""
+        return self.piston_down("air_pressure_valve")
+
+    def air_pressure_valve_up(self) -> bool:
+        """Close air pressure valve (stop air flow)"""
+        return self.piston_up("air_pressure_valve")
+
+    def get_air_pressure_valve_state(self) -> str:
+        """Get air pressure valve state based on GPIO pin state"""
+        return self.get_piston_pin_state("air_pressure_valve")
+
     # ========== SENSOR READING METHODS ==========
 
     def _read_with_debounce(self, pin_or_channel, is_rs485=False, sensor_name=None, samples=None, delay=None):
