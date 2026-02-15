@@ -65,8 +65,8 @@ class ProgramPanel:
             self.toggle_btn.config(text="◄")
             title = t("NEW PROGRAM") if self._creating_new_program else t("PROGRAM CONTROL")
             self.title_label.config(text=title)
-            self.main_app.program_frame.configure(width=200)
-            self.main_app.root.grid_columnconfigure(2, minsize=140, weight=0)
+            self.main_app.program_frame.configure(width=280)
+            self.main_app.root.grid_columnconfigure(2, minsize=220, weight=0)
         else:
             # Collapse
             self.content_frame.pack_forget()
@@ -87,18 +87,21 @@ class ProgramPanel:
         self.load_csv_btn.pack(fill=tk.X)
 
         self.current_file_label = tk.Label(file_frame, text=t("No file loaded"),
-                                          wraplength=120, bg='lightgray', fg='black', font=('Arial', 8))
-        self.current_file_label.pack(pady=(3,0))
+                                          wraplength=200, bg='lightgray', fg='black', font=('Arial', 8), anchor='e', justify='right')
+        self.current_file_label.pack(pady=(3,0), fill=tk.X)
 
     def create_program_selection(self):
         """Create program selection dropdown"""
         tk.Label(self.content_frame, text=t("Program Selection:"), font=('Arial', 9, 'bold'),
-                bg='lightgray', fg='black').pack(pady=(5,2))
+                bg='lightgray', fg='black', anchor='e').pack(pady=(5,2), fill=tk.X, padx=10)
 
         self.program_var = tk.StringVar()
+        # Configure RTL style for combobox
+        style = ttk.Style()
+        style.configure('RTL.TCombobox', justify='right')
         self.program_combo = ttk.Combobox(self.content_frame, textvariable=self.program_var,
-                                         state='readonly', width=15, font=('Arial', 9))
-        self.program_combo.pack(padx=10, pady=3)
+                                         state='readonly', width=22, font=('Arial', 9), style='RTL.TCombobox', justify='right')
+        self.program_combo.pack(padx=10, pady=3, fill=tk.X)
         self.program_combo.bind('<<ComboboxSelected>>', self.on_program_selected)
 
     def create_input_fields(self):
@@ -157,7 +160,9 @@ class ProgramPanel:
         row = 1
         for label_text, field_name, width in fields:
             # RTL layout: entry on left (col 0), label on right (col 1)
-            entry = tk.Entry(self.input_frame, width=8, font=('Arial', 9), justify='right')
+            # Program name needs wider field for Hebrew text
+            entry_width = 18 if field_name == 'program_name' else 8
+            entry = tk.Entry(self.input_frame, width=entry_width, font=('Arial', 9), justify='right')
             entry.grid(row=row, column=0, sticky="ew", pady=2, padx=(0,5))
             entry.bind('<KeyRelease>', self.on_field_change)
 
@@ -228,7 +233,7 @@ class ProgramPanel:
 
         # Title
         tk.Label(paper_size_frame, text=t("📐 ACTUAL PAPER SIZE (With Repeats)"),
-                font=('Arial', 8, 'bold'), bg='lightsteelblue', fg='darkblue', wraplength=130).pack(pady=3)
+                font=('Arial', 8, 'bold'), bg='lightsteelblue', fg='darkblue', wraplength=220).pack(pady=3)
 
         # Pattern size section
         pattern_frame = tk.Frame(paper_size_frame, bg='lightsteelblue')
@@ -291,7 +296,9 @@ class ProgramPanel:
 
     def update_program_list(self):
         """Update the program selection combo box"""
-        program_names = [f"{p.program_number}. {p.program_name}"
+        # Use RLM (Right-to-Left Mark) for proper Hebrew display
+        RLM = '\u200F'
+        program_names = [f"{RLM}{p.program_name} .{p.program_number}"
                         for p in self.main_app.programs]
         self.program_combo['values'] = program_names
 
@@ -353,8 +360,11 @@ class ProgramPanel:
             return
 
         p = self.main_app.current_program
+        # Use RLE (Right-to-Left Embedding) for Hebrew program name display
+        RLE = '\u202B'  # Right-to-Left Embedding
+        PDF = '\u202C'  # Pop Directional Formatting
         field_values = {
-            'program_name': str(p.program_name),
+            'program_name': f"{RLE}{p.program_name}{PDF}",
             'program_number': str(p.program_number),
             'high': str(p.high),
             'number_of_lines': str(p.number_of_lines),
@@ -410,13 +420,18 @@ class ProgramPanel:
             error_text = translated_error if len(translated_error) < 50 else translated_error[:50] + "..."
             self.validation_text.config(text=error_text)
 
+    def _strip_rtl_chars(self, text):
+        """Strip RTL control characters from text for saving"""
+        # Remove RLE, PDF, RLM, LRM control characters
+        return text.replace('\u202B', '').replace('\u202C', '').replace('\u200F', '').replace('\u200E', '').strip()
+
     def _build_program_from_fields(self):
         """Build a temporary ScratchDeskProgram from current field values for validation"""
         from core.program_model import ScratchDeskProgram
         try:
             return ScratchDeskProgram(
                 program_number=int(self.program_fields['program_number'].get() or 0),
-                program_name=self.program_fields['program_name'].get(),
+                program_name=self._strip_rtl_chars(self.program_fields['program_name'].get()),
                 high=float(self.program_fields['high'].get() or 0),
                 number_of_lines=int(self.program_fields['number_of_lines'].get() or 0),
                 top_padding=float(self.program_fields['top_padding'].get() or 0),
@@ -451,8 +466,8 @@ class ProgramPanel:
         try:
             p = self.main_app.current_program
 
-            # Update program with field values
-            p.program_name = self.program_fields['program_name'].get()
+            # Update program with field values (strip RTL chars for saving)
+            p.program_name = self._strip_rtl_chars(self.program_fields['program_name'].get())
             p.program_number = int(self.program_fields['program_number'].get())
             p.high = float(self.program_fields['high'].get())
             p.number_of_lines = int(self.program_fields['number_of_lines'].get())
@@ -469,7 +484,8 @@ class ProgramPanel:
 
             # Update combo box label for the current program (without re-selecting)
             current_index = self.program_combo.current()
-            program_names = [f"{prog.program_number}. {prog.program_name}"
+            RLM = '\u200F'
+            program_names = [f"{RLM}{prog.program_name} .{prog.program_number}"
                             for prog in self.main_app.programs]
             self.program_combo['values'] = program_names
             if 0 <= current_index < len(program_names):
@@ -551,7 +567,8 @@ class ProgramPanel:
 
         # Select another program
         new_index = min(selected_index, len(self.main_app.programs) - 1)
-        program_names = [f"{p.program_number}. {p.program_name}" for p in self.main_app.programs]
+        RLM = '\u200F'
+        program_names = [f"{RLM}{p.program_name} .{p.program_number}" for p in self.main_app.programs]
         self.program_combo['values'] = program_names
         self.program_combo.set(program_names[new_index])
         self.on_program_selected()
@@ -623,8 +640,8 @@ class ProgramPanel:
 
     def _save_new_program(self):
         """Build program from fields, validate, add to programs list"""
-        # Check program name
-        name = self.program_fields['program_name'].get().strip()
+        # Check program name (strip RTL chars)
+        name = self._strip_rtl_chars(self.program_fields['program_name'].get())
         if not name:
             messagebox.showerror(t("Error"), t("Program name cannot be empty"))
             return
@@ -659,7 +676,8 @@ class ProgramPanel:
         self._exit_creation_mode()
 
         # Update combo and select the new program
-        program_names = [f"{p.program_number}. {p.program_name}"
+        RLM = '\u200F'
+        program_names = [f"{RLM}{p.program_name} .{p.program_number}"
                         for p in self.main_app.programs]
         self.program_combo['values'] = program_names
         self.program_combo.set(program_names[new_index])
@@ -670,8 +688,8 @@ class ProgramPanel:
 
     def _cancel_new_program(self):
         """Cancel creation mode, confirm if data was entered, restore previous selection"""
-        # Check if user entered a name (non-default data)
-        name = self.program_fields['program_name'].get().strip()
+        # Check if user entered a name (non-default data, strip RTL chars)
+        name = self._strip_rtl_chars(self.program_fields['program_name'].get())
         if name:
             if not messagebox.askyesno(t("Warning"), t("Discard new program?")):
                 return

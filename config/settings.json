@@ -190,8 +190,8 @@
   },
   "hardware_config": {
     "use_real_hardware": false,
-    "start_with_grbl": false,
-    "poc_mode": true,
+    "start_with_grbl": true,
+    "poc_mode": false,
     "skip_initial_sensor_tests": false,
     "raspberry_pi": {
       "gpio_mode": "BCM",
@@ -250,7 +250,7 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/cu.debug-console",
+      "serial_port": "/dev/ttyUSB0",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
@@ -343,7 +343,7 @@
       "smtp_password": "egwinocrndmjlnsp",
       "sender_email": "uridesk35@gmail.com\n",
       "recipient_email": "orharazi@gmail.com",
-      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
+      "subject_prefix": "\u05e9\u05d5\u05dc\u05d7\u05df \u05e9\u05e8\u05d8\u05d5\u05d8 \u05d9\u05e9\u05d9\u05d1\u05d4 \u05e9\u05dc \u05d7\u05d9 - \u05d0\u05e0\u05dc\u05d9\u05d8\u05d9\u05e7\u05d5\u05ea",
       "schedule_enabled": true,
       "schedule_frequency": "monthly",
       "schedule_time": "08:00",

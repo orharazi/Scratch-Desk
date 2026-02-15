@@ -182,10 +182,8 @@ class ExecutionController:
             elif status == 'completed':
                 self.main_app.progress['value'] = 100
                 self.main_app.progress_text.config(text=t("100% Complete - Execution finished"))
-
-                # Auto-reload: reset execution to beginning (keep steps) so program is ready to run again
-                if hasattr(self.main_app, 'controls_panel'):
-                    self.main_app.controls_panel.auto_reload_after_completion()
+                # Note: auto_reload_after_completion is called separately below with root.after()
+                # to ensure thread-safe GUI update
 
             elif status == 'emergency_stop':
                 # EMERGENCY STOP due to safety violation
@@ -279,6 +277,20 @@ class ExecutionController:
                 # Update step display to show stopped state
                 if hasattr(self.main_app, 'controls_panel'):
                     self.main_app.controls_panel.update_step_display()
+
+        # ALWAYS unlock program panel on completion, stop, or error
+        # (this must happen regardless of whether progress widgets exist)
+        # Use root.after() to ensure GUI updates happen on main thread
+        if status == 'completed':
+            self.logger.info("Execution completed - scheduling panel unlock", category="gui")
+            if hasattr(self.main_app, 'controls_panel'):
+                self.main_app.root.after(0, self.main_app.controls_panel.auto_reload_after_completion)
+
+        if status in ('stopped', 'error'):
+            self.logger.info(f"Execution {status} - scheduling panel unlock", category="gui")
+            # Unlock program panel when stopped/error
+            if hasattr(self.main_app, 'program_panel'):
+                self.main_app.root.after(0, lambda: self.main_app.program_panel.set_locked(False))
 
         # Handle safety violations
         if status == 'safety_violation':

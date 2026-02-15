@@ -990,7 +990,7 @@ class ControlsPanel:
             self.y_bottom_ls_var.set(self.hardware.get_limit_switch_state('y_bottom'))
             self.x_right_ls_var.set(self.hardware.get_limit_switch_state('x_right'))
             self.x_left_ls_var.set(self.hardware.get_limit_switch_state('x_left'))
-            self.rows_ls_var.set(self.hardware.get_limit_switch_state('rows'))
+            self.door_sensor_var.set(self.hardware.get_limit_switch_state('rows_door'))
 
         except Exception as e:
             # Silently ignore errors to avoid flooding console

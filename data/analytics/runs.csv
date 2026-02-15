@@ -1,3 +1,8 @@
 run_id,timestamp_start,timestamp_end,duration_seconds,program_number,program_name,completion_status,total_steps,completed_steps,successful_steps,failed_steps,error_message,safety_code,safety_message,hardware_mode,repeat_rows,repeat_lines
 b003d7c5-1cbf-41f6-ba36-0452610fd7d4,2026-02-15T01:22:03.342834,2026-02-15T01:22:03.343112,0.0,1,Test Program,success,5,5,5,0,,,,mock,2,3
 a99398e0-06c9-42bc-bf7d-eec080578623,2026-02-15T16:02:29.216730,2026-02-15T16:02:51.741880,22.53,1,ספר 60,user_stop,329,36,35,1,,,,mock,1,1
+816388bc-e600-4d70-a0d2-ab787f6d8aaa,2026-02-15T17:10:11.633939,2026-02-15T17:11:41.918677,90.28,4,ספר 48,user_stop,284,6,5,1,,,,real,1,1
+5d4c290c-8436-4637-b08e-ad215ff7f241,2026-02-15T17:14:25.679493,2026-02-15T17:27:26.567308,780.89,7,ספר 30,success,284,284,282,2,,,,real,1,1
+d60b63b6-3526-4b12-828b-e0e4fd941436,2026-02-15T17:52:12.901720,2026-02-15T17:52:22.558208,9.66,1,ספר 60,user_stop,329,6,2,4,,,,mock,1,1
+b7000335-f8ca-4b6a-97b1-7f738756aef8,2026-02-15T17:52:28.136400,2026-02-15T17:52:52.757725,24.62,14,"תפילין ראש חב""ד 60",success,59,59,42,17,,,,mock,1,1
+cc0c6161-30b4-4f9d-a39b-87125930f056,2026-02-15T17:57:29.230141,2026-02-15T17:57:55.696923,26.47,15,"תפילין ראש חב""ד 70",success,59,59,42,17,,,,mock,1,1

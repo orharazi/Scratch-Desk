@@ -199,14 +199,14 @@ class ScratchDeskGUI:
         # Create main frames with responsive sizing (RTL layout)
         self.controls_frame = tk.Frame(self.root, bg='lightblue')
         self.center_frame = tk.Frame(self.root, bg='white')
-        self.program_frame = tk.Frame(self.root, bg='lightgray', width=200)
+        self.program_frame = tk.Frame(self.root, bg='lightgray', width=280)
         self.program_frame.pack_propagate(False)  # Prevent children from expanding the frame
 
         # Configure responsive column and row weights - RTL layout
         self.root.grid_rowconfigure(0, weight=1)  # Single row spans full height
         self.root.grid_columnconfigure(0, minsize=180, weight=1)  # Controls panel (left in RTL)
         self.root.grid_columnconfigure(1, minsize=500, weight=5)  # Center: larger weight for canvas
-        self.root.grid_columnconfigure(2, minsize=140, weight=0)  # Program panel (right in RTL) - fixed narrow width
+        self.root.grid_columnconfigure(2, minsize=220, weight=0)  # Program panel (right in RTL) - fixed width
 
         # Grid frames for RTL layout - controls on left, program params on right
         self.controls_frame.grid(row=0, column=0, sticky="nsew", padx=(5,3), pady=5)
