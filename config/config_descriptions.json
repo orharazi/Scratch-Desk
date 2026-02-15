@@ -1133,6 +1133,13 @@
           "default": ["home position", "ensure", "move rows motor to home", "move lines motor to home", "complete:", "init:", "position for repeat"],
           "category": "critical"
         },
+        "rows_start_position_keywords": {
+          "description": "Keywords identifying the initial rows start position move (door allowed open for this move only, excluded by exclude_rows_start safety rule flag)",
+          "description_he": "מילות מפתח המזהות את תנועת מיקום ההתחלה של העמודות (דלת מותרת פתוחה לתנועה זו בלבד, מוחרגת על ידי דגל exclude_rows_start בחוק בטיחות)",
+          "type": "list",
+          "default": ["rows start:"],
+          "category": "critical"
+        },
         "pre_step_wait_interval": {
           "description": "Interval between safety check retries when waiting for condition to clear",
           "description_he": "מרווח בין ניסיונות חוזרים של בדיקת בטיחות בהמתנה לשחרור תנאי",

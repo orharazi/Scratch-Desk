@@ -448,6 +448,9 @@ class ExecutionEngine:
             self.is_running = False
             self.is_paused = False
 
+            # Stop safety monitoring thread
+            self.safety_monitor_stop.set()
+
             if self.stop_event.is_set():
                 self.logger.info("Execution stopped by user", category="execution")
                 self._update_status("stopped")
@@ -765,11 +768,15 @@ class ExecutionEngine:
                         time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
                         continue
 
-                    # Skip safety monitoring during setup steps
+                    # Skip safety monitoring during setup steps and rows start position steps
                     if hasattr(self, 'current_step_description'):
                         from core.safety_system import safety_system
                         if safety_system._is_setup_movement(self.current_step_description):
                             self.logger.debug(f"Skipping safety monitor for setup step: {self.current_step_description[:50]}...", category="execution")
+                            time.sleep(timing_settings.get("safety_check_interval", 0.1))
+                            continue
+                        if safety_system._is_rows_start_movement(self.current_step_description):
+                            self.logger.debug(f"Skipping safety monitor for rows start position step: {self.current_step_description[:50]}...", category="execution")
                             time.sleep(timing_settings.get("safety_check_interval", 0.1))
                             continue
 
@@ -931,8 +938,9 @@ class ExecutionEngine:
 
     def _handle_lines_to_rows_transition(self):
         """
-        Handle transition from lines operations to rows operations
-        Show auto-dismissing alert that waits for row marker DOWN
+        Handle transition from lines operations to rows operations.
+        First moves the rows motor to the initial start position (allowed with door open),
+        then waits for the door to be closed before continuing with actual rows operations.
         """
         try:
             self.logger.debug("TRANSITION: Starting _handle_lines_to_rows_transition", category="execution")
@@ -940,34 +948,51 @@ class ExecutionEngine:
             # Transition flag is already set in main execution loop
             self.logger.debug("TRANSITION: Safety monitoring already paused by transition flag", category="execution")
 
-            # Check if rows motor door is already CLOSED (limit switch ON)
-            # Only check limit switch, NOT marker piston state
+            # STEP 1: Move the rows motor to the initial start position BEFORE waiting for door
+            # The rows motor should be able to reach its start position with the door open
+            self.logger.debug(f"TRANSITION: Looking for first move_x step after current position {self.current_step_index}", category="execution")
+
+            first_move_x_step = None
+            for idx in range(self.current_step_index, min(self.current_step_index + 5, len(self.steps))):
+                step = self.steps[idx]
+                if step.get('operation') == 'move_x':
+                    first_move_x_step = step
+                    self.logger.debug(f"   Found move_x step at index {idx}: {step.get('description')}", category="execution")
+                    break
+
+            if first_move_x_step:
+                target_x = first_move_x_step.get('parameters', {}).get('position', 0)
+                self.logger.info(f"TRANSITION: Moving rows motor to start position ({target_x}cm) before door check", category="execution")
+                move_result = self.hardware.move_x(target_x)
+                if move_result:
+                    self.logger.success(f"TRANSITION: Rows motor now at start position {self.hardware.get_current_x()}cm", category="execution")
+                else:
+                    self.logger.error(f"TRANSITION: Rows motor movement to {target_x}cm failed!", category="execution")
+
+            # STEP 2: Check if door is already closed
             limit_switch_state = self.hardware.get_row_motor_limit_switch()
             self.logger.debug(f"TRANSITION: Current rows motor door limit switch: {limit_switch_state}", category="execution")
 
             if limit_switch_state == "down":
                 self.logger.success("Rows motor door already CLOSED (limit switch ON) - proceeding with rows operations", category="execution")
+                self._update_transition_canvas()
                 self.in_transition = False  # Clear transition flag
                 return True
 
-            self.logger.info("TRANSITION PAUSE: Waiting for rows motor door to be CLOSED (toggle limit switch button)", category="execution")
-            self.logger.debug("TRANSITION: Setting execution to paused state", category="execution")
+            # STEP 3: Door is open - pause and wait for it to close
+            self.logger.info("TRANSITION PAUSE: Rows motor at start position. Waiting for door to be CLOSED to continue.", category="execution")
 
-            # Pause execution temporarily
             self.is_paused = True
             self.pause_event.clear()
 
-            self.logger.debug("TRANSITION: Calling _update_status with transition_alert", category="execution")
-            # Show transitional alert through status callback
             self._update_status("transition_alert", {
                 'from_operation': 'lines',
                 'to_operation': 'rows',
-                'message': 'Lines operations complete. Please CLOSE ROWS MOTOR DOOR (toggle limit switch button to ON) to continue with rows operations.',
+                'message': 'Lines operations complete. Rows motor moved to start position. Please CLOSE ROWS MOTOR DOOR (toggle limit switch button to ON) to continue with rows operations.',
                 'current_limit_switch': limit_switch_state
             })
 
-            self.logger.debug("TRANSITION: Calling _wait_for_row_marker_down", category="execution")
-            # Wait for row marker to be set DOWN with auto-monitoring
+            # Wait for door to close
             result = self._wait_for_row_marker_down()
             self.logger.debug(f"TRANSITION: _wait_for_row_marker_down returned: {result}", category="execution")
             return result
@@ -982,7 +1007,8 @@ class ExecutionEngine:
     def _wait_for_row_marker_down(self):
         """
         Wait for rows motor door to be CLOSED (limit switch ON) with real-time monitoring
-        Auto-dismiss alert and resume execution when condition is met
+        Auto-dismiss alert and resume execution when condition is met.
+        Note: The rows motor is already at its start position (moved before this wait).
         """
         import time
 
@@ -990,11 +1016,7 @@ class ExecutionEngine:
 
         while not self.stop_event.is_set():
             # Check ONLY limit switch state (motor door sensor)
-            # Marker piston state is independent and controlled by program
             limit_switch_state = self.hardware.get_row_motor_limit_switch()
-
-            # Debug output to verify monitoring is running (less frequent)
-            # self.logger.debug(f"Monitoring: Limit switch={limit_switch_state.upper()}", category="execution")
 
             if limit_switch_state == "down":
                 self.logger.success("Rows motor door CLOSED (limit switch ON) - verifying stable position...", category="execution")
@@ -1016,47 +1038,8 @@ class ExecutionEngine:
                     self.current_operation_type = 'rows'
                     self.logger.debug("TRANSITION: Set operation type to 'rows'", category="execution")
 
-                    # CRITICAL: Find and execute the first move_x step immediately to position motor
-                    # This ensures the visual shows the motor at the correct position before resuming
-                    self.logger.debug(f"TRANSITION: Looking for first move_x step after current position {self.current_step_index}", category="execution")
-
-                    # Find the first move_x step after the current position
-                    first_move_x_step = None
-                    for idx in range(self.current_step_index, min(self.current_step_index + 5, len(self.steps))):
-                        step = self.steps[idx]
-                        if step.get('operation') == 'move_x':
-                            first_move_x_step = step
-                            self.logger.debug(f"   Found move_x step at index {idx}: {step.get('description')}", category="execution")
-                            break
-
-                    # Execute the move_x immediately to position the motor
-                    if first_move_x_step:
-                        target_x = first_move_x_step.get('parameters', {}).get('position', 0)
-                        self.logger.debug(f"TRANSITION: Immediately moving X motor to {target_x}cm", category="execution")
-                        move_result = self.hardware.move_x(target_x)
-                        if move_result:
-                            self.logger.success(f"TRANSITION: X motor now at {self.hardware.get_current_x()}cm", category="execution")
-                        else:
-                            self.logger.error(f"TRANSITION: X motor movement to {target_x}cm failed!", category="execution")
-
-                    # Force clear sensor override and update position display
-                    if hasattr(self, 'canvas_manager') and self.canvas_manager:
-                        self.logger.debug("TRANSITION: Setting canvas motor_operation_mode to 'rows'", category="execution")
-                        self.canvas_manager.set_motor_operation_mode("rows")
-
-                        self.logger.debug("TRANSITION: Clearing sensor override", category="execution")
-                        self.canvas_manager.sensor_override_active = False
-                        if hasattr(self.canvas_manager, 'sensor_override_timer') and self.canvas_manager.sensor_override_timer:
-                            import tkinter as tk
-                            # Safe way to get root without circular import
-                            if hasattr(self.canvas_manager, 'main_app') and hasattr(self.canvas_manager.main_app, 'root'):
-                                self.canvas_manager.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
-                                self.canvas_manager.sensor_override_timer = None
-
-                        self.logger.debug("TRANSITION: Forcing position display update with new X position", category="execution")
-                        # Force multiple updates to ensure canvas refreshes with new position
-                        self.canvas_manager.update_position_display()
-                        self.logger.success("Position display updated after transition - X motor should show at target position", category="execution")
+                    # Update canvas display
+                    self._update_transition_canvas()
 
                     # Auto-dismiss alert and resume execution
                     self._update_status("transition_complete", {
@@ -1076,13 +1059,30 @@ class ExecutionEngine:
                 'limit_switch_state': limit_switch_state
             })
 
-            # Check every 500ms for responsive monitoring (increased from 200ms for less spam)
+            # Check every 500ms for responsive monitoring
             time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
 
         # Execution was stopped during transition
         self.logger.info("Execution stopped during lines→rows transition", category="execution")
         self.in_transition = False  # Clear transition flag
         return False
+
+    def _update_transition_canvas(self):
+        """Update canvas display after transition to rows operations"""
+        if hasattr(self, 'canvas_manager') and self.canvas_manager:
+            self.logger.debug("TRANSITION: Setting canvas motor_operation_mode to 'rows'", category="execution")
+            self.canvas_manager.set_motor_operation_mode("rows")
+
+            self.logger.debug("TRANSITION: Clearing sensor override", category="execution")
+            self.canvas_manager.sensor_override_active = False
+            if hasattr(self.canvas_manager, 'sensor_override_timer') and self.canvas_manager.sensor_override_timer:
+                if hasattr(self.canvas_manager, 'main_app') and hasattr(self.canvas_manager.main_app, 'root'):
+                    self.canvas_manager.main_app.root.after_cancel(self.canvas_manager.sensor_override_timer)
+                    self.canvas_manager.sensor_override_timer = None
+
+            self.logger.debug("TRANSITION: Forcing position display update with new X position", category="execution")
+            self.canvas_manager.update_position_display()
+            self.logger.success("Position display updated after transition", category="execution")
 
     def get_execution_status(self):
         """Get current execution status"""

@@ -1,7 +1,7 @@
 import tkinter as tk
 import json
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, rtl
 from core.machine_state import MachineState, get_state_manager
 
 
@@ -492,7 +492,7 @@ class HardwareStatusPanel:
                         status = t("LINES")
                         # Use Hebrew operation title if available, otherwise fallback
                         if current_step and 'hebOperationTitle' in current_step:
-                            explanation = current_step['hebOperationTitle']
+                            explanation = rtl(current_step['hebOperationTitle'])
                         else:
                             explanation = t("Marking lines")
                         color = '#3498DB'  # Blue
@@ -500,7 +500,7 @@ class HardwareStatusPanel:
                         status = t("ROWS")
                         # Use Hebrew operation title if available, otherwise fallback
                         if current_step and 'hebOperationTitle' in current_step:
-                            explanation = current_step['hebOperationTitle']
+                            explanation = rtl(current_step['hebOperationTitle'])
                         else:
                             explanation = t("Cutting rows")
                         color = '#E74C3C'  # Red
@@ -508,7 +508,7 @@ class HardwareStatusPanel:
                         status = t("IDLE")
                         # Use Hebrew operation title if available during idle operations
                         if current_step and 'hebOperationTitle' in current_step:
-                            explanation = current_step['hebOperationTitle']
+                            explanation = rtl(current_step['hebOperationTitle'])
                         else:
                             explanation = t("System ready")
                         color = '#95A5A6'

@@ -283,6 +283,8 @@ def move_x(position):
     else:
         logger.debug(f"X motor already at {position:.1f}cm", category="hardware")
 
+    return True
+
 def move_y(position):
     """Move Y motor to specified position within limits"""
     global current_y_position, line_motor_piston
@@ -316,6 +318,8 @@ def move_y(position):
         logger.info(f"Y motor positioned at {current_y_position:.1f}cm", category="hardware")
     else:
         logger.debug(f"Y motor already at {position:.1f}cm", category="hardware")
+
+    return True
 
 def get_current_x():
     """Get current X motor position"""

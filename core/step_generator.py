@@ -469,21 +469,30 @@ def generate_lines_marking_steps(program):
         
         logger.debug(f"   Lines in section: {first_line_y_section:.1f} to {last_line_y_section:.1f}cm (spacing: {line_spacing_section:.2f}cm)", category="execution")
         
-        # Move to first line of this section
-        if section_num == 0:  # Only move for first section (already positioned at top)
+        # Move to first line of this section (skip if margin is 0 - coincides with edge cut)
+        if section_num == 0 and program.top_padding != 0:
             steps.append(create_step(
                 'move_y',
                 {'position': first_line_y_section},
                 f"Move to first line of section {section_num + 1}: {first_line_y_section}cm"
             ))
-        
+
         # Mark all lines in this section
         for line_in_section in range(program.number_of_lines):
             overall_line_num = section_num * program.number_of_lines + line_in_section + 1
             line_y_position = first_line_y_section - (line_in_section * line_spacing_section)
-            
+
+            # Skip marking if line position coincides with a section edge cut (margin is 0)
+            is_first_line = (line_in_section == 0)
+            is_last_line = (line_in_section == program.number_of_lines - 1)
+            skip_mark = (is_first_line and program.top_padding == 0) or \
+                        (is_last_line and program.bottom_padding == 0 and program.number_of_lines > 1)
+            if skip_mark:
+                logger.debug(f"   Skipping line {overall_line_num} mark at {line_y_position:.1f}cm (coincides with section edge cut)", category="execution")
+                continue
+
             line_description = f"Mark line {overall_line_num}/{program.number_of_lines * program.repeat_lines} (Section {section_num + 1}, Line {line_in_section + 1})"
-            
+
             # Move to this line position (unless it's the first line of first section)
             if not (section_num == 0 and line_in_section == 0):
                 steps.append(create_step(
@@ -491,26 +500,26 @@ def generate_lines_marking_steps(program):
                     {'position': line_y_position},
                     f"Move to line position: {line_y_position:.1f}cm"
                 ))
-            
+
             # Mark this line
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'x_left', 'description': f'Wait for left lines sensor for line {overall_line_num}'},
                 f"{line_description}: Wait for left lines sensor"
             ))
-            
+
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'line_marker', 'action': 'down'},
                 f"{line_description}: Open line marker"
             ))
-            
+
             steps.append(create_step(
                 'wait_sensor',
                 {'sensor': 'x_right', 'description': f'Wait for right lines sensor for line {overall_line_num}'},
                 f"{line_description}: Wait for right lines sensor"
             ))
-            
+
             steps.append(create_step(
                 'tool_action',
                 {'tool': 'line_marker', 'action': 'up'},
@@ -678,6 +687,7 @@ def generate_row_marking_steps(program):
     logger.debug(f"   Repeated sections: {program.repeat_rows}", category="execution")
 
     # Process sections RIGHT-TO-LEFT: rightmost section first
+    rows_start_move_done = False  # Track first positioning move for safety system
     for rtl_section_index in range(program.repeat_rows):
         # RTL: section 0 is rightmost, section N-1 is leftmost
         # Convert to physical LTR index: rightmost = highest index
@@ -717,69 +727,85 @@ def generate_row_marking_steps(program):
 
             logger.debug(f"      RTL Page {rtl_page_number}: section_index={section_index}, rtl_page_in_section={rtl_page_in_section}, physical_page={physical_page_in_section}, position={page_left_edge:.1f}-{page_right_edge:.1f}cm", category="execution")
 
-            # Move to this page's RIGHT edge first (starting point for each page)
-            steps.append(create_step(
-                'move_x',
-                {'position': page_right_edge},
-                f"Move to {page_description} RIGHT edge: {page_right_edge}cm"
-            ))
+            # Check if page edges coincide with section boundary cuts (margin is 0 - no need to mark)
+            is_rightmost_page = (physical_page_in_section == program.number_of_pages - 1)
+            is_leftmost_page = (physical_page_in_section == 0)
+            skip_right_mark = is_rightmost_page and program.right_margin == 0
+            skip_left_mark = is_leftmost_page and program.left_margin == 0
 
-            # Mark RIGHT edge of page
-            steps.append(create_step(
-                'wait_sensor',
-                {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} right edge'},
-                f"{page_description}: Wait top rows sensor (RIGHT edge)"
-            ))
+            if skip_right_mark and skip_left_mark:
+                logger.debug(f"      Skipping {page_description}: both edges coincide with cuts", category="execution")
+                continue
 
-            steps.append(create_step(
-                'tool_action',
-                {'tool': 'row_marker', 'action': 'down'},
-                f"{page_description}: Open row marker (RIGHT edge)"
-            ))
+            if not skip_right_mark:
+                # Move to this page's RIGHT edge and mark it
+                description_prefix = "Rows start: " if not rows_start_move_done else ""
+                rows_start_move_done = True
+                steps.append(create_step(
+                    'move_x',
+                    {'position': page_right_edge},
+                    f"{description_prefix}Move to {page_description} RIGHT edge: {page_right_edge}cm"
+                ))
 
-            steps.append(create_step(
-                'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} right edge'},
-                f"{page_description}: Wait bottom rows sensor (RIGHT edge)"
-            ))
+                # Mark RIGHT edge of page
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} right edge'},
+                    f"{page_description}: Wait top rows sensor (RIGHT edge)"
+                ))
 
-            steps.append(create_step(
-                'tool_action',
-                {'tool': 'row_marker', 'action': 'up'},
-                f"{page_description}: Close row marker (RIGHT edge)"
-            ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'down'},
+                    f"{page_description}: Open row marker (RIGHT edge)"
+                ))
 
-            # Move RIGHT-TO-LEFT to this page's LEFT edge
-            steps.append(create_step(
-                'move_x',
-                {'position': page_left_edge},
-                f"Move to {page_description} LEFT edge: {page_left_edge}cm"
-            ))
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} right edge'},
+                    f"{page_description}: Wait bottom rows sensor (RIGHT edge)"
+                ))
 
-            # Mark LEFT edge of page
-            steps.append(create_step(
-                'wait_sensor',
-                {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} left edge'},
-                f"{page_description}: Wait top rows sensor (LEFT edge)"
-            ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'up'},
+                    f"{page_description}: Close row marker (RIGHT edge)"
+                ))
 
-            steps.append(create_step(
-                'tool_action',
-                {'tool': 'row_marker', 'action': 'down'},
-                f"{page_description}: Open row marker (LEFT edge)"
-            ))
+            if not skip_left_mark:
+                # Move to this page's LEFT edge and mark it
+                description_prefix = "Rows start: " if not rows_start_move_done else ""
+                rows_start_move_done = True
+                steps.append(create_step(
+                    'move_x',
+                    {'position': page_left_edge},
+                    f"{description_prefix}Move to {page_description} LEFT edge: {page_left_edge}cm"
+                ))
 
-            steps.append(create_step(
-                'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} left edge'},
-                f"{page_description}: Wait bottom rows sensor (LEFT edge)"
-            ))
+                # Mark LEFT edge of page
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} left edge'},
+                    f"{page_description}: Wait top rows sensor (LEFT edge)"
+                ))
 
-            steps.append(create_step(
-                'tool_action',
-                {'tool': 'row_marker', 'action': 'up'},
-                f"{page_description}: Close row marker (LEFT edge)"
-            ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'down'},
+                    f"{page_description}: Open row marker (LEFT edge)"
+                ))
+
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} left edge'},
+                    f"{page_description}: Wait bottom rows sensor (LEFT edge)"
+                ))
+
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'up'},
+                    f"{page_description}: Close row marker (LEFT edge)"
+                ))
 
         # AFTER finishing all pages in this section, cut between this section and the next (if not the last section)
         if rtl_section_index < program.repeat_rows - 1:

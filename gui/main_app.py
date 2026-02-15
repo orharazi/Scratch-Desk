@@ -472,5 +472,6 @@ class ScratchDeskGUI:
             self.controls_panel.reset_btn.config(state=tk.NORMAL)
 
     def on_execution_status(self, status, info=None):
-        """Handle execution status updates"""
-        self.execution_controller.on_execution_status(status, info)
+        """Handle execution status updates - thread-safe via root.after"""
+        # Schedule on main thread since this is called from execution thread
+        self.root.after(0, lambda s=status, i=info: self.execution_controller.on_execution_status(s, i))

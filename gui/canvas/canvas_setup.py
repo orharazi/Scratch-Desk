@@ -1,5 +1,6 @@
 import tkinter as tk
 from core.logger import get_logger
+from core.translations import rtl
 
 
 class CanvasSetup:
@@ -114,13 +115,13 @@ class CanvasSetup:
         x_label_y = self.main_app.offset_y + workspace_height + 25
         self.main_app.canvas.create_text(
             self.main_app.canvas_width // 2, x_label_y,
-            text="\u05e2\u05de\u05d5\u05d3\u05d5\u05ea (\u05e1\u05f4\u05de)", font=('Arial', 10, 'bold'), fill='darkblue'
+            text=rtl("\u05e2\u05de\u05d5\u05d3\u05d5\u05ea (\u05e1\u05f4\u05de)"), font=('Arial', 10, 'bold'), fill='darkblue'
         )
 
         # Y axis label on left side
         self.main_app.canvas.create_text(
             10, self.main_app.canvas_height // 2,
-            text="\u05e9\u05d5\u05e8\u05d5\u05ea (\u05e1\u05f4\u05de)", font=('Arial', 10, 'bold'), fill='darkblue', angle=90
+            text=rtl("\u05e9\u05d5\u05e8\u05d5\u05ea (\u05e1\u05f4\u05de)"), font=('Arial', 10, 'bold'), fill='darkblue', angle=90
         )
     
     def draw_default_paper_area(self, sim_settings, hardware_limits):
@@ -209,13 +210,13 @@ class CanvasSetup:
         # Add labels for the motor lines
         self.canvas_objects['x_motor_label'] = self.main_app.canvas.create_text(
             motor_x_canvas - 15, workspace_top + 15,
-            text=f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm", fill='red', font=('Arial', 8, 'bold'),
+            text=rtl(f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm"), fill='red', font=('Arial', 8, 'bold'),
             anchor='ne', tags="motor_lines"
         )
 
         self.canvas_objects['y_motor_label'] = self.main_app.canvas.create_text(
             workspace_right - 15, motor_y_canvas - 15,
-            text=f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm", fill='blue', font=('Arial', 8, 'bold'),
+            text=rtl(f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm"), fill='blue', font=('Arial', 8, 'bold'),
             anchor='se', tags="motor_lines"
         )
         

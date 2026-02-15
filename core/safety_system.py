@@ -206,7 +206,7 @@ class SafetyRulesManager:
 
         return False
 
-    def check_operation_blocked(self, rule, operation, tool=None, is_setup=False, direction_sign=None):
+    def check_operation_blocked(self, rule, operation, tool=None, is_setup=False, is_rows_start=False, direction_sign=None):
         """Check if an operation is blocked by this rule"""
         blocked_ops = rule.get("blocked_operations", [])
         direction_map = self.rules_data.get("available_directions", {})
@@ -220,6 +220,10 @@ class SafetyRulesManager:
 
             # Check if setup movements are excluded
             if is_setup and block.get("exclude_setup", False):
+                continue
+
+            # Check if rows start position movements are excluded
+            if is_rows_start and block.get("exclude_rows_start", False):
                 continue
 
             # Check direction-based filtering
@@ -244,7 +248,7 @@ class SafetyRulesManager:
 
         return False
 
-    def evaluate_rules(self, step, is_setup=False):
+    def evaluate_rules(self, step, is_setup=False, is_rows_start=False):
         """
         Evaluate all enabled rules against a step
 
@@ -323,7 +327,7 @@ class SafetyRulesManager:
             self.logger.debug(f"  -> Rule conditions MET! Checking blocked operations...", category="safety")
 
             # Conditions are met - check if this operation is blocked
-            if self.check_operation_blocked(rule, operation, tool, is_setup, direction_sign):
+            if self.check_operation_blocked(rule, operation, tool, is_setup, is_rows_start, direction_sign):
                 # Create violation
                 rule_name = rule.get("name", rule.get("id", "Unknown"))
                 message = rule.get("message", f"Operation blocked by rule: {rule_name}")
@@ -450,6 +454,24 @@ class SafetySystem:
 
         return any(indicator in description_lower for indicator in setup_indicators)
 
+    def _is_rows_start_movement(self, description):
+        """
+        Determine if a movement is the initial rows start positioning step.
+
+        The rows start positioning move is the first LEFT movement after cutting
+        the right paper edge, moving the motor to the scratching start position.
+        The door is allowed to be open for this move only.
+        Keywords are loaded from settings.json safety.rows_start_position_keywords.
+        """
+        description_lower = description.lower()
+
+        settings = load_settings()
+        rows_start_indicators = settings.get('safety', {}).get('rows_start_position_keywords', [
+            'rows start:'
+        ])
+
+        return any(indicator in description_lower for indicator in rows_start_indicators)
+
     def check_step_safety(self, step):
         """
         Check safety for any step before execution
@@ -465,9 +487,10 @@ class SafetySystem:
 
         description = step.get('description', '')
         is_setup = self._is_setup_movement(description)
+        is_rows_start = self._is_rows_start_movement(description)
 
         # Evaluate all rules from JSON config
-        is_safe, violation = self.rules_manager.evaluate_rules(step, is_setup)
+        is_safe, violation = self.rules_manager.evaluate_rules(step, is_setup, is_rows_start)
 
         if not is_safe and violation:
             self.log_violation(violation.safety_code, violation.message)

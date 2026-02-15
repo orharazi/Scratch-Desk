@@ -2,6 +2,7 @@ import tkinter as tk
 import re
 import json
 from core.logger import get_logger
+from core.translations import rtl
 
 # Load settings
 def load_settings():
@@ -98,27 +99,27 @@ class CanvasPosition:
             # During lines operations: X motor at 0, Y motor shows actual position
             display_x = 0.0
             display_y = current_y
-            x_label_text = "\u05e2\u05de\u05d5\u05d3\u05d5\u05ea=0.0cm (HOLD)"
+            x_label_text = rtl("\u05e2\u05de\u05d5\u05d3\u05d5\u05ea=0.0cm (HOLD)")
             x_label_color = "gray"
-            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm"
+            y_label_text = rtl(f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm")
             y_label_color = "blue"
 
         elif self.canvas_manager.motor_operation_mode == "rows":
             # During rows operations: Y motor at 0, X motor shows actual position
             display_x = current_x
             display_y = 0.0
-            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm"
+            x_label_text = rtl(f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm")
             x_label_color = "red"
-            y_label_text = "\u05e9\u05d5\u05e8\u05d5\u05ea=0.0cm (HOLD)"
+            y_label_text = rtl("\u05e9\u05d5\u05e8\u05d5\u05ea=0.0cm (HOLD)")
             y_label_color = "gray"
 
         else:
             # Idle mode: Both motors show actual positions
             display_x = current_x
             display_y = current_y
-            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm"
+            x_label_text = rtl(f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm")
             x_label_color = "red"
-            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm"
+            y_label_text = rtl(f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm")
             y_label_color = "blue"
         
         # Convert to canvas coordinates

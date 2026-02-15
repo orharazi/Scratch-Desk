@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, rtl
 from core.program_model import translate_validation_error
 from core.csv_parser import CSVParser
 
@@ -296,9 +296,7 @@ class ProgramPanel:
 
     def update_program_list(self):
         """Update the program selection combo box"""
-        # Use RLM (Right-to-Left Mark) for proper Hebrew display
-        RLM = '\u200F'
-        program_names = [f"{RLM}{p.program_name} .{p.program_number}"
+        program_names = [rtl(f"{p.program_name} .{p.program_number}")
                         for p in self.main_app.programs]
         self.program_combo['values'] = program_names
 
@@ -360,7 +358,8 @@ class ProgramPanel:
             return
 
         p = self.main_app.current_program
-        # Use RLE (Right-to-Left Embedding) for Hebrew program name display
+        # Use RLE (Right-to-Left Embedding) for Hebrew program name in entry field
+        # (cannot use rtl/get_display here as it reorders chars, breaking read-back)
         RLE = '\u202B'  # Right-to-Left Embedding
         PDF = '\u202C'  # Pop Directional Formatting
         field_values = {
@@ -484,8 +483,7 @@ class ProgramPanel:
 
             # Update combo box label for the current program (without re-selecting)
             current_index = self.program_combo.current()
-            RLM = '\u200F'
-            program_names = [f"{RLM}{prog.program_name} .{prog.program_number}"
+            program_names = [rtl(f"{prog.program_name} .{prog.program_number}")
                             for prog in self.main_app.programs]
             self.program_combo['values'] = program_names
             if 0 <= current_index < len(program_names):
@@ -567,8 +565,7 @@ class ProgramPanel:
 
         # Select another program
         new_index = min(selected_index, len(self.main_app.programs) - 1)
-        RLM = '\u200F'
-        program_names = [f"{RLM}{p.program_name} .{p.program_number}" for p in self.main_app.programs]
+        program_names = [rtl(f"{p.program_name} .{p.program_number}") for p in self.main_app.programs]
         self.program_combo['values'] = program_names
         self.program_combo.set(program_names[new_index])
         self.on_program_selected()
@@ -676,8 +673,7 @@ class ProgramPanel:
         self._exit_creation_mode()
 
         # Update combo and select the new program
-        RLM = '\u200F'
-        program_names = [f"{RLM}{p.program_name} .{p.program_number}"
+        program_names = [rtl(f"{p.program_name} .{p.program_number}")
                         for p in self.main_app.programs]
         self.program_combo['values'] = program_names
         self.program_combo.set(program_names[new_index])

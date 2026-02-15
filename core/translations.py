@@ -1463,6 +1463,19 @@ def t(text, **kwargs):
 
     return translated
 
+def rtl(text):
+    """Apply RTL formatting to Hebrew text without translation lookup.
+
+    Use this for Hebrew strings that were already translated (e.g., hebDescription
+    from step_generator) but still need bidi visual reordering for correct display.
+    """
+    if BIDI_AVAILABLE and _current_language == "he":
+        try:
+            return get_display(text)
+        except Exception:
+            pass
+    return text
+
 def load_language_from_config():
     """
     Load language preference from settings.json

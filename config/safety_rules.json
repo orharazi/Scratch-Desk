@@ -362,6 +362,7 @@
         {
           "operation": "move_x",
           "exclude_setup": true,
+          "exclude_rows_start": true,
           "direction": "left"
         }
       ],
@@ -384,8 +385,8 @@
         },
         "recovery_action": "auto_resume"
       },
-      "message": "ROWS LEFT MOVEMENT BLOCKED!\n   Row motor door is OPEN (limit switch UP)\n   Left movement blocked until door is closed\n   Right movement is allowed",
-      "message_he": "תנועה שמאלה חסומה!\n   דלת מנוע העמודות פתוחה (מתג גבול למעלה)\n   תנועה שמאלה חסומה עד שהדלת תיסגר\n   תנועה ימינה מותרת",
+      "message": "ROWS LEFT MOVEMENT BLOCKED!\n   Row motor door is OPEN (limit switch UP)\n   Left movement blocked until door is closed\n   Right movement is allowed\n   NOTE: Initial move to start position is allowed with door open",
+      "message_he": "תנועה שמאלה חסומה!\n   דלת מנוע העמודות פתוחה (מתג גבול למעלה)\n   תנועה שמאלה חסומה עד שהדלת תיסגר\n   תנועה ימינה מותרת\n   הערה: תנועה ראשונית למיקום התחלה מותרת עם דלת פתוחה",
       "created_at": "2026-02-14T23:00:00Z",
       "created_by": "system_migration"
     },

@@ -321,6 +321,9 @@
       "init:",
       "position for repeat"
     ],
+    "rows_start_position_keywords": [
+      "rows start:"
+    ],
     "pre_step_wait_interval": 0.5,
     "pre_step_wait_timeout": 300
   },

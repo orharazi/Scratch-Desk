@@ -2,7 +2,7 @@ import threading
 import time
 import tkinter as tk
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, rtl
 
 
 # Reason-type styling for safety modals
@@ -62,8 +62,29 @@ class ExecutionController:
 
         self.logger.debug("ExecutionController cleaned up for reset", category="gui")
 
+    def _schedule_panel_unlock(self, status):
+        """Schedule program panel unlock on the main thread as a safety net.
+
+        Called FIRST in on_execution_status for terminal states so that even if
+        subsequent GUI updates raise an exception, the panel will still be unlocked.
+        """
+        try:
+            if status == 'completed' and hasattr(self.main_app, 'controls_panel'):
+                self.main_app.root.after(100, self.main_app.controls_panel.auto_reload_after_completion)
+            elif hasattr(self.main_app, 'controls_panel'):
+                # For stopped/error: reset engine and prepare for fresh run
+                self.main_app.root.after(100, self.main_app.controls_panel._prepare_for_new_run)
+            elif hasattr(self.main_app, 'program_panel'):
+                self.main_app.root.after(100, lambda: self.main_app.program_panel.set_locked(False))
+        except Exception as e:
+            self.logger.error(f"Failed to schedule panel unlock: {e}", category="gui")
+
     def on_execution_status(self, status, info=None):
-        """Handle execution status updates"""
+        """Handle execution status updates (called from execution thread)"""
+        # Ensure panel unlock for terminal states, even if GUI updates below fail
+        if status in ('completed', 'stopped', 'error'):
+            self._schedule_panel_unlock(status)
+
         if hasattr(self.main_app, 'progress_label'):
             if status == 'running':
                 self.main_app.progress_label.config(text=t("Execution Running..."), fg='green')
@@ -87,8 +108,8 @@ class ExecutionController:
             elif status == 'step_executing':
                 # Get English description for internal processing
                 step_info = info.get('description', t('Executing step...')) if info else t('Executing step...')
-                # Get Hebrew description for UI display
-                step_info_ui = info.get('hebDescription', step_info) if info else t('Executing step...')
+                # Get Hebrew description for UI display (apply RTL formatting)
+                step_info_ui = rtl(info.get('hebDescription', step_info)) if info else t('Executing step...')
                 self.main_app.operation_label.config(text=step_info_ui, fg='green')
 
                 # Detect motor operation mode but DON'T track colors yet (wait for completion)
@@ -278,19 +299,7 @@ class ExecutionController:
                 if hasattr(self.main_app, 'controls_panel'):
                     self.main_app.controls_panel.update_step_display()
 
-        # ALWAYS unlock program panel on completion, stop, or error
-        # (this must happen regardless of whether progress widgets exist)
-        # Use root.after() to ensure GUI updates happen on main thread
-        if status == 'completed':
-            self.logger.info("Execution completed - scheduling panel unlock", category="gui")
-            if hasattr(self.main_app, 'controls_panel'):
-                self.main_app.root.after(0, self.main_app.controls_panel.auto_reload_after_completion)
-
-        if status in ('stopped', 'error'):
-            self.logger.info(f"Execution {status} - scheduling panel unlock", category="gui")
-            # Unlock program panel when stopped/error
-            if hasattr(self.main_app, 'program_panel'):
-                self.main_app.root.after(0, lambda: self.main_app.program_panel.set_locked(False))
+        # Panel unlock is handled by _schedule_panel_unlock() at the top of this method
 
         # Handle safety violations
         if status == 'safety_violation':
@@ -308,7 +317,7 @@ class ExecutionController:
         violation_message = info.get('violation_message', t('Unknown safety violation'))
         safety_code = info.get('safety_code', 'UNKNOWN')
         step = info.get('step', {})
-        step_description = step.get('hebDescription', step.get('description', t('Unknown step')))
+        step_description = rtl(step.get('hebDescription', step.get('description', t('Unknown step'))))
 
         # Update progress label with safety waiting state
         if hasattr(self.main_app, 'progress_label'):
@@ -334,7 +343,7 @@ class ExecutionController:
         safety_code = info.get('safety_code', 'UNKNOWN')
         step = info.get('step', {})
         # Use Hebrew description for UI display, fallback to English for compatibility
-        step_description = step.get('hebDescription', step.get('description', t('Unknown step')))
+        step_description = rtl(step.get('hebDescription', step.get('description', t('Unknown step'))))
 
         # Update progress label with safety violation
         if hasattr(self.main_app, 'progress_label'):
@@ -443,7 +452,7 @@ class ExecutionController:
             # 1. Icon + reason title (large, accented)
             tk.Label(
                 main_frame,
-                text=f"{icon}  {reason_title}",
+                text=rtl(f"{icon}  {reason_title}"),
                 font=('Arial', 24, 'bold'),
                 fg=accent,
                 bg=bg
@@ -453,7 +462,7 @@ class ExecutionController:
             code_text = f"{rule_name_he}  [{safety_code}]" if safety_code else rule_name_he
             tk.Label(
                 main_frame,
-                text=code_text,
+                text=rtl(code_text),
                 font=('Arial', 13),
                 fg='#cccccc',
                 bg=bg
@@ -465,7 +474,7 @@ class ExecutionController:
             # 4. Rule message_he (white text)
             tk.Label(
                 main_frame,
-                text=rule_message_he,
+                text=rtl(rule_message_he),
                 font=('Arial', 14),
                 fg='white',
                 bg=bg,
@@ -477,7 +486,7 @@ class ExecutionController:
             # 5. Green auto-resume note
             tk.Label(
                 main_frame,
-                text="\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8",
+                text=rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8"),
                 font=('Arial', 13, 'bold'),
                 fg='#66cc66',
                 bg=bg,
@@ -533,9 +542,9 @@ class ExecutionController:
                 rule_name_he = rule.get('name_he', rule.get('name', safety_code))
                 rule_message_he = rule.get('message_he', rule.get('message', violation_message))
                 # Compact: "name | message" in Hebrew
-                error_text = f"{rule_name_he}  |  {rule_message_he}"
+                error_text = rtl(f"{rule_name_he}  |  {rule_message_he}")
             else:
-                error_text = violation_message
+                error_text = rtl(violation_message)
 
             # Prefix icon based on state
             if is_waiting:
@@ -645,7 +654,7 @@ class ExecutionController:
             main_frame.pack(fill=tk.BOTH, expand=True)
 
             # Title - Hebrew rule name
-            tk.Label(main_frame, text=f"{icon}  {rule_name}",
+            tk.Label(main_frame, text=rtl(f"{icon}  {rule_name}"),
                      font=('Arial', 16, 'bold'), fg=accent_color, bg=bg_color).pack(pady=(0, 5))
 
             # Safety code + severity
@@ -660,20 +669,20 @@ class ExecutionController:
 
             # Hebrew description
             if rule_desc:
-                tk.Label(main_frame, text=rule_desc, font=('Arial', 12),
+                tk.Label(main_frame, text=rtl(rule_desc), font=('Arial', 12),
                          fg='white', bg=bg_color, wraplength=450,
                          justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 
             # Hebrew action message
             if rule_message:
-                tk.Label(main_frame, text=rule_message, font=('Arial', 12, 'bold'),
+                tk.Label(main_frame, text=rtl(rule_message), font=('Arial', 12, 'bold'),
                          fg='#ffcc00', bg=bg_color, wraplength=450,
                          justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 
             # Auto-resume note for waiting state
             if is_waiting:
                 tk.Label(main_frame,
-                         text="\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8",
+                         text=rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8"),
                          font=('Arial', 10, 'bold'), fg='#66cc66', bg=bg_color,
                          wraplength=450, justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, rtl
 from core.program_model import translate_validation_error
 
 
@@ -574,7 +574,7 @@ class ControlsPanel:
             # Use Hebrew operation title and description for UI display
             heb_op = step.get('hebOperationTitle', step['operation'])
             heb_desc = step.get('hebDescription', step['description'])
-            step_summary = f"{heb_desc[:50]} - {heb_op} .{i+1} {status_icon}"
+            step_summary = rtl(f"{status_icon} {i+1}. {heb_op} - {heb_desc[:50]}")
             self.steps_listbox.insert(tk.END, step_summary)
 
             # Color-code items for better visibility
@@ -600,15 +600,15 @@ class ControlsPanel:
             self.current_step_label.config(text=t("Step {current}/{total}: {operation}",
                                                  current=current_index + 1,
                                                  total=len(self.main_app.steps),
-                                                 operation=heb_op))
+                                                 operation=rtl(heb_op)))
 
             # Update step details - clean Hebrew-only display
             heb_desc = current_step.get('hebDescription', current_step['description'])
-            details_text = f"{heb_op}\n\n{heb_desc}\n"
+            details_text = rtl(f"{heb_op}\n\n{heb_desc}\n")
             if current_step.get('parameters'):
                 formatted_params = self._format_parameters(current_step['parameters'])
                 if formatted_params:
-                    details_text += f"\n{formatted_params}"
+                    details_text += f"\n{rtl(formatted_params)}"
 
             self.step_details.config(state=tk.NORMAL)
             self.step_details.delete(1.0, tk.END)
@@ -635,13 +635,13 @@ class ControlsPanel:
 
                 # Show step details in the SELECTED step details widget (not current step widget)
                 total = len(self.main_app.steps)
-                details_text = f"{t('Step')} {step_index + 1}/{total}\n\n"
-                details_text += f"{heb_op}\n\n{heb_desc}\n"
+                details_text = rtl(f"{t('Step')} {step_index + 1}/{total}") + "\n\n"
+                details_text += rtl(f"{heb_op}\n\n{heb_desc}\n")
 
                 if step.get('parameters'):
                     formatted_params = self._format_parameters(step['parameters'])
                     if formatted_params:
-                        details_text += f"\n{formatted_params}\n"
+                        details_text += f"\n{rtl(formatted_params)}\n"
 
                 self.selected_step_details.config(state=tk.NORMAL)
                 self.selected_step_details.delete(1.0, tk.END)
@@ -671,9 +671,50 @@ class ControlsPanel:
                 self.main_app.canvas_manager.track_operation_from_step(step_desc)
             self.update_step_display()
     
+    def _prepare_for_new_run(self):
+        """Reset engine and UI to be ready for a fresh run.
+
+        Called after completion, stop, or error to ensure the user can
+        immediately press RUN to start a new execution.
+        """
+        try:
+            # Reset execution engine back to step 0 (keep steps loaded)
+            self.main_app.execution_engine.reset_execution(clear_steps=False)
+
+            # Reset button states - ready to run again
+            self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED,
+                               text=t('\u25b6 RUN'), bg='darkgreen')
+            self.pause_btn.config(state=tk.DISABLED)
+            self.stop_btn.config(state=tk.DISABLED)
+            self.reset_btn.config(state=tk.NORMAL)
+
+            # Update step display to show step 1 again
+            self.update_step_display()
+
+            # Reset progress bar
+            if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
+                self.main_app.progress['value'] = 0
+                self.main_app.progress_text.config(text=t("0% Complete"))
+
+            # Clear any safety modals/errors
+            if hasattr(self.main_app, 'execution_controller'):
+                self.main_app.execution_controller.cleanup_for_reset()
+
+        except Exception as e:
+            self.logger.error(f"Error preparing for new run: {e}", category="gui")
+        finally:
+            # ALWAYS unlock program panel, even if other parts fail
+            if hasattr(self.main_app, 'program_panel'):
+                self.main_app.program_panel.set_locked(False)
+
     def run_execution(self):
         """Start execution"""
         if self.main_app.steps:
+            # Ensure engine is in clean state before starting
+            engine = self.main_app.execution_engine
+            if not engine.is_running:
+                engine.reset_execution(clear_steps=False)
+
             # Reset operation states to pending before starting so colors reflect fresh run
             if hasattr(self.main_app, 'operation_states'):
                 for state_dict in self.main_app.operation_states.values():
@@ -713,35 +754,13 @@ class ControlsPanel:
     def stop_execution(self):
         """Stop execution"""
         if self.main_app.execution_engine.stop_execution():
-            self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
-            self.pause_btn.config(state=tk.DISABLED)
-            self.stop_btn.config(state=tk.DISABLED)
-            self.reset_btn.config(state=tk.NORMAL)  # Enable reset when stopped
-            self.main_app.operation_label.config(text=t("Execution Stopped"), fg='red')
-
-            # Unlock program panel when execution stops
-            if hasattr(self.main_app, 'program_panel'):
-                self.main_app.program_panel.set_locked(False)
+            # Reset engine and UI for fresh run
+            self._prepare_for_new_run()
+            self.main_app.operation_label.config(text=t("Execution Stopped - press Run to restart"), fg='orange')
     
     def auto_reload_after_completion(self):
         """Auto-reload program after execution completes so it's ready to run again"""
-        # Reset execution engine back to step 0 (keep steps loaded)
-        self.main_app.execution_engine.reset_execution(clear_steps=False)
-
-        # Reset button states - ready to run again
-        self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
-        self.pause_btn.config(state=tk.DISABLED)
-        self.stop_btn.config(state=tk.DISABLED)
-        self.reset_btn.config(state=tk.NORMAL)
-
-        # Unlock program panel after completion
-        if hasattr(self.main_app, 'program_panel'):
-            self.main_app.program_panel.set_locked(False)
-
-        # Update step display to show step 1 again
-        self.update_step_display()
-
-        # Update operation label
+        self._prepare_for_new_run()
         self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
 
     def reset_execution(self, clear_steps=False):
