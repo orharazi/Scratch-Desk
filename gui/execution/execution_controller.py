@@ -1,32 +1,64 @@
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox
 from core.logger import get_logger
 from core.translations import t
 
 
+# Reason-type styling for safety modals
+REASON_STYLE = {
+    "operational": {
+        "icon": "\u2699\ufe0f",
+        "title_he": "\u05ea\u05e0\u05d0\u05d9 \u05ea\u05e4\u05e2\u05d5\u05dc\u05d9",
+        "bg": "#2d1a00",
+        "accent": "#ff9900",
+        "btn_color": "#cc7700",
+    },
+    "collision": {
+        "icon": "\ud83d\udea8",
+        "title_he": "\u05e1\u05db\u05e0\u05ea \u05d4\u05ea\u05e0\u05d2\u05e9\u05d5\u05ea!",
+        "bg": "#2d0000",
+        "accent": "#ff3333",
+        "btn_color": "#cc0000",
+    },
+    "mechanical": {
+        "icon": "\u26a0\ufe0f",
+        "title_he": "\u05e1\u05db\u05e0\u05ea \u05e0\u05d6\u05e7 \u05de\u05db\u05e0\u05d9",
+        "bg": "#1a002d",
+        "accent": "#cc66ff",
+        "btn_color": "#9933cc",
+    },
+}
+
+REASON_FALLBACK = {
+    "icon": "\ud83d\udea8",
+    "title_he": "\u05d4\u05e4\u05e8\u05ea \u05d1\u05d8\u05d9\u05d7\u05d5\u05ea",
+    "bg": "#2d0000",
+    "accent": "#ff3333",
+    "btn_color": "#cc0000",
+}
+
+
 class ExecutionController:
     """Handles execution control and status updates"""
-    
+
     def __init__(self, main_app):
         self.main_app = main_app
-        self.transition_dialog = None
+        self.safety_modal = None
         self.logger = get_logger()
 
     def cleanup_for_reset(self):
         """Clean up controller state during system reset"""
-        # Destroy any open transition dialog and clear widget references
-        if self.transition_dialog:
+        # Destroy any open safety modal
+        if self.safety_modal:
             try:
-                self.transition_dialog.destroy()
+                self.safety_modal.destroy()
             except Exception:
-                pass  # Dialog may already be destroyed
-            self.transition_dialog = None
+                pass
+            self.safety_modal = None
 
-        # Clear widget references to prevent access after destroy
-        if hasattr(self, 'transition_limit_switch_label'):
-            self.transition_limit_switch_label = None
+        # Clear inline safety error
+        self._clear_inline_safety_error()
 
         self.logger.debug("ExecutionController cleaned up for reset", category="gui")
 
@@ -44,10 +76,12 @@ class ExecutionController:
             elif status == 'error':
                 error_msg = info.get('message', t('Unknown error')) if info else t('Unknown error')
                 self.main_app.progress_label.config(text=t("Error: {error_msg}", error_msg=error_msg), fg='red')
-        
+
         # Update operation label if available
         if hasattr(self.main_app, 'operation_label'):
             if status == 'running':
+                # Clear any inline safety error when resuming
+                self._clear_inline_safety_error()
                 # Reset operation label when resuming (e.g., after safety wait)
                 self.main_app.operation_label.config(text=t("Running..."), fg='green')
             elif status == 'step_executing':
@@ -99,109 +133,107 @@ class ExecutionController:
                     # Update for sensor operations that might change position
                     elif any(keyword in step_info.lower() for keyword in ['init', 'sensor', 'cut', 'mark']):
                         self.main_app.canvas_manager.update_position_display()
-                    
+
                     # Update tool status indicators for tool actions
                     if any(keyword in step_info.lower() for keyword in ['line marker', 'line cutter', 'row marker', 'row cutter']):
                         self.main_app.canvas_manager.update_tool_status_from_step(step_info)
-                    
+
                     # Special handling for line completion - ensure automatic move to next line
                     if 'close line marker' in step_info.lower() and 'lines' in step_info.lower():
                         self.logger.info(f" LINE MARKING COMPLETED: {step_info}", category="gui")
                         self.logger.debug(f" Current step: {self.main_app.execution_engine.current_step_index}/{len(self.main_app.steps)}", category="gui")
-                        
+
                         # Check what the next step is
                         if (self.main_app.execution_engine.current_step_index < len(self.main_app.steps)):
                             next_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
                             self.logger.debug(f" Next step: {next_step.get('operation', 'unknown')} - {next_step.get('description', 'no description')}", category="gui")
-                            
+
                             # If next step is a move operation, it should execute automatically
                             if next_step.get('operation') == 'move_y':
                                 self.logger.debug(f" Next step is Y movement - will execute automatically", category="gui")
                                 self.logger.info(f" Line marking sequence complete - ready for automatic move to next line", category="gui")
-                        
+
                         # Force position update to ensure we're ready for the next move
                         self.main_app.canvas_manager.update_position_display()
-                    
+
             elif status == 'waiting_sensor':
                 # Get sensor name and translate it to Hebrew
                 sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
                 sensor_name_hebrew = t(sensor_name)  # Translate sensor name (e.g., "y_top" -> "Y עליון")
                 self.main_app.operation_label.config(text=t("Waiting for {sensor} sensor", sensor=sensor_name_hebrew), fg='orange')
-        
+
         # Update progress bar if available
         if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
             if status == 'executing' and info:
                 progress = info.get('progress', 0)
                 step_index = info.get('step_index', 0)
                 total_steps = info.get('total_steps', 1)
-                
+
                 # Update progress bar
                 self.main_app.progress['value'] = progress
-                
+
                 # Update progress text
                 self.main_app.progress_text.config(text=t("{progress:.1f}% Complete ({step_index}/{total_steps} steps)", progress=progress, step_index=step_index, total_steps=total_steps))
-                
+
                 # Update step display to show current step progress
-                if hasattr(self.main_app, 'right_panel'):
-                    self.main_app.right_panel.update_step_display()
-                
+                if hasattr(self.main_app, 'controls_panel'):
+                    self.main_app.controls_panel.update_step_display()
+
             elif status == 'completed':
                 self.main_app.progress['value'] = 100
                 self.main_app.progress_text.config(text=t("100% Complete - Execution finished"))
-                
-                # Final step display update
-                if hasattr(self.main_app, 'right_panel'):
-                    self.main_app.right_panel.update_step_display()
-                
+
+                # Auto-reload: reset execution to beginning (keep steps) so program is ready to run again
+                if hasattr(self.main_app, 'controls_panel'):
+                    self.main_app.controls_panel.auto_reload_after_completion()
+
             elif status == 'emergency_stop':
                 # EMERGENCY STOP due to safety violation
                 current_progress = self.main_app.progress['value']
-                self.main_app.progress_text.config(text=t("🚨 EMERGENCY STOP - Safety Violation"), fg='red')
+                self.main_app.progress_text.config(text=t("\ud83d\udea8 EMERGENCY STOP - Safety Violation"), fg='red')
 
-                # Show emergency stop dialog
-                violation_msg = info.get('violation_message', t('Unknown safety violation'))
-                safety_code = info.get('safety_code', '')
-                monitor_type = info.get('monitor_type', 'pre_execution')
+                # Load the rule and show unified safety modal
+                safety_code = info.get('safety_code', '') if info else ''
+                violation_msg = info.get('violation_message', t('Unknown safety violation')) if info else ''
+                rule = self._load_safety_rule(safety_code)
+                self._show_safety_modal(rule, safety_code, violation_msg)
 
-                import tkinter.messagebox as messagebox
-                messagebox.showerror(
-                    t("🚨 EMERGENCY STOP - Safety Violation"),
-                    t("Execution has been immediately stopped due to a safety violation!\n\n"
-                      "Safety Code: {safety_code}\n"
-                      "Detection: {monitor_type}\n\n"
-                      "Details:\n{violation_msg}\n\n"
-                      "⚠️  All motor movement has been halted to prevent damage.\n"
-                      "Please correct the safety issue before attempting to continue.",
-                      safety_code=safety_code,
-                      monitor_type=monitor_type.replace('_', ' ').title(),
-                      violation_msg=violation_msg)
-                )
-                
+                # Show inline emergency stop error on the bottom bar
+                self._show_inline_safety_error(violation_msg, safety_code, '', is_waiting=False)
+
                 # Update step display to show emergency stop state
-                if hasattr(self.main_app, 'right_panel'):
-                    self.main_app.right_panel.update_step_display()
-                    
+                if hasattr(self.main_app, 'controls_panel'):
+                    self.main_app.controls_panel.update_step_display()
+
                 # Update GUI controls to emergency stop state
-                if hasattr(self.main_app, 'right_panel'):
+                if hasattr(self.main_app, 'controls_panel'):
                     # Set emergency stop button states
-                    self.main_app.right_panel.run_btn.config(state='normal', text=t('🔄 RETRY'), bg='orange')
-                    self.main_app.right_panel.pause_btn.config(state='disabled')
-                    self.main_app.right_panel.stop_btn.config(state='disabled')
+                    self.main_app.controls_panel.run_btn.config(state='normal', text=t('\ud83d\udd04 RETRY'), bg='orange')
+                    self.main_app.controls_panel.pause_btn.config(state='disabled')
+                    self.main_app.controls_panel.stop_btn.config(state='disabled')
 
                     # Show persistent error status in right panel
-                    error_message = t("⚠️  SAFETY VIOLATION: {safety_code}", safety_code=safety_code)
-                    if hasattr(self.main_app.right_panel, 'progress_label'):
-                        self.main_app.right_panel.progress_label.config(
-                            text=error_message, 
+                    error_message = t("\u26a0\ufe0f  SAFETY VIOLATION: {safety_code}", safety_code=safety_code)
+                    if hasattr(self.main_app.controls_panel, 'progress_label'):
+                        self.main_app.controls_panel.progress_label.config(
+                            text=error_message,
                             fg='red'
                         )
-                
-                self.main_app.operation_label.config(text=t("🚨 EMERGENCY STOP - Safety Violation"), fg='red')
-            
+
+                self.main_app.operation_label.config(text=t("\ud83d\udea8 EMERGENCY STOP - Safety Violation"), fg='red')
+
             elif status == 'safety_recovered':
                 # Safety violation resolved - auto-resuming
                 message = info.get('message', t('Safety violation resolved'))
                 operation_type = info.get('operation_type', t('operation'))
+
+                # Auto-close the safety modal
+                if self.safety_modal:
+                    try:
+                        self.safety_modal.destroy()
+                    except Exception:
+                        pass
+                    self.safety_modal = None
 
                 # Update progress and status to show recovery
                 current_progress = self.main_app.progress['value']
@@ -211,19 +243,19 @@ class ExecutionController:
                 )
 
                 # Restore run button to normal state
-                if hasattr(self.main_app, 'right_panel'):
-                    self.main_app.right_panel.run_btn.config(
+                if hasattr(self.main_app, 'controls_panel'):
+                    self.main_app.controls_panel.run_btn.config(
                         state='disabled',
-                        text=t('▶ RUN'),
+                        text=t('\u25b6 RUN'),
                         bg='darkgreen'
                     )
-                    self.main_app.right_panel.pause_btn.config(state='normal')
-                    self.main_app.right_panel.stop_btn.config(state='normal')
+                    self.main_app.controls_panel.pause_btn.config(state='normal')
+                    self.main_app.controls_panel.stop_btn.config(state='normal')
 
                     # Clear error status from right panel
-                    if hasattr(self.main_app.right_panel, 'progress_label'):
-                        self.main_app.right_panel.progress_label.config(
-                            text=t("✅ Safety violation resolved - Resuming"),
+                    if hasattr(self.main_app.controls_panel, 'progress_label'):
+                        self.main_app.controls_panel.progress_label.config(
+                            text=t("\u2705 Safety violation resolved - Resuming"),
                             fg='green'
                         )
 
@@ -232,82 +264,22 @@ class ExecutionController:
                 operation_type_raw = operation_type.title()
                 operation_type_hebrew = t(operation_type_raw) if operation_type_raw else operation_type_raw
                 self.main_app.operation_label.config(
-                    text=t("✅ Safety resolved - {operation_type} execution resuming", operation_type=operation_type_hebrew),
+                    text=t("\u2705 Safety resolved - {operation_type} execution resuming", operation_type=operation_type_hebrew),
                     fg='green'
                 )
-            
-            elif status == 'transition_alert':
-                # Show auto-dismissing transition alert
-                from_op_raw = info.get('from_operation', '').title()
-                to_op_raw = info.get('to_operation', '').title()
-                message = info.get('message', '')
 
-                # Translate operation names to Hebrew for UI display
-                from_op = t(from_op_raw) if from_op_raw else ''
-                to_op = t(to_op_raw) if to_op_raw else ''
+                # Clear inline safety error from bottom bar
+                self._clear_inline_safety_error()
 
-                self.logger.warning(f" TRANSITION ALERT: {from_op_raw} → {to_op_raw}", category="gui")
-                self.logger.debug(f" TRANSITION MESSAGE: {message}", category="gui")
-
-                # Show non-blocking transition dialog
-                self.show_transition_dialog(from_op, to_op, message)
-
-                # Update GUI status
-                self.main_app.operation_label.config(
-                    text=t("⏸️  Waiting: {from_op} → {to_op} transition", from_op=from_op, to_op=to_op),
-                    fg='orange'
-                )
-
-                # Update progress text
-                current_progress = self.main_app.progress['value']
-                self.main_app.progress_text.config(
-                    text=t("{progress:.1f}% - Waiting for rows motor door CLOSED", progress=current_progress)
-                )
-            
-            elif status == 'transition_waiting':
-                # Update dialog with current limit switch status (if dialog exists)
-                limit_switch_state = info.get('limit_switch_state', 'up')
-
-                if hasattr(self, 'transition_dialog') and self.transition_dialog:
-                    try:
-                        self.update_transition_dialog_status(limit_switch_state)
-                    except:
-                        pass  # Dialog may have been closed
-            
-            elif status == 'transition_complete':
-                # Auto-dismiss the transition dialog
-                if hasattr(self, 'transition_dialog') and self.transition_dialog:
-                    try:
-                        self.logger.debug(" TRANSITION: Auto-closing transition dialog", category="gui")
-                        self.transition_dialog.destroy()
-                        self.transition_dialog = None
-                        self.logger.info(" TRANSITION: Dialog closed successfully", category="gui")
-                    except Exception as e:
-                        self.logger.error(f" Error closing transition dialog: {e}", category="gui")
-                
-                # Update GUI status to show rows operations starting
-                self.main_app.operation_label.config(
-                    text=t("▶️  Rows operations starting..."),
-                    fg='blue'
-                )
-
-                # Update progress text
-                current_progress = self.main_app.progress['value']
-                self.main_app.progress_text.config(
-                    text=t("{progress:.1f}% - Continuing execution", progress=current_progress)
-                )
-                
-                self.logger.info(" TRANSITION COMPLETE: GUI updated for rows operations", category="gui")
-            
             elif status == 'stopped' or status == 'error':
                 # Keep current progress but update text
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(text=t("{progress:.1f}% - Execution stopped", progress=current_progress))
-                
+
                 # Update step display to show stopped state
-                if hasattr(self.main_app, 'right_panel'):
-                    self.main_app.right_panel.update_step_display()
-        
+                if hasattr(self.main_app, 'controls_panel'):
+                    self.main_app.controls_panel.update_step_display()
+
         # Handle safety violations
         if status == 'safety_violation':
             self.handle_safety_violation(info)
@@ -317,7 +289,7 @@ class ExecutionController:
             self.handle_safety_waiting(info)
 
     def handle_safety_waiting(self, info):
-        """Handle safety waiting state - show popup and update UI while waiting for condition to clear"""
+        """Handle safety waiting state - show modal and inline error"""
         if not info:
             return
 
@@ -328,47 +300,21 @@ class ExecutionController:
 
         # Update progress label with safety waiting state
         if hasattr(self.main_app, 'progress_label'):
-            self.main_app.progress_label.config(text=t("⏸️ SAFETY - Waiting for condition to clear..."), fg='orange')
+            self.main_app.progress_label.config(text=t("\u23f8\ufe0f SAFETY - Waiting for condition to clear..."), fg='orange')
 
         # Update operation label
         if hasattr(self.main_app, 'operation_label'):
             self.main_app.operation_label.config(text=t("SAFETY WAIT - Will auto-resume"), fg='orange')
 
-        # Show waiting alert dialog (non-blocking info)
-        self.show_safety_waiting_alert(violation_message, safety_code, step_description)
+        # Load the rule and show unified safety modal
+        rule = self._load_safety_rule(safety_code)
+        self._show_safety_modal(rule, safety_code, violation_message)
 
-    def show_safety_waiting_alert(self, violation_message, safety_code, step_description):
-        """Show safety waiting alert dialog"""
-        try:
-            alert_title = t("⏸️ SAFETY - Waiting for condition")
-
-            # Determine the required action based on the safety code
-            if "ROWS" in safety_code or "rows" in violation_message.lower():
-                required_action = t("Open the rows door (set row marker DOWN) to continue rows operations.")
-            elif "LINES" in safety_code or "lines" in violation_message.lower():
-                required_action = t("Close the rows door (set row marker UP) to continue lines operations.")
-            else:
-                required_action = t("Resolve the safety condition to continue.")
-
-            alert_message = t("""⏸️ SAFETY CONDITION DETECTED
-
-{violation_message}
-
-REQUIRED ACTION:
-{required_action}
-
-The system will AUTOMATICALLY RESUME when the condition is resolved.""",
-                            violation_message=violation_message,
-                            required_action=required_action)
-
-            # Show warning dialog (not error - it's waiting, not stopped)
-            messagebox.showwarning(alert_title, alert_message)
-
-        except Exception as e:
-            self.logger.error(f"Error showing safety waiting alert: {e}", category="gui")
+        # Show inline safety error on the bottom bar
+        self._show_inline_safety_error(violation_message, safety_code, step_description, is_waiting=True)
 
     def handle_safety_violation(self, info):
-        """Handle safety violation with immediate alerts and execution stop"""
+        """Handle safety violation - show inline error on main screen"""
         if not info:
             return
 
@@ -380,62 +326,18 @@ The system will AUTOMATICALLY RESUME when the condition is resolved.""",
 
         # Update progress label with safety violation
         if hasattr(self.main_app, 'progress_label'):
-            self.main_app.progress_label.config(text=t("🚨 SAFETY VIOLATION - STOPPED"), fg='red')
+            self.main_app.progress_label.config(text=t("\ud83d\udea8 SAFETY VIOLATION - STOPPED"), fg='red')
 
         # Update operation label
         if hasattr(self.main_app, 'operation_label'):
             self.main_app.operation_label.config(text=t("SAFETY VIOLATION - Execution Stopped"), fg='red')
-        
-        # Show critical safety alert dialog
-        self.show_safety_alert(violation_message, safety_code, step_description)
-        
+
+        # Show inline safety error on the bottom bar
+        self._show_inline_safety_error(violation_message, safety_code, step_description, is_waiting=False)
+
         # Update GUI to reflect stopped state
         self.update_gui_after_safety_stop()
-    
-    def show_safety_alert(self, violation_message, safety_code, step_description):
-        """Show safety violation alert dialog"""
-        try:
-            # Create detailed alert message
-            alert_title = t("🚨 SAFETY VIOLATION - {safety_code}", safety_code=safety_code)
 
-            # Determine the required action based on the safety code
-            if "ROWS" in safety_code or "rows" in violation_message.lower():
-                required_action = t("Open the rows door (set row marker DOWN) to continue rows operations.")
-                error_code = "ROWS_DOOR_CLOSED"
-            elif "LINES" in safety_code or "lines" in violation_message.lower():
-                required_action = t("Close the rows door (set row marker UP) to continue lines operations.")
-                error_code = "LINES_DOOR_OPEN"
-            else:
-                required_action = t("Check the row marker position and resolve the safety condition.")
-                error_code = safety_code
-
-            alert_message = t("""🚨 SAFETY VIOLATION - {error_code}
-
-{violation_message}
-
-REQUIRED ACTION:
-{required_action}
-
-The system will remain stopped until you manually address this issue.""",
-                            error_code=error_code,
-                            violation_message=violation_message,
-                            required_action=required_action)
-
-            # Show critical warning dialog
-            messagebox.showerror(alert_title, alert_message)
-            
-            # Log to console as well
-            self.logger.debug(f"\n{'='*60}", category="gui")
-            self.logger.warning(f"🚨 SAFETY VIOLATION: {safety_code}", category="gui")
-            self.logger.debug(f"Step: {step_description}", category="gui")
-            self.logger.warning(f"Issue: {violation_message}", category="gui")
-            self.logger.debug(f"{'='*60}\n", category="gui")
-            
-        except Exception as e:
-            self.logger.error(f"Error showing safety alert: {e}", category="gui")
-            # Fallback to console message
-            self.logger.warning(f"\n🚨 SAFETY VIOLATION: {violation_message}", category="gui")
-    
     def update_gui_after_safety_stop(self):
         """Update GUI components after safety-triggered stop"""
         try:
@@ -446,178 +348,331 @@ The system will remain stopped until you manually address this issue.""",
                 self.main_app.pause_btn.config(state=tk.DISABLED)
             if hasattr(self.main_app, 'stop_btn'):
                 self.main_app.stop_btn.config(state=tk.DISABLED)
-            
+
             # Update progress text with safety warning
             if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
                 current_progress = self.main_app.progress.get('value', 0)
                 self.main_app.progress_text.config(
                     text=t("{progress:.1f}% - STOPPED: Safety Violation", progress=current_progress)
                 )
-            
+
         except Exception as e:
             self.logger.error(f"Error updating GUI after safety stop: {e}", category="gui")
-    
-    def show_transition_dialog(self, from_op, to_op, message):
-        """Show auto-dismissing transition dialog"""
-        import tkinter as tk
-        import tkinter.ttk as ttk
-        
-        # Close any existing transition dialog
-        if hasattr(self, 'transition_dialog') and self.transition_dialog:
-            try:
-                self.transition_dialog.destroy()
-            except:
-                pass
-        
-        # Create new transition dialog window
-        self.transition_dialog = tk.Toplevel(self.main_app.root)
-        self.transition_dialog.title(t("Operation Transition: {from_op} → {to_op}", from_op=from_op, to_op=to_op))
-        self.transition_dialog.geometry("450x320")
-        self.transition_dialog.resizable(False, False)
-        
-        # Position dialog to the side so it doesn't block main window completely
-        # Get main window position
-        main_x = self.main_app.root.winfo_x()
-        main_y = self.main_app.root.winfo_y()
-        main_width = self.main_app.root.winfo_width()
-        
-        # Position dialog to the right of main window
-        dialog_x = main_x + main_width + 10
-        dialog_y = main_y + 100
-        
-        self.transition_dialog.geometry(f"450x320+{dialog_x}+{dialog_y}")
-        
-        # Make it non-modal so user can access main window
-        self.transition_dialog.transient(self.main_app.root)
-        # Removed grab_set() to allow user to interact with main window controls
-        
-        # Main frame
-        main_frame = tk.Frame(self.transition_dialog, padx=20, pady=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Title
-        title_label = tk.Label(
-            main_frame,
-            text=t("🔄 Operation Transition"),
-            font=('Arial', 14, 'bold'),
-            fg='orange'
-        )
-        title_label.pack(pady=(0, 10))
 
-        # Transition info
-        transition_label = tk.Label(
-            main_frame,
-            text=t("{from_op} Operations Complete ✅\nPreparing for {to_op} Operations", from_op=from_op, to_op=to_op),
-            font=('Arial', 11),
-            justify=tk.CENTER
-        )
-        transition_label.pack(pady=(0, 15))
-        
-        # Message
-        message_label = tk.Label(
-            main_frame,
-            text=message,
-            font=('Arial', 10),
-            wraplength=400,
-            justify=tk.LEFT
-        )
-        message_label.pack(pady=(0, 15))
-        
-        # Status frame
-        status_frame = tk.Frame(main_frame, relief=tk.RIDGE, bd=2)
-        status_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        status_title = tk.Label(
-            status_frame,
-            text=t("Rows Motor Door Limit Switch:"),
-            font=('Arial', 10, 'bold'),
-            padx=10, pady=5
-        )
-        status_title.pack()
-
-        # Status label (will be updated in real-time)
-        self.transition_limit_switch_label = tk.Label(
-            status_frame,
-            text=t("Status: OFF (OPEN)"),
-            font=('Arial', 9),
-            padx=10, pady=2
-        )
-        self.transition_limit_switch_label.pack()
-        
-        # Progress indicator
-        progress_frame = tk.Frame(main_frame)
-        progress_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        tk.Label(
-            progress_frame,
-            text=t("⏳ Waiting for rows motor door to CLOSE (limit switch ON)..."),
-            font=('Arial', 10, 'italic'),
-            fg='blue'
-        ).pack()
-
-        # Instructions for user
-        instructions_label = tk.Label(
-            main_frame,
-            text=t("💡 You can use the main window controls while this dialog is open.\nUse the 'Toggle Rows Motor Limit Switch' button to close the door (set to ON)."),
-            font=('Arial', 9, 'bold'),
-            fg='blue',
-            wraplength=400,
-            justify=tk.CENTER
-        )
-        instructions_label.pack(pady=(5, 5))
-
-        # Auto-dismiss info
-        auto_dismiss_label = tk.Label(
-            main_frame,
-            text=t("This dialog will automatically close when the motor door is CLOSED (limit switch ON)."),
-            font=('Arial', 9, 'italic'),
-            fg='gray',
-            wraplength=400,
-            justify=tk.CENTER
-        )
-        auto_dismiss_label.pack(pady=(5, 0))
-        
-        self.logger.debug(f" Transition dialog shown: {from_op} → {to_op}", category="gui")
-    
-    def update_transition_dialog_status(self, limit_switch_state):
-        """Update the transition dialog with current limit switch status"""
-        if not hasattr(self, 'transition_dialog') or not self.transition_dialog:
-            return
-
-        # Check if dialog widget still exists (not destroyed)
+    def _load_safety_rule(self, safety_code):
+        """Load a safety rule by ID from safety_rules.json"""
         try:
-            if not self.transition_dialog.winfo_exists():
-                self.transition_dialog = None
-                return
-        except Exception:
-            self.transition_dialog = None
-            return
+            import json
+            import os
+            rules_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'safety_rules.json')
+            with open(rules_path, 'r', encoding='utf-8') as f:
+                rules_data = json.load(f)
+            for rule in rules_data.get('rules', []):
+                if rule.get('id') == safety_code:
+                    return rule
+        except Exception as e:
+            self.logger.error(f"Error loading safety rule: {e}", category="gui")
+        return None
 
-        # Check if label widget still exists
-        if not hasattr(self, 'transition_limit_switch_label') or not self.transition_limit_switch_label:
-            return
-
+    def _show_safety_modal(self, rule, safety_code, violation_message):
+        """Show unified safety modal styled per the rule's reason type.
+        Non-modal so user can still interact with hardware buttons.
+        Auto-closes on safety_recovered status."""
         try:
-            if not self.transition_limit_switch_label.winfo_exists():
-                return
-        except Exception:
-            return
+            # Close any existing safety modal first
+            if self.safety_modal:
+                try:
+                    self.safety_modal.destroy()
+                except Exception:
+                    pass
+                self.safety_modal = None
 
-        try:
-            # Update status label with current limit switch state
-            # limit_switch_state is "down" (ON/CLOSED) or "up" (OFF/OPEN)
-            if limit_switch_state == "down":
-                status_text = t("Status: ON (CLOSED)")
-                status_color = 'green'
+            # Determine styling from rule reason
+            reason = rule.get('reason', '') if rule else ''
+            style = REASON_STYLE.get(reason, REASON_FALLBACK)
+
+            icon = style["icon"]
+            reason_title = style["title_he"]
+            bg = style["bg"]
+            accent = style["accent"]
+            btn_color = style["btn_color"]
+
+            # Get Hebrew fields from rule
+            if rule:
+                rule_name_he = rule.get('name_he', rule.get('name', safety_code))
+                rule_message_he = rule.get('message_he', rule.get('message', violation_message))
             else:
-                status_text = t("Status: OFF (OPEN)")
-                status_color = 'red'
+                rule_name_he = safety_code
+                rule_message_he = violation_message
 
-            self.transition_limit_switch_label.config(
-                text=status_text,
-                fg=status_color
-            )
+            # Create dialog
+            dialog = tk.Toplevel(self.main_app.root)
+            dialog.title(reason_title)
+            dialog.configure(bg=bg)
+
+            # Size and center
+            dialog_width = 650
+            dialog_height = 420
+            screen_width = dialog.winfo_screenwidth()
+            screen_height = dialog.winfo_screenheight()
+            x = (screen_width - dialog_width) // 2
+            y = (screen_height - dialog_height) // 2
+            dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+            dialog.minsize(dialog_width, dialog_height)
+            dialog.resizable(False, False)
+
+            # Non-modal so user can interact with hardware controls
+            dialog.transient(self.main_app.root)
+
+            # Main frame
+            main_frame = tk.Frame(dialog, bg=bg, padx=30, pady=20)
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # 1. Icon + reason title (large, accented)
+            tk.Label(
+                main_frame,
+                text=f"{icon}  {reason_title}",
+                font=('Arial', 24, 'bold'),
+                fg=accent,
+                bg=bg
+            ).pack(pady=(0, 5))
+
+            # 2. Rule name_he + safety code (smaller)
+            code_text = f"{rule_name_he}  [{safety_code}]" if safety_code else rule_name_he
+            tk.Label(
+                main_frame,
+                text=code_text,
+                font=('Arial', 13),
+                fg='#cccccc',
+                bg=bg
+            ).pack(pady=(0, 10))
+
+            # 3. Separator line (accent color)
+            tk.Frame(main_frame, bg=accent, height=3).pack(fill=tk.X, pady=(0, 15))
+
+            # 4. Rule message_he (white text)
+            tk.Label(
+                main_frame,
+                text=rule_message_he,
+                font=('Arial', 14),
+                fg='white',
+                bg=bg,
+                wraplength=600,
+                justify=tk.RIGHT,
+                anchor='e'
+            ).pack(pady=(0, 20), fill=tk.X)
+
+            # 5. Green auto-resume note
+            tk.Label(
+                main_frame,
+                text="\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8",
+                font=('Arial', 13, 'bold'),
+                fg='#66cc66',
+                bg=bg,
+                wraplength=600,
+                justify=tk.RIGHT,
+                anchor='e'
+            ).pack(pady=(0, 25), fill=tk.X)
+
+            # 6. OK button
+            tk.Button(
+                main_frame,
+                text=t("OK"),
+                font=('Arial', 16, 'bold'),
+                bg=btn_color,
+                fg='white',
+                activebackground='#333333',
+                activeforeground='white',
+                command=lambda: self._close_safety_modal_manual(dialog),
+                padx=40,
+                pady=12
+            ).pack()
+
+            # Ensure content fits
+            dialog.update_idletasks()
+
+            # Store reference for auto-close
+            self.safety_modal = dialog
+
+            dialog.focus_set()
 
         except Exception as e:
-            # Dialog was destroyed, clear reference
-            self.transition_dialog = None
+            self.logger.error(f"Error showing safety modal: {e}", category="gui")
+
+    def _close_safety_modal_manual(self, dialog):
+        """Handle manual OK click on safety modal"""
+        try:
+            dialog.destroy()
+        except Exception:
+            pass
+        if self.safety_modal is dialog:
+            self.safety_modal = None
+
+    def _show_inline_safety_error(self, violation_message, safety_code, step_description, is_waiting=False):
+        """Show safety error inline on the bottom bar with full Hebrew rule details"""
+        try:
+            if not hasattr(self.main_app, 'safety_error_label') or not hasattr(self.main_app, 'safety_details_btn'):
+                return
+
+            # Look up the full rule to get Hebrew details
+            rule = self._load_safety_rule(safety_code)
+
+            if rule:
+                rule_name_he = rule.get('name_he', rule.get('name', safety_code))
+                rule_message_he = rule.get('message_he', rule.get('message', violation_message))
+                # Compact: "name | message" in Hebrew
+                error_text = f"{rule_name_he}  |  {rule_message_he}"
+            else:
+                error_text = violation_message
+
+            # Prefix icon based on state
+            if is_waiting:
+                error_text = f"\u23f8\ufe0f  {error_text}"
+                bg_color = '#fff3cd'
+                fg_color = '#856404'
+                btn_bg = '#cc7700'
+            else:
+                error_text = f"\ud83d\udea8  {error_text}"
+                bg_color = '#ffcccc'
+                fg_color = '#cc0000'
+                btn_bg = '#cc0000'
+
+            # Update the inline error label
+            self.main_app.safety_error_label.config(
+                text=error_text,
+                bg=bg_color,
+                fg=fg_color
+            )
+
+            # Store details for the details button (include full rule)
+            self._safety_detail_info = {
+                'violation_message': violation_message,
+                'safety_code': safety_code,
+                'step_description': step_description,
+                'is_waiting': is_waiting,
+                'rule': rule
+            }
+
+            # Configure details button
+            self.main_app.safety_details_btn.config(
+                bg=btn_bg,
+                command=self._show_safety_details_dialog
+            )
+
+            # Show the error label and details button in the bottom bar
+            self.main_app.safety_error_label.pack(side=tk.RIGHT, padx=(5, 5), fill=tk.X, expand=True)
+            self.main_app.safety_details_btn.pack(side=tk.RIGHT, padx=(0, 2))
+
+            # Hide the operation label to make room
+            self.main_app.operation_label.pack_forget()
+
+        except Exception as e:
+            self.logger.error(f"Error showing inline safety error: {e}", category="gui")
+
+    def _clear_inline_safety_error(self):
+        """Clear inline safety error from the bottom bar"""
+        try:
+            if hasattr(self.main_app, 'safety_error_label'):
+                self.main_app.safety_error_label.pack_forget()
+            if hasattr(self.main_app, 'safety_details_btn'):
+                self.main_app.safety_details_btn.pack_forget()
+
+            # Restore the operation label
+            if hasattr(self.main_app, 'operation_label'):
+                self.main_app.operation_label.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(0, 5))
+
+        except Exception as e:
+            self.logger.error(f"Error clearing inline safety error: {e}", category="gui")
+
+    def _show_safety_details_dialog(self):
+        """Show compact safety details dialog when user clicks the Details button"""
+        try:
+            info = getattr(self, '_safety_detail_info', {})
+            safety_code = info.get('safety_code', '')
+            is_waiting = info.get('is_waiting', False)
+            rule = info.get('rule')
+
+            # Determine styling from rule reason
+            reason = rule.get('reason', '') if rule else ''
+            style = REASON_STYLE.get(reason, REASON_FALLBACK)
+            bg_color = style["bg"]
+            accent_color = style["accent"]
+            btn_color = style["btn_color"]
+            icon = style["icon"]
+
+            # Use Hebrew fields from the rule, fallback to English
+            if rule:
+                rule_name = rule.get('name_he', rule.get('name', safety_code))
+                rule_desc = rule.get('description_he', rule.get('description', ''))
+                rule_message = rule.get('message_he', rule.get('message', ''))
+                severity = rule.get('severity', '')
+            else:
+                rule_name = safety_code
+                rule_desc = info.get('violation_message', t('Unknown safety violation'))
+                rule_message = ''
+                severity = ''
+
+            # Create compact dialog
+            dialog = tk.Toplevel(self.main_app.root)
+            dialog.title(style["title_he"])
+            dialog.configure(bg=bg_color)
+
+            dialog_width = 500
+            dialog_height = 350
+            screen_width = dialog.winfo_screenwidth()
+            screen_height = dialog.winfo_screenheight()
+            x = (screen_width - dialog_width) // 2
+            y = (screen_height - dialog_height) // 2
+            dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+            dialog.minsize(dialog_width, dialog_height)
+            dialog.resizable(False, False)
+            dialog.transient(self.main_app.root)
+            dialog.grab_set()
+
+            main_frame = tk.Frame(dialog, bg=bg_color, padx=20, pady=15)
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Title - Hebrew rule name
+            tk.Label(main_frame, text=f"{icon}  {rule_name}",
+                     font=('Arial', 16, 'bold'), fg=accent_color, bg=bg_color).pack(pady=(0, 5))
+
+            # Safety code + severity
+            code_text = safety_code
+            if severity:
+                code_text = f"{safety_code}  ({severity})"
+            tk.Label(main_frame, text=code_text, font=('Arial', 10),
+                     fg='#999999', bg=bg_color).pack(pady=(0, 8))
+
+            # Separator
+            tk.Frame(main_frame, bg=accent_color, height=2).pack(fill=tk.X, pady=(0, 10))
+
+            # Hebrew description
+            if rule_desc:
+                tk.Label(main_frame, text=rule_desc, font=('Arial', 12),
+                         fg='white', bg=bg_color, wraplength=450,
+                         justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
+
+            # Hebrew action message
+            if rule_message:
+                tk.Label(main_frame, text=rule_message, font=('Arial', 12, 'bold'),
+                         fg='#ffcc00', bg=bg_color, wraplength=450,
+                         justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
+
+            # Auto-resume note for waiting state
+            if is_waiting:
+                tk.Label(main_frame,
+                         text="\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8",
+                         font=('Arial', 10, 'bold'), fg='#66cc66', bg=bg_color,
+                         wraplength=450, justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
+
+            # OK button
+            tk.Button(main_frame, text=t("OK"), font=('Arial', 14, 'bold'),
+                      bg=btn_color, fg='white', activebackground='#333333',
+                      command=dialog.destroy, padx=30, pady=8).pack()
+
+            # Ensure content fits
+            dialog.update_idletasks()
+            dialog.focus_set()
+
+        except Exception as e:
+            self.logger.error(f"Error showing safety details dialog: {e}", category="gui")

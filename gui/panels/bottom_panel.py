@@ -14,21 +14,22 @@ class BottomPanel:
     
     def create_widgets(self):
         """Create all widgets for the bottom panel - match original exactly"""
-        # Status label
+        # Status label (RTL: on right side)
         tk.Label(self.parent_frame, text=t("STATUS:"), font=('Arial', 10, 'bold'),
-                bg='lightyellow', fg='darkgreen').pack(side=tk.LEFT, padx=8)
-        
-        # Progress bar (compact version)
+                bg='lightyellow', fg='darkgreen').pack(side=tk.RIGHT, padx=8)
+
+        # System status summary (RTL: on left side)
+        self.system_status_label = tk.Label(self.parent_frame, text=t("System Ready - Load program to begin"),
+                                           bg='lightyellow', fg='darkblue', font=('Arial', 9, 'bold'),
+                                           anchor='e')
+        self.system_status_label.pack(side=tk.LEFT, padx=8)
+
+        # Progress bar (compact version, fills middle)
         progress_frame = tk.Frame(self.parent_frame, bg='lightyellow')
-        progress_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
-        
+        progress_frame.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=10)
+
         self.progress = ttk.Progressbar(progress_frame, mode='determinate')
         self.progress.pack(fill=tk.X, pady=8)
-        
-        # System status summary
-        self.system_status_label = tk.Label(self.parent_frame, text=t("System Ready - Load program to begin"),
-                                           bg='lightyellow', fg='darkblue', font=('Arial', 9, 'bold'))
-        self.system_status_label.pack(side=tk.RIGHT, padx=8)
         
         # Store references in main app for other components
         self.main_app.progress = self.progress

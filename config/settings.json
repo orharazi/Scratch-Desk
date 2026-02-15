@@ -8,7 +8,11 @@
     "paper_start_x": 15.0,
     "safe_movement_speed": 10.0,
     "max_acceleration": 5.0,
-    "paper_start_y": 31.0
+    "paper_start_y": 15.0,
+    "min_line_spacing": 0.3
+  },
+  "admin": {
+    "password": "123"
   },
   "gui_settings": {
     "update_interval_ms": 500,
@@ -197,7 +201,8 @@
         "line_cutter_piston": 16,
         "line_motor_piston": 13,
         "row_marker_piston": 5,
-        "row_cutter_piston": 19
+        "row_cutter_piston": 19,
+        "air_pressure_valve": 26
       },
       "rs485": {
         "enabled": true,
@@ -245,7 +250,7 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/ttyUSB0",
+      "serial_port": "/dev/cu.debug-console",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
@@ -306,11 +311,43 @@
       }
     }
   },
+  "safety": {
+    "setup_movement_keywords": [
+      "home position",
+      "ensure",
+      "move rows motor to home",
+      "move lines motor to home",
+      "complete:",
+      "init:",
+      "position for repeat"
+    ],
+    "pre_step_wait_interval": 0.5,
+    "pre_step_wait_timeout": 300
+  },
   "mock_hardware": {
     "homing_step_delay": 0.2,
     "door_check_delay": 0.1,
     "piston_operation_delay": 0.5,
     "grbl_homing_delay": 1.0,
     "coordinate_reset_delay": 0.2
+  },
+  "analytics": {
+    "enabled": true,
+    "csv_file_path": "data/analytics/runs.csv",
+    "email": {
+      "enabled": true,
+      "smtp_server": "smtp.gmail.com",
+      "smtp_port": 587,
+      "smtp_use_tls": true,
+      "smtp_username": "YOUR_GMAIL@gmail.com",
+      "smtp_password": "YOUR_APP_PASSWORD_HERE",
+      "sender_email": "YOUR_GMAIL@gmail.com",
+      "recipient_email": "YOUR_GMAIL@gmail.com",
+      "subject_prefix": "Scratch-Desk Analytics Report",
+      "schedule_enabled": false,
+      "schedule_interval_hours": 24,
+      "schedule_time": "08:00",
+      "last_sent": ""
+    }
   }
 }

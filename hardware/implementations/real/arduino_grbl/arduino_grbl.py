@@ -110,6 +110,12 @@ class ArduinoGRBL:
         self._cached_wco_x = 0.0  # mm
         self._cached_wco_y = 0.0  # mm
 
+        # Limit switch state tracking (calculated from Pn: field + position)
+        self._limit_switches = {'x_right': False, 'x_left': False, 'y_bottom': False, 'y_top': False}
+        hardware_limits = self.config.get("hardware_limits", {})
+        self._max_x = hardware_limits.get("max_x_position", 120.0)
+        self._max_y = hardware_limits.get("max_y_position", 80.0)
+
         self.logger.info(
             f"Arduino GRBL Configuration - Port: {self.serial_port}, Baud: {self.baud_rate}, "
             f"Feed Rate: {self.feed_rate} mm/min, Rapid Rate: {self.rapid_rate} mm/min",
@@ -543,6 +549,24 @@ class ArduinoGRBL:
                     self.logger.error("Could not parse position from GRBL response!", category="grbl")
                     return None
 
+                # Parse Pn: field for limit switch pins (only present when pins are active)
+                pn_match = re.search(r'Pn:([A-Za-z]+)', response)
+                pin_x = pin_y = False
+                if pn_match:
+                    pins = pn_match.group(1)
+                    pin_x = 'X' in pins
+                    pin_y = 'Y' in pins
+                status['pins'] = {'X': pin_x, 'Y': pin_y}
+
+                # Calculate specific limit switches from position
+                x_pos = status.get('x', 0.0)
+                y_pos = status.get('y', 0.0)
+                self._limit_switches['x_right'] = pin_x and (x_pos < self._max_x / 2)
+                self._limit_switches['x_left'] = pin_x and (x_pos >= self._max_x / 2)
+                self._limit_switches['y_bottom'] = pin_y and (y_pos < self._max_y / 2)
+                self._limit_switches['y_top'] = pin_y and (y_pos >= self._max_y / 2)
+                status['limit_switches'] = dict(self._limit_switches)
+
                 # Check if anything changed (only log changes)
                 if log_changes_only:
                     x_changed = (self._last_logged_x is None or
@@ -573,6 +597,10 @@ class ArduinoGRBL:
         except Exception as e:
             self.logger.error(f"Error getting status: {e}", category="grbl")
             return None
+
+    def get_limit_switch(self, switch_name: str) -> bool:
+        """Get a specific limit switch state calculated from GRBL Pn: field and position"""
+        return self._limit_switches.get(switch_name, False)
 
     def wait_for_movement_complete(self, target_x: float, target_y: float, timeout: float = None) -> bool:
         """

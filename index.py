@@ -25,6 +25,10 @@ def main():
         traceback.print_exc()
     finally:
         try:
+            app.hardware.air_pressure_valve_up()
+        except:
+            pass
+        try:
             root.destroy()
         except:
             pass

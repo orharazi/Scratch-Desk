@@ -103,15 +103,15 @@ class HomingProgressDialog:
             step_row = ttk.Frame(steps_frame)
             step_row.pack(fill=tk.X, pady=3)
 
-            # Status indicator (emoji)
-            status_label = ttk.Label(step_row, text="⏸", font=("Arial", 12), width=3)
-            status_label.pack(side=tk.LEFT)
-            self.step_status_labels[i] = status_label
-
-            # Step text
+            # Step text (RTL: text on right side)
             text_label = ttk.Label(step_row, text=t(step_text), font=("Arial", 10))
-            text_label.pack(side=tk.LEFT, padx=5)
+            text_label.pack(side=tk.RIGHT, padx=5)
             self.step_labels[i] = text_label
+
+            # Status indicator (emoji) (RTL: status on left side)
+            status_label = ttk.Label(step_row, text="⏸", font=("Arial", 12), width=3)
+            status_label.pack(side=tk.RIGHT)
+            self.step_status_labels[i] = status_label
 
         # Waiting message label (shows door wait, etc.)
         self.waiting_label = ttk.Label(

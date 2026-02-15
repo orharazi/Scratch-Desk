@@ -64,7 +64,7 @@ class HardwareStatusPanel:
         grid_frame = tk.Frame(main_container, bg=self.bg_color)
         grid_frame.pack(fill=tk.BOTH, expand=True, padx=3, pady=3)
 
-        # Configure grid columns with equal weight (3 columns now)
+        # Configure grid columns with equal weight (3 columns)
         for i in range(3):
             grid_frame.columnconfigure(i, weight=1, uniform="cols")
 
@@ -79,9 +79,10 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 0, row_offset + 3, t("Bottom Limit Switch"), "bottom_limit_switch", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 4, t("Right Limit Switch"), "right_limit_switch", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 5, t("Left Limit Switch"), "left_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 6, t("Rows Limit Switch"), "rows_limit_switch", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 6, t("Door Sensor"), "door_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 7, t("Air Pressure"), "air_pressure_valve", label_font, tiny_font)
         # System items (merged into same column)
-        row_offset += 7
+        row_offset += 8
         self._create_operation_mode_item(grid_frame, 0, row_offset, heading_font, label_font, tiny_font)
         row_offset += 3
         self._create_progress_section(grid_frame, 0, row_offset, label_font, tiny_font)
@@ -92,28 +93,28 @@ class HardwareStatusPanel:
         # Tool Sensors subsection (UP/DOWN sensors for each tool)
         self._create_subsection_header(grid_frame, 1, row_offset, t("Tool Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, t("Marker ↑"), "line_marker_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, t("Marker ↓"), "line_marker_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, t("Cutter ↑"), "line_cutter_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 3, t("Cutter ↓"), "line_cutter_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 4, t("Motor L↑"), "line_motor_left_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 5, t("Motor L↓"), "line_motor_left_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 6, t("Motor R↑"), "line_motor_right_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 7, t("Motor R↓"), "line_motor_right_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, t("Marker Up Sensor"), "line_marker_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, t("Marker Down Sensor"), "line_marker_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, t("Cutter Up Sensor"), "line_cutter_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 3, t("Cutter Down Sensor"), "line_cutter_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 4, t("Motor Left Up"), "line_motor_left_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 5, t("Motor Left Down"), "line_motor_left_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 6, t("Motor Right Up"), "line_motor_right_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 7, t("Motor Right Down"), "line_motor_right_down_sensor", label_font, tiny_font)
         # Edge Sensors subsection
         row_offset += 8
         self._create_subsection_header(grid_frame, 1, row_offset, t("Edge Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, t("X Left"), "x_left_edge_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, t("X Right"), "x_right_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, t("X Left Edge"), "x_left_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, t("X Right Edge"), "x_right_edge_sensor", label_font, tiny_font)
         # Pistons subsection
         row_offset += 2
         self._create_subsection_header(grid_frame, 1, row_offset, t("Pistons"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 1, row_offset, t("Marker"), "lines_piston_marker", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 1, t("Cutter"), "lines_piston_cutter", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 2, t("Motor L"), "lines_piston_motor_left", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 1, row_offset + 3, t("Motor R"), "lines_piston_motor_right", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset, t("Line Marker"), "lines_piston_marker", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 1, t("Line Cutter"), "lines_piston_cutter", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 2, t("Motor Left"), "lines_piston_motor_left", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 3, t("Motor Right"), "lines_piston_motor_right", label_font, tiny_font)
 
         # ROWS Section
         self._create_section_header(grid_frame, 2, row, t("✂️ ROWS"), heading_font)
@@ -121,62 +122,57 @@ class HardwareStatusPanel:
         # Tool Sensors subsection (UP/DOWN sensors for each tool)
         self._create_subsection_header(grid_frame, 2, row_offset, t("Tool Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, t("Marker ↑"), "row_marker_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Marker ↓"), "row_marker_down_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 2, t("Cutter ↑"), "row_cutter_up_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 3, t("Cutter ↓"), "row_cutter_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, t("Marker Up Sensor"), "row_marker_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Marker Down Sensor"), "row_marker_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 2, t("Cutter Up Sensor"), "row_cutter_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 3, t("Cutter Down Sensor"), "row_cutter_down_sensor", label_font, tiny_font)
         # Edge Sensors subsection
         row_offset += 4
         self._create_subsection_header(grid_frame, 2, row_offset, t("Edge Sensors"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, t("Y Top"), "y_top_edge_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Y Bottom"), "y_bottom_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, t("Y Top Edge"), "y_top_edge_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Y Bottom Edge"), "y_bottom_edge_sensor", label_font, tiny_font)
         # Pistons subsection
         row_offset += 2
         self._create_subsection_header(grid_frame, 2, row_offset, t("Pistons"), tiny_font)
         row_offset += 1
-        self._create_grid_item(grid_frame, 2, row_offset, t("Marker"), "rows_piston_marker", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Cutter"), "rows_piston_cutter", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset, t("Row Marker"), "rows_piston_marker", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 1, t("Row Cutter"), "rows_piston_cutter", label_font, tiny_font)
 
     def _create_section_header(self, parent, col, row, text, font):
         """Create section header"""
         label = tk.Label(parent, text=text, font=font,
                         bg=self.section_bg, fg=self.text_color,
                         relief=tk.RAISED, bd=1)
-        label.grid(row=row, column=col, sticky="ew", padx=1, pady=(0, 1))
+        label.grid(row=row, column=col, sticky="ew", padx=1, pady=0)
 
     def _create_subsection_header(self, parent, col, row, text, font):
         """Create subsection header"""
         label = tk.Label(parent, text=text, font=font,
                         bg=self.section_bg, fg=self.label_color,
-                        anchor='w')
-        label.grid(row=row, column=col, sticky="ew", padx=2, pady=(2, 0))
+                        anchor='e')
+        label.grid(row=row, column=col, sticky="ew", padx=2, pady=0)
 
     def _create_grid_item(self, parent, col, row, label_text, status_key, label_font, value_font):
-        """Create compact grid item with label and colored status (70/30 split)"""
-        # Container frame
+        """Create compact grid item with label and colored status (RTL)"""
+        # Container frame - use pack layout for consistent RTL: [status] [label]
         container = tk.Frame(parent, bg=self.section_bg)
-        container.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
+        container.grid(row=row, column=col, sticky="ew", padx=1, pady=0)
 
-        # Configure 70/30 width split with minimum size for label
-        container.columnconfigure(0, weight=7, minsize=100)  # Label gets 70% with min width
-        container.columnconfigure(1, weight=3, minsize=50)   # Status gets 30% with min width
-
-        # Label (left side - 70%) with fixed width for alignment
-        label = tk.Label(container, text=label_text + ":", font=label_font,
+        # Label on right (RTL) - shrinks to fit text
+        label = tk.Label(container, text=":" + label_text, font=label_font,
                         bg=self.section_bg, fg=self.label_color,
-                        anchor='w', width=18)  # Fixed width ensures vertical alignment
-        label.grid(row=0, column=0, sticky="w", padx=(2, 1))
+                        anchor='e')
+        label.pack(side=tk.RIGHT, padx=(0, 2))
 
-        # Status frame with color indicator (right side - 30%)
+        # Status indicator on left - fixed character width for consistency
         status_frame = tk.Frame(container, bg=self.switch_off_color, relief=tk.SUNKEN, bd=1)
-        status_frame.grid(row=0, column=1, sticky="ew", padx=(0, 2))
+        status_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(2, 0))
 
-        # Status text with fixed width to prevent resizing
         status_label = tk.Label(status_frame, text="---", font=value_font,
                                bg=self.switch_off_color, fg='white',
-                               anchor='center', width=10)  # Fixed width prevents resize
-        status_label.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+                               anchor='center', width=21)
+        status_label.pack(fill=tk.BOTH, expand=True, padx=1)
 
         # Debug: Print widget creation
         self.logger.debug(f"Created widget: {status_key}", category="gui")
@@ -192,7 +188,7 @@ class HardwareStatusPanel:
         # Mode label
         tk.Label(parent, text=t("Mode:"), font=label_font,
                 bg=self.section_bg, fg=self.label_color,
-                anchor='w').grid(row=row, column=col, sticky="ew", padx=2)
+                anchor='e').grid(row=row, column=col, sticky="ew", padx=2)
 
         # Status frame
         status_frame = tk.Frame(parent, bg='#95A5A6', relief=tk.RAISED, bd=1)
@@ -205,7 +201,7 @@ class HardwareStatusPanel:
         # Explanation
         explanation_label = tk.Label(parent, text=t("System ready"), font=value_font,
                                     bg=self.section_bg, fg=self.label_color,
-                                    anchor='w', wraplength=120)
+                                    anchor='e', wraplength=120)
         explanation_label.grid(row=row + 2, column=col, sticky="ew", padx=2)
 
         # Store references
@@ -223,7 +219,7 @@ class HardwareStatusPanel:
         # Blocker label
         tk.Label(parent, text=t("Safety:"), font=label_font,
                 bg=self.section_bg, fg=self.label_color,
-                anchor='w').grid(row=row, column=col, sticky="ew", padx=2)
+                anchor='e').grid(row=row, column=col, sticky="ew", padx=2)
 
         # Status frame
         status_frame = tk.Frame(parent, bg='#27AE60', relief=tk.SUNKEN, bd=1)
@@ -247,7 +243,7 @@ class HardwareStatusPanel:
         # Progress label
         tk.Label(parent, text=t("Progress:"), font=label_font,
                 bg=self.section_bg, fg=self.label_color,
-                anchor='w').grid(row=row, column=col, sticky="ew", padx=2, pady=(5, 0))
+                anchor='e').grid(row=row, column=col, sticky="ew", padx=2, pady=(5, 0))
 
         # Progress bar
         progress_bar = ttk.Progressbar(parent, mode='determinate', length=100)
@@ -308,11 +304,18 @@ class HardwareStatusPanel:
                                t('ON') if x_left_ls else t('OFF'),
                                self.switch_on_color if x_left_ls else self.switch_off_color)
 
-            # Rows limit switch
-            rows_ls = self.hardware.get_limit_switch_state('rows')
-            self._update_widget('rows_limit_switch',
-                               t('ON') if rows_ls else t('OFF'),
-                               self.switch_on_color if rows_ls else self.switch_off_color)
+            # Door sensor
+            door_state = self.hardware.get_door_sensor()
+            self._update_widget('door_sensor',
+                               t('ON') if door_state else t('OFF'),
+                               self.switch_on_color if door_state else self.switch_off_color)
+
+            # Air pressure valve - DOWN=open (green), UP=closed (gray)
+            air_pressure_state = self.hardware.get_air_pressure_valve_state()
+            is_air_on = air_pressure_state == "down"
+            self._update_widget('air_pressure_valve',
+                               t('ON') if is_air_on else t('OFF'),
+                               self.piston_down_color if is_air_on else self.piston_up_color)
 
             # LINES SECTION - Tool Sensors (UP/DOWN sensors for each tool)
             # Color coded: READY (False)=blue, TRIGGERED (True)=red
@@ -535,30 +538,28 @@ class HardwareStatusPanel:
             self.status_widgets['operation_explanation']['label'].config(text=explanation)
 
     def _update_blocker_status(self):
-        """Update blocker/safety status display"""
+        """Update blocker/safety status display using centralized safety rules"""
         blocker_message = t("OK")
         blocker_color = '#27AE60'  # Green
 
         # Check if execution engine is running
         if hasattr(self.main_app, 'execution_engine') and self.main_app.execution_engine.is_running:
-            # Get current operation mode
-            if hasattr(self.main_app, 'canvas_manager'):
-                mode = self.main_app.canvas_manager.motor_operation_mode.upper()
-
-                # Get row marker state (piston position)
-                row_marker_state = self.hardware.get_row_marker_piston_state().upper()
-
-                # Safety check: row marker position must match operation type
-                if mode == 'LINES':
-                    # During LINES operation, row marker MUST be DOWN
-                    if row_marker_state != 'DOWN':
-                        blocker_message = t("⚠️ Row marker must be DOWN for Lines operation")
+            operation_type = self.main_app.execution_engine.current_operation_type
+            if operation_type:
+                try:
+                    from core.safety_system import safety_system
+                    violated_rules = safety_system.rules_manager.evaluate_monitor_rules(operation_type)
+                    if violated_rules:
+                        # Show first (highest priority) violation
+                        rule = violated_rules[0]
+                        # Prefer Hebrew message
+                        msg = rule.get("message_he", rule.get("message", rule.get("id", "")))
+                        # Truncate for display
+                        first_line = msg.split('\n')[0] if msg else rule.get("id", "")
+                        blocker_message = first_line
                         blocker_color = '#E67E22'  # Orange warning
-                elif mode == 'ROWS':
-                    # During ROWS operation, row marker MUST be UP
-                    if row_marker_state != 'UP':
-                        blocker_message = t("⚠️ Row marker must be UP for Rows operation")
-                        blocker_color = '#E67E22'  # Orange warning
+                except Exception:
+                    pass
 
         self._update_widget('blocker_status', blocker_message, blocker_color)
 

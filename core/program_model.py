@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 def _load_hardware_limits():
     """Load hardware limits from settings.json"""
@@ -25,6 +26,7 @@ class ScratchDeskProgram:
     _limits = _load_hardware_limits()
     MAX_WIDTH_OF_DESK = _limits.get('max_x_position', 120.0)  # cm (from settings)
     MAX_HEIGHT_OF_DESK = _limits.get('max_y_position', 80.0)   # cm (from settings)
+    MIN_LINE_SPACING = _limits.get('min_line_spacing', 0.3)    # cm (from settings)
     
     def __init__(self, program_number=0, program_name="", 
                  # Lines Pattern Settings
@@ -119,7 +121,17 @@ class ScratchDeskProgram:
             
         if self.buffer_between_pages < 0:
             errors.append("Buffer between pages cannot be negative")
-        
+
+        # Logical consistency validations
+        if self.high > 0 and self.top_padding + self.bottom_padding >= self.high:
+            errors.append("Padding exceeds height: no room for lines")
+
+        if self.number_of_lines > 1 and self.high > 0 and self.top_padding + self.bottom_padding < self.high:
+            available_space = self.high - self.top_padding - self.bottom_padding
+            line_spacing = available_space / (self.number_of_lines - 1)
+            if line_spacing < self.MIN_LINE_SPACING:
+                errors.append(f"Line spacing too small ({line_spacing:.2f} cm, minimum {self.MIN_LINE_SPACING:.1f} cm)")
+
         return errors
     
     def is_valid(self):
@@ -140,3 +152,16 @@ class ScratchDeskProgram:
     
     def __repr__(self):
         return f"ScratchDeskProgram(program_number={self.program_number}, program_name='{self.program_name}')"
+
+
+def translate_validation_error(error_text):
+    """Translate a validation error string, handling dynamic values."""
+    from core.translations import t
+
+    # Match "Line spacing too small (X cm, minimum Y cm)"
+    match = re.match(r'^Line spacing too small \((.+?) cm, minimum (.+?) cm\)$', error_text)
+    if match:
+        return t("Line spacing too small ({spacing} cm, minimum {min} cm)",
+                 spacing=match.group(1), min=match.group(2))
+
+    return t(error_text)

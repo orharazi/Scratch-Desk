@@ -154,27 +154,27 @@ class CanvasSensors:
             # During lines: X motor line at 0, Y motor line at actual position
             motor_line_x = 0.0
             motor_line_y = pointer_y
-            x_label_text = "X=0.0cm (HOLD)"
+            x_label_text = "\u05e2\u05de\u05d5\u05d3\u05d5\u05ea=0.0cm (HOLD)"
             x_label_color = "gray"
-            y_label_text = f"Y={pointer_y:.1f}cm (SENSOR)" if axis == 'y' else f"Y={pointer_y:.1f}cm (ACTIVE)"
+            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={pointer_y:.1f}cm (SENSOR)" if axis == 'y' else f"\u05e9\u05d5\u05e8\u05d5\u05ea={pointer_y:.1f}cm (ACTIVE)"
             y_label_color = "blue"
-            
+
         elif self.canvas_manager.motor_operation_mode == "rows":
             # During rows: Y motor line at 0, X motor line at actual position
             motor_line_x = pointer_x
             motor_line_y = 0.0
-            x_label_text = f"X={pointer_x:.1f}cm (SENSOR)" if axis == 'x' else f"X={pointer_x:.1f}cm (ACTIVE)"
+            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={pointer_x:.1f}cm (SENSOR)" if axis == 'x' else f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={pointer_x:.1f}cm (ACTIVE)"
             x_label_color = "red"
-            y_label_text = "Y=0.0cm (HOLD)"
+            y_label_text = "\u05e9\u05d5\u05e8\u05d5\u05ea=0.0cm (HOLD)"
             y_label_color = "gray"
-            
+
         else:
             # Idle mode: motor lines show actual positions
             motor_line_x = pointer_x
             motor_line_y = pointer_y
-            x_label_text = f"X={pointer_x:.1f}cm" + (" (SENSOR)" if axis == 'x' else "")
+            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={pointer_x:.1f}cm" + (" (SENSOR)" if axis == 'x' else "")
             x_label_color = "red"
-            y_label_text = f"Y={pointer_y:.1f}cm" + (" (SENSOR)" if axis == 'y' else "")
+            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={pointer_y:.1f}cm" + (" (SENSOR)" if axis == 'y' else "")
             y_label_color = "blue"
         
         # Convert motor line positions to canvas coordinates
@@ -233,27 +233,27 @@ class CanvasSensors:
             # During lines: X motor line at 0, Y motor line follows sensor Y position
             motor_line_x = 0.0
             motor_line_y = pointer_y
-            x_label_text = "X=0.0cm (HOLD)"
+            x_label_text = "\u05e2\u05de\u05d5\u05d3\u05d5\u05ea=0.0cm (HOLD)"
             x_label_color = "gray"
-            y_label_text = f"Y={pointer_y:.1f}cm (SENSOR)"
+            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={pointer_y:.1f}cm (SENSOR)"
             y_label_color = "blue"
-            
+
         elif self.canvas_manager.motor_operation_mode == "rows":
             # During rows: Y motor line at 0, X motor line follows sensor X position
             motor_line_x = pointer_x
             motor_line_y = 0.0
-            x_label_text = f"X={pointer_x:.1f}cm (SENSOR)"
+            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={pointer_x:.1f}cm (SENSOR)"
             x_label_color = "red"
-            y_label_text = "Y=0.0cm (HOLD)"
+            y_label_text = "\u05e9\u05d5\u05e8\u05d5\u05ea=0.0cm (HOLD)"
             y_label_color = "gray"
-            
+
         else:
             # Idle mode: motor lines show sensor positions
             motor_line_x = pointer_x
             motor_line_y = pointer_y
-            x_label_text = f"X={pointer_x:.1f}cm (SENSOR)"
+            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={pointer_x:.1f}cm (SENSOR)"
             x_label_color = "red"
-            y_label_text = f"Y={pointer_y:.1f}cm (SENSOR)"
+            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={pointer_y:.1f}cm (SENSOR)"
             y_label_color = "blue"
         
         # Convert to canvas coordinates

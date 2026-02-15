@@ -537,8 +537,8 @@ class CanvasOperations:
             # Change to in_progress ONLY when waiting for LEFT sensor (user needs to trigger)
             # Check both English and Hebrew keywords
             if any(keyword in step_desc for keyword in [
-                'wait for left x sensor', 'wait left x sensor',  # English
-                'המתן לחיישן x שמאלי'  # Hebrew: wait for LEFT X sensor
+                'wait for left rows sensor', 'wait left rows sensor',  # English
+                'המתן לחיישן עמודות שמאלי'  # Hebrew: wait for left rows sensor
             ]):
                 self.update_operation_state('lines', line_num, 'in_progress')
                 self.logger.debug(f" Line {line_num} → IN PROGRESS (waiting for LEFT sensor)", category="gui")
@@ -550,12 +550,12 @@ class CanvasOperations:
                 self.update_operation_state('lines', line_num, 'completed')
                 self.logger.info(f" Line {line_num} → COMPLETED (marker closed)", category="gui")
 
-        # Track row operations - match "RTL Page X" or "עמוד RTL X" with edge detection
-        # RTL pages are processed with sections RTL and pages RTL within sections
-        # Need to convert RTL page number to canvas page position
+        # Track row operations - match "Page X/Y (Section Z, Page W/N)" or "עמוד X/Y (חלק Z, עמוד W/N)" with edge detection
+        # Pages are processed with sections and pages within sections
+        # Need to convert page number to canvas page position
         # ONLY change color on sensor/tool actions, NOT on move operations
         # ONLY track row MARKING operations, not cutting operations
-        rtl_page_match = re.search(r'(?:rtl page|עמוד rtl)\s*(\d+)', step_desc, re.IGNORECASE)
+        rtl_page_match = re.search(r'(?:page|עמוד)\s*(\d+)', step_desc, re.IGNORECASE)
         if rtl_page_match and any(keyword in step_desc for keyword in ['row marker', 'סמן עמודות']):  # Only for row marking, not cutting
             rtl_page_num = int(rtl_page_match.group(1))
 
@@ -752,7 +752,7 @@ class CanvasOperations:
         # Line operations (MARK)
         self.main_app.canvas.create_text(
             legend_x, legend_y + 10,
-            text="Lines (MARK):", font=tuple(ui_fonts.get("heading", ["Arial", 10, "bold"])), fill='black', anchor='w'
+            text="Lines (MARK):", font=tuple(ui_fonts.get("heading", ["Arial", 10, "bold"])), fill='black', anchor='e'
         )
 
         # Line colors from settings
@@ -769,13 +769,13 @@ class CanvasOperations:
             )
             self.main_app.canvas.create_text(
                 legend_x + 35, y_pos,
-                text=label, font=tuple(ui_fonts.get("normal", ["Arial", 9])), fill='black', anchor='w'
+                text=label, font=tuple(ui_fonts.get("normal", ["Arial", 9])), fill='black', anchor='e'
             )
 
         # Row operations (CUT)
         self.main_app.canvas.create_text(
             legend_x, legend_y + 100,
-            text="Rows (CUT):", font=tuple(ui_fonts.get("heading", ["Arial", 10, "bold"])), fill='black', anchor='w'
+            text="Rows (CUT):", font=tuple(ui_fonts.get("heading", ["Arial", 10, "bold"])), fill='black', anchor='e'
         )
 
         # Row colors from settings
@@ -792,7 +792,7 @@ class CanvasOperations:
             )
             self.main_app.canvas.create_text(
                 legend_x + 35, y_pos,
-                text=label, font=tuple(ui_fonts.get("normal", ["Arial", 9])), fill='black', anchor='w'
+                text=label, font=tuple(ui_fonts.get("normal", ["Arial", 9])), fill='black', anchor='e'
             )
     
     def test_color_changes(self):

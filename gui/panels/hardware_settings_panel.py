@@ -65,7 +65,7 @@ class HardwareSettingsPanel:
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
             fg='black'
-        ).pack(side=tk.LEFT, padx=(0, 10))
+        ).pack(side=tk.RIGHT, padx=(10, 0))
 
         # Radio buttons
         self.mode_var = tk.StringVar(value="simulation" if not self.use_real_hardware else "real")
@@ -81,7 +81,7 @@ class HardwareSettingsPanel:
             fg='black',
             activebackground='#D0E8F0'
         )
-        self.sim_radio.pack(side=tk.LEFT, padx=5)
+        self.sim_radio.pack(side=tk.RIGHT, padx=5)
 
         self.real_radio = tk.Radiobutton(
             mode_frame,
@@ -95,7 +95,7 @@ class HardwareSettingsPanel:
             activebackground='#D0E8F0',
             state=tk.DISABLED  # Initially disabled until port is selected
         )
-        self.real_radio.pack(side=tk.LEFT, padx=5)
+        self.real_radio.pack(side=tk.RIGHT, padx=5)
 
     def create_port_selector(self):
         """Create Arduino port selection dropdown"""
@@ -109,7 +109,7 @@ class HardwareSettingsPanel:
             font=('Arial', 9, 'bold'),
             bg='#E8F4F8',
             fg='black'
-        ).pack(side=tk.LEFT, padx=(0, 10))
+        ).pack(side=tk.RIGHT, padx=(10, 0))
 
         # Port dropdown
         self.port_var = tk.StringVar(value=self.current_port)
@@ -120,7 +120,7 @@ class HardwareSettingsPanel:
             state='readonly',
             width=20
         )
-        self.port_dropdown.pack(side=tk.LEFT, padx=5)
+        self.port_dropdown.pack(side=tk.RIGHT, padx=5)
         self.port_dropdown.bind('<<ComboboxSelected>>', self.on_port_selected)
 
         # Refresh button
@@ -135,7 +135,7 @@ class HardwareSettingsPanel:
             width=3,
             cursor='hand2'
         )
-        self.refresh_btn.pack(side=tk.LEFT, padx=5)
+        self.refresh_btn.pack(side=tk.RIGHT, padx=5)
 
         # Initial port detection
         self.refresh_ports()
@@ -152,7 +152,7 @@ class HardwareSettingsPanel:
             bg='#E8F4F8',
             fg='#27AE60'
         )
-        self.status_label.pack(side=tk.LEFT)
+        self.status_label.pack(side=tk.RIGHT)
 
     def create_action_buttons(self):
         """Create action buttons"""
@@ -172,7 +172,7 @@ class HardwareSettingsPanel:
             padx=10,
             pady=3
         )
-        self.apply_btn.pack(side=tk.LEFT, padx=5)
+        self.apply_btn.pack(side=tk.RIGHT, padx=5)
 
         # Save button
         self.save_btn = tk.Button(
@@ -187,7 +187,7 @@ class HardwareSettingsPanel:
             padx=10,
             pady=3
         )
-        self.save_btn.pack(side=tk.LEFT, padx=5)
+        self.save_btn.pack(side=tk.RIGHT, padx=5)
 
         # Initially disable buttons (no changes yet)
         self.apply_btn.config(state=tk.DISABLED)
@@ -451,6 +451,10 @@ class HardwareSettingsPanel:
         # Update main app
         self.main_app.hardware = new_hardware
 
+        # Update is_real_hardware flag
+        from hardware.implementations.real.real_hardware import RealHardware
+        self.main_app.is_real_hardware = isinstance(new_hardware, RealHardware)
+
         # Update execution engine
         if hasattr(self.main_app, 'execution_engine'):
             self.main_app.execution_engine.hardware = new_hardware
@@ -459,20 +463,19 @@ class HardwareSettingsPanel:
         if hasattr(self.main_app, 'hardware_status_panel'):
             self.main_app.hardware_status_panel.hardware = new_hardware
 
-        # Update right panel (test controls)
-        if hasattr(self.main_app, 'right_panel'):
-            self.main_app.right_panel.refresh_hardware_reference()
+        # Update controls panel (test controls)
+        if hasattr(self.main_app, 'controls_panel'):
+            self.main_app.controls_panel.refresh_hardware_reference()
 
         # Set execution engine reference in hardware for sensor positioning
         if hasattr(new_hardware, 'set_execution_engine_reference'):
             new_hardware.set_execution_engine_reference(self.main_app.execution_engine)
 
-        # Update canvas manager if it has a hardware reference
+        # Update canvas manager AND all its sub-modules (canvas_position, canvas_operations, etc.)
         if hasattr(self.main_app, 'canvas_manager'):
-            if hasattr(self.main_app.canvas_manager, 'hardware'):
-                self.main_app.canvas_manager.hardware = new_hardware
+            self.main_app.canvas_manager.update_hardware_reference(new_hardware)
 
-        self.logger.debug("Hardware references updated", category="gui")
+        self.logger.info("All hardware references updated (including canvas sub-modules)", category="gui")
 
     def _set_ui_enabled(self, enabled):
         """Enable or disable UI elements during switch"""

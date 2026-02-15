@@ -17,10 +17,11 @@ class CenterPanel:
     def create_widgets(self):
         """Create the canvas and related widgets"""
         # Title
-        tk.Label(self.parent_frame, text=t("DESK SIMULATION"), font=('Arial', 12, 'bold')).pack(pady=5)
+        tk.Label(self.parent_frame, text=t("DESK SIMULATION"), font=('Arial', 12, 'bold'),
+                bg='white', fg='black').pack(pady=5)
 
         # Create canvas container with horizontal layout
-        canvas_container = tk.Frame(self.parent_frame)
+        canvas_container = tk.Frame(self.parent_frame, bg='white')
         canvas_container.pack(fill=tk.BOTH, expand=True, pady=5)
 
         # Create responsive canvas that fills available space
@@ -44,13 +45,54 @@ class CenterPanel:
         # Flag to prevent resize loop
         self._resize_scheduled = False
 
-        # Current Operation Display (below canvas)
-        self.operation_label = tk.Label(self.parent_frame, text=t("System Ready"),
-                                       font=('Arial', 11, 'bold'), fg='blue')
-        self.operation_label.pack(pady=5)
+        # Bottom bar with operation label and emergency stop button
+        bottom_bar = tk.Frame(self.parent_frame, bg='white')
+        bottom_bar.pack(fill=tk.X, pady=5)
+
+        # Current Operation Display (right side for RTL, expanding)
+        self.operation_label = tk.Label(bottom_bar, text=t("System Ready"),
+                                       font=('Arial', 11, 'bold'), bg='white', fg='blue', anchor='e')
+        self.operation_label.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(0, 5))
+
+        # Safety error label (hidden by default, shows inline safety errors)
+        self.safety_error_label = tk.Label(
+            bottom_bar,
+            text="",
+            font=('Arial', 11, 'bold'),
+            bg='#ffcccc', fg='#cc0000',
+            anchor='e',
+            padx=8, pady=2,
+            relief=tk.RIDGE, bd=1
+        )
+        # Not packed yet - will be shown when safety error occurs
+
+        # Safety details button (hidden by default)
+        self.safety_details_btn = tk.Button(
+            bottom_bar,
+            text=t("Details"),
+            font=('Arial', 9),
+            bg='#cc0000', fg='white',
+            activebackground='#990000', activeforeground='white',
+            padx=5, pady=1
+        )
+        # Not packed yet - will be shown when safety error occurs
+
+        # Emergency Stop button (right side, always visible)
+        self.emergency_stop_btn = tk.Button(
+            bottom_bar,
+            text=t("⚠ EMERGENCY STOP"),
+            command=self.main_app.perform_emergency_stop,
+            bg='red', fg='white',
+            font=('Arial', 12, 'bold'),
+            activebackground='darkred', activeforeground='white',
+            padx=10, pady=2
+        )
+        self.emergency_stop_btn.pack(side=tk.RIGHT, padx=(0, 5))
 
         # Store references in main app for other components
         self.main_app.operation_label = self.operation_label
+        self.main_app.safety_error_label = self.safety_error_label
+        self.main_app.safety_details_btn = self.safety_details_btn
 
     def finalize_canvas_setup(self):
         """Called after all panels are created - wait for window to be fully visible"""
@@ -60,6 +102,10 @@ class CenterPanel:
             # Check if window is fully visible/mapped
             if self.main_app.root.winfo_viewable():
                 self.logger.debug(" Window is visible - getting canvas dimensions", category="gui")
+                # Force Tkinter to process all pending geometry changes
+                # so canvas dimensions reflect the final layout
+                self.main_app.root.update_idletasks()
+
                 # Get canvas dimensions
                 width = self.main_app.canvas.winfo_width()
                 height = self.main_app.canvas.winfo_height()
@@ -80,6 +126,10 @@ class CenterPanel:
 
                     # Enable Configure events for future window resizes
                     self._ignore_configure_events = False
+
+                    # Schedule a delayed re-check to handle window still settling
+                    # (e.g., window manager adjustments after maximize)
+                    self.main_app.root.after(300, self._verify_canvas_dimensions)
                 else:
                     # Dimensions not ready yet, try again
                     self.logger.debug(f" Dimensions not ready - checking again in 50ms", category="gui")
@@ -92,6 +142,26 @@ class CenterPanel:
         # Start checking for window visibility
         self.main_app.root.after(50, wait_for_window_visible)
     
+    def _verify_canvas_dimensions(self):
+        """Re-check canvas dimensions after window has fully settled"""
+        self.main_app.root.update_idletasks()
+        width = self.main_app.canvas.winfo_width()
+        height = self.main_app.canvas.winfo_height()
+
+        if (abs(width - self.main_app.actual_canvas_width) > 5 or
+                abs(height - self.main_app.actual_canvas_height) > 5):
+            self.logger.debug(f" Canvas dimensions changed after settling: {width}x{height} (was {self.main_app.actual_canvas_width}x{self.main_app.actual_canvas_height})", category="gui")
+            self._update_canvas_scaling(width, height)
+            self.main_app.canvas_manager.setup_canvas()
+
+            # Redraw work lines if a program is loaded
+            if hasattr(self.main_app, 'current_program') and self.main_app.current_program:
+                self.main_app.canvas_manager.update_canvas_paper_area()
+
+            # Reposition the work operations overlay
+            if hasattr(self, 'ops_overlay_window'):
+                self.main_app.canvas.coords(self.ops_overlay_window, width - 15, 15)
+
     def create_work_operations_status(self):
         """Create work operations status row-box above System Ready"""
         # Work operations frame
@@ -253,38 +323,9 @@ class CenterPanel:
         ops_row = tk.Frame(overlay_frame, bg='#E8F4F8')
         ops_row.pack(padx=8, pady=4)
 
-        # MARK Operations
-        mark_frame = tk.Frame(ops_row, bg='#E8F4F8')
-        mark_frame.pack(side=tk.LEFT, padx=8)
-
-        tk.Label(mark_frame, text=t("✏️ MARK"), font=('Arial', 8, 'bold'),
-                bg='#E8F4F8', fg='black').pack()
-
-        mark_indicators = tk.Frame(mark_frame, bg='#E8F4F8')
-        mark_indicators.pack(pady=2)
-
-        # Horizontal compact indicators for MARK - slightly larger
-        for status_text, color in [(t("Ready"), mark_colors['pending']),
-                                   (t("Work"), mark_colors['in_progress']),
-                                   (t("Done"), mark_colors['completed'])]:
-            ind = tk.Frame(mark_indicators, bg='#E8F4F8')
-            ind.pack(side=tk.LEFT, padx=3)
-
-            # Small colored line - slightly larger
-            c = tk.Canvas(ind, width=20, height=4, bg='#E8F4F8', highlightthickness=0)
-            c.pack()
-            c.create_line(2, 2, 18, 2, fill=color, width=3)
-
-            # Label - slightly larger
-            tk.Label(ind, text=status_text, font=('Arial', 7),
-                    bg='#E8F4F8', fg=color).pack()
-
-        # Separator
-        tk.Frame(ops_row, width=2, bg='gray').pack(side=tk.LEFT, fill=tk.Y, padx=5)
-
-        # CUT Operations
+        # CUT Operations (RTL: CUT first on right side)
         cut_frame = tk.Frame(ops_row, bg='#E8F4F8')
-        cut_frame.pack(side=tk.LEFT, padx=8)
+        cut_frame.pack(side=tk.RIGHT, padx=8)
 
         tk.Label(cut_frame, text=t("✂️ CUT"), font=('Arial', 8, 'bold'),
                 bg='#E8F4F8', fg='black').pack()
@@ -292,12 +333,41 @@ class CenterPanel:
         cut_indicators = tk.Frame(cut_frame, bg='#E8F4F8')
         cut_indicators.pack(pady=2)
 
-        # Horizontal compact indicators for CUT - slightly larger
+        # Horizontal compact indicators for CUT - RTL order
         for status_text, color in [(t("Ready"), cut_colors['pending']),
                                    (t("Work"), cut_colors['in_progress']),
                                    (t("Done"), cut_colors['completed'])]:
             ind = tk.Frame(cut_indicators, bg='#E8F4F8')
-            ind.pack(side=tk.LEFT, padx=3)
+            ind.pack(side=tk.RIGHT, padx=3)
+
+            # Small colored line
+            c = tk.Canvas(ind, width=20, height=4, bg='#E8F4F8', highlightthickness=0)
+            c.pack()
+            c.create_line(2, 2, 18, 2, fill=color, width=3)
+
+            # Label
+            tk.Label(ind, text=status_text, font=('Arial', 7),
+                    bg='#E8F4F8', fg=color).pack()
+
+        # Separator
+        tk.Frame(ops_row, width=2, bg='gray').pack(side=tk.RIGHT, fill=tk.Y, padx=5)
+
+        # MARK Operations (RTL: MARK second, left side)
+        mark_frame = tk.Frame(ops_row, bg='#E8F4F8')
+        mark_frame.pack(side=tk.RIGHT, padx=8)
+
+        tk.Label(mark_frame, text=t("✏️ MARK"), font=('Arial', 8, 'bold'),
+                bg='#E8F4F8', fg='black').pack()
+
+        mark_indicators = tk.Frame(mark_frame, bg='#E8F4F8')
+        mark_indicators.pack(pady=2)
+
+        # Horizontal compact indicators for MARK - RTL order
+        for status_text, color in [(t("Ready"), mark_colors['pending']),
+                                   (t("Work"), mark_colors['in_progress']),
+                                   (t("Done"), mark_colors['completed'])]:
+            ind = tk.Frame(mark_indicators, bg='#E8F4F8')
+            ind.pack(side=tk.RIGHT, padx=3)
 
             # Small colored line - slightly larger
             c = tk.Canvas(ind, width=20, height=4, bg='#E8F4F8', highlightthickness=0)
@@ -308,11 +378,14 @@ class CenterPanel:
             tk.Label(ind, text=status_text, font=('Arial', 7),
                     bg='#E8F4F8', fg=color).pack()
 
-        # Place overlay at top-left corner of canvas - moved down and right slightly to be more visible
+        # Place overlay at top-right corner of canvas for RTL
+        canvas_width = self.main_app.canvas.winfo_width()
+        if canvas_width < 100:
+            canvas_width = 900  # fallback
         self.ops_overlay_window = self.main_app.canvas.create_window(
-            15, 15,
+            canvas_width - 15, 15,
             window=overlay_frame,
-            anchor='nw',
+            anchor='ne',
             tags='work_ops_overlay'
         )
 
@@ -371,6 +444,10 @@ class CenterPanel:
         # Update work lines if program is loaded
         if hasattr(self.main_app, 'current_program') and self.main_app.current_program:
             self.main_app.canvas_manager.update_canvas_paper_area()
+
+        # Reposition the work operations overlay to match new canvas width
+        if hasattr(self, 'ops_overlay_window'):
+            self.main_app.canvas.coords(self.ops_overlay_window, width - 15, 15)
 
     def _update_canvas_scaling(self, width, height):
         """Update canvas dimensions and calculate scale factors to fit entire desk"""

@@ -6,6 +6,7 @@
       "title": "Hardware Limits",
       "title_he": "מגבלות חומרה",
       "description": "Physical machine dimension constraints and movement boundaries",
+      "description_he": "מגבלות מימדים פיזיים ותחומי תנועה של המכונה",
       "settings": {
         "max_x_position": {
           "description": "Maximum X-axis travel distance (desk width in cm)",
@@ -29,6 +30,7 @@
         },
         "min_x_position": {
           "description": "Minimum X-axis position (home position)",
+          "description_he": "מיקום מינימלי בציר X (מיקום בית)",
           "type": "float",
           "unit": "cm",
           "default": 0.0,
@@ -36,6 +38,7 @@
         },
         "min_y_position": {
           "description": "Minimum Y-axis position (home position)",
+          "description_he": "מיקום מינימלי בציר Y (מיקום בית)",
           "type": "float",
           "unit": "cm",
           "default": 0.0,
@@ -63,15 +66,26 @@
         },
         "safe_movement_speed": {
           "description": "Maximum safe movement speed for motors",
+          "description_he": "מהירות תנועה בטוחה מקסימלית למנועים",
           "type": "float",
           "unit": "cm/s",
           "default": 10.0,
           "category": "important"
         },
         "max_acceleration": {
-          "description": "[TODO: Add description for max_acceleration]",
+          "description": "Maximum motor acceleration rate",
+          "description_he": "קצב תאוצה מקסימלי למנועים",
           "type": "float",
+          "unit": "cm/s²",
           "default": 5.0,
+          "category": "important"
+        },
+        "min_line_spacing": {
+          "description": "Minimum allowed spacing between lines",
+          "description_he": "מרווח מינימלי מותר בין שורות",
+          "type": "float",
+          "unit": "cm",
+          "default": 0.3,
           "category": "important"
         }
       }
@@ -80,9 +94,11 @@
       "title": "Timing Parameters",
       "title_he": "פרמטרי זמן",
       "description": "All timing delays and intervals for hardware operations",
+      "description_he": "כל השהיות הזמן ומרווחים לפעולות חומרה",
       "settings": {
         "motor_movement_delay_per_cm": {
           "description": "Delay per cm of motor travel for simulation smoothness",
+          "description_he": "השהיה לכל ס״מ של תנועת מנוע לחלקות סימולציה",
           "type": "float",
           "unit": "seconds",
           "min": 0.001,
@@ -92,6 +108,7 @@
         },
         "tool_action_delay": {
           "description": "Delay after piston/tool actions",
+          "description_he": "השהיה לאחר פעולות בוכנה/כלי",
           "type": "float",
           "unit": "seconds",
           "default": 0.02,
@@ -99,6 +116,7 @@
         },
         "tool_positioning_delay": {
           "description": "Delay for tool positioning operations",
+          "description_he": "השהיה לפעולות מיקום כלי",
           "type": "float",
           "unit": "seconds",
           "default": 0.05,
@@ -106,13 +124,23 @@
         },
         "sensor_poll_timeout": {
           "description": "Timeout for sensor polling operations",
+          "description_he": "זמן קצוב לפעולות דגימת חיישנים",
           "type": "float",
           "unit": "seconds",
           "default": 0.01,
           "category": "performance"
         },
+        "sensor_wait_timeout": {
+          "description": "Maximum time to wait for sensor trigger",
+          "description_he": "זמן מקסימלי להמתנה להפעלת חיישן",
+          "type": "float",
+          "unit": "seconds",
+          "default": 300.0,
+          "category": "important"
+        },
         "safety_check_interval": {
           "description": "Interval between safety system checks",
+          "description_he": "מרווח בין בדיקות מערכת הבטיחות",
           "type": "float",
           "unit": "seconds",
           "default": 0.02,
@@ -120,6 +148,7 @@
         },
         "grbl_init_delay": {
           "description": "Delay for GRBL initialization",
+          "description_he": "השהיה לאתחול GRBL",
           "type": "float",
           "unit": "seconds",
           "default": 2.0,
@@ -127,6 +156,7 @@
         },
         "execution_loop_delay": {
           "description": "Main execution loop delay",
+          "description_he": "השהיית לולאת הביצוע הראשית",
           "type": "float",
           "unit": "seconds",
           "default": 0.1,
@@ -134,6 +164,7 @@
         },
         "grbl_post_config_delay": {
           "description": "Delay after GRBL configuration commands",
+          "description_he": "השהיה לאחר פקודות הגדרת GRBL",
           "type": "float",
           "unit": "seconds",
           "default": 0.3,
@@ -141,6 +172,7 @@
         },
         "grbl_operation_delay": {
           "description": "Default delay for GRBL operations",
+          "description_he": "השהיית ברירת מחדל לפעולות GRBL",
           "type": "float",
           "unit": "seconds",
           "default": 0.5,
@@ -148,6 +180,7 @@
         },
         "piston_full_operation_time": {
           "description": "Time for full piston extend/retract operation",
+          "description_he": "זמן לפעולת שליפה/הכנסה מלאה של בוכנה",
           "type": "float",
           "unit": "seconds",
           "default": 2.0,
@@ -155,144 +188,165 @@
         },
         "homing_poll_interval": {
           "description": "Polling interval during homing operations",
+          "description_he": "מרווח דגימה במהלך פעולות ביות",
           "type": "float",
           "unit": "seconds",
           "default": 0.5,
           "category": "performance"
         },
         "gpio_busy_recovery_delay": {
-          "description": "[TODO: Add description for gpio_busy_recovery_delay]",
+          "description": "Wait time when GPIO port is busy before retrying",
+          "description_he": "זמן המתנה כש-GPIO תפוס לפני ניסיון חוזר",
           "type": "float",
           "default": 0.05,
           "category": "important",
           "unit": "seconds"
         },
         "gpio_cleanup_delay": {
-          "description": "[TODO: Add description for gpio_cleanup_delay]",
+          "description": "Delay after GPIO cleanup to allow pins to settle",
+          "description_he": "השהיה לאחר ניקוי GPIO לייצוב פינים",
           "type": "float",
           "default": 0.1,
           "category": "important",
           "unit": "seconds"
         },
         "gpio_debounce_delay_ms": {
-          "description": "[TODO: Add description for gpio_debounce_delay_ms]",
+          "description": "Debounce delay between GPIO input reads",
+          "description_he": "השהיית ניפוי רעש בין קריאות כניסת GPIO",
           "type": "int",
           "default": 1,
           "category": "important",
-          "unit": "seconds"
+          "unit": "ms"
         },
         "gpio_debounce_samples": {
-          "description": "[TODO: Add description for gpio_debounce_samples]",
+          "description": "Number of consistent GPIO reads required for stable state",
+          "description_he": "מספר קריאות GPIO עקביות הנדרשות למצב יציב",
           "type": "int",
           "default": 3,
           "category": "critical"
         },
         "gpio_test_read_delay_ms": {
-          "description": "[TODO: Add description for gpio_test_read_delay_ms]",
+          "description": "Delay between GPIO test reads during diagnostics",
+          "description_he": "השהיה בין קריאות בדיקת GPIO באבחון",
           "type": "int",
           "default": 1,
           "category": "important",
-          "unit": "seconds"
+          "unit": "ms"
         },
         "grbl_initialization_delay": {
-          "description": "[TODO: Add description for grbl_initialization_delay]",
+          "description": "Wait time for GRBL controller to boot after connection",
+          "description_he": "זמן המתנה לאתחול בקר GRBL לאחר חיבור",
           "type": "int",
           "default": 2,
           "category": "important",
           "unit": "seconds"
         },
         "grbl_reset_delay": {
-          "description": "[TODO: Add description for grbl_reset_delay]",
+          "description": "Wait time after GRBL soft reset (Ctrl-X) command",
+          "description_he": "זמן המתנה לאחר פקודת איפוס רך של GRBL",
           "type": "int",
           "default": 2,
           "category": "important",
           "unit": "seconds"
         },
         "grbl_serial_poll_delay": {
-          "description": "[TODO: Add description for grbl_serial_poll_delay]",
+          "description": "Delay between serial port polling cycles for GRBL",
+          "description_he": "השהיה בין מחזורי דגימת פורט סריאלי ל-GRBL",
           "type": "float",
           "default": 0.01,
           "category": "important",
           "unit": "seconds"
         },
         "limit_switch_test_read_delay_ms": {
-          "description": "[TODO: Add description for limit_switch_test_read_delay_ms]",
+          "description": "Delay between limit switch reads during diagnostics",
+          "description_he": "השהיה בין קריאות מתג גבול באבחון",
           "type": "int",
           "default": 1,
           "category": "important",
-          "unit": "seconds"
+          "unit": "ms"
         },
         "max_motor_movement_delay": {
-          "description": "[TODO: Add description for max_motor_movement_delay]",
+          "description": "Maximum delay per step during motor movement simulation",
+          "description_he": "השהיה מקסימלית לכל צעד בסימולציית תנועת מנוע",
           "type": "float",
           "default": 0.1,
           "category": "important",
           "unit": "seconds"
         },
         "piston_gpio_settling_delay": {
-          "description": "[TODO: Add description for piston_gpio_settling_delay]",
+          "description": "GPIO settling time after changing piston output state",
+          "description_he": "זמן ייצוב GPIO לאחר שינוי מצב פלט בוכנה",
           "type": "float",
           "default": 0.05,
           "category": "important",
           "unit": "seconds"
         },
         "polling_error_recovery_delay": {
-          "description": "[TODO: Add description for polling_error_recovery_delay]",
+          "description": "Wait time after a polling error before retrying",
+          "description_he": "זמן המתנה לאחר שגיאת דגימה לפני ניסיון חוזר",
           "type": "float",
           "default": 0.1,
           "category": "important",
           "unit": "seconds"
         },
         "polling_status_update_frequency": {
-          "description": "[TODO: Add description for polling_status_update_frequency]",
+          "description": "Number of polling cycles between status log updates",
+          "description_he": "מספר מחזורי דגימה בין עדכוני סטטוס ביומן",
           "type": "int",
           "default": 1000,
           "category": "important"
         },
         "polling_thread_join_timeout": {
-          "description": "[TODO: Add description for polling_thread_join_timeout]",
+          "description": "Timeout when waiting for polling thread to stop",
+          "description_he": "זמן קצוב בהמתנה לעצירת תהליכון דגימה",
           "type": "float",
           "default": 1.0,
           "category": "important",
           "unit": "seconds"
         },
         "row_marker_stable_delay": {
-          "description": "[TODO: Add description for row_marker_stable_delay]",
+          "description": "Delay to confirm row marker position is stable after move",
+          "description_he": "השהיה לאישור ייצוב מיקום סמן עמודות לאחר תנועה",
           "type": "float",
           "default": 0.05,
           "category": "important",
           "unit": "seconds"
         },
         "rs485_retry_delay": {
-          "description": "[TODO: Add description for rs485_retry_delay]",
+          "description": "Delay before retrying failed RS485 Modbus communication",
+          "description_he": "השהיה לפני ניסיון חוזר של תקשורת RS485 Modbus שנכשלה",
           "type": "float",
           "default": 0.01,
           "category": "important",
           "unit": "seconds"
         },
         "switch_polling_interval_ms": {
-          "description": "[TODO: Add description for switch_polling_interval_ms]",
+          "description": "Interval between limit switch state polls",
+          "description_he": "מרווח בין דגימות מצב מתגי גבול",
           "type": "int",
           "default": 10,
           "category": "important",
-          "unit": "seconds"
+          "unit": "ms"
         },
         "thread_join_timeout_execution": {
-          "description": "[TODO: Add description for thread_join_timeout_execution]",
+          "description": "Timeout when waiting for execution thread to finish",
+          "description_he": "זמן קצוב בהמתנה לסיום תהליכון ביצוע",
           "type": "float",
           "default": 2.0,
           "category": "important",
           "unit": "seconds"
         },
         "thread_join_timeout_safety": {
-          "description": "[TODO: Add description for thread_join_timeout_safety]",
+          "description": "Timeout when waiting for safety thread to finish",
+          "description_he": "זמן קצוב בהמתנה לסיום תהליכון בטיחות",
           "type": "float",
           "default": 1.0,
           "category": "important",
           "unit": "seconds"
         },
         "transition_monitor_interval": {
-          "description": "[TODO: Add description for transition_monitor_interval]",
+          "description": "Interval for monitoring hardware state transitions",
+          "description_he": "מרווח לניטור מעברי מצב חומרה",
           "type": "float",
           "default": 0.1,
           "category": "important",
@@ -304,18 +358,22 @@
       "title": "Hardware Configuration",
       "title_he": "הגדרות חומרה",
       "description": "Hardware interface and connection settings",
+      "description_he": "הגדרות ממשק וחיבור חומרה",
       "subsections": {
         "use_real_hardware": {
           "description": "Enable real hardware mode (false = mock/simulation mode)",
+          "description_he": "הפעל מצב חומרה אמיתית (false = מצב סימולציה)",
           "type": "bool",
           "default": false,
           "category": "critical"
         },
         "raspberry_pi": {
           "title": "Raspberry Pi GPIO",
+          "title_he": "Raspberry Pi GPIO וחיישנים",
           "settings": {
             "gpio_mode": {
               "description": "GPIO pin numbering mode (BCM or BOARD)",
+              "description_he": "מצב מספור פיני GPIO (BCM או BOARD)",
               "type": "enum",
               "options": [
                 "BCM",
@@ -326,102 +384,127 @@
             },
             "debounce_count": {
               "description": "Number of consistent reads for debouncing",
+              "description_he": "מספר קריאות עקביות לניפוי רעש",
               "type": "int",
               "default": 2,
               "category": "performance"
             },
             "line_cutter_piston": {
-              "description": "[TODO: Add description for line_cutter_piston]",
+              "description": "GPIO pin number for line cutter piston control",
+              "description_he": "מספר פין GPIO לבקרת בוכנת חותך שורות",
               "type": "int",
               "default": 16,
-              "category": "important"
+              "category": "critical"
             },
             "line_marker_piston": {
-              "description": "[TODO: Add description for line_marker_piston]",
+              "description": "GPIO pin number for line marker piston control",
+              "description_he": "מספר פין GPIO לבקרת בוכנת סמן שורות",
               "type": "int",
               "default": 6,
-              "category": "important"
+              "category": "critical"
             },
             "line_motor_piston": {
-              "description": "[TODO: Add description for line_motor_piston]",
+              "description": "GPIO pin number for line motor piston control",
+              "description_he": "מספר פין GPIO לבקרת בוכנת מנוע שורות",
               "type": "int",
               "default": 13,
-              "category": "important"
+              "category": "critical"
             },
             "row_cutter_piston": {
-              "description": "[TODO: Add description for row_cutter_piston]",
+              "description": "GPIO pin number for row cutter piston control",
+              "description_he": "מספר פין GPIO לבקרת בוכנת חותך עמודות",
               "type": "int",
               "default": 19,
-              "category": "important"
+              "category": "critical"
             },
             "row_marker_piston": {
-              "description": "[TODO: Add description for row_marker_piston]",
+              "description": "GPIO pin number for row marker piston control",
+              "description_he": "מספר פין GPIO לבקרת בוכנת סמן עמודות",
               "type": "int",
               "default": 5,
-              "category": "important"
+              "category": "critical"
+            },
+            "air_pressure_valve": {
+              "description": "GPIO pin number for air pressure valve control",
+              "description_he": "מספר פין GPIO לבקרת שסתום לחץ אוויר",
+              "type": "int",
+              "default": 26,
+              "category": "critical"
             },
             "baudrate": {
-              "description": "[TODO: Add description for baudrate]",
+              "description": "RS485 Modbus serial baud rate",
+              "description_he": "קצב באוד סריאלי ל-Modbus RS485",
               "type": "int",
               "default": 9600,
-              "category": "important"
+              "category": "critical"
             },
             "bulk_read_cache_age_ms": {
-              "description": "[TODO: Add description for bulk_read_cache_age_ms]",
+              "description": "Maximum age of cached bulk read data before refresh",
+              "description_he": "גיל מקסימלי של נתוני קריאה מרוכזת במטמון לפני רענון",
               "type": "int",
               "default": 10,
-              "category": "important"
+              "category": "performance",
+              "unit": "ms"
             },
             "bulk_read_enabled": {
-              "description": "[TODO: Add description for bulk_read_enabled]",
+              "description": "Enable bulk reading of multiple Modbus registers at once",
+              "description_he": "אפשר קריאה מרוכזת של מספר רגיסטרים בבת אחת",
               "type": "bool",
               "default": true,
-              "category": "important"
+              "category": "performance"
             },
             "bulk_read_register_count": {
-              "description": "[TODO: Add description for bulk_read_register_count]",
+              "description": "Number of Modbus registers to read in a single bulk operation",
+              "description_he": "מספר רגיסטרי Modbus לקריאה בפעולה מרוכזת אחת",
               "type": "int",
               "default": 2,
               "category": "important"
             },
             "bytesize": {
-              "description": "[TODO: Add description for bytesize]",
+              "description": "Serial data bits per byte (7 or 8)",
+              "description_he": "סיביות נתונים סריאליות לבית (7 או 8)",
               "type": "int",
               "default": 8,
-              "category": "important"
+              "category": "critical"
             },
             "default_retry_count": {
-              "description": "[TODO: Add description for default_retry_count]",
+              "description": "Number of retries for failed RS485 communication",
+              "description_he": "מספר ניסיונות חוזרים לתקשורת RS485 שנכשלה",
               "type": "int",
               "default": 2,
               "category": "important"
             },
             "enabled": {
-              "description": "[TODO: Add description for enabled]",
+              "description": "Enable the RS485 Modbus sensor module",
+              "description_he": "אפשר מודול חיישני RS485 Modbus",
               "type": "bool",
               "default": true,
-              "category": "important"
+              "category": "critical"
             },
             "input_count": {
-              "description": "[TODO: Add description for input_count]",
+              "description": "Total number of digital inputs on the N4DIH32 module",
+              "description_he": "מספר כניסות דיגיטליות כולל במודול N4DIH32",
               "type": "int",
               "default": 32,
               "category": "important"
             },
             "modbus_device_id": {
-              "description": "[TODO: Add description for modbus_device_id]",
+              "description": "Modbus slave device address on the RS485 bus",
+              "description_he": "כתובת התקן עבד Modbus באפיק RS485",
               "type": "int",
               "default": 1,
-              "category": "important"
+              "category": "critical"
             },
             "modbus_function_code": {
-              "description": "[TODO: Add description for modbus_function_code]",
+              "description": "Modbus function code for reading registers (3=holding registers)",
+              "description_he": "קוד פונקציית Modbus לקריאת רגיסטרים (3=רגיסטרי החזקה)",
               "type": "int",
               "default": 3,
               "category": "important"
             },
             "nc_sensors": {
-              "description": "[TODO: Add description for nc_sensors]",
+              "description": "List of sensors wired as Normally Closed (inverted logic)",
+              "description_he": "רשימת חיישנים המחוברים כסגור כרגיל (לוגיקה הפוכה)",
               "type": "list",
               "default": [
                 "x_left_edge",
@@ -429,148 +512,172 @@
                 "y_top_edge",
                 "y_bottom_edge"
               ],
-              "category": "important"
+              "category": "critical"
             },
             "parity": {
-              "description": "[TODO: Add description for parity]",
+              "description": "Serial parity bit setting (N=None, E=Even, O=Odd)",
+              "description_he": "הגדרת סיבית זוגיות סריאלית (N=ללא, E=זוגי, O=אי-זוגי)",
               "type": "string",
               "default": "N",
-              "category": "important"
+              "category": "critical"
             },
             "protocol": {
-              "description": "[TODO: Add description for protocol]",
+              "description": "Communication protocol for sensor module",
+              "description_he": "פרוטוקול תקשורת למודול חיישנים",
               "type": "string",
               "default": "modbus_rtu",
               "category": "important"
             },
             "register_address": {
-              "description": "[TODO: Add description for register_address]",
+              "description": "Base Modbus register address for reading sensor data",
+              "description_he": "כתובת רגיסטר Modbus בסיסית לקריאת נתוני חיישנים",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "register_address_low": {
-              "description": "[TODO: Add description for register_address_low]",
+              "description": "Low register address (0xC0=192) for 16-bit sensor data",
+              "description_he": "כתובת רגיסטר תחתונה (0xC0=192) לנתוני חיישן 16 סיביות",
               "type": "int",
               "default": 192,
               "category": "important"
             },
             "door_sensor": {
-              "description": "[TODO: Add description for door_sensor]",
+              "description": "RS485 sensor bit index for door position sensor",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב דלת",
               "type": "int",
               "default": 15,
               "category": "important"
             },
             "line_cutter_down_sensor": {
-              "description": "[TODO: Add description for line_cutter_down_sensor]",
+              "description": "RS485 sensor bit index for line cutter down position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב חותך שורות למטה",
               "type": "int",
               "default": 29,
               "category": "important"
             },
             "line_cutter_up_sensor": {
-              "description": "[TODO: Add description for line_cutter_up_sensor]",
+              "description": "RS485 sensor bit index for line cutter up position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב חותך שורות למעלה",
               "type": "int",
               "default": 25,
               "category": "important"
             },
             "line_marker_down_sensor": {
-              "description": "[TODO: Add description for line_marker_down_sensor]",
+              "description": "RS485 sensor bit index for line marker down position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סמן שורות למטה",
               "type": "int",
               "default": 27,
               "category": "important"
             },
             "line_marker_up_sensor": {
-              "description": "[TODO: Add description for line_marker_up_sensor]",
+              "description": "RS485 sensor bit index for line marker up position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סמן שורות למעלה",
               "type": "int",
               "default": 28,
               "category": "important"
             },
             "line_motor_left_down_sensor": {
-              "description": "[TODO: Add description for line_motor_left_down_sensor]",
+              "description": "RS485 sensor bit index for line motor left-side down position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות שמאל למטה",
               "type": "int",
               "default": 19,
               "category": "important"
             },
             "line_motor_left_up_sensor": {
-              "description": "[TODO: Add description for line_motor_left_up_sensor]",
+              "description": "RS485 sensor bit index for line motor left-side up position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות שמאל למעלה",
               "type": "int",
               "default": 21,
               "category": "important"
             },
             "line_motor_right_down_sensor": {
-              "description": "[TODO: Add description for line_motor_right_down_sensor]",
+              "description": "RS485 sensor bit index for line motor right-side down position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות ימין למטה",
               "type": "int",
               "default": 20,
               "category": "important"
             },
             "line_motor_right_up_sensor": {
-              "description": "[TODO: Add description for line_motor_right_up_sensor]",
+              "description": "RS485 sensor bit index for line motor right-side up position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות ימין למעלה",
               "type": "int",
               "default": 18,
               "category": "important"
             },
             "row_cutter_down_sensor": {
-              "description": "[TODO: Add description for row_cutter_down_sensor]",
+              "description": "RS485 sensor bit index for row cutter down position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב חותך עמודות למטה",
               "type": "int",
               "default": 26,
               "category": "important"
             },
             "row_cutter_up_sensor": {
-              "description": "[TODO: Add description for row_cutter_up_sensor]",
+              "description": "RS485 sensor bit index for row cutter up position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב חותך עמודות למעלה",
               "type": "int",
               "default": 24,
               "category": "important"
             },
             "row_marker_down_sensor": {
-              "description": "[TODO: Add description for row_marker_down_sensor]",
+              "description": "RS485 sensor bit index for row marker down position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סמן עמודות למטה",
               "type": "int",
               "default": 23,
               "category": "important"
             },
             "row_marker_up_sensor": {
-              "description": "[TODO: Add description for row_marker_up_sensor]",
+              "description": "RS485 sensor bit index for row marker up position",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סמן עמודות למעלה",
               "type": "int",
               "default": 22,
               "category": "important"
             },
             "x_left_edge": {
-              "description": "[TODO: Add description for x_left_edge]",
+              "description": "RS485 sensor bit index for left X-axis edge detection",
+              "description_he": "אינדקס סיבית חיישן RS485 לזיהוי קצה שמאלי ציר X",
               "type": "int",
               "default": 17,
               "category": "important"
             },
             "x_right_edge": {
-              "description": "[TODO: Add description for x_right_edge]",
+              "description": "RS485 sensor bit index for right X-axis edge detection",
+              "description_he": "אינדקס סיבית חיישן RS485 לזיהוי קצה ימני ציר X",
               "type": "int",
               "default": 16,
               "category": "important"
             },
             "y_bottom_edge": {
-              "description": "[TODO: Add description for y_bottom_edge]",
+              "description": "RS485 sensor bit index for bottom Y-axis edge detection",
+              "description_he": "אינדקס סיבית חיישן RS485 לזיהוי קצה תחתון ציר Y",
               "type": "int",
               "default": 30,
               "category": "important"
             },
             "y_top_edge": {
-              "description": "[TODO: Add description for y_top_edge]",
+              "description": "RS485 sensor bit index for top Y-axis edge detection",
+              "description_he": "אינדקס סיבית חיישן RS485 לזיהוי קצה עליון ציר Y",
               "type": "int",
               "default": 31,
               "category": "important"
             },
             "serial_port": {
-              "description": "[TODO: Add description for serial_port]",
+              "description": "Serial port device path for RS485 Modbus module",
+              "description_he": "נתיב פורט סריאלי למודול RS485 Modbus",
               "type": "string",
               "default": "/dev/ttyUSB1",
               "category": "critical"
             },
             "stopbits": {
-              "description": "[TODO: Add description for stopbits]",
+              "description": "Serial stop bits (1 or 2)",
+              "description_he": "סיביות עצירה סריאליות (1 או 2)",
               "type": "int",
               "default": 1,
-              "category": "important"
+              "category": "critical"
             },
             "timeout": {
-              "description": "[TODO: Add description for timeout]",
+              "description": "RS485 serial communication timeout",
+              "description_he": "זמן קצוב לתקשורת סריאלית RS485",
               "type": "float",
               "default": 1.0,
               "category": "important",
@@ -580,15 +687,18 @@
         },
         "arduino_grbl": {
           "title": "Arduino GRBL Motor Control",
+          "title_he": "בקר מנועים Arduino GRBL",
           "settings": {
             "serial_port": {
               "description": "Serial port for Arduino GRBL connection",
+              "description_he": "פורט סריאלי לחיבור Arduino GRBL",
               "type": "string",
               "default": "/dev/ttyUSB0",
               "category": "critical"
             },
             "baud_rate": {
               "description": "Serial communication baud rate",
+              "description_he": "קצב באוד לתקשורת סריאלית",
               "type": "enum",
               "options": [
                 9600,
@@ -602,308 +712,382 @@
             },
             "timeout": {
               "description": "Serial communication timeout",
+              "description_he": "זמן קצוב לתקשורת סריאלית",
               "type": "float",
               "unit": "seconds",
               "default": 1.0,
               "category": "important"
             },
             "command_timeout": {
-              "description": "[TODO: Add description for command_timeout]",
+              "description": "Maximum time to wait for a GRBL command response",
+              "description_he": "זמן מקסימלי להמתנה לתגובת פקודת GRBL",
               "type": "float",
               "default": 10.0,
               "category": "important",
               "unit": "seconds"
             },
             "connection_timeout": {
-              "description": "[TODO: Add description for connection_timeout]",
+              "description": "Maximum time to wait for GRBL serial connection",
+              "description_he": "זמן מקסימלי להמתנה לחיבור סריאלי GRBL",
               "type": "float",
               "default": 5.0,
               "category": "important",
               "unit": "seconds"
             },
             "door_switch_read_timeout": {
-              "description": "[TODO: Add description for door_switch_read_timeout]",
+              "description": "Timeout for reading door switch state via Arduino",
+              "description_he": "זמן קצוב לקריאת מצב מתג דלת דרך Arduino",
               "type": "float",
               "default": 1.0,
               "category": "important",
               "unit": "seconds"
             },
             "$0": {
-              "description": "[TODO: Add description for $0]",
+              "description": "GRBL $0: Step pulse time in microseconds",
+              "description_he": "GRBL $0: זמן דופק צעד במיקרושניות",
               "type": "int",
               "default": 10,
-              "category": "important"
+              "category": "important",
+              "unit": "μs"
             },
             "$1": {
-              "description": "[TODO: Add description for $1]",
+              "description": "GRBL $1: Step idle delay in milliseconds (255=always on)",
+              "description_he": "GRBL $1: השהיית מנוחת צעד במילישניות (255=תמיד פעיל)",
               "type": "int",
               "default": 25,
-              "category": "important"
+              "category": "important",
+              "unit": "ms"
             },
             "$10": {
-              "description": "[TODO: Add description for $10]",
+              "description": "GRBL $10: Status report options bitmask (1=machine position)",
+              "description_he": "GRBL $10: מסכת אפשרויות דוח סטטוס (1=מיקום מכונה)",
               "type": "int",
               "default": 1,
               "category": "important"
             },
             "$100": {
-              "description": "[TODO: Add description for $100]",
+              "description": "GRBL $100: X-axis steps per millimeter (motor calibration)",
+              "description_he": "GRBL $100: צעדים למילימטר בציר X (כיול מנוע)",
               "type": "float",
               "default": 14.74,
-              "category": "important"
+              "category": "critical",
+              "unit": "steps/mm"
             },
             "$101": {
-              "description": "[TODO: Add description for $101]",
+              "description": "GRBL $101: Y-axis steps per millimeter (motor calibration)",
+              "description_he": "GRBL $101: צעדים למילימטר בציר Y (כיול מנוע)",
               "type": "float",
               "default": 14.5,
-              "category": "important"
+              "category": "critical",
+              "unit": "steps/mm"
             },
             "$102": {
-              "description": "[TODO: Add description for $102]",
+              "description": "GRBL $102: Z-axis steps per millimeter (unused axis)",
+              "description_he": "GRBL $102: צעדים למילימטר בציר Z (ציר לא בשימוש)",
               "type": "float",
               "default": 250.0,
-              "category": "important"
+              "category": "important",
+              "unit": "steps/mm"
             },
             "$11": {
-              "description": "[TODO: Add description for $11]",
+              "description": "GRBL $11: Junction deviation for path cornering",
+              "description_he": "GRBL $11: סטיית צומת למעקב אחר פינות נתיב",
               "type": "float",
               "default": 0.01,
-              "category": "important"
+              "category": "important",
+              "unit": "mm"
             },
             "$110": {
-              "description": "[TODO: Add description for $110]",
+              "description": "GRBL $110: X-axis maximum feed rate",
+              "description_he": "GRBL $110: קצב הזנה מקסימלי ציר X",
               "type": "float",
               "default": 2000.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/min"
             },
             "$111": {
-              "description": "[TODO: Add description for $111]",
+              "description": "GRBL $111: Y-axis maximum feed rate",
+              "description_he": "GRBL $111: קצב הזנה מקסימלי ציר Y",
               "type": "float",
               "default": 2000.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/min"
             },
             "$112": {
-              "description": "[TODO: Add description for $112]",
+              "description": "GRBL $112: Z-axis maximum feed rate (unused axis)",
+              "description_he": "GRBL $112: קצב הזנה מקסימלי ציר Z (ציר לא בשימוש)",
               "type": "float",
               "default": 500.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/min"
             },
             "$12": {
-              "description": "[TODO: Add description for $12]",
+              "description": "GRBL $12: Arc tolerance for curved path segments",
+              "description_he": "GRBL $12: סובלנות קשת למקטעי נתיב מעוקלים",
               "type": "float",
               "default": 0.002,
-              "category": "important"
+              "category": "important",
+              "unit": "mm"
             },
             "$120": {
-              "description": "[TODO: Add description for $120]",
+              "description": "GRBL $120: X-axis acceleration",
+              "description_he": "GRBL $120: תאוצת ציר X",
               "type": "float",
               "default": 10.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/s²"
             },
             "$121": {
-              "description": "[TODO: Add description for $121]",
+              "description": "GRBL $121: Y-axis acceleration",
+              "description_he": "GRBL $121: תאוצת ציר Y",
               "type": "float",
               "default": 10.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/s²"
             },
             "$122": {
-              "description": "[TODO: Add description for $122]",
+              "description": "GRBL $122: Z-axis acceleration (unused axis)",
+              "description_he": "GRBL $122: תאוצת ציר Z (ציר לא בשימוש)",
               "type": "float",
               "default": 10.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/s²"
             },
             "$13": {
-              "description": "[TODO: Add description for $13]",
+              "description": "GRBL $13: Report in inches (0=mm, 1=inches)",
+              "description_he": "GRBL $13: דיווח באינצ׳ים (0=מ״מ, 1=אינצ׳ים)",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "$130": {
-              "description": "[TODO: Add description for $130]",
+              "description": "GRBL $130: X-axis maximum travel distance",
+              "description_he": "GRBL $130: מרחק נסיעה מקסימלי ציר X",
               "type": "float",
               "default": 1000.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm"
             },
             "$131": {
-              "description": "[TODO: Add description for $131]",
+              "description": "GRBL $131: Y-axis maximum travel distance",
+              "description_he": "GRBL $131: מרחק נסיעה מקסימלי ציר Y",
               "type": "float",
               "default": 1000.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm"
             },
             "$132": {
-              "description": "[TODO: Add description for $132]",
+              "description": "GRBL $132: Z-axis maximum travel distance (unused axis)",
+              "description_he": "GRBL $132: מרחק נסיעה מקסימלי ציר Z (ציר לא בשימוש)",
               "type": "float",
               "default": 0.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm"
             },
             "$2": {
-              "description": "[TODO: Add description for $2]",
+              "description": "GRBL $2: Step port invert bitmask (invert step signals)",
+              "description_he": "GRBL $2: מסכת היפוך פורט צעד (היפוך אותות צעד)",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "$20": {
-              "description": "[TODO: Add description for $20]",
+              "description": "GRBL $20: Soft limits enable (0=off, 1=on)",
+              "description_he": "GRBL $20: אפשור גבולות רכים (0=כבוי, 1=פעיל)",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "$21": {
-              "description": "[TODO: Add description for $21]",
+              "description": "GRBL $21: Hard limits enable (0=off, 1=on)",
+              "description_he": "GRBL $21: אפשור גבולות קשיחים (0=כבוי, 1=פעיל)",
               "type": "int",
               "default": 1,
-              "category": "important"
+              "category": "critical"
             },
             "$22": {
-              "description": "[TODO: Add description for $22]",
+              "description": "GRBL $22: Homing cycle enable (0=off, 1=on)",
+              "description_he": "GRBL $22: אפשור מחזור ביות (0=כבוי, 1=פעיל)",
               "type": "int",
               "default": 1,
-              "category": "important"
+              "category": "critical"
             },
             "$23": {
-              "description": "[TODO: Add description for $23]",
+              "description": "GRBL $23: Homing direction invert bitmask",
+              "description_he": "GRBL $23: מסכת היפוך כיוון ביות",
               "type": "int",
               "default": 3,
               "category": "important"
             },
             "$24": {
-              "description": "[TODO: Add description for $24]",
+              "description": "GRBL $24: Homing locate feed rate (slow approach)",
+              "description_he": "GRBL $24: קצב הזנת איתור ביות (גישה איטית)",
               "type": "float",
               "default": 25.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/min"
             },
             "$25": {
-              "description": "[TODO: Add description for $25]",
+              "description": "GRBL $25: Homing search seek rate (fast approach)",
+              "description_he": "GRBL $25: קצב חיפוש ביות (גישה מהירה)",
               "type": "float",
               "default": 500.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/min"
             },
             "$26": {
-              "description": "[TODO: Add description for $26]",
+              "description": "GRBL $26: Homing switch debounce delay",
+              "description_he": "GRBL $26: השהיית ניפוי רעש מתג ביות",
               "type": "int",
               "default": 100,
-              "category": "important"
+              "category": "important",
+              "unit": "ms"
             },
             "$27": {
-              "description": "[TODO: Add description for $27]",
+              "description": "GRBL $27: Homing pull-off distance after switch trigger",
+              "description_he": "GRBL $27: מרחק התנתקות ביות לאחר הפעלת מתג",
               "type": "float",
               "default": 10.0,
-              "category": "important"
+              "category": "important",
+              "unit": "mm"
             },
             "$3": {
-              "description": "[TODO: Add description for $3]",
+              "description": "GRBL $3: Direction port invert bitmask (invert motor direction)",
+              "description_he": "GRBL $3: מסכת היפוך פורט כיוון (היפוך כיוון מנוע)",
               "type": "int",
               "default": 1,
               "category": "important"
             },
             "$30": {
-              "description": "[TODO: Add description for $30]",
+              "description": "GRBL $30: Maximum spindle speed (unused)",
+              "description_he": "GRBL $30: מהירות ציר מקסימלית (לא בשימוש)",
               "type": "int",
               "default": 1000,
-              "category": "important"
+              "category": "important",
+              "unit": "RPM"
             },
             "$31": {
-              "description": "[TODO: Add description for $31]",
+              "description": "GRBL $31: Minimum spindle speed (unused)",
+              "description_he": "GRBL $31: מהירות ציר מינימלית (לא בשימוש)",
               "type": "int",
               "default": 0,
-              "category": "important"
+              "category": "important",
+              "unit": "RPM"
             },
             "$32": {
-              "description": "[TODO: Add description for $32]",
+              "description": "GRBL $32: Laser mode enable (0=off, 1=on)",
+              "description_he": "GRBL $32: אפשור מצב לייזר (0=כבוי, 1=פעיל)",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "$4": {
-              "description": "[TODO: Add description for $4]",
+              "description": "GRBL $4: Step enable invert (0=normal, 1=invert)",
+              "description_he": "GRBL $4: היפוך אפשור צעד (0=רגיל, 1=הפוך)",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "$5": {
-              "description": "[TODO: Add description for $5]",
+              "description": "GRBL $5: Limit pins invert (0=normal NO, 1=invert NC)",
+              "description_he": "GRBL $5: היפוך פיני גבול (0=רגיל NO, 1=הפוך NC)",
               "type": "int",
               "default": 1,
               "category": "important"
             },
             "$6": {
-              "description": "[TODO: Add description for $6]",
+              "description": "GRBL $6: Probe pin invert (0=normal, 1=invert)",
+              "description_he": "GRBL $6: היפוך פין בדיקה (0=רגיל, 1=הפוך)",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "acceleration": {
-              "description": "[TODO: Add description for acceleration]",
+              "description": "Default G-code motion acceleration",
+              "description_he": "תאוצת תנועה ברירת מחדל ל-G-code",
               "type": "int",
               "default": 50,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/s²"
             },
             "feed_rate": {
-              "description": "[TODO: Add description for feed_rate]",
+              "description": "Default G-code feed rate for G1 moves",
+              "description_he": "קצב הזנה ברירת מחדל לתנועות G1",
               "type": "int",
               "default": 1000,
-              "category": "important"
+              "category": "important",
+              "unit": "mm/min"
             },
             "positioning_mode": {
-              "description": "[TODO: Add description for positioning_mode]",
+              "description": "G-code positioning mode (G90=absolute, G91=relative)",
+              "description_he": "מצב מיקום G-code (G90=מוחלט, G91=יחסי)",
               "type": "string",
               "default": "G90",
-              "category": "important",
-              "unit": "cm"
-            },
-            "rapid_rate": {
-              "description": "[TODO: Add description for rapid_rate]",
-              "type": "int",
-              "default": 3000,
               "category": "important"
             },
+            "rapid_rate": {
+              "description": "G-code rapid positioning rate for G0 moves",
+              "description_he": "קצב מיקום מהיר לתנועות G0",
+              "type": "int",
+              "default": 3000,
+              "category": "important",
+              "unit": "mm/min"
+            },
             "units": {
-              "description": "[TODO: Add description for units]",
+              "description": "GRBL internal unit system (mm or inches)",
+              "description_he": "מערכת יחידות פנימית של GRBL (מ״מ או אינצ׳ים)",
               "type": "string",
               "default": "mm",
               "category": "important"
             },
             "homing_timeout": {
-              "description": "[TODO: Add description for homing_timeout]",
+              "description": "Maximum time allowed for homing cycle completion",
+              "description_he": "זמן מקסימלי מותר להשלמת מחזור ביות",
               "type": "float",
               "default": 120.0,
               "category": "important",
               "unit": "seconds"
             },
             "pin": {
-              "description": "[TODO: Add description for pin]",
+              "description": "Arduino digital pin for door switch input",
+              "description_he": "פין דיגיטלי ב-Arduino לקלט מתג דלת",
               "type": "string",
               "default": "D2",
               "category": "critical"
             },
             "pull_up": {
-              "description": "[TODO: Add description for pull_up]",
+              "description": "Enable internal pull-up resistor on door switch pin",
+              "description_he": "אפשר נגד עילי פנימי על פין מתג הדלת",
               "type": "bool",
               "default": true,
               "category": "important"
             },
             "type": {
-              "description": "[TODO: Add description for type]",
+              "description": "Door switch wiring type (normally_open or normally_closed)",
+              "description_he": "סוג חיווט מתג דלת (פתוח כרגיל או סגור כרגיל)",
               "type": "string",
               "default": "normally_open",
               "category": "important"
             },
             "movement_poll_interval": {
-              "description": "[TODO: Add description for movement_poll_interval]",
+              "description": "Interval for polling GRBL position during movement",
+              "description_he": "מרווח לדגימת מיקום GRBL במהלך תנועה",
               "type": "float",
               "default": 0.1,
               "category": "important",
               "unit": "seconds"
             },
             "movement_timeout": {
-              "description": "[TODO: Add description for movement_timeout]",
+              "description": "Maximum time to wait for motor movement completion",
+              "description_he": "זמן מקסימלי להמתנה להשלמת תנועת מנוע",
               "type": "float",
               "default": 60.0,
               "category": "important",
               "unit": "seconds"
             },
             "position_tolerance_cm": {
-              "description": "[TODO: Add description for position_tolerance_cm]",
+              "description": "Acceptable position error when checking movement completion",
+              "description_he": "שגיאת מיקום מותרת בבדיקת השלמת תנועה",
               "type": "float",
               "default": 0.1,
               "category": "important",
@@ -914,21 +1098,55 @@
       },
       "settings": {
         "poc_mode": {
-          "description": "[TODO: Add description for poc_mode]",
+          "description": "Proof-of-concept mode with relaxed safety for testing",
+          "description_he": "מצב הוכחת היתכנות עם בטיחות מרוככת לבדיקות",
           "type": "bool",
           "default": true,
           "category": "important"
         },
         "skip_initial_sensor_tests": {
-          "description": "[TODO: Add description for skip_initial_sensor_tests]",
+          "description": "Skip sensor connectivity tests on application startup",
+          "description_he": "דלג על בדיקות חיבור חיישנים בהפעלת האפליקציה",
           "type": "bool",
           "default": false,
           "category": "important"
         },
         "start_with_grbl": {
-          "description": "[TODO: Add description for start_with_grbl]",
+          "description": "Connect to GRBL controller automatically on startup",
+          "description_he": "התחבר לבקר GRBL אוטומטית בהפעלה",
           "type": "bool",
           "default": true,
+          "category": "important"
+        }
+      }
+    },
+    "safety": {
+      "title": "Safety System",
+      "title_he": "מערכת בטיחות",
+      "description": "Safety system configuration for setup movement detection and pre-step wait timing",
+      "description_he": "הגדרות מערכת בטיחות לזיהוי תנועות הכנה ותזמון המתנה לפני צעד",
+      "settings": {
+        "setup_movement_keywords": {
+          "description": "Keywords in step descriptions that identify setup movements (bypass safety checks)",
+          "description_he": "מילות מפתח בתיאורי צעדים המזהות תנועות הכנה (עוקפות בדיקות בטיחות)",
+          "type": "list",
+          "default": ["home position", "ensure", "move rows motor to home", "move lines motor to home", "complete:", "init:", "position for repeat"],
+          "category": "critical"
+        },
+        "pre_step_wait_interval": {
+          "description": "Interval between safety check retries when waiting for condition to clear",
+          "description_he": "מרווח בין ניסיונות חוזרים של בדיקת בטיחות בהמתנה לשחרור תנאי",
+          "type": "float",
+          "unit": "seconds",
+          "default": 0.5,
+          "category": "important"
+        },
+        "pre_step_wait_timeout": {
+          "description": "Maximum time to wait for a safety condition to clear before timeout",
+          "description_he": "זמן מקסימלי להמתנה לשחרור תנאי בטיחות לפני פסק זמן",
+          "type": "float",
+          "unit": "seconds",
+          "default": 300,
           "category": "important"
         }
       }
@@ -937,9 +1155,11 @@
       "title": "Mock Hardware Timing",
       "title_he": "תזמון חומרה מדומה",
       "description": "Timing settings for simulated hardware operations",
+      "description_he": "הגדרות תזמון לפעולות חומרה מדומות",
       "settings": {
         "homing_step_delay": {
           "description": "Delay between homing sequence steps",
+          "description_he": "השהיה בין שלבי רצף ביות",
           "type": "float",
           "unit": "seconds",
           "default": 0.2,
@@ -947,6 +1167,7 @@
         },
         "door_check_delay": {
           "description": "Delay for door state checks",
+          "description_he": "השהיה לבדיקות מצב דלת",
           "type": "float",
           "unit": "seconds",
           "default": 0.1,
@@ -954,6 +1175,7 @@
         },
         "piston_operation_delay": {
           "description": "Delay for piston operations",
+          "description_he": "השהיה לפעולות בוכנה",
           "type": "float",
           "unit": "seconds",
           "default": 0.5,
@@ -961,6 +1183,7 @@
         },
         "grbl_homing_delay": {
           "description": "Delay for simulated GRBL homing",
+          "description_he": "השהיה לביות GRBL מדומה",
           "type": "float",
           "unit": "seconds",
           "default": 1.0,
@@ -968,6 +1191,7 @@
         },
         "coordinate_reset_delay": {
           "description": "Delay after coordinate reset",
+          "description_he": "השהיה לאחר איפוס קואורדינטות",
           "type": "float",
           "unit": "seconds",
           "default": 0.2,
@@ -979,9 +1203,11 @@
       "title": "Logging Configuration",
       "title_he": "הגדרות לוג",
       "description": "Log output settings",
+      "description_he": "הגדרות פלט יומן",
       "settings": {
         "level": {
           "description": "Minimum log level to display",
+          "description_he": "רמת יומן מינימלית להצגה",
           "type": "enum",
           "options": [
             "DEBUG",
@@ -994,50 +1220,57 @@
         },
         "file_output": {
           "description": "Enable logging to file",
+          "description_he": "אפשר רישום יומן לקובץ",
           "type": "bool",
           "default": false,
           "category": "important"
         },
         "console_output": {
-          "description": "[TODO: Add description for console_output]",
+          "description": "Enable log output to console/terminal",
+          "description_he": "אפשר פלט יומן לקונסולה/מסוף",
           "type": "bool",
           "default": true,
           "category": "important"
         },
         "file_path": {
-          "description": "[TODO: Add description for file_path]",
+          "description": "File path for log output when file logging is enabled",
+          "description_he": "נתיב קובץ לפלט יומן כשרישום לקובץ מופעל",
           "type": "string",
           "default": "logs/scratch_desk.log",
           "category": "important"
         },
         "queue_timeout_seconds": {
-          "description": "[TODO: Add description for queue_timeout_seconds]",
+          "description": "Timeout for log message queue operations",
+          "description_he": "זמן קצוב לפעולות תור הודעות יומן",
           "type": "float",
           "default": 0.1,
           "category": "important",
           "unit": "seconds"
         },
         "show_thread_names": {
-          "description": "[TODO: Add description for show_thread_names]",
+          "description": "Show thread names in log output for debugging",
+          "description_he": "הצג שמות תהליכונים בפלט היומן לניפוי באגים",
           "type": "bool",
           "default": false,
           "category": "important"
         },
         "show_timestamps": {
-          "description": "[TODO: Add description for show_timestamps]",
+          "description": "Show timestamps in log messages",
+          "description_he": "הצג חותמות זמן בהודעות היומן",
           "type": "bool",
           "default": true,
-          "category": "important",
-          "unit": "seconds"
+          "category": "important"
         },
         "use_colors": {
-          "description": "[TODO: Add description for use_colors]",
+          "description": "Enable ANSI colored output in console logs",
+          "description_he": "אפשר פלט צבעוני ANSI ביומני קונסולה",
           "type": "bool",
           "default": true,
           "category": "important"
         },
         "use_icons": {
-          "description": "[TODO: Add description for use_icons]",
+          "description": "Enable emoji icons in log messages",
+          "description_he": "אפשר אייקוני אימוג׳י בהודעות היומן",
           "type": "bool",
           "default": true,
           "category": "important"
@@ -1046,28 +1279,37 @@
       "subsections": {
         "categories": {
           "title": "Categories",
+          "title_he": "קטגוריות לוג",
           "settings": {
             "execution": {
-              "description": "[TODO: Add description for execution]",
-              "type": "string",
+              "description": "Log level for execution engine messages",
+              "description_he": "רמת יומן להודעות מנוע ביצוע",
+              "type": "enum",
+              "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
               "default": "INFO",
               "category": "important"
             },
             "grbl": {
-              "description": "[TODO: Add description for grbl]",
-              "type": "string",
+              "description": "Log level for GRBL motor communication messages",
+              "description_he": "רמת יומן להודעות תקשורת מנוע GRBL",
+              "type": "enum",
+              "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
               "default": "INFO",
               "category": "important"
             },
             "gui": {
-              "description": "[TODO: Add description for gui]",
-              "type": "string",
+              "description": "Log level for GUI-related messages",
+              "description_he": "רמת יומן להודעות ממשק משתמש",
+              "type": "enum",
+              "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
               "default": "WARNING",
               "category": "important"
             },
             "hardware": {
-              "description": "[TODO: Add description for hardware]",
-              "type": "string",
+              "description": "Log level for hardware interface messages",
+              "description_he": "רמת יומן להודעות ממשק חומרה",
+              "type": "enum",
+              "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
               "default": "INFO",
               "category": "important"
             }
@@ -1079,52 +1321,65 @@
       "title": "GUI Settings",
       "title_he": "הגדרות ממשק",
       "description": "User interface configuration including language and theme",
+      "description_he": "הגדרות ממשק משתמש כולל שפה וערכת צבעים",
       "settings": {
         "auto_load_csv": {
-          "description": "[TODO: Add description for auto_load_csv]",
+          "description": "CSV program file to auto-load on startup",
+          "description_he": "קובץ תוכנית CSV לטעינה אוטומטית בהפעלה",
           "type": "string",
           "default": "sample_programs.csv",
           "category": "important"
         },
         "canvas_margin_bottom": {
-          "description": "[TODO: Add description for canvas_margin_bottom]",
+          "description": "Bottom padding margin of canvas area",
+          "description_he": "שוליים תחתונים של אזור הקנבס",
           "type": "int",
           "default": 50,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "canvas_margin_left": {
-          "description": "[TODO: Add description for canvas_margin_left]",
+          "description": "Left padding margin of canvas area",
+          "description_he": "שוליים שמאליים של אזור הקנבס",
           "type": "int",
           "default": 60,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "canvas_margin_right": {
-          "description": "[TODO: Add description for canvas_margin_right]",
+          "description": "Right padding margin of canvas area",
+          "description_he": "שוליים ימניים של אזור הקנבס",
           "type": "int",
           "default": 30,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "canvas_margin_top": {
-          "description": "[TODO: Add description for canvas_margin_top]",
+          "description": "Top padding margin of canvas area",
+          "description_he": "שוליים עליונים של אזור הקנבס",
           "type": "int",
           "default": 40,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "canvas_min_scale": {
-          "description": "[TODO: Add description for canvas_min_scale]",
+          "description": "Minimum zoom scale factor for canvas view",
+          "description_he": "גורם סקאלת זום מינימלי לתצוגת הקנבס",
           "type": "float",
           "default": 3.5,
-          "category": "important"
+          "category": "ui"
         },
         "update_interval_ms": {
-          "description": "[TODO: Add description for update_interval_ms]",
+          "description": "GUI refresh interval for status updates",
+          "description_he": "מרווח רענון ממשק לעדכוני סטטוס",
           "type": "int",
           "default": 500,
-          "category": "important",
-          "unit": "seconds"
+          "category": "performance",
+          "unit": "ms"
         },
         "language": {
           "description": "Interface language",
+          "description_he": "שפת הממשק",
           "type": "enum",
           "options": [
             "en",
@@ -1135,6 +1390,7 @@
         },
         "theme": {
           "description": "GUI color theme",
+          "description_he": "ערכת צבעים של הממשק",
           "type": "string",
           "default": "default",
           "category": "ui"
@@ -1143,129 +1399,150 @@
     },
     "hardware_monitor": {
       "title": "Hardware Monitor",
-      "title_he": "[תרגום: hardware_monitor]",
-      "description": "[TODO: Add description for hardware_monitor section]",
+      "title_he": "צג חומרה",
+      "description": "Hardware status monitor panel appearance and refresh settings",
+      "description_he": "מראה ורענון פנל צג סטטוס חומרה",
       "settings": {
         "background_color": {
-          "description": "[TODO: Add description for background_color]",
-          "type": "string",
+          "description": "Main background color of the hardware monitor panel",
+          "description_he": "צבע רקע ראשי של פנל צג החומרה",
+          "type": "color",
           "default": "#2C3E50",
-          "category": "important"
+          "category": "ui"
         },
         "label_color": {
-          "description": "[TODO: Add description for label_color]",
-          "type": "string",
+          "description": "Color for label text in the hardware monitor",
+          "description_he": "צבע טקסט תוויות בצג החומרה",
+          "type": "color",
           "default": "#BDC3C7",
-          "category": "important"
+          "category": "ui"
         },
         "panel_height": {
-          "description": "[TODO: Add description for panel_height]",
+          "description": "Height of the hardware monitor panel",
+          "description_he": "גובה פנל צג החומרה",
           "type": "int",
           "default": 120,
-          "category": "important",
-          "unit": "cm"
+          "category": "ui",
+          "unit": "px"
         },
         "section_bg_color": {
-          "description": "[TODO: Add description for section_bg_color]",
-          "type": "string",
+          "description": "Background color for monitor sections",
+          "description_he": "צבע רקע למדורים בצג",
+          "type": "color",
           "default": "#34495E",
-          "category": "important"
+          "category": "ui"
         },
         "separator_color": {
-          "description": "[TODO: Add description for separator_color]",
-          "type": "string",
+          "description": "Color of section divider lines in the monitor",
+          "description_he": "צבע קווי הפרדה בין מדורים בצג",
+          "type": "color",
           "default": "#7F8C8D",
-          "category": "important"
+          "category": "ui"
         },
         "text_color": {
-          "description": "[TODO: Add description for text_color]",
-          "type": "string",
+          "description": "Color for value text in the hardware monitor",
+          "description_he": "צבע טקסט ערכים בצג החומרה",
+          "type": "color",
           "default": "#ECF0F1",
-          "category": "important"
+          "category": "ui"
         },
         "update_interval_ms": {
-          "description": "[TODO: Add description for update_interval_ms]",
+          "description": "Hardware monitor refresh interval",
+          "description_he": "מרווח רענון צג החומרה",
           "type": "int",
           "default": 200,
-          "category": "important",
-          "unit": "seconds"
+          "category": "performance",
+          "unit": "ms"
         }
       },
       "subsections": {
         "status_colors": {
           "title": "Status Colors",
+          "title_he": "צבעי סטטוס",
           "settings": {
             "active": {
-              "description": "[TODO: Add description for active]",
-              "type": "string",
+              "description": "Color for active/on state indicators (green)",
+              "description_he": "צבע למחוונים במצב פעיל/דולק (ירוק)",
+              "type": "color",
               "default": "#27AE60",
-              "category": "important"
+              "category": "ui"
             },
             "critical": {
-              "description": "[TODO: Add description for critical]",
-              "type": "string",
+              "description": "Color for critical/error state indicators (red)",
+              "description_he": "צבע למחוונים במצב קריטי/שגיאה (אדום)",
+              "type": "color",
               "default": "#E74C3C",
-              "category": "important"
+              "category": "ui"
             },
             "inactive": {
-              "description": "[TODO: Add description for inactive]",
-              "type": "string",
+              "description": "Color for inactive/off state indicators (gray)",
+              "description_he": "צבע למחוונים במצב לא פעיל/כבוי (אפור)",
+              "type": "color",
               "default": "#95A5A6",
-              "category": "important"
+              "category": "ui"
             },
             "line_tools": {
-              "description": "[TODO: Add description for line_tools]",
-              "type": "string",
+              "description": "Color for line tool status indicators (blue)",
+              "description_he": "צבע למחווני סטטוס כלי שורות (כחול)",
+              "type": "color",
               "default": "#3498DB",
-              "category": "important"
+              "category": "ui"
             },
             "motor_x": {
-              "description": "[TODO: Add description for motor_x]",
-              "type": "string",
+              "description": "Color for X-axis motor position indicator (red)",
+              "description_he": "צבע למחוון מיקום מנוע ציר X (אדום)",
+              "type": "color",
               "default": "#E74C3C",
-              "category": "important"
+              "category": "ui"
             },
             "motor_y": {
-              "description": "[TODO: Add description for motor_y]",
-              "type": "string",
+              "description": "Color for Y-axis motor position indicator (blue)",
+              "description_he": "צבע למחוון מיקום מנוע ציר Y (כחול)",
+              "type": "color",
               "default": "#3498DB",
-              "category": "important"
+              "category": "ui"
             },
             "row_tools": {
-              "description": "[TODO: Add description for row_tools]",
-              "type": "string",
+              "description": "Color for row tool status indicators (red)",
+              "description_he": "צבע למחווני סטטוס כלי עמודות (אדום)",
+              "type": "color",
               "default": "#E74C3C",
-              "category": "important"
+              "category": "ui"
             },
             "sensor_triggered_x": {
-              "description": "[TODO: Add description for sensor_triggered_x]",
-              "type": "string",
+              "description": "Color when X-axis sensor is triggered (bright red)",
+              "description_he": "צבע כשחיישן ציר X מופעל (אדום בהיר)",
+              "type": "color",
               "default": "#FF3300",
-              "category": "important"
+              "category": "ui"
             },
             "sensor_triggered_y": {
-              "description": "[TODO: Add description for sensor_triggered_y]",
-              "type": "string",
+              "description": "Color when Y-axis sensor is triggered (bright green)",
+              "description_he": "צבע כשחיישן ציר Y מופעל (ירוק בהיר)",
+              "type": "color",
               "default": "#00FF00",
-              "category": "important"
+              "category": "ui"
             },
             "sensors_x": {
-              "description": "[TODO: Add description for sensors_x]",
-              "type": "string",
+              "description": "Color for X-axis sensor indicators (orange)",
+              "description_he": "צבע למחווני חיישני ציר X (כתום)",
+              "type": "color",
               "default": "#F39C12",
-              "category": "important"
+              "category": "ui"
             },
             "sensors_y": {
-              "description": "[TODO: Add description for sensors_y]",
-              "type": "string",
+              "description": "Color for Y-axis sensor indicators (green)",
+              "description_he": "צבע למחווני חיישני ציר Y (ירוק)",
+              "type": "color",
               "default": "#27AE60",
-              "category": "important"
+              "category": "ui"
             },
             "system": {
-              "description": "[TODO: Add description for system]",
-              "type": "string",
+              "description": "Color for system status indicators (purple)",
+              "description_he": "צבע למחווני סטטוס מערכת (סגול)",
+              "type": "color",
               "default": "#8E44AD",
-              "category": "important"
+              "category": "ui"
             }
           }
         }
@@ -1273,53 +1550,62 @@
     },
     "operation_colors": {
       "title": "Operation Colors",
-      "title_he": "[תרגום: operation_colors]",
-      "description": "[TODO: Add description for operation_colors section]",
+      "title_he": "צבעי פעולות",
+      "description": "Colors for operation visualization on the canvas",
+      "description_he": "צבעים לתצוגת פעולות על הקנבס",
       "settings": {},
       "subsections": {
         "cuts": {
           "title": "Cuts",
+          "title_he": "חיתוכים",
           "settings": {
             "completed": {
-              "description": "[TODO: Add description for completed]",
-              "type": "string",
+              "description": "Color for completed cut operations (purple)",
+              "description_he": "צבע לפעולות חיתוך שהושלמו (סגול)",
+              "type": "color",
               "default": "#AA00AA",
-              "category": "important"
+              "category": "ui"
             },
             "in_progress": {
-              "description": "[TODO: Add description for in_progress]",
-              "type": "string",
+              "description": "Color for in-progress cut operations (pink)",
+              "description_he": "צבע לפעולות חיתוך בביצוע (ורוד)",
+              "type": "color",
               "default": "#FF0088",
-              "category": "important"
+              "category": "ui"
             },
             "pending": {
-              "description": "[TODO: Add description for pending]",
-              "type": "string",
+              "description": "Color for pending cut operations (violet)",
+              "description_he": "צבע לפעולות חיתוך ממתינות (סגלגל)",
+              "type": "color",
               "default": "#8800FF",
-              "category": "important"
+              "category": "ui"
             }
           }
         },
         "mark": {
           "title": "Mark",
+          "title_he": "סימונים",
           "settings": {
             "completed": {
-              "description": "[TODO: Add description for completed]",
-              "type": "string",
+              "description": "Color for completed mark operations (green)",
+              "description_he": "צבע לפעולות סימון שהושלמו (ירוק)",
+              "type": "color",
               "default": "#00AA00",
-              "category": "important"
+              "category": "ui"
             },
             "in_progress": {
-              "description": "[TODO: Add description for in_progress]",
-              "type": "string",
+              "description": "Color for in-progress mark operations (orange)",
+              "description_he": "צבע לפעולות סימון בביצוע (כתום)",
+              "type": "color",
               "default": "#FF8800",
-              "category": "important"
+              "category": "ui"
             },
             "pending": {
-              "description": "[TODO: Add description for pending]",
-              "type": "string",
+              "description": "Color for pending mark operations (dark red)",
+              "description_he": "צבע לפעולות סימון ממתינות (אדום כהה)",
+              "type": "color",
               "default": "#880808",
-              "category": "important"
+              "category": "ui"
             }
           }
         }
@@ -1327,186 +1613,221 @@
     },
     "sensor_timeouts": {
       "title": "Sensor Timeouts",
-      "title_he": "[תרגום: sensor_timeouts]",
-      "description": "[TODO: Add description for sensor_timeouts section]",
+      "title_he": "זמני חיישנים",
+      "description": "Sensor timing, highlight durations, and override timeouts",
+      "description_he": "תזמון חיישנים, משכי הדגשה וזמני עקיפה",
       "settings": {
         "sensor_highlight_duration": {
-          "description": "[TODO: Add description for sensor_highlight_duration]",
+          "description": "Duration to highlight triggered sensor on canvas",
+          "description_he": "משך הדגשת חיישן מופעל על הקנבס",
           "type": "int",
           "default": 500,
-          "category": "important"
+          "category": "ui",
+          "unit": "ms"
         },
         "sensor_override_timeout_lines": {
-          "description": "[TODO: Add description for sensor_override_timeout_lines]",
+          "description": "Timeout before auto-triggering lines sensor override",
+          "description_he": "זמן קצוב לפני הפעלת עקיפת חיישן שורות אוטומטית",
           "type": "int",
           "default": 1000,
           "category": "important",
-          "unit": "seconds"
+          "unit": "ms"
         },
         "sensor_override_timeout_rows": {
-          "description": "[TODO: Add description for sensor_override_timeout_rows]",
+          "description": "Timeout before auto-triggering rows sensor override",
+          "description_he": "זמן קצוב לפני הפעלת עקיפת חיישן עמודות אוטומטית",
           "type": "int",
           "default": 3000,
           "category": "important",
-          "unit": "seconds"
+          "unit": "ms"
         }
       }
     },
     "simulation": {
       "title": "Simulation",
-      "title_he": "[תרגום: simulation]",
-      "description": "[TODO: Add description for simulation section]",
+      "title_he": "סימולציה",
+      "description": "Canvas simulation display and grid settings",
+      "description_he": "הגדרות תצוגה ורשת בקנבס הסימולציה",
       "settings": {
         "grid_spacing": {
-          "description": "[TODO: Add description for grid_spacing]",
+          "description": "Distance between grid lines on the canvas",
+          "description_he": "מרחק בין קווי רשת על הקנבס",
           "type": "int",
           "default": 20,
-          "category": "important"
+          "category": "ui",
+          "unit": "cm"
         },
         "max_display_x": {
-          "description": "[TODO: Add description for max_display_x]",
+          "description": "Maximum X-axis display range on canvas",
+          "description_he": "טווח תצוגה מקסימלי בציר X על הקנבס",
           "type": "int",
           "default": 120,
-          "category": "important"
+          "category": "ui",
+          "unit": "cm"
         },
         "max_display_y": {
-          "description": "[TODO: Add description for max_display_y]",
+          "description": "Maximum Y-axis display range on canvas",
+          "description_he": "טווח תצוגה מקסימלי בציר Y על הקנבס",
           "type": "int",
           "default": 80,
-          "category": "important"
+          "category": "ui",
+          "unit": "cm"
         },
         "show_grid": {
-          "description": "[TODO: Add description for show_grid]",
+          "description": "Show grid lines on the simulation canvas",
+          "description_he": "הצג קווי רשת על קנבס הסימולציה",
           "type": "bool",
           "default": true,
-          "category": "important"
+          "category": "ui"
         }
       }
     },
     "ui_fonts": {
-      "title": "Ui Fonts",
-      "title_he": "[תרגום: ui_fonts]",
-      "description": "[TODO: Add description for ui_fonts section]",
+      "title": "UI Fonts",
+      "title_he": "גופנים",
+      "description": "Font definitions for UI elements [family, size, weight]",
+      "description_he": "הגדרות גופנים לאלמנטי ממשק [משפחה, גודל, משקל]",
       "settings": {
         "dialog_label": {
-          "description": "[TODO: Add description for dialog_label]",
+          "description": "Font for labels inside dialog boxes",
+          "description_he": "גופן לתוויות בתוך תיבות דיאלוג",
           "type": "list",
           "default": [
             "Arial",
             10
           ],
-          "category": "important"
+          "category": "ui"
         },
         "dialog_message": {
-          "description": "[TODO: Add description for dialog_message]",
+          "description": "Font for message text in dialog boxes",
+          "description_he": "גופן לטקסט הודעות בתיבות דיאלוג",
           "type": "list",
           "default": [
             "Arial",
             11
           ],
-          "category": "important"
+          "category": "ui"
         },
         "dialog_title": {
-          "description": "[TODO: Add description for dialog_title]",
+          "description": "Font for dialog box title text",
+          "description_he": "גופן לכותרת תיבות דיאלוג",
           "type": "list",
           "default": [
             "Arial",
             14,
             "bold"
           ],
-          "category": "important"
+          "category": "ui"
         },
         "heading": {
-          "description": "[TODO: Add description for heading]",
+          "description": "Font for section heading text",
+          "description_he": "גופן לכותרות מדורים",
           "type": "list",
           "default": [
             "Arial",
             10,
             "bold"
           ],
-          "category": "important"
+          "category": "ui"
         },
         "label": {
-          "description": "[TODO: Add description for label]",
+          "description": "Font for general labels throughout the UI",
+          "description_he": "גופן לתוויות כלליות ברחבי הממשק",
           "type": "list",
           "default": [
             "Arial",
             8,
             "bold"
           ],
-          "category": "important"
+          "category": "ui"
         },
         "normal": {
-          "description": "[TODO: Add description for normal]",
+          "description": "Font for normal body text",
+          "description_he": "גופן לטקסט רגיל",
           "type": "list",
           "default": [
             "Arial",
             9
           ],
-          "category": "important"
+          "category": "ui"
         },
         "title": {
-          "description": "[TODO: Add description for title]",
+          "description": "Font for main section titles",
+          "description_he": "גופן לכותרות מדורים ראשיים",
           "type": "list",
           "default": [
             "Arial",
             12,
             "bold"
           ],
-          "category": "important"
+          "category": "ui"
         }
       }
     },
     "ui_spacing": {
-      "title": "Ui Spacing",
-      "title_he": "[תרגום: ui_spacing]",
-      "description": "[TODO: Add description for ui_spacing section]",
+      "title": "UI Spacing",
+      "title_he": "מרווחים",
+      "description": "Padding and spacing values for UI layout",
+      "description_he": "ערכי ריפוד ומרווח לפריסת הממשק",
       "settings": {
         "button_padding_x": {
-          "description": "[TODO: Add description for button_padding_x]",
+          "description": "Horizontal padding inside buttons",
+          "description_he": "ריפוד אופקי בתוך כפתורים",
           "type": "int",
           "default": 10,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "button_padding_y": {
-          "description": "[TODO: Add description for button_padding_y]",
+          "description": "Vertical padding inside buttons",
+          "description_he": "ריפוד אנכי בתוך כפתורים",
           "type": "int",
           "default": 5,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "dialog_padding": {
-          "description": "[TODO: Add description for dialog_padding]",
+          "description": "Inner padding of dialog boxes",
+          "description_he": "ריפוד פנימי של תיבות דיאלוג",
           "type": "int",
           "default": 20,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "frame_padding": {
-          "description": "[TODO: Add description for frame_padding]",
+          "description": "Inner padding of frame containers",
+          "description_he": "ריפוד פנימי של מכלי מסגרת",
           "type": "int",
           "default": 5,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "widget_padding": {
-          "description": "[TODO: Add description for widget_padding]",
+          "description": "Spacing between adjacent widgets",
+          "description_he": "מרווח בין רכיבים סמוכים",
           "type": "int",
           "default": 3,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         }
       }
     },
     "validation": {
       "title": "Validation",
-      "title_he": "[תרגום: validation]",
-      "description": "[TODO: Add description for validation section]",
+      "title_he": "אימות",
+      "description": "Input validation and tolerance settings",
+      "description_he": "הגדרות אימות קלט וסובלנות",
       "settings": {
         "strict_mode": {
-          "description": "[TODO: Add description for strict_mode]",
+          "description": "Enable strict validation (reject out-of-range values)",
+          "description_he": "אפשר אימות קפדני (דחה ערכים מחוץ לטווח)",
           "type": "bool",
           "default": false,
           "category": "important"
         },
         "tolerance": {
-          "description": "[TODO: Add description for tolerance]",
+          "description": "Floating-point comparison tolerance for position checks",
+          "description_he": "סובלנות השוואת נקודה צפה לבדיקות מיקום",
           "type": "float",
           "default": 0.01,
           "category": "important"
@@ -1515,91 +1836,215 @@
     },
     "visualization": {
       "title": "Visualization",
-      "title_he": "[תרגום: visualization]",
-      "description": "[TODO: Add description for visualization section]",
+      "title_he": "תצוגה חזותית",
+      "description": "Canvas visualization styling for operations and motor indicators",
+      "description_he": "עיצוב תצוגת פעולות ומחווני מנועים בקנבס",
       "settings": {
         "dash_pattern_completed": {
-          "description": "[TODO: Add description for dash_pattern_completed]",
+          "description": "Line dash pattern for completed operations [dash, gap]",
+          "description_he": "תבנית קו מקווקו לפעולות שהושלמו [קווקוו, רווח]",
           "type": "list",
           "default": [
             10,
             2
           ],
-          "category": "important"
+          "category": "ui"
         },
         "dash_pattern_in_progress": {
-          "description": "[TODO: Add description for dash_pattern_in_progress]",
+          "description": "Line dash pattern for in-progress operations [dash, gap]",
+          "description_he": "תבנית קו מקווקו לפעולות בביצוע [קווקוו, רווח]",
           "type": "list",
           "default": [
             8,
             4
           ],
-          "category": "important"
+          "category": "ui"
         },
         "dash_pattern_pending": {
-          "description": "[TODO: Add description for dash_pattern_pending]",
+          "description": "Line dash pattern for pending operations [dash, gap]",
+          "description_he": "תבנית קו מקווקו לפעולות ממתינות [קווקוו, רווח]",
           "type": "list",
           "default": [
             5,
             5
           ],
-          "category": "important"
+          "category": "ui"
         },
         "line_width_cuts": {
-          "description": "[TODO: Add description for line_width_cuts]",
+          "description": "Line width for cut operations on canvas",
+          "description_he": "עובי קו לפעולות חיתוך על הקנבס",
           "type": "int",
           "default": 4,
-          "category": "important",
-          "unit": "cm"
+          "category": "ui",
+          "unit": "px"
         },
         "line_width_marks": {
-          "description": "[TODO: Add description for line_width_marks]",
+          "description": "Line width for mark operations on canvas",
+          "description_he": "עובי קו לפעולות סימון על הקנבס",
           "type": "int",
           "default": 3,
-          "category": "important",
-          "unit": "cm"
+          "category": "ui",
+          "unit": "px"
         },
         "motor_intersection_size": {
-          "description": "[TODO: Add description for motor_intersection_size]",
+          "description": "Size of the motor crosshair indicator on canvas",
+          "description_he": "גודל מחוון הצלב של המנוע על הקנבס",
           "type": "int",
           "default": 4,
-          "category": "important"
+          "category": "ui",
+          "unit": "px"
         },
         "motor_line_color_x": {
-          "description": "[TODO: Add description for motor_line_color_x]",
-          "type": "string",
+          "description": "Color of the X-axis motor position line on canvas",
+          "description_he": "צבע קו מיקום מנוע ציר X על הקנבס",
+          "type": "color",
           "default": "red",
-          "category": "important"
+          "category": "ui"
         },
         "motor_line_color_y": {
-          "description": "[TODO: Add description for motor_line_color_y]",
-          "type": "string",
+          "description": "Color of the Y-axis motor position line on canvas",
+          "description_he": "צבע קו מיקום מנוע ציר Y על הקנבס",
+          "type": "color",
           "default": "blue",
-          "category": "important"
+          "category": "ui"
         },
         "sensor_highlight_color": {
-          "description": "[TODO: Add description for sensor_highlight_color]",
-          "type": "string",
+          "description": "Fill color for sensor trigger highlight animation",
+          "description_he": "צבע מילוי להנפשת הדגשת חיישן מופעל",
+          "type": "color",
           "default": "#FF0000",
-          "category": "important"
+          "category": "ui"
         },
         "sensor_highlight_outline": {
-          "description": "[TODO: Add description for sensor_highlight_outline]",
-          "type": "string",
+          "description": "Outline color for sensor trigger highlight animation",
+          "description_he": "צבע מסגרת להנפשת הדגשת חיישן מופעל",
+          "type": "color",
           "default": "#8B0000",
-          "category": "important"
+          "category": "ui"
         },
         "sensor_highlight_width": {
-          "description": "[TODO: Add description for sensor_highlight_width]",
+          "description": "Outline width for sensor highlight animation",
+          "description_he": "עובי מסגרת להנפשת הדגשת חיישן",
           "type": "int",
           "default": 3,
-          "category": "important",
-          "unit": "cm"
+          "category": "ui",
+          "unit": "px"
         },
         "sensor_indicator_size": {
-          "description": "[TODO: Add description for sensor_indicator_size]",
+          "description": "Size of sensor position indicators on canvas",
+          "description_he": "גודל מחווני מיקום חיישנים על הקנבס",
           "type": "int",
           "default": 3,
+          "category": "ui",
+          "unit": "px"
+        }
+      }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "title_he": "אנליטיקה",
+      "description": "Execution analytics collection and email reporting settings",
+      "description_he": "הגדרות איסוף אנליטיקת הרצות ודיווח במייל",
+      "settings": {
+        "enabled": {
+          "description": "Enable analytics data collection for execution runs",
+          "description_he": "הפעל איסוף נתוני אנליטיקה עבור הרצות",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        },
+        "csv_file_path": {
+          "description": "Path to the analytics CSV data file",
+          "description_he": "נתיב לקובץ נתוני האנליטיקה CSV",
+          "type": "string",
+          "default": "data/analytics/runs.csv",
+          "category": "important"
+        },
+        "email.enabled": {
+          "description": "Enable email report sending",
+          "description_he": "הפעל שליחת דוחות מייל",
+          "type": "bool",
+          "default": false,
+          "category": "important"
+        },
+        "email.smtp_server": {
+          "description": "SMTP server hostname for sending email reports",
+          "description_he": "שם שרת SMTP לשליחת דוחות מייל",
+          "type": "string",
+          "default": "",
+          "category": "important"
+        },
+        "email.smtp_port": {
+          "description": "SMTP server port number",
+          "description_he": "מספר פורט שרת SMTP",
+          "type": "int",
+          "default": 587,
+          "category": "important"
+        },
+        "email.smtp_use_tls": {
+          "description": "Use TLS encryption for SMTP connection",
+          "description_he": "השתמש בהצפנת TLS לחיבור SMTP",
+          "type": "bool",
+          "default": true,
+          "category": "important"
+        },
+        "email.smtp_username": {
+          "description": "SMTP authentication username",
+          "description_he": "שם משתמש לאימות SMTP",
+          "type": "string",
+          "default": "",
+          "category": "important"
+        },
+        "email.smtp_password": {
+          "description": "SMTP authentication password",
+          "description_he": "סיסמה לאימות SMTP",
+          "type": "string",
+          "default": "",
+          "category": "important"
+        },
+        "email.sender_email": {
+          "description": "Email address used as the sender (From)",
+          "description_he": "כתובת מייל לשימוש כשולח",
+          "type": "string",
+          "default": "",
+          "category": "important"
+        },
+        "email.recipient_email": {
+          "description": "Email address to receive analytics reports",
+          "description_he": "כתובת מייל לקבלת דוחות אנליטיקה",
+          "type": "string",
+          "default": "",
+          "category": "important"
+        },
+        "email.subject_prefix": {
+          "description": "Subject line prefix for analytics report emails",
+          "description_he": "קידומת נושא עבור דוחות מייל אנליטיקה",
+          "type": "string",
+          "default": "Scratch-Desk Analytics Report",
+          "category": "ui"
+        },
+        "email.schedule_enabled": {
+          "description": "Enable automatic scheduled email reports",
+          "description_he": "הפעל דוחות מייל מתוזמנים אוטומטית",
+          "type": "bool",
+          "default": false,
+          "category": "important"
+        },
+        "email.schedule_interval_hours": {
+          "description": "Minimum hours between scheduled report sends",
+          "description_he": "מינימום שעות בין שליחות דוחות מתוזמנים",
+          "type": "int",
+          "default": 24,
+          "min": 1,
+          "max": 720,
+          "unit": "hours",
+          "category": "important"
+        },
+        "email.schedule_time": {
+          "description": "Time of day to send scheduled reports (HH:MM format)",
+          "description_he": "שעה ביום לשליחת דוחות מתוזמנים (פורמט HH:MM)",
+          "type": "string",
+          "default": "08:00",
           "category": "important"
         }
       }
@@ -1610,25 +2055,29 @@
       "label": "Critical",
       "label_he": "קריטי",
       "color": "#E74C3C",
-      "description": "Settings that affect machine safety or core operation"
+      "description": "Settings that affect machine safety or core operation",
+      "description_he": "הגדרות המשפיעות על בטיחות המכונה או הפעולה המרכזית"
     },
     "important": {
       "label": "Important",
       "label_he": "חשוב",
       "color": "#F39C12",
-      "description": "Settings that significantly affect behavior"
+      "description": "Settings that significantly affect behavior",
+      "description_he": "הגדרות המשפיעות משמעותית על ההתנהגות"
     },
     "performance": {
       "label": "Performance",
       "label_he": "ביצועים",
       "color": "#3498DB",
-      "description": "Settings that affect speed and responsiveness"
+      "description": "Settings that affect speed and responsiveness",
+      "description_he": "הגדרות המשפיעות על מהירות ותגובתיות"
     },
     "ui": {
       "label": "User Interface",
       "label_he": "ממשק משתמש",
       "color": "#27AE60",
-      "description": "Visual and UI-related settings"
+      "description": "Visual and UI-related settings",
+      "description_he": "הגדרות ויזואליות וקשורות לממשק"
     }
   }
 }

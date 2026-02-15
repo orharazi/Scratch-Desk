@@ -1,0 +1,2 @@
+run_id,timestamp_start,timestamp_end,duration_seconds,program_number,program_name,completion_status,total_steps,completed_steps,successful_steps,failed_steps,error_message,safety_code,safety_message,hardware_mode,repeat_rows,repeat_lines
+b003d7c5-1cbf-41f6-ba36-0452610fd7d4,2026-02-15T01:22:03.342834,2026-02-15T01:22:03.343112,0.0,1,Test Program,success,5,5,5,0,,,,mock,2,3

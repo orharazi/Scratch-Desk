@@ -45,6 +45,17 @@ class CanvasManager:
         main_app.canvas_position = self.canvas_position
         main_app.canvas_tools = self.canvas_tools
 
+    def update_hardware_reference(self, new_hardware):
+        """Update hardware reference in canvas manager AND all sub-modules.
+        Must be called after hardware hot-swap to prevent stale references."""
+        self.hardware = new_hardware
+        self.canvas_setup.hardware = new_hardware
+        self.canvas_sensors.hardware = new_hardware
+        self.canvas_operations.hardware = new_hardware
+        self.canvas_position.hardware = new_hardware
+        self.canvas_tools.hardware = new_hardware
+        self.logger.info("Canvas manager hardware references updated (all sub-modules)", category="gui")
+
     def full_reset(self):
         """Comprehensive reset of all canvas state for new program or execution reset"""
         self.logger.debug("Canvas full reset initiated", category="gui")

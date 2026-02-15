@@ -98,27 +98,27 @@ class CanvasPosition:
             # During lines operations: X motor at 0, Y motor shows actual position
             display_x = 0.0
             display_y = current_y
-            x_label_text = "X=0.0cm (HOLD)"
+            x_label_text = "\u05e2\u05de\u05d5\u05d3\u05d5\u05ea=0.0cm (HOLD)"
             x_label_color = "gray"
-            y_label_text = f"Y={current_y:.1f}cm"
+            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm"
             y_label_color = "blue"
-            
+
         elif self.canvas_manager.motor_operation_mode == "rows":
-            # During rows operations: Y motor at 0, X motor shows actual position  
+            # During rows operations: Y motor at 0, X motor shows actual position
             display_x = current_x
             display_y = 0.0
-            x_label_text = f"X={current_x:.1f}cm"
+            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm"
             x_label_color = "red"
-            y_label_text = "Y=0.0cm (HOLD)"
+            y_label_text = "\u05e9\u05d5\u05e8\u05d5\u05ea=0.0cm (HOLD)"
             y_label_color = "gray"
-            
+
         else:
             # Idle mode: Both motors show actual positions
             display_x = current_x
             display_y = current_y
-            x_label_text = f"X={current_x:.1f}cm"
+            x_label_text = f"\u05e2\u05de\u05d5\u05d3\u05d5\u05ea={current_x:.1f}cm"
             x_label_color = "red"
-            y_label_text = f"Y={current_y:.1f}cm"
+            y_label_text = f"\u05e9\u05d5\u05e8\u05d5\u05ea={current_y:.1f}cm"
             y_label_color = "blue"
         
         # Convert to canvas coordinates
@@ -155,16 +155,16 @@ class CanvasPosition:
                                        pointer_x_canvas - 4, pointer_y_canvas - 4,
                                        pointer_x_canvas + 4, pointer_y_canvas + 4)
         
-        # Update motor labels
+        # Update motor labels (RTL: labels anchored to right side)
         if 'x_motor_label' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['x_motor_label'],
-                                       display_x_canvas + 15, workspace_top + 15)
+                                       display_x_canvas - 15, workspace_top + 15)
             self.main_app.canvas.itemconfig(self.canvas_objects['x_motor_label'],
                                            text=x_label_text, fill=x_label_color)
-        
+
         if 'y_motor_label' in self.canvas_objects:
             self.main_app.canvas.coords(self.canvas_objects['y_motor_label'],
-                                       workspace_left + 15, display_y_canvas - 15)
+                                       workspace_right - 15, display_y_canvas - 15)
             self.main_app.canvas.itemconfig(self.canvas_objects['y_motor_label'],
                                            text=y_label_text, fill=y_label_color)
     

@@ -118,6 +118,10 @@ row_cutter_piston = "up"           # Piston control: "up" (default) or "down" (f
 row_cutter_up_sensor = True        # Sensor: True when piston is UP (default)
 row_cutter_down_sensor = False     # Sensor: True when piston is DOWN
 
+# AIR PRESSURE SYSTEM
+# Air pressure valve - controls airflow to all pneumatic pistons
+air_pressure_valve = "up"          # Valve control: "up" (closed/no air) or "down" (open/air flowing)
+
 # Sensor events for manual triggering
 sensor_events = {
     'x_left': Event(),
@@ -160,7 +164,7 @@ limit_switch_states = {
     'y_bottom': False,   # Bottom Y-axis limit switch
     'x_right': False,    # Right X-axis limit switch
     'x_left': False,     # Left X-axis limit switch
-    'rows': False        # Rows limit switch - default UP
+    'rows_door': False   # Rows door limit switch - default UP
 }
 
 def reset_hardware():
@@ -172,6 +176,7 @@ def reset_hardware():
     global line_motor_right_up_sensor, line_motor_right_down_sensor
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
+    global air_pressure_valve
     global limit_switch_states
     global x_left_edge, x_right_edge, y_top_edge, y_bottom_edge
     global sensor_trigger_states, sensor_trigger_timers, execution_engine_reference
@@ -206,13 +211,21 @@ def reset_hardware():
     row_cutter_up_sensor = True
     row_cutter_down_sensor = False
 
+    # Air pressure valve - default UP (closed)
+    air_pressure_valve = "up"
+
     # Edge sensors - default off
     x_left_edge = False
     x_right_edge = False
     y_top_edge = False
     y_bottom_edge = False
 
-    limit_switch_states['rows'] = False # Default is False (UP)
+    limit_switch_states['rows_door'] = False  # Default is False (UP)
+    # At position (0,0), x_right and y_bottom limit switches are active (at home)
+    limit_switch_states['x_right'] = True
+    limit_switch_states['x_left'] = False
+    limit_switch_states['y_bottom'] = True
+    limit_switch_states['y_top'] = False
 
     # Clear all sensor events
     for event in sensor_events.values():
@@ -261,6 +274,11 @@ def move_x(position):
         time.sleep(delay)
 
         current_x_position = position
+
+        # Update limit switch states based on position
+        limit_switch_states['x_right'] = (current_x_position <= MIN_X_POSITION)
+        limit_switch_states['x_left'] = (current_x_position >= MAX_X_POSITION)
+
         logger.info(f"X motor positioned at {current_x_position:.1f}cm", category="hardware")
     else:
         logger.debug(f"X motor already at {position:.1f}cm", category="hardware")
@@ -290,6 +308,11 @@ def move_y(position):
         time.sleep(delay)
 
         current_y_position = position
+
+        # Update limit switch states based on position
+        limit_switch_states['y_bottom'] = (current_y_position <= MIN_Y_POSITION)
+        limit_switch_states['y_top'] = (current_y_position >= MAX_Y_POSITION)
+
         logger.info(f"Y motor positioned at {current_y_position:.1f}cm", category="hardware")
     else:
         logger.debug(f"Y motor already at {position:.1f}cm", category="hardware")
@@ -441,10 +464,10 @@ current_execution_engine = None
 
 # Sensor functions with manual triggering and timing control
 def wait_for_x_left_sensor():
-    """Wait for LEFT X sensor specifically. Ignores premature triggers and safety pauses."""
+    """Wait for left lines sensor specifically. Ignores premature triggers and safety pauses."""
     logger = get_logger()
     logger.debug("wait_for_x_left_sensor()", category="hardware")
-    logger.info("Waiting for LEFT X sensor... (Use trigger_x_left_sensor())", category="hardware")
+    logger.info("Waiting for left lines sensor... (Use trigger_x_left_sensor())", category="hardware")
     logger.info("In GUI mode, click 'Left Edge' button", category="hardware")
 
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
@@ -459,24 +482,24 @@ def wait_for_x_left_sensor():
         # Check for stop event FIRST (critical for proper stop/reset)
         if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
             if current_execution_engine.stop_event.is_set():
-                logger.warning("X LEFT sensor wait aborted - stop requested", category="hardware")
+                logger.warning("Left lines sensor wait aborted - stop requested", category="hardware")
                 return None
 
         # Check for timeout
         if time.time() - start_time > max_timeout:
-            logger.warning(f"X LEFT sensor wait timeout after {max_timeout}s", category="hardware")
+            logger.warning(f"Left lines sensor wait timeout after {max_timeout}s", category="hardware")
             return None
 
         if sensor_events['x_left'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("X LEFT sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Left lines sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['x_left'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['x_left'].clear()
             sensor_results['x_sensor'] = 'left'
-            logger.info("X LEFT sensor triggered: LEFT edge detected", category="hardware")
+            logger.info("Left lines sensor triggered: LEFT edge detected", category="hardware")
 
             # Move pointer to sensor location if execution engine available
             _move_to_sensor_location('x_left')
@@ -484,10 +507,10 @@ def wait_for_x_left_sensor():
             return 'left'
 
 def wait_for_x_right_sensor():
-    """Wait for RIGHT X sensor specifically. Ignores premature triggers and safety pauses."""
+    """Wait for right lines sensor specifically. Ignores premature triggers and safety pauses."""
     logger = get_logger()
     logger.debug("wait_for_x_right_sensor()", category="hardware")
-    logger.info("Waiting for RIGHT X sensor... (Use trigger_x_right_sensor())", category="hardware")
+    logger.info("Waiting for right lines sensor... (Use trigger_x_right_sensor())", category="hardware")
     logger.info("In GUI mode, click 'Right Edge' button", category="hardware")
 
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
@@ -502,24 +525,24 @@ def wait_for_x_right_sensor():
         # Check for stop event FIRST (critical for proper stop/reset)
         if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
             if current_execution_engine.stop_event.is_set():
-                logger.warning("X RIGHT sensor wait aborted - stop requested", category="hardware")
+                logger.warning("Right lines sensor wait aborted - stop requested", category="hardware")
                 return None
 
         # Check for timeout
         if time.time() - start_time > max_timeout:
-            logger.warning(f"X RIGHT sensor wait timeout after {max_timeout}s", category="hardware")
+            logger.warning(f"Right lines sensor wait timeout after {max_timeout}s", category="hardware")
             return None
 
         if sensor_events['x_right'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("X RIGHT sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Right lines sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['x_right'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['x_right'].clear()
             sensor_results['x_sensor'] = 'right'
-            logger.info("X RIGHT sensor triggered: RIGHT edge detected", category="hardware")
+            logger.info("Right lines sensor triggered: RIGHT edge detected", category="hardware")
 
             # Move pointer to sensor location if execution engine available
             _move_to_sensor_location('x_right')
@@ -527,10 +550,10 @@ def wait_for_x_right_sensor():
             return 'right'
 
 def wait_for_y_top_sensor():
-    """Wait for TOP Y sensor specifically. Ignores premature triggers and safety pauses."""
+    """Wait for top rows sensor specifically. Ignores premature triggers and safety pauses."""
     logger = get_logger()
     logger.debug("wait_for_y_top_sensor()", category="hardware")
-    logger.info("Waiting for TOP Y sensor... (Use trigger_y_top_sensor())", category="hardware")
+    logger.info("Waiting for top rows sensor... (Use trigger_y_top_sensor())", category="hardware")
     logger.info("In GUI mode, click 'Top Edge' button", category="hardware")
 
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
@@ -545,24 +568,24 @@ def wait_for_y_top_sensor():
         # Check for stop event FIRST (critical for proper stop/reset)
         if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
             if current_execution_engine.stop_event.is_set():
-                logger.warning("Y TOP sensor wait aborted - stop requested", category="hardware")
+                logger.warning("Top rows sensor wait aborted - stop requested", category="hardware")
                 return None
 
         # Check for timeout
         if time.time() - start_time > max_timeout:
-            logger.warning(f"Y TOP sensor wait timeout after {max_timeout}s", category="hardware")
+            logger.warning(f"Top rows sensor wait timeout after {max_timeout}s", category="hardware")
             return None
 
         if sensor_events['y_top'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("Y TOP sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Top rows sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['y_top'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['y_top'].clear()
             sensor_results['y_sensor'] = 'top'
-            logger.info("Y TOP sensor triggered: TOP edge detected", category="hardware")
+            logger.info("Top rows sensor triggered: TOP edge detected", category="hardware")
 
             # Move pointer to sensor location if execution engine available
             _move_to_sensor_location('y_top')
@@ -570,10 +593,10 @@ def wait_for_y_top_sensor():
             return 'top'
 
 def wait_for_y_bottom_sensor():
-    """Wait for BOTTOM Y sensor specifically. Ignores premature triggers and safety pauses."""
+    """Wait for bottom rows sensor specifically. Ignores premature triggers and safety pauses."""
     logger = get_logger()
     logger.debug("wait_for_y_bottom_sensor()", category="hardware")
-    logger.info("Waiting for BOTTOM Y sensor... (Use trigger_y_bottom_sensor())", category="hardware")
+    logger.info("Waiting for bottom rows sensor... (Use trigger_y_bottom_sensor())", category="hardware")
     logger.info("In GUI mode, click 'Bottom Edge' button", category="hardware")
 
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
@@ -588,24 +611,24 @@ def wait_for_y_bottom_sensor():
         # Check for stop event FIRST (critical for proper stop/reset)
         if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
             if current_execution_engine.stop_event.is_set():
-                logger.warning("Y BOTTOM sensor wait aborted - stop requested", category="hardware")
+                logger.warning("Bottom rows sensor wait aborted - stop requested", category="hardware")
                 return None
 
         # Check for timeout
         if time.time() - start_time > max_timeout:
-            logger.warning(f"Y BOTTOM sensor wait timeout after {max_timeout}s", category="hardware")
+            logger.warning(f"Bottom rows sensor wait timeout after {max_timeout}s", category="hardware")
             return None
 
         if sensor_events['y_bottom'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("Y BOTTOM sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Bottom rows sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['y_bottom'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['y_bottom'].clear()
             sensor_results['y_sensor'] = 'bottom'
-            logger.info("Y BOTTOM sensor triggered: BOTTOM edge detected", category="hardware")
+            logger.info("Bottom rows sensor triggered: BOTTOM edge detected", category="hardware")
 
             # Move pointer to sensor location if execution engine available
             _move_to_sensor_location('y_bottom')
@@ -614,10 +637,10 @@ def wait_for_y_bottom_sensor():
 
 # Legacy sensor functions for backward compatibility
 def wait_for_x_sensor():
-    """Wait for X sensor to be triggered manually. Returns 'left' or 'right'. Ignores triggers during safety pauses."""
+    """Wait for rows sensor to be triggered manually. Returns 'left' or 'right'. Ignores triggers during safety pauses."""
     logger = get_logger()
     logger.debug("wait_for_x_sensor()", category="hardware")
-    logger.info("Waiting for X sensor... (Use trigger_x_left_sensor() or trigger_x_right_sensor())", category="hardware")
+    logger.info("Waiting for lines sensor... (Use trigger_x_left_sensor() or trigger_x_right_sensor())", category="hardware")
     logger.info("In GUI mode, click 'Left Edge' or 'Right Edge' buttons", category="hardware")
 
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
@@ -633,42 +656,42 @@ def wait_for_x_sensor():
         # Check for stop event FIRST (critical for proper stop/reset)
         if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
             if current_execution_engine.stop_event.is_set():
-                logger.warning("X sensor wait aborted - stop requested", category="hardware")
+                logger.warning("Lines sensor wait aborted - stop requested", category="hardware")
                 return None
 
         # Check for timeout
         if time.time() - start_time > max_timeout:
-            logger.warning(f"X sensor wait timeout after {max_timeout}s", category="hardware")
+            logger.warning(f"Lines sensor wait timeout after {max_timeout}s", category="hardware")
             return None
 
         if sensor_events['x_left'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("X LEFT sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Left lines sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['x_left'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['x_left'].clear()
             sensor_results['x_sensor'] = 'left'
-            logger.info("X sensor triggered: LEFT edge detected", category="hardware")
+            logger.info("Lines sensor triggered: LEFT edge detected", category="hardware")
             return 'left'
         elif sensor_events['x_right'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("X RIGHT sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Right lines sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['x_right'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['x_right'].clear()
             sensor_results['x_sensor'] = 'right'
-            logger.info("X sensor triggered: RIGHT edge detected", category="hardware")
+            logger.info("Lines sensor triggered: RIGHT edge detected", category="hardware")
             return 'right'
 
 def wait_for_y_sensor():
-    """Wait for Y sensor to be triggered manually. Returns 'top' or 'bottom'. Ignores triggers during safety pauses."""
+    """Wait for rows sensor to be triggered manually. Returns 'top' or 'bottom'. Ignores triggers during safety pauses."""
     logger = get_logger()
     logger.debug("wait_for_y_sensor()", category="hardware")
-    logger.info("Waiting for Y sensor... (Use trigger_y_top_sensor() or trigger_y_bottom_sensor())", category="hardware")
+    logger.info("Waiting for rows sensor... (Use trigger_y_top_sensor() or trigger_y_bottom_sensor())", category="hardware")
     logger.info("In GUI mode, click 'Top Edge' or 'Bottom Edge' buttons", category="hardware")
 
     # Clear any existing triggers first (ignore premature triggers and safety pause triggers)
@@ -684,35 +707,35 @@ def wait_for_y_sensor():
         # Check for stop event FIRST (critical for proper stop/reset)
         if current_execution_engine and hasattr(current_execution_engine, 'stop_event'):
             if current_execution_engine.stop_event.is_set():
-                logger.warning("Y sensor wait aborted - stop requested", category="hardware")
+                logger.warning("Rows sensor wait aborted - stop requested", category="hardware")
                 return None
 
         # Check for timeout
         if time.time() - start_time > max_timeout:
-            logger.warning(f"Y sensor wait timeout after {max_timeout}s", category="hardware")
+            logger.warning(f"Rows sensor wait timeout after {max_timeout}s", category="hardware")
             return None
 
         if sensor_events['y_top'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("Y TOP sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Top rows sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['y_top'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['y_top'].clear()
             sensor_results['y_sensor'] = 'top'
-            logger.info("Y sensor triggered: TOP edge detected", category="hardware")
+            logger.info("Rows sensor triggered: TOP edge detected", category="hardware")
             return 'top'
         elif sensor_events['y_bottom'].wait(timeout=timing_settings.get("sensor_poll_timeout", 0.1)):
             # Check if execution is paused due to safety violation - ignore triggers during pause
             if current_execution_engine and current_execution_engine.is_paused:
-                logger.warning("Y BOTTOM sensor trigger ignored - execution paused due to safety violation", category="hardware")
+                logger.warning("Bottom rows sensor trigger ignored - execution paused due to safety violation", category="hardware")
                 sensor_events['y_bottom'].clear()  # Flush the trigger
                 continue  # Keep waiting
 
             sensor_events['y_bottom'].clear()
             sensor_results['y_sensor'] = 'bottom'
-            logger.info("Y sensor triggered: BOTTOM edge detected", category="hardware")
+            logger.info("Rows sensor triggered: BOTTOM edge detected", category="hardware")
             return 'bottom'
 
 # Sensor buffer management for safety system
@@ -735,7 +758,7 @@ def signal_all_sensor_events():
 
 # Manual sensor triggers for testing
 def trigger_x_left_sensor():
-    """Manually trigger left X sensor"""
+    """Manually trigger left lines sensor"""
     global sensor_trigger_states, sensor_trigger_timers, x_left_edge
     logger = get_logger()
     logger.debug("trigger_x_left_sensor()", category="hardware")
@@ -743,10 +766,10 @@ def trigger_x_left_sensor():
     sensor_trigger_states['x_left'] = True
     sensor_trigger_timers['x_left'] = time.time()
     x_left_edge = True  # Set edge sensor state
-    logger.info("Manual trigger: X LEFT sensor activated", category="hardware")
+    logger.info("Manual trigger: Left lines sensor activated", category="hardware")
 
 def trigger_x_right_sensor():
-    """Manually trigger right X sensor"""
+    """Manually trigger right lines sensor"""
     global sensor_trigger_states, sensor_trigger_timers, x_right_edge
     logger = get_logger()
     logger.debug("trigger_x_right_sensor()", category="hardware")
@@ -754,10 +777,10 @@ def trigger_x_right_sensor():
     sensor_trigger_states['x_right'] = True
     sensor_trigger_timers['x_right'] = time.time()
     x_right_edge = True  # Set edge sensor state
-    logger.info("Manual trigger: X RIGHT sensor activated", category="hardware")
+    logger.info("Manual trigger: Right lines sensor activated", category="hardware")
 
 def trigger_y_top_sensor():
-    """Manually trigger top Y sensor"""
+    """Manually trigger top rows sensor"""
     global sensor_trigger_states, sensor_trigger_timers, y_top_edge
     logger = get_logger()
     logger.debug("trigger_y_top_sensor()", category="hardware")
@@ -765,10 +788,10 @@ def trigger_y_top_sensor():
     sensor_trigger_states['y_top'] = True
     sensor_trigger_timers['y_top'] = time.time()
     y_top_edge = True  # Set edge sensor state
-    logger.info("Manual trigger: Y TOP sensor activated", category="hardware")
+    logger.info("Manual trigger: Top rows sensor activated", category="hardware")
 
 def trigger_y_bottom_sensor():
-    """Manually trigger bottom Y sensor"""
+    """Manually trigger bottom rows sensor"""
     global sensor_trigger_states, sensor_trigger_timers, y_bottom_edge
     logger = get_logger()
     logger.debug("trigger_y_bottom_sensor()", category="hardware")
@@ -776,7 +799,7 @@ def trigger_y_bottom_sensor():
     sensor_trigger_states['y_bottom'] = True
     sensor_trigger_timers['y_bottom'] = time.time()
     y_bottom_edge = True  # Set edge sensor state
-    logger.info("Manual trigger: Y BOTTOM sensor activated", category="hardware")
+    logger.info("Manual trigger: Bottom rows sensor activated", category="hardware")
 
 # Tool positioning functions (convenience functions for test controls)
 def lift_line_tools():
@@ -962,6 +985,37 @@ def row_cutter_piston_down():
     else:
         logger.debug("Row cutter piston already DOWN", category="hardware")
 
+# Air Pressure Valve functions
+def air_pressure_valve_down():
+    """Open air pressure valve (air flows to pistons)"""
+    global air_pressure_valve
+    logger = get_logger()
+    logger.debug("air_pressure_valve_down()", category="hardware")
+    if air_pressure_valve != "down":
+        logger.info("Opening air pressure valve - air flowing to pistons", category="hardware")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        air_pressure_valve = "down"
+        logger.success("Air pressure valve OPEN (down) - air flowing", category="hardware")
+    else:
+        logger.debug("Air pressure valve already OPEN", category="hardware")
+
+def air_pressure_valve_up():
+    """Close air pressure valve (no air to pistons)"""
+    global air_pressure_valve
+    logger = get_logger()
+    logger.debug("air_pressure_valve_up()", category="hardware")
+    if air_pressure_valve != "up":
+        logger.info("Closing air pressure valve - stopping air flow", category="hardware")
+        time.sleep(timing_settings.get("tool_action_delay", 0.1))
+        air_pressure_valve = "up"
+        logger.success("Air pressure valve CLOSED (up) - no air flow", category="hardware")
+    else:
+        logger.debug("Air pressure valve already CLOSED", category="hardware")
+
+def get_air_pressure_valve_state():
+    """Get current air pressure valve state"""
+    return air_pressure_valve
+
 # Status and diagnostic functions
 def get_hardware_status():
     """Get current hardware status for debugging"""
@@ -991,7 +1045,9 @@ def get_hardware_status():
         'row_cutter_up_sensor': row_cutter_up_sensor,
         'row_cutter_down_sensor': row_cutter_down_sensor,
         # Limit switch
-        'row_marker_limit_switch': "down" if limit_switch_states.get('rows', False) else "up"
+        'row_marker_limit_switch': "down" if limit_switch_states.get('rows', False) else "up",
+        # Air pressure valve
+        'air_pressure_valve': air_pressure_valve
     }
     return status
 
@@ -1024,6 +1080,7 @@ def print_hardware_status():
     logger.info(f"  Up Sensor: {row_cutter_up_sensor}", category="hardware")
     logger.info(f"  Down Sensor: {row_cutter_down_sensor}", category="hardware")
     logger.info(f"Row Marker Limit Switch: {'down' if limit_switch_states.get('rows', False) else 'up'}", category="hardware")
+    logger.info(f"Air Pressure Valve: {air_pressure_valve}", category="hardware")
     logger.info("=====================", category="hardware")
 
 if __name__ == "__main__":
@@ -1225,10 +1282,10 @@ def get_y_bottom_edge():
     return y_bottom_edge
 
 def get_row_motor_limit_switch():
-    """Get current row marker limit switch state - reads from limit_switch_states['rows']"""
+    """Get current row marker limit switch state - reads from limit_switch_states['rows_door']"""
     # Map boolean limit switch state to "up"/"down" string
     # True (checked/ON) = DOWN, False (unchecked/OFF) = UP
-    return "down" if limit_switch_states.get('rows', False) else "up"
+    return "down" if limit_switch_states.get('rows_door', False) else "up"
 
 def set_row_marker_limit_switch(state):
     """Manually set row marker limit switch state (operator control)"""
@@ -1236,7 +1293,7 @@ def set_row_marker_limit_switch(state):
     logger = get_logger()
     if state in ["up", "down"]:
         # True (ON) = DOWN, False (OFF) = UP
-        limit_switch_states['rows'] = (state == "down")
+        limit_switch_states['rows_door'] = (state == "down")
         logger.info(f"Row marker limit switch manually set to: {state.upper()}", category="hardware")
 
 def get_sensor_trigger_states():
@@ -1272,8 +1329,8 @@ def toggle_row_marker_limit_switch():
     global limit_switch_states
     logger = get_logger()
     # Toggle the boolean state
-    limit_switch_states['rows'] = not limit_switch_states['rows']
-    new_state = "down" if limit_switch_states['rows'] else "up"
+    limit_switch_states['rows_door'] = not limit_switch_states['rows_door']
+    new_state = "down" if limit_switch_states['rows_door'] else "up"
     logger.info(f"Row marker limit switch toggled to: {new_state.upper()}", category="hardware")
     return new_state
 
@@ -1465,6 +1522,12 @@ class MockHardware:
     def row_cutter_piston_up(self) -> bool:
         return row_cutter_piston_up()
 
+    def air_pressure_valve_down(self) -> bool:
+        return air_pressure_valve_down()
+
+    def air_pressure_valve_up(self) -> bool:
+        return air_pressure_valve_up()
+
     # ========== TOOL ACTION WRAPPERS ==========
     def line_marker_down(self) -> bool:
         return line_marker_down()
@@ -1564,6 +1627,9 @@ class MockHardware:
     def get_row_cutter_piston_state(self) -> str:
         return get_row_cutter_piston_state()
 
+    def get_air_pressure_valve_state(self) -> str:
+        return get_air_pressure_valve_state()
+
     # ========== EDGE SENSORS ==========
     def get_x_left_edge_sensor(self) -> bool:
         return get_x_left_edge()
@@ -1610,6 +1676,18 @@ class MockHardware:
 
     def get_limit_switch_state(self, switch_name: str) -> bool:
         return get_limit_switch_state(switch_name)
+
+    def get_top_limit_switch(self) -> bool:
+        return get_limit_switch_state('y_top')
+
+    def get_bottom_limit_switch(self) -> bool:
+        return get_limit_switch_state('y_bottom')
+
+    def get_left_limit_switch(self) -> bool:
+        return get_limit_switch_state('x_left')
+
+    def get_right_limit_switch(self) -> bool:
+        return get_limit_switch_state('x_right')
 
     def get_row_motor_limit_switch(self) -> str:
         return get_row_motor_limit_switch()
@@ -1669,7 +1747,7 @@ class MockHardware:
         reset_hardware()
 
     def emergency_stop(self) -> bool:
-        self.logger.info("Emergency stop", category="hardware")
+        self.logger.error("EMERGENCY STOP activated", category="hardware")
         return True
 
     def resume_operation(self) -> bool:

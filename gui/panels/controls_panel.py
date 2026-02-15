@@ -3,10 +3,11 @@ from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.logger import get_logger
 from core.translations import t
+from core.program_model import translate_validation_error
 
 
-class RightPanel:
-    """Right panel for step navigation and execution controls"""
+class ControlsPanel:
+    """Controls panel (left side in RTL layout) for step navigation and execution controls"""
 
     def __init__(self, main_app, parent_frame):
         self.main_app = main_app
@@ -71,8 +72,7 @@ class RightPanel:
         try:
             if hasattr(self, 'title_label'):
                 self.title_label.config(font=self.title_font)
-            if hasattr(self, 'gen_steps_btn'):
-                self.gen_steps_btn.config(font=self.button_font)
+            pass  # placeholder for future font updates
             if hasattr(self, 'step_info_label'):
                 self.step_info_label.config(font=self.text_font)
                 # Update wraplength based on panel width
@@ -158,35 +158,31 @@ class RightPanel:
         
         # Title with responsive font
         self.title_label = tk.Label(self.scrollable_frame, text=t("CONTROLS & STATUS"), font=self.title_font,
-                bg='lightblue')
+                bg='lightblue', fg='black')
         self.title_label.pack(pady=3)
 
-        # Generate Steps Button with responsive font and sizing
-        self.gen_steps_btn = tk.Button(self.scrollable_frame, text=t("Generate Steps"), command=self.generate_steps,
-                 bg='yellow', fg='darkblue', font=self.button_font, height=1)
-        self.gen_steps_btn.pack(fill=tk.X, padx=10, pady=3)
-        
         # Step Navigation with responsive frame
         nav_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
         nav_frame.pack(fill=tk.X, padx=10, pady=3)
 
         tk.Label(nav_frame, text=t("Step Navigation:"), font=('Arial', 9, 'bold'),
-                bg='lightblue').pack()
+                bg='lightblue', fg='black').pack()
 
         nav_buttons = tk.Frame(nav_frame, bg='lightblue')
         nav_buttons.pack(fill=tk.X, pady=2)
 
-        self.prev_btn = tk.Button(nav_buttons, text=t("◄ Prev"), command=self.prev_step,
-                                 state=tk.DISABLED, width=8, font=('Arial', 8))
-        self.prev_btn.pack(side=tk.LEFT)
-
-        self.next_btn = tk.Button(nav_buttons, text=t("Next ►"), command=self.next_step,
+        self.next_btn = tk.Button(nav_buttons, text=t("► Next"), command=self.next_step,
                                  state=tk.DISABLED, width=8, font=('Arial', 8))
         self.next_btn.pack(side=tk.RIGHT)
 
+        self.prev_btn = tk.Button(nav_buttons, text=t("Prev ◄"), command=self.prev_step,
+                                 state=tk.DISABLED, width=8, font=('Arial', 8))
+        self.prev_btn.pack(side=tk.LEFT)
+
         self.step_info_label = tk.Label(nav_frame, text=t("No steps loaded"),
-                                       bg='lightblue', font=('Arial', 8), wraplength=250)
-        self.step_info_label.pack(pady=2)
+                                       bg='lightblue', fg='black', font=('Arial', 8), wraplength=250,
+                                       anchor='e', justify=tk.RIGHT)
+        self.step_info_label.pack(pady=2, fill=tk.X)
         
         # Step Details - Improved visibility and layout
         details_frame = tk.Frame(self.scrollable_frame, bg='lightblue')
@@ -209,16 +205,18 @@ class RightPanel:
 
         self.current_step_label = tk.Label(current_info_frame, text=t("No step selected"),
                                           font=('Arial', 10, 'bold'), bg='lightgray', fg='darkblue',
-                                          wraplength=250)
-        self.current_step_label.pack(pady=3)
+                                          wraplength=250, anchor='e', justify=tk.RIGHT)
+        self.current_step_label.pack(pady=3, fill=tk.X)
 
         self.step_details = tk.Text(current_tab, height=6, width=25, font=('Arial', 10),
                                    wrap=tk.WORD, bg='white', fg='black', relief=tk.SUNKEN, bd=2)
         step_scroll = tk.Scrollbar(current_tab, orient=tk.VERTICAL)
-        step_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.step_details.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0), pady=2)
+        step_scroll.pack(side=tk.LEFT, fill=tk.Y)
+        self.step_details.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(0,5), pady=2)
         self.step_details.config(yscrollcommand=step_scroll.set)
         step_scroll.config(command=self.step_details.yview)
+        # Configure RTL tag for Hebrew text
+        self.step_details.tag_configure("rtl", justify=tk.RIGHT)
 
         # All Steps Tab
         all_steps_tab = tk.Frame(notebook, bg='white')
@@ -230,10 +228,11 @@ class RightPanel:
 
         self.steps_listbox = tk.Listbox(queue_frame, font=('Arial', 9), height=8,
                                        bg='white', fg='black', selectbackground='#4A90E2',
-                                       selectforeground='white', relief=tk.SUNKEN, bd=2)
+                                       selectforeground='white', relief=tk.SUNKEN, bd=2,
+                                       justify=tk.RIGHT)
         queue_scroll = tk.Scrollbar(queue_frame, orient=tk.VERTICAL)
-        queue_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.steps_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        queue_scroll.pack(side=tk.LEFT, fill=tk.Y)
+        self.steps_listbox.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         self.steps_listbox.config(yscrollcommand=queue_scroll.set)
         queue_scroll.config(command=self.steps_listbox.yview)
 
@@ -242,14 +241,16 @@ class RightPanel:
                                          font=('Arial', 9, 'bold'), bg='white', fg='darkblue')
         selected_details_label.pack(pady=(5, 2))
 
-        self.selected_step_details = tk.Text(all_steps_tab, height=4, width=25, font=('Arial', 10),
+        self.selected_step_details = tk.Text(all_steps_tab, height=8, width=25, font=('Arial', 10),
                                             wrap=tk.WORD, bg='#f0f0f0', fg='black', relief=tk.SUNKEN, bd=2)
         selected_scroll = tk.Scrollbar(all_steps_tab, orient=tk.VERTICAL)
-        selected_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.selected_step_details.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=2)
+        selected_scroll.pack(side=tk.LEFT, fill=tk.Y)
+        self.selected_step_details.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=2)
         self.selected_step_details.config(yscrollcommand=selected_scroll.set)
         selected_scroll.config(command=self.selected_step_details.yview)
-        self.selected_step_details.insert(1.0, t("Click on a step to view details..."))
+        # Configure RTL tag for Hebrew text
+        self.selected_step_details.tag_configure("rtl", justify=tk.RIGHT)
+        self.selected_step_details.insert(1.0, t("Click on a step to view details..."), "rtl")
         self.selected_step_details.config(state=tk.DISABLED)
 
         # Bind listbox selection to show step details
@@ -269,29 +270,29 @@ class RightPanel:
         button_row1 = tk.Frame(exec_frame, bg='lightblue')
         button_row1.pack(pady=2)
 
-        self.run_btn = tk.Button(button_row1, text=t("▶ RUN"), command=self.run_execution,
-                                bg='darkgreen', fg='white', font=('Arial', 7, 'bold'),
-                                width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
-                                activebackground='green', activeforeground='white')
-        self.run_btn.pack(side=tk.LEFT, padx=1)
+        self.reset_btn = tk.Button(button_row1, text=t("🔄 RESET"), command=self.reset_execution,
+                                  bg='royalblue', fg='black', font=('Arial', 7, 'bold'),
+                                  width=6, relief=tk.RAISED, bd=2,
+                                  activebackground='blue', activeforeground='black')
+        self.reset_btn.pack(side=tk.RIGHT, padx=1)
+
+        self.stop_btn = tk.Button(button_row1, text=t("⏹ STOP"), command=self.stop_execution,
+                                 bg='darkred', fg='black', font=('Arial', 7, 'bold'),
+                                 width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
+                                 activebackground='red', activeforeground='black')
+        self.stop_btn.pack(side=tk.RIGHT, padx=1)
 
         self.pause_btn = tk.Button(button_row1, text=t("⏸ PAUSE"), command=self.pause_execution,
                                   bg='darkorange', fg='black', font=('Arial', 7, 'bold'),
                                   width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                   activebackground='orange', activeforeground='black')
-        self.pause_btn.pack(side=tk.LEFT, padx=1)
+        self.pause_btn.pack(side=tk.RIGHT, padx=1)
 
-        self.stop_btn = tk.Button(button_row1, text=t("⏹ STOP"), command=self.stop_execution,
-                                 bg='darkred', fg='black', font=('Arial', 7, 'bold'),
-                                 width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
-                                 activebackground='red', activeforeground='white')
-        self.stop_btn.pack(side=tk.LEFT, padx=1)
-
-        self.reset_btn = tk.Button(button_row1, text=t("🔄 RESET"), command=self.reset_execution,
-                                  bg='royalblue', fg='black', font=('Arial', 7, 'bold'),
-                                  width=6, relief=tk.RAISED, bd=2,
-                                  activebackground='blue', activeforeground='white')
-        self.reset_btn.pack(side=tk.LEFT, padx=1)
+        self.run_btn = tk.Button(button_row1, text=t("▶ RUN"), command=self.run_execution,
+                                bg='darkgreen', fg='black', font=('Arial', 7, 'bold'),
+                                width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
+                                activebackground='green', activeforeground='black')
+        self.run_btn.pack(side=tk.RIGHT, padx=1)
 
         # Progress indicator (compact) with better visibility
         self.progress_label = tk.Label(exec_frame, text=t("Ready"),
@@ -319,15 +320,15 @@ class RightPanel:
         sensors_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
         tk.Label(sensors_frame, text=t("📡 Sensors"), font=('Arial', 8, 'bold'),
-                bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
+                bg='#F0F8FF', fg='#003366').pack(anchor='e', pady=(0, 3))
 
         # X and Y Sensors in separate rows
         sensors_grid = tk.Frame(sensors_frame, bg='#F0F8FF')
         sensors_grid.pack(fill=tk.X)
 
         # X Sensors (Rows) - Left and Right
-        tk.Label(sensors_grid, text="X:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=0, column=0, sticky='w')
+        tk.Label(sensors_grid, text=t("X:"), bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=0, column=0, sticky='e')
         tk.Button(sensors_grid, text=t("◄Left"), bg='#FF6600', fg='black',
                  command=self.trigger_x_left, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=0, column=1, padx=2)
@@ -336,8 +337,8 @@ class RightPanel:
                  relief=tk.RAISED, bd=2).grid(row=0, column=2, padx=2)
 
         # Y Sensors (Lines) - Top and Bottom (separate row)
-        tk.Label(sensors_grid, text="Y:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=3, anchor='w').grid(row=1, column=0, sticky='w')
+        tk.Label(sensors_grid, text=t("Y:"), bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=1, column=0, sticky='e')
         tk.Button(sensors_grid, text=t("▲Top"), bg='#8800FF', fg='black',
                  command=self.trigger_y_top, width=7, font=('Arial', 7, 'bold'),
                  relief=tk.RAISED, bd=2).grid(row=1, column=1, padx=2)
@@ -353,42 +354,42 @@ class RightPanel:
         limit_switches_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
         tk.Label(limit_switches_frame, text=t("🔌 Limit Switches"), font=('Arial', 8, 'bold'),
-                bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
+                bg='#F0F8FF', fg='#003366').pack(anchor='e', pady=(0, 3))
 
         ls_grid = tk.Frame(limit_switches_frame, bg='#F0F8FF')
         ls_grid.pack(fill=tk.X)
 
         # Y-Axis Limit Switches
-        tk.Label(ls_grid, text="Y:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=0, column=0, sticky='w')
+        tk.Label(ls_grid, text=t("Y:"), bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=0, column=0, sticky='e')
         self.y_top_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text=t("Top"), variable=self.y_top_ls_var,
                       command=lambda: self.toggle_ls('y_top'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=0, column=1, padx=2, sticky='w')
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=0, column=1, padx=2, sticky='e')
         self.y_bottom_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text=t("Bottom"), variable=self.y_bottom_ls_var,
                       command=lambda: self.toggle_ls('y_bottom'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=0, column=2, padx=2, sticky='w')
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=0, column=2, padx=2, sticky='e')
 
         # X-Axis Limit Switches (separate row)
-        tk.Label(ls_grid, text="X:", bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=1, column=0, sticky='w')
+        tk.Label(ls_grid, text=t("X:"), bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=1, column=0, sticky='e')
         self.x_right_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text=t("Right"), variable=self.x_right_ls_var,
                       command=lambda: self.toggle_ls('x_right'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=1, column=1, padx=2, sticky='w')
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=1, column=1, padx=2, sticky='e')
         self.x_left_ls_var = tk.BooleanVar()
         tk.Checkbutton(ls_grid, text=t("Left"), variable=self.x_left_ls_var,
                       command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=1, column=2, padx=2, sticky='w')
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=1, column=2, padx=2, sticky='e')
 
-        # Rows Limit Switch (separate row)
-        tk.Label(ls_grid, text=t("Row:"), bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=2, column=0, sticky='w')
-        self.rows_ls_var = tk.BooleanVar(value=False)  # Default unchecked (UP)
-        tk.Checkbutton(ls_grid, text=t("Limit Switch"), variable=self.rows_ls_var,
-                      command=lambda: self.toggle_ls('rows'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='w').grid(row=2, column=1, padx=2, sticky='w')
+        # Door Sensor (separate row)
+        tk.Label(ls_grid, text=t("Door:"), bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=2, column=0, sticky='e')
+        self.door_sensor_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(ls_grid, text=t("Door Sensor"), variable=self.door_sensor_var,
+                      command=lambda: self.toggle_ls('rows_door'), bg='#F0F8FF', fg='black',
+                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=2, column=1, padx=2, sticky='e')
 
         # Separator
         tk.Frame(self.test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
@@ -398,14 +399,14 @@ class RightPanel:
         pistons_frame.pack(fill=tk.X, padx=8, pady=(0, 5))
 
         tk.Label(pistons_frame, text=t("🔧 Pistons (↓=checked)"), font=('Arial', 8, 'bold'),
-                bg='#F0F8FF', fg='#003366').pack(anchor='w', pady=(0, 3))
+                bg='#F0F8FF', fg='#003366').pack(anchor='e', pady=(0, 3))
 
         # Lines Pistons in grid
         lines_pist_frame = tk.Frame(pistons_frame, bg='#F0F8FF')
         lines_pist_frame.pack(fill=tk.X)
 
         tk.Label(lines_pist_frame, text=t("Lines:"), bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=0, column=0, sticky='w')
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=0, column=0, sticky='e')
         self.lines_marker_var = tk.BooleanVar()
         tk.Checkbutton(lines_pist_frame, text=t("Marker"), variable=self.lines_marker_var,
                       command=self.toggle_line_marker, bg='#F0F8FF', fg='black',
@@ -421,7 +422,7 @@ class RightPanel:
 
         # Rows Pistons
         tk.Label(lines_pist_frame, text=t("Rows:"), bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=7, anchor='w').grid(row=1, column=0, sticky='w')
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=1, column=0, sticky='e')
         self.rows_marker_var = tk.BooleanVar()
         tk.Checkbutton(lines_pist_frame, text=t("Marker"), variable=self.rows_marker_var,
                       command=self.toggle_row_marker, bg='#F0F8FF', fg='black',
@@ -430,6 +431,14 @@ class RightPanel:
         tk.Checkbutton(lines_pist_frame, text=t("Cutter"), variable=self.rows_cutter_var,
                       command=self.toggle_row_cutter, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=2, padx=2)
+
+        # System row (Air Pressure)
+        tk.Label(lines_pist_frame, text=t("System:"), bg='#F0F8FF', fg='#003366',
+                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=2, column=0, sticky='e')
+        self.air_pressure_var = tk.BooleanVar()
+        tk.Checkbutton(lines_pist_frame, text=t("Air Pressure"), variable=self.air_pressure_var,
+                      command=self.toggle_air_pressure, bg='#F0F8FF', fg='black',
+                      font=('Arial', 7), selectcolor='#27AE60').grid(row=2, column=1, padx=2)
 
         # Create dummy labels for backward compatibility (not displayed)
         self.position_label = tk.Label(self.scrollable_frame, text="", bg='lightblue')
@@ -464,6 +473,15 @@ class RightPanel:
         if self.main_app.execution_engine.is_running:
             self.logger.warning("Cannot generate steps while execution is running - stop first", category="gui")
             self.main_app.operation_label.config(text=t("Stop execution first!"), fg='red')
+            return
+
+        # Validate program parameters (logical consistency)
+        program_errors = self.main_app.current_program.validate()
+        if program_errors:
+            first_error = translate_validation_error(program_errors[0])
+            self.logger.error(f"Program validation failed: {program_errors[0]}", category="gui")
+            self.main_app.operation_label.config(text=first_error, fg='red')
+            self.step_info_label.config(text=t("Program has validation errors"))
             return
 
         # Validate paper size fits within work surface
@@ -507,6 +525,30 @@ class RightPanel:
         except Exception as e:
             self.step_info_label.config(text=t("Error generating steps: {error}", error=e))
     
+    def _format_param_value(self, key, value):
+        """Format a parameter value with units and Hebrew translation"""
+        # Translate the value itself for known enum values
+        translated_value = t(str(value)) if isinstance(value, str) else value
+
+        # Add units for dimension keys
+        if key in ('position', 'actual_width', 'actual_height') and isinstance(value, (int, float)):
+            return f"{value} {t('cm')}"
+        return str(translated_value)
+
+    def _format_parameters(self, params):
+        """Format step parameters as clean Hebrew key-value lines"""
+        if not params:
+            return ""
+        lines = []
+        for key, value in params.items():
+            # Skip internal/description keys that duplicate the description field
+            if key == 'description':
+                continue
+            heb_key = t(key)
+            heb_value = self._format_param_value(key, value)
+            lines.append(f"{heb_value} :{heb_key}")
+        return "\n".join(lines)
+
     def update_step_display(self):
         """Update the step display with current steps"""
         if not self.main_app.steps:
@@ -532,7 +574,7 @@ class RightPanel:
             # Use Hebrew operation title and description for UI display
             heb_op = step.get('hebOperationTitle', step['operation'])
             heb_desc = step.get('hebDescription', step['description'])
-            step_summary = f"{status_icon} {i+1:3d}. {heb_op}: {heb_desc[:60]}..."
+            step_summary = f"{heb_desc[:50]} - {heb_op} .{i+1} {status_icon}"
             self.steps_listbox.insert(tk.END, step_summary)
 
             # Color-code items for better visibility
@@ -560,16 +602,18 @@ class RightPanel:
                                                  total=len(self.main_app.steps),
                                                  operation=heb_op))
 
-            # Update step details - use Hebrew fields for UI display
+            # Update step details - clean Hebrew-only display
             heb_desc = current_step.get('hebDescription', current_step['description'])
-            details_text = t("Operation: {op}\n", op=heb_op)
-            details_text += t("Description: {desc}\n", desc=heb_desc)
+            details_text = f"{heb_op}\n\n{heb_desc}\n"
             if current_step.get('parameters'):
-                details_text += t("Parameters: {params}", params=current_step['parameters'])
+                formatted_params = self._format_parameters(current_step['parameters'])
+                if formatted_params:
+                    details_text += f"\n{formatted_params}"
 
             self.step_details.config(state=tk.NORMAL)
             self.step_details.delete(1.0, tk.END)
             self.step_details.insert(1.0, details_text)
+            self.step_details.tag_add("rtl", "1.0", "end")
             self.step_details.config(state=tk.DISABLED)
         else:
             self.current_step_label.config(text=t("No step selected"))
@@ -590,20 +634,19 @@ class RightPanel:
                 heb_desc = step.get('hebDescription', step['description'])
 
                 # Show step details in the SELECTED step details widget (not current step widget)
-                details_text = t("Step {current}/{total}\n\n",
-                               current=step_index + 1,
-                               total=len(self.main_app.steps))
-                details_text += t("Operation: {op}\n\n", op=heb_op)
-                details_text += t("Description: {desc}\n\n", desc=heb_desc)
+                total = len(self.main_app.steps)
+                details_text = f"{t('Step')} {step_index + 1}/{total}\n\n"
+                details_text += f"{heb_op}\n\n{heb_desc}\n"
 
                 if step.get('parameters'):
-                    details_text += t("Parameters:\n")
-                    for key, value in step['parameters'].items():
-                        details_text += f"  {key}: {value}\n"
+                    formatted_params = self._format_parameters(step['parameters'])
+                    if formatted_params:
+                        details_text += f"\n{formatted_params}\n"
 
                 self.selected_step_details.config(state=tk.NORMAL)
                 self.selected_step_details.delete(1.0, tk.END)
                 self.selected_step_details.insert(1.0, details_text)
+                self.selected_step_details.tag_add("rtl", "1.0", "end")
                 self.selected_step_details.config(state=tk.DISABLED)
     
     def prev_step(self):
@@ -631,12 +674,31 @@ class RightPanel:
     def run_execution(self):
         """Start execution"""
         if self.main_app.steps:
+            # Reset operation states to pending before starting so colors reflect fresh run
+            if hasattr(self.main_app, 'operation_states'):
+                for state_dict in self.main_app.operation_states.values():
+                    for key in state_dict:
+                        state_dict[key] = 'pending'
+                # Refresh canvas colors to show pending state
+                if hasattr(self.main_app, 'canvas_manager'):
+                    self.main_app.canvas_manager.refresh_work_lines_colors()
+
+            # Attach analytics collector for this run
+            if hasattr(self.main_app, 'analytics_collector'):
+                self.main_app.analytics_collector.attach_to_engine(
+                    self.main_app.execution_engine,
+                    self.main_app.current_program
+                )
+
             self.main_app.execution_engine.start_execution()
             self.run_btn.config(state=tk.DISABLED)
             self.pause_btn.config(state=tk.NORMAL)
             self.stop_btn.config(state=tk.NORMAL)
             self.reset_btn.config(state=tk.DISABLED)  # Disable reset while running
-            self.gen_steps_btn.config(state=tk.DISABLED)  # Disable generate while running
+
+            # Lock program panel during execution
+            if hasattr(self.main_app, 'program_panel'):
+                self.main_app.program_panel.set_locked(True)
 
             # Force immediate canvas position update when execution starts
             if hasattr(self.main_app, 'canvas_manager'):
@@ -655,9 +717,33 @@ class RightPanel:
             self.pause_btn.config(state=tk.DISABLED)
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)  # Enable reset when stopped
-            self.gen_steps_btn.config(state=tk.NORMAL)  # Enable generate when stopped
             self.main_app.operation_label.config(text=t("Execution Stopped"), fg='red')
+
+            # Unlock program panel when execution stops
+            if hasattr(self.main_app, 'program_panel'):
+                self.main_app.program_panel.set_locked(False)
     
+    def auto_reload_after_completion(self):
+        """Auto-reload program after execution completes so it's ready to run again"""
+        # Reset execution engine back to step 0 (keep steps loaded)
+        self.main_app.execution_engine.reset_execution(clear_steps=False)
+
+        # Reset button states - ready to run again
+        self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
+        self.pause_btn.config(state=tk.DISABLED)
+        self.stop_btn.config(state=tk.DISABLED)
+        self.reset_btn.config(state=tk.NORMAL)
+
+        # Unlock program panel after completion
+        if hasattr(self.main_app, 'program_panel'):
+            self.main_app.program_panel.set_locked(False)
+
+        # Update step display to show step 1 again
+        self.update_step_display()
+
+        # Update operation label
+        self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
+
     def reset_execution(self, clear_steps=False):
         """Reset execution and UI state
 
@@ -866,6 +952,13 @@ class RightPanel:
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
+    def toggle_air_pressure(self):
+        """Toggle air pressure valve"""
+        if self.air_pressure_var.get():
+            self.hardware.air_pressure_valve_down()
+        else:
+            self.hardware.air_pressure_valve_up()
+
     def sync_checkbox_states(self):
         """Synchronize checkbox states with actual hardware states"""
         try:
@@ -888,6 +981,10 @@ class RightPanel:
             self.rows_marker_var.set(row_marker_state == "down")
             self.rows_cutter_var.set(row_cutter_state == "down")
 
+            # Air pressure valve: checked = down (open/air flowing)
+            air_pressure_state = self.hardware.get_air_pressure_valve_state()
+            self.air_pressure_var.set(air_pressure_state == "down")
+
             # Update limit switch checkboxes
             self.y_top_ls_var.set(self.hardware.get_limit_switch_state('y_top'))
             self.y_bottom_ls_var.set(self.hardware.get_limit_switch_state('y_bottom'))
@@ -906,35 +1003,27 @@ class RightPanel:
         self.main_app.root.after(200, self.schedule_checkbox_sync)
 
     def update_test_controls_state(self):
-        """Enable/disable test controls based on hardware mode"""
+        """Show/hide test controls based on hardware mode.
+        On real hardware the entire test controls section is hidden."""
         # Check if we're using real hardware by checking the class type
         from hardware.implementations.real.real_hardware import RealHardware
         is_real_hardware = isinstance(self.hardware, RealHardware)
 
         if is_real_hardware:
-            # Disable all test controls on real hardware
-            self._set_frame_state(self.test_controls_frame, tk.DISABLED)
-
-            # Show disabled indicator and change colors
-            if hasattr(self, 'test_controls_disabled_label'):
-                self.test_controls_disabled_label.pack(pady=(0, 5))
-            if hasattr(self, 'test_controls_title'):
-                self.test_controls_title.config(fg='#888888')  # Gray out title
-            # Change background to indicate disabled state
-            self._set_frame_background(self.test_controls_frame, '#E0E0E0')  # Light gray
-
-            self.logger.info(t("Test controls DISABLED - Real hardware mode active"), category="gui")
+            # Completely hide test controls on real hardware
+            self.test_controls_frame.pack_forget()
+            self.logger.info(t("Test controls HIDDEN - Real hardware mode active"), category="gui")
         else:
-            # Enable test controls in simulation mode
+            # Show and enable test controls in simulation mode
+            self.test_controls_frame.pack(fill=tk.X, padx=10, pady=5)
             self._set_frame_state(self.test_controls_frame, tk.NORMAL)
 
             # Hide disabled indicator and restore colors
             if hasattr(self, 'test_controls_disabled_label'):
                 self.test_controls_disabled_label.pack_forget()
             if hasattr(self, 'test_controls_title'):
-                self.test_controls_title.config(fg='#003366')  # Original color
-            # Restore original background
-            self._set_frame_background(self.test_controls_frame, '#F0F8FF')  # Original light blue
+                self.test_controls_title.config(fg='#003366')
+            self._set_frame_background(self.test_controls_frame, '#F0F8FF')
 
             self.logger.info(t("Test controls ENABLED - Simulation mode active"), category="gui")
 
@@ -1025,12 +1114,8 @@ class RightPanel:
         if hasattr(self, 'next_btn'):
             self.next_btn.config(state=tk.DISABLED if not enabled else (tk.NORMAL if self.main_app.steps else tk.DISABLED))
 
-        # Generate steps button
-        if hasattr(self, 'gen_steps_btn'):
-            self.gen_steps_btn.config(state=state)
-
-        # Test controls frame
-        if hasattr(self, 'test_controls_frame'):
+        # Test controls frame (only if visible - hidden on real hardware)
+        if hasattr(self, 'test_controls_frame') and self.test_controls_frame.winfo_ismapped():
             self._set_frame_state(self.test_controls_frame, state)
 
     def refresh_hardware_reference(self):

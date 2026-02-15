@@ -392,7 +392,6 @@ class _DeprecatedUltimateHardwareTestGUI:
             (t("Bottom Limit"), "bottom_limit_switch"),
             (t("Left Limit"), "left_limit_switch"),
             (t("Right Limit"), "right_limit_switch"),
-            (t("Rows Limit"), "rows_limit_switch"),
             (t("Door Sensor"), "door_sensor")
         ]
 
@@ -798,7 +797,7 @@ class _DeprecatedUltimateHardwareTestGUI:
             tooltip = tk.Toplevel()
             tooltip.wm_overrideredirect(True)
             tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
-            label = tk.Label(tooltip, text=text, background="yellow",
+            label = tk.Label(tooltip, text=text, background="yellow", foreground="black",
                            relief="solid", borderwidth=1, font=("Arial", 9))
             label.pack()
             widget.tooltip = tooltip

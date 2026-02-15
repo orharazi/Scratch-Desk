@@ -48,11 +48,11 @@ HEBREW_TRANSLATIONS = {
     'open': 'פתיחה',
     'close': 'סגירה',
 
-    # Sensors
-    'x_left': 'חיישן X שמאלי',
-    'x_right': 'חיישן X ימני',
-    'y_top': 'חיישן Y עליון',
-    'y_bottom': 'חיישן Y תחתון',
+    # Sensors (X sensors serve lines/שורות operations, Y sensors serve rows/עמודות operations)
+    'x_left': 'חיישן שורות שמאלי',
+    'x_right': 'חיישן שורות ימני',
+    'y_top': 'חיישן עמודות עליון',
+    'y_bottom': 'חיישן עמודות תחתון',
 
     # Common terms
     'wait': 'המתנה',
@@ -123,26 +123,26 @@ def _translate_description_to_hebrew(description):
     translations = {
         'Init: Move rows motor to home position (X=0)': 'אתחול: הזז מנוע עמודות למיקום בית (X=0)',
         'Init: Move lines motor to home position (Y=0)': 'אתחול: הזז מנוע שורות למיקום בית (Y=0)',
-        'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת מנוע שורות למטה (מכלול מנוע Y הונמך למצב ברירת מחדל)',
+        'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת מנוע שורות למטה (מכלול מנוע שורות הונמך למצב ברירת מחדל)',
 
-        'Cut top edge: Wait for LEFT X sensor': 'חיתוך קצה עליון: המתן לחיישן X שמאלי',
+        'Cut top edge: Wait for left lines sensor': 'חיתוך קצה עליון: המתן לחיישן שורות שמאלי',
         'Cut top edge: Open line cutter': 'חיתוך קצה עליון: פתח חותך שורות',
-        'Cut top edge: Wait for RIGHT X sensor': 'חיתוך קצה עליון: המתן לחיישן X ימני',
+        'Cut top edge: Wait for right lines sensor': 'חיתוך קצה עליון: המתן לחיישן שורות ימני',
         'Cut top edge: Close line cutter': 'חיתוך קצה עליון: סגור חותך שורות',
 
-        'Cut bottom edge: Wait for LEFT X sensor': 'חיתוך קצה תחתון: המתן לחיישן X שמאלי',
+        'Cut bottom edge: Wait for left lines sensor': 'חיתוך קצה תחתון: המתן לחיישן שורות שמאלי',
         'Cut bottom edge: Open line cutter': 'חיתוך קצה תחתון: פתח חותך שורות',
-        'Cut bottom edge: Wait for RIGHT X sensor': 'חיתוך קצה תחתון: המתן לחיישן X ימני',
+        'Cut bottom edge: Wait for right lines sensor': 'חיתוך קצה תחתון: המתן לחיישן שורות ימני',
         'Cut bottom edge: Close line cutter': 'חיתוך קצה תחתון: סגור חותך שורות',
 
-        'Cut RIGHT paper edge: Wait for TOP Y sensor': 'חיתוך קצה ימני: המתן לחיישן Y עליון',
+        'Cut RIGHT paper edge: Wait for top rows sensor': 'חיתוך קצה ימני: המתן לחיישן עמודות עליון',
         'Cut RIGHT paper edge: Open row cutter': 'חיתוך קצה ימני: פתח חותך עמודות',
-        'Cut RIGHT paper edge: Wait for BOTTOM Y sensor': 'חיתוך קצה ימני: המתן לחיישן Y תחתון',
+        'Cut RIGHT paper edge: Wait for bottom rows sensor': 'חיתוך קצה ימני: המתן לחיישן עמודות תחתון',
         'Cut RIGHT paper edge: Close row cutter': 'חיתוך קצה ימני: סגור חותך עמודות',
 
-        'Cut LEFT paper edge: Wait for TOP Y sensor': 'חיתוך קצה שמאלי: המתן לחיישן Y עליון',
+        'Cut LEFT paper edge: Wait for top rows sensor': 'חיתוך קצה שמאלי: המתן לחיישן עמודות עליון',
         'Cut LEFT paper edge: Open row cutter': 'חיתוך קצה שמאלי: פתח חותך עמודות',
-        'Cut LEFT paper edge: Wait for BOTTOM Y sensor': 'חיתוך קצה שמאלי: המתן לחיישן Y תחתון',
+        'Cut LEFT paper edge: Wait for bottom rows sensor': 'חיתוך קצה שמאלי: המתן לחיישן עמודות תחתון',
         'Cut LEFT paper edge: Close row cutter': 'חיתוך קצה שמאלי: סגור חותך עמודות',
 
         'Lines complete: Move lines motor to home position (Y=0)': 'שורות הושלמו: הזז מנוע שורות למיקום בית (Y=0)',
@@ -179,12 +179,12 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'mark line (\d+)/(\d+) \(section (\d+), line (\d+)\)', desc_lower)
         if match:
             line, total, section, line_in_sec = match.groups()
-            if 'wait for left x sensor' in desc_lower:
-                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): המתן לחיישן X שמאלי"
+            if 'wait for left lines sensor' in desc_lower:
+                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): המתן לחיישן שורות שמאלי"
             elif 'open line marker' in desc_lower:
                 return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): פתח סמן שורות"
-            elif 'wait for right x sensor' in desc_lower:
-                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): המתן לחיישן X ימני"
+            elif 'wait for right lines sensor' in desc_lower:
+                return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): המתן לחיישן שורות ימני"
             elif 'close line marker' in desc_lower:
                 return f"סמן קו {line}/{total} (חלק {section}, קו {line_in_sec}): סגור סמן שורות"
 
@@ -202,12 +202,12 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'sections (\d+) and (\d+)', description)
         if match:
             s1, s2 = match.groups()
-            if 'wait for left x sensor' in desc_lower:
-                return f"חיתוך בין חלקים {s1} ו-{s2}: המתן לחיישן X שמאלי"
+            if 'wait for left lines sensor' in desc_lower:
+                return f"חיתוך בין חלקים {s1} ו-{s2}: המתן לחיישן שורות שמאלי"
             elif 'open line cutter' in desc_lower:
                 return f"חיתוך בין חלקים {s1} ו-{s2}: פתח חותך שורות"
-            elif 'wait for right x sensor' in desc_lower:
-                return f"חיתוך בין חלקים {s1} ו-{s2}: המתן לחיישן X ימני"
+            elif 'wait for right lines sensor' in desc_lower:
+                return f"חיתוך בין חלקים {s1} ו-{s2}: המתן לחיישן שורות ימני"
             elif 'close line cutter' in desc_lower:
                 return f"חיתוך בין חלקים {s1} ו-{s2}: סגור חותך שורות"
             elif ': move to' in desc_lower:
@@ -240,38 +240,38 @@ def _translate_description_to_hebrew(description):
             pos = match.group(1)
             return f"חיתוך קצה שמאלי: עבור ל-{pos}ס״מ (גבול נייר בפועל)"
 
-    # Pattern: "RTL Page X/Y (Section Z, RTL Page W/N): ..."
-    if 'rtl page' in desc_lower:
+    # Pattern: "Page X/Y (Section Z, Page W/N): ..."
+    if 'page' in desc_lower and 'section' in desc_lower:
         import re
-        match = re.search(r'rtl page (\d+)/(\d+) \(section (\d+), rtl page (\d+)/(\d+)\)', desc_lower)
+        match = re.search(r'page (\d+)/(\d+) \(section (\d+), page (\d+)/(\d+)\)', desc_lower)
         if match:
             page, total, section, page_in_sec, pages_per_sec = match.groups()
             if 'right edge:' in desc_lower and 'move to' in desc_lower:
                 match2 = re.search(r': ([\d.]+)cm', description)
                 if match2:
                     pos = match2.group(1)
-                    return f"עבור לעמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}) קצה ימני: {pos}ס״מ"
-            elif 'wait top y sensor (right edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y עליון (קצה ימני)"
+                    return f"עבור לעמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}) קצה ימני: {pos}ס״מ"
+            elif 'wait top rows sensor (right edge)' in desc_lower:
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): המתן לחיישן עמודות עליון (קצה ימני)"
             elif 'open row marker (right edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): פתח סמן עמודות (קצה ימני)"
-            elif 'wait bottom y sensor (right edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y תחתון (קצה ימני)"
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): פתח סמן עמודות (קצה ימני)"
+            elif 'wait bottom rows sensor (right edge)' in desc_lower:
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): המתן לחיישן עמודות תחתון (קצה ימני)"
             elif 'close row marker (right edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן עמודות (קצה ימני)"
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): סגור סמן עמודות (קצה ימני)"
             elif 'left edge:' in desc_lower and 'move to' in desc_lower:
                 match2 = re.search(r': ([\d.]+)cm', description)
                 if match2:
                     pos = match2.group(1)
-                    return f"RTL: עבור לעמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}) קצה שמאלי: {pos}ס״מ"
-            elif 'wait top y sensor (left edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y עליון (קצה שמאלי)"
+                    return f"עבור לעמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}) קצה שמאלי: {pos}ס״מ"
+            elif 'wait top rows sensor (left edge)' in desc_lower:
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): המתן לחיישן עמודות עליון (קצה שמאלי)"
             elif 'open row marker (left edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): פתח סמן עמודות (קצה שמאלי)"
-            elif 'wait bottom y sensor (left edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): המתן לחיישן Y תחתון (קצה שמאלי)"
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): פתח סמן עמודות (קצה שמאלי)"
+            elif 'wait bottom rows sensor (left edge)' in desc_lower:
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): המתן לחיישן עמודות תחתון (קצה שמאלי)"
             elif 'close row marker (left edge)' in desc_lower:
-                return f"עמוד RTL {page}/{total} (חלק {section}, עמוד RTL {page_in_sec}/{pages_per_sec}): סגור סמן עמודות (קצה שמאלי)"
+                return f"עמוד {page}/{total} (חלק {section}, עמוד {page_in_sec}/{pages_per_sec}): סגור סמן עמודות (קצה שמאלי)"
 
     # Pattern: "Move to cut between row sections X and Y: Z cm"
     if 'move to cut between row sections' in desc_lower:
@@ -287,12 +287,12 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'sections (\d+) and (\d+)', description)
         if match:
             s1, s2 = match.groups()
-            if 'wait for top y sensor' in desc_lower:
-                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: המתן לחיישן Y עליון"
+            if 'wait for top rows sensor' in desc_lower:
+                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: המתן לחיישן עמודות עליון"
             elif 'open row cutter' in desc_lower:
                 return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: פתח חותך עמודות"
-            elif 'wait for bottom y sensor' in desc_lower:
-                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: המתן לחיישן Y תחתון"
+            elif 'wait for bottom rows sensor' in desc_lower:
+                return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: המתן לחיישן עמודות תחתון"
             elif 'close row cutter' in desc_lower:
                 return f"חיתוך בין חלקי עמודות {s1} ו-{s2}: סגור חותך עמודות"
             elif ': move to' in desc_lower:
@@ -315,7 +315,7 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'to ([\d.]+)cm.*\+ ([\d.]+)cm', description)
         if match:
             pos, height = match.groups()
-            return f"אתחול: הזז מנוע Y ל-{pos}ס״מ (נייר + {height}ס״מ גובה בפועל)"
+            return f"אתחול: הזז מנוע שורות ל-{pos}ס״מ (נייר + {height}ס״מ גובה בפועל)"
 
     # Pattern: "=== Starting Program X: Y (ACTUAL SIZE: ...)"
     if '=== starting program' in desc_lower:
@@ -423,8 +423,8 @@ def generate_lines_marking_steps(program):
     # Cut top edge workflow - LEFT sensor first, then RIGHT sensor
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'x_left', 'description': 'Wait for LEFT X sensor to start top cut'},
-        "Cut top edge: Wait for LEFT X sensor"
+        {'sensor': 'x_left', 'description': 'Wait for left lines sensor to start top cut'},
+        "Cut top edge: Wait for left lines sensor"
     ))
     
     steps.append(create_step(
@@ -435,8 +435,8 @@ def generate_lines_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'x_right', 'description': 'Wait for RIGHT X sensor to complete top cut'},
-        "Cut top edge: Wait for RIGHT X sensor"
+        {'sensor': 'x_right', 'description': 'Wait for right lines sensor to complete top cut'},
+        "Cut top edge: Wait for right lines sensor"
     ))
     
     steps.append(create_step(
@@ -495,8 +495,8 @@ def generate_lines_marking_steps(program):
             # Mark this line
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for line {overall_line_num}'},
-                f"{line_description}: Wait for LEFT X sensor"
+                {'sensor': 'x_left', 'description': f'Wait for left lines sensor for line {overall_line_num}'},
+                f"{line_description}: Wait for left lines sensor"
             ))
             
             steps.append(create_step(
@@ -507,8 +507,8 @@ def generate_lines_marking_steps(program):
             
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for line {overall_line_num}'},
-                f"{line_description}: Wait for RIGHT X sensor"
+                {'sensor': 'x_right', 'description': f'Wait for right lines sensor for line {overall_line_num}'},
+                f"{line_description}: Wait for right lines sensor"
             ))
             
             steps.append(create_step(
@@ -531,8 +531,8 @@ def generate_lines_marking_steps(program):
             # Perform cut between sections
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'x_left', 'description': f'Wait for LEFT X sensor for cut between sections {section_num + 1}-{section_num + 2}'},
-                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for LEFT X sensor"
+                {'sensor': 'x_left', 'description': f'Wait for left lines sensor for cut between sections {section_num + 1}-{section_num + 2}'},
+                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for left lines sensor"
             ))
             
             steps.append(create_step(
@@ -543,8 +543,8 @@ def generate_lines_marking_steps(program):
             
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'x_right', 'description': f'Wait for RIGHT X sensor for cut between sections {section_num + 1}-{section_num + 2}'},
-                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for RIGHT X sensor"
+                {'sensor': 'x_right', 'description': f'Wait for right lines sensor for cut between sections {section_num + 1}-{section_num + 2}'},
+                f"Cut between sections {section_num + 1} and {section_num + 2}: Wait for right lines sensor"
             ))
             
             steps.append(create_step(
@@ -563,8 +563,8 @@ def generate_lines_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'x_left', 'description': 'Wait for LEFT X sensor to start bottom cut'},
-        "Cut bottom edge: Wait for LEFT X sensor"
+        {'sensor': 'x_left', 'description': 'Wait for left lines sensor to start bottom cut'},
+        "Cut bottom edge: Wait for left lines sensor"
     ))
     
     steps.append(create_step(
@@ -575,8 +575,8 @@ def generate_lines_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'x_right', 'description': 'Wait for RIGHT X sensor to complete bottom cut'},
-        "Cut bottom edge: Wait for RIGHT X sensor"
+        {'sensor': 'x_right', 'description': 'Wait for right lines sensor to complete bottom cut'},
+        "Cut bottom edge: Wait for right lines sensor"
     ))
     
     steps.append(create_step(
@@ -649,8 +649,8 @@ def generate_row_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'y_top', 'description': 'Wait for TOP Y sensor for right paper cut'},
-        "Cut RIGHT paper edge: Wait for TOP Y sensor"
+        {'sensor': 'y_top', 'description': 'Wait for top rows sensor for right paper cut'},
+        "Cut RIGHT paper edge: Wait for top rows sensor"
     ))
     
     steps.append(create_step(
@@ -661,8 +661,8 @@ def generate_row_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'y_bottom', 'description': 'Wait for BOTTOM Y sensor for right paper cut'},
-        "Cut RIGHT paper edge: Wait for BOTTOM Y sensor"
+        {'sensor': 'y_bottom', 'description': 'Wait for bottom rows sensor for right paper cut'},
+        "Cut RIGHT paper edge: Wait for bottom rows sensor"
     ))
     
     steps.append(create_step(
@@ -713,7 +713,7 @@ def generate_row_marking_steps(program):
             page_left_edge = section_start_x + program.left_margin + (physical_page_in_section * (program.page_width + program.buffer_between_pages))
             page_right_edge = page_left_edge + program.page_width
 
-            page_description = f"RTL Page {rtl_page_number}/{total_pages} (Section {section_num}, RTL Page {rtl_page_in_section + 1}/{program.number_of_pages})"
+            page_description = f"Page {rtl_page_number}/{total_pages} (Section {section_num}, Page {rtl_page_in_section + 1}/{program.number_of_pages})"
 
             logger.debug(f"      RTL Page {rtl_page_number}: section_index={section_index}, rtl_page_in_section={rtl_page_in_section}, physical_page={physical_page_in_section}, position={page_left_edge:.1f}-{page_right_edge:.1f}cm", category="execution")
 
@@ -727,8 +727,8 @@ def generate_row_marking_steps(program):
             # Mark RIGHT edge of page
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} right edge'},
-                f"{page_description}: Wait TOP Y sensor (RIGHT edge)"
+                {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} right edge'},
+                f"{page_description}: Wait top rows sensor (RIGHT edge)"
             ))
 
             steps.append(create_step(
@@ -739,8 +739,8 @@ def generate_row_marking_steps(program):
 
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} right edge'},
-                f"{page_description}: Wait BOTTOM Y sensor (RIGHT edge)"
+                {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} right edge'},
+                f"{page_description}: Wait bottom rows sensor (RIGHT edge)"
             ))
 
             steps.append(create_step(
@@ -753,14 +753,14 @@ def generate_row_marking_steps(program):
             steps.append(create_step(
                 'move_x',
                 {'position': page_left_edge},
-                f"RTL: Move to {page_description} LEFT edge: {page_left_edge}cm"
+                f"Move to {page_description} LEFT edge: {page_left_edge}cm"
             ))
 
             # Mark LEFT edge of page
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_top', 'description': f'TOP Y sensor for {page_description} left edge'},
-                f"{page_description}: Wait TOP Y sensor (LEFT edge)"
+                {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} left edge'},
+                f"{page_description}: Wait top rows sensor (LEFT edge)"
             ))
 
             steps.append(create_step(
@@ -771,8 +771,8 @@ def generate_row_marking_steps(program):
 
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'BOTTOM Y sensor for {page_description} left edge'},
-                f"{page_description}: Wait BOTTOM Y sensor (LEFT edge)"
+                {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} left edge'},
+                f"{page_description}: Wait bottom rows sensor (LEFT edge)"
             ))
 
             steps.append(create_step(
@@ -800,8 +800,8 @@ def generate_row_marking_steps(program):
             # Perform cut between sections (vertical cut spanning full height)
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_top', 'description': f'Wait for TOP Y sensor for cut between row sections {section_num}-{section_num - 1}'},
-                f"Cut between row sections {section_num} and {section_num - 1}: Wait for TOP Y sensor"
+                {'sensor': 'y_top', 'description': f'Wait for top rows sensor for cut between row sections {section_num}-{section_num - 1}'},
+                f"Cut between row sections {section_num} and {section_num - 1}: Wait for top rows sensor"
             ))
 
             steps.append(create_step(
@@ -812,8 +812,8 @@ def generate_row_marking_steps(program):
 
             steps.append(create_step(
                 'wait_sensor',
-                {'sensor': 'y_bottom', 'description': f'Wait for BOTTOM Y sensor for cut between row sections {section_num}-{section_num - 1}'},
-                f"Cut between row sections {section_num} and {section_num - 1}: Wait for BOTTOM Y sensor"
+                {'sensor': 'y_bottom', 'description': f'Wait for bottom rows sensor for cut between row sections {section_num}-{section_num - 1}'},
+                f"Cut between row sections {section_num} and {section_num - 1}: Wait for bottom rows sensor"
             ))
 
             steps.append(create_step(
@@ -832,8 +832,8 @@ def generate_row_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'y_top', 'description': 'Wait for TOP Y sensor for left paper cut'},
-        "Cut LEFT paper edge: Wait for TOP Y sensor"
+        {'sensor': 'y_top', 'description': 'Wait for top rows sensor for left paper cut'},
+        "Cut LEFT paper edge: Wait for top rows sensor"
     ))
     
     steps.append(create_step(
@@ -844,8 +844,8 @@ def generate_row_marking_steps(program):
     
     steps.append(create_step(
         'wait_sensor',
-        {'sensor': 'y_bottom', 'description': 'Wait for BOTTOM Y sensor for left paper cut'},
-        "Cut LEFT paper edge: Wait for BOTTOM Y sensor"
+        {'sensor': 'y_bottom', 'description': 'Wait for bottom rows sensor for left paper cut'},
+        "Cut LEFT paper edge: Wait for bottom rows sensor"
     ))
     
     steps.append(create_step(

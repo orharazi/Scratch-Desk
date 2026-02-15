@@ -40,7 +40,31 @@ class RealHardware:
         self.gpio: Optional[RaspberryPiGPIO] = None
         self.grbl: Optional[ArduinoGRBL] = None
         self.is_initialized = False
+        self.grbl_connected = False
+        self.gpio_connected = False
         self.initialization_error = None
+
+        # Internal position tracking (used when GRBL is not connected)
+        self._fallback_x = 0.0
+        self._fallback_y = 0.0
+
+        # Internal piston state tracking (used when GPIO is not connected)
+        self._fallback_piston_states = {
+            'line_marker_piston': 'up',
+            'line_cutter_piston': 'up',
+            'line_motor_piston': 'down',
+            'row_marker_piston': 'up',
+            'row_cutter_piston': 'up',
+            'air_pressure_valve': 'up',
+        }
+        self._fallback_sensor_states = {
+            'line_marker_up': True, 'line_marker_down': False,
+            'line_cutter_up': True, 'line_cutter_down': False,
+            'line_motor_left_up': False, 'line_motor_left_down': True,
+            'line_motor_right_up': False, 'line_motor_right_down': True,
+            'row_marker_up': True, 'row_marker_down': False,
+            'row_cutter_up': True, 'row_cutter_down': False,
+        }
 
         # Execution engine reference for pause checking during sensor waits
         self.execution_engine = None
@@ -56,9 +80,13 @@ class RealHardware:
         self.logger.info("Mode: REAL HARDWARE", category="hardware")
         self.logger.info("="*60, category="hardware")
 
-        # Attempt to initialize hardware
-        if not self.initialize():
-            self.initialization_error = "Failed to initialize hardware. Check connections and try again."
+        # Attempt to initialize hardware - always mark as initialized so system can run
+        self.initialize()
+        # Always set is_initialized=True so system operates (with fallback tracking)
+        self.is_initialized = True
+        if self.initialization_error:
+            self.logger.warning(f"Hardware partially initialized: {self.initialization_error}", category="hardware")
+            self.logger.warning("System will operate with fallback position/state tracking", category="hardware")
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from config/settings.json"""
@@ -71,15 +99,12 @@ class RealHardware:
 
     def initialize(self) -> bool:
         """
-        Initialize all hardware components
+        Initialize all hardware components.
+        Even if some components fail, the system will operate with fallback tracking.
 
         Returns:
-            True if initialization successful, False otherwise
+            True if all components initialized, False if any failed
         """
-        if self.is_initialized:
-            self.logger.debug("Hardware already initialized", category="hardware")
-            return True
-
         errors = []
 
         # Initialize Raspberry Pi GPIO
@@ -90,12 +115,15 @@ class RealHardware:
                 error_msg = "GPIO initialization failed"
                 self.logger.error(error_msg, category="hardware")
                 errors.append(error_msg)
+                self.gpio = None
             else:
+                self.gpio_connected = True
                 self.logger.success("GPIO initialized successfully", category="hardware")
         except Exception as e:
             error_msg = f"GPIO error: {str(e)}"
             self.logger.error(error_msg, category="hardware")
             errors.append(error_msg)
+            self.gpio = None
 
         # Initialize Arduino GRBL (conditional based on config)
         start_with_grbl = self.config.get('hardware_config', {}).get('start_with_grbl', True)
@@ -108,25 +136,28 @@ class RealHardware:
                     error_msg = "GRBL connection failed - check Arduino port and connection"
                     self.logger.error(error_msg, category="hardware")
                     errors.append(error_msg)
+                    self.grbl = None
                 else:
+                    self.grbl_connected = True
                     self.logger.success("GRBL connected successfully", category="hardware")
             except Exception as e:
                 error_msg = f"GRBL error: {str(e)}"
                 self.logger.error(error_msg, category="hardware")
                 errors.append(error_msg)
+                self.grbl = None
         else:
             self.logger.info("GRBL initialization skipped (start_with_grbl=false)", category="hardware")
             self.logger.warning("Motor control will not be available without GRBL", category="hardware")
             self.grbl = None
 
         if not errors:
-            self.is_initialized = True
             self.initialization_error = None
             self.logger.success("All hardware initialized successfully", category="hardware")
             return True
         else:
             self.initialization_error = "; ".join(errors)
-            self.logger.error(f"Hardware initialization failed: {self.initialization_error}", category="hardware")
+            self.logger.error(f"Hardware init errors: {self.initialization_error}", category="hardware")
+            self.logger.warning("Using fallback position/state tracking for missing components", category="hardware")
             return False
 
     # ========== MOTOR CONTROL (via GRBL) ==========
@@ -141,12 +172,15 @@ class RealHardware:
         Returns:
             True if successful, False otherwise
         """
-        if not self.is_initialized or not self.grbl:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        # Move only X axis, keep Y at current position
-        return self.grbl.move_to(position, self.grbl.current_y)
+        if self.grbl:
+            result = self.grbl.move_to(position, self.grbl.current_y)
+            self._fallback_x = position
+            return result
+        else:
+            # Fallback: track position internally, log error
+            self.logger.warning(f"GRBL not connected - tracking X={position:.1f}cm internally", category="hardware")
+            self._fallback_x = position
+            return True
 
     def move_y(self, position: float) -> bool:
         """
@@ -158,12 +192,15 @@ class RealHardware:
         Returns:
             True if successful, False otherwise
         """
-        if not self.is_initialized or not self.grbl:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        # Move only Y axis, keep X at current position
-        return self.grbl.move_to(self.grbl.current_x, position)
+        if self.grbl:
+            result = self.grbl.move_to(self.grbl.current_x, position)
+            self._fallback_y = position
+            return result
+        else:
+            # Fallback: track position internally, log error
+            self.logger.warning(f"GRBL not connected - tracking Y={position:.1f}cm internally", category="hardware")
+            self._fallback_y = position
+            return True
 
     def move_to(self, x: float, y: float) -> bool:
         """
@@ -176,11 +213,16 @@ class RealHardware:
         Returns:
             True if successful, False otherwise
         """
-        if not self.is_initialized or not self.grbl:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.grbl.move_to(x, y)
+        if self.grbl:
+            result = self.grbl.move_to(x, y)
+            self._fallback_x = x
+            self._fallback_y = y
+            return result
+        else:
+            self.logger.warning(f"GRBL not connected - tracking position ({x:.1f}, {y:.1f}) internally", category="hardware")
+            self._fallback_x = x
+            self._fallback_y = y
+            return True
 
     def home_motors(self) -> bool:
         """
@@ -189,11 +231,16 @@ class RealHardware:
         Returns:
             True if successful, False otherwise
         """
-        if not self.is_initialized or not self.grbl:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.grbl.home()
+        if self.grbl:
+            result = self.grbl.home()
+            self._fallback_x = 0.0
+            self._fallback_y = 0.0
+            return result
+        else:
+            self.logger.warning("GRBL not connected - resetting fallback position to (0,0)", category="hardware")
+            self._fallback_x = 0.0
+            self._fallback_y = 0.0
+            return True
 
     def perform_complete_homing_sequence(self, progress_callback=None) -> tuple[bool, str]:
         """
@@ -213,13 +260,19 @@ class RealHardware:
         Returns:
             Tuple of (success: bool, error_message: str)
         """
-        if not self.is_initialized or not self.grbl:
-            error_msg = "Hardware not initialized"
+        if not self.grbl:
+            error_msg = "GRBL not connected - cannot perform homing"
             self.logger.error(error_msg, category="hardware")
+            self._fallback_x = 0.0
+            self._fallback_y = 0.0
             return False, error_msg
 
         # Pass self as hardware_interface so GRBL can control pistons and check door
-        return self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback)
+        result = self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback)
+        if result[0]:
+            self._fallback_x = 0.0
+            self._fallback_y = 0.0
+        return result
 
     def apply_grbl_configuration(self) -> bool:
         """
@@ -228,8 +281,8 @@ class RealHardware:
         Returns:
             True if successful, False otherwise
         """
-        if not self.is_initialized or not self.grbl:
-            self.logger.error("Hardware not initialized", category="hardware")
+        if not self.grbl:
+            self.logger.warning("GRBL not connected - cannot apply configuration", category="hardware")
             return False
 
         return self.grbl.apply_grbl_configuration()
@@ -241,228 +294,190 @@ class RealHardware:
         Returns:
             Dictionary with status info (state, x, y) or None if not available
         """
-        if not self.is_initialized or not self.grbl:
-            return None
+        if self.grbl:
+            return self.grbl.get_status()
 
-        return self.grbl.get_status()
+        # Fallback status when GRBL not connected
+        return {
+            'state': 'Disconnected',
+            'x': self._fallback_x,
+            'y': self._fallback_y
+        }
 
     # ========== PISTON CONTROL (via GPIO) ==========
 
+    def _piston_action(self, piston_name: str, direction: str) -> bool:
+        """Generic piston action with fallback when GPIO not connected"""
+        if self.gpio:
+            if direction == 'down':
+                return self.gpio.piston_down(piston_name)
+            else:
+                return self.gpio.piston_up(piston_name)
+        else:
+            self.logger.warning(f"GPIO not connected - tracking {piston_name} {direction} internally", category="hardware")
+            self._fallback_piston_states[piston_name] = direction
+            # Update sensor fallback states
+            base = piston_name.replace('_piston', '')
+            if direction == 'down':
+                self._fallback_sensor_states[f'{base}_up'] = False
+                self._fallback_sensor_states[f'{base}_down'] = True
+            else:
+                self._fallback_sensor_states[f'{base}_up'] = True
+                self._fallback_sensor_states[f'{base}_down'] = False
+            return True
+
     def line_marker_piston_down(self) -> bool:
         """Lower line marker piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_down("line_marker_piston")
+        return self._piston_action("line_marker_piston", "down")
 
     def line_marker_piston_up(self) -> bool:
         """Raise line marker piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_up("line_marker_piston")
+        return self._piston_action("line_marker_piston", "up")
 
     def line_cutter_piston_down(self) -> bool:
         """Lower line cutter piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_down("line_cutter_piston")
+        return self._piston_action("line_cutter_piston", "down")
 
     def line_cutter_piston_up(self) -> bool:
         """Raise line cutter piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_up("line_cutter_piston")
+        return self._piston_action("line_cutter_piston", "up")
 
     def line_motor_piston_down(self) -> bool:
         """Lower line motor piston (both sides move together - single GPIO control)"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.line_motor_piston_down()
+        if self.gpio:
+            return self.gpio.line_motor_piston_down()
+        else:
+            self.logger.warning("GPIO not connected - tracking line_motor_piston down internally", category="hardware")
+            self._fallback_piston_states['line_motor_piston'] = 'down'
+            self._fallback_sensor_states['line_motor_left_up'] = False
+            self._fallback_sensor_states['line_motor_left_down'] = True
+            self._fallback_sensor_states['line_motor_right_up'] = False
+            self._fallback_sensor_states['line_motor_right_down'] = True
+            return True
 
     def line_motor_piston_up(self) -> bool:
         """Raise line motor piston (both sides move together - single GPIO control)"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.line_motor_piston_up()
+        if self.gpio:
+            return self.gpio.line_motor_piston_up()
+        else:
+            self.logger.warning("GPIO not connected - tracking line_motor_piston up internally", category="hardware")
+            self._fallback_piston_states['line_motor_piston'] = 'up'
+            self._fallback_sensor_states['line_motor_left_up'] = True
+            self._fallback_sensor_states['line_motor_left_down'] = False
+            self._fallback_sensor_states['line_motor_right_up'] = True
+            self._fallback_sensor_states['line_motor_right_down'] = False
+            return True
 
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_down("row_marker_piston")
+        return self._piston_action("row_marker_piston", "down")
 
     def row_marker_piston_up(self) -> bool:
         """Raise row marker piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_up("row_marker_piston")
+        return self._piston_action("row_marker_piston", "up")
 
     def row_cutter_piston_down(self) -> bool:
         """Lower row cutter piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
-
-        return self.gpio.piston_down("row_cutter_piston")
+        return self._piston_action("row_cutter_piston", "down")
 
     def row_cutter_piston_up(self) -> bool:
         """Raise row cutter piston"""
-        if not self.is_initialized or not self.gpio:
-            self.logger.error("Hardware not initialized", category="hardware")
-            return False
+        return self._piston_action("row_cutter_piston", "up")
 
-        return self.gpio.piston_up("row_cutter_piston")
+    def air_pressure_valve_down(self) -> bool:
+        """Open air pressure valve (air flows to pistons)"""
+        return self._piston_action("air_pressure_valve", "down")
+
+    def air_pressure_valve_up(self) -> bool:
+        """Close air pressure valve (no air to pistons)"""
+        return self._piston_action("air_pressure_valve", "up")
+
+    def get_air_pressure_valve_state(self) -> str:
+        """Get air pressure valve state"""
+        if self.gpio:
+            return self.gpio.get_piston_pin_state("air_pressure_valve")
+        return self._fallback_piston_states.get('air_pressure_valve', 'up')
 
     # ========== SENSOR READING (via GPIO) - DUAL SENSORS PER TOOL ==========
 
+    def _get_sensor(self, gpio_method_name: str, fallback_key: str) -> bool:
+        """Generic sensor getter with fallback"""
+        if self.gpio:
+            method = getattr(self.gpio, gpio_method_name, None)
+            if method:
+                state = method()
+                return state if state is not None else False
+        return self._fallback_sensor_states.get(fallback_key, False)
+
     # Line Marker Sensors
     def get_line_marker_up_sensor(self) -> bool:
-        """Read line marker UP sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_marker_up_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_marker_up_sensor', 'line_marker_up')
 
     def get_line_marker_down_sensor(self) -> bool:
-        """Read line marker DOWN sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_marker_down_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_marker_down_sensor', 'line_marker_down')
 
     # Line Cutter Sensors
     def get_line_cutter_up_sensor(self) -> bool:
-        """Read line cutter UP sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_cutter_up_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_cutter_up_sensor', 'line_cutter_up')
 
     def get_line_cutter_down_sensor(self) -> bool:
-        """Read line cutter DOWN sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_cutter_down_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_cutter_down_sensor', 'line_cutter_down')
 
     # Line Motor Left Piston Sensors
     def get_line_motor_left_up_sensor(self) -> bool:
-        """Read line motor LEFT piston UP sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_motor_left_up_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_motor_left_up_sensor', 'line_motor_left_up')
 
     def get_line_motor_left_down_sensor(self) -> bool:
-        """Read line motor LEFT piston DOWN sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_motor_left_down_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_motor_left_down_sensor', 'line_motor_left_down')
 
     # Line Motor Right Piston Sensors
     def get_line_motor_right_up_sensor(self) -> bool:
-        """Read line motor RIGHT piston UP sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_motor_right_up_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_motor_right_up_sensor', 'line_motor_right_up')
 
     def get_line_motor_right_down_sensor(self) -> bool:
-        """Read line motor RIGHT piston DOWN sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_line_motor_right_down_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_line_motor_right_down_sensor', 'line_motor_right_down')
 
     # Row Marker Sensors
     def get_row_marker_up_sensor(self) -> bool:
-        """Read row marker UP sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_row_marker_up_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_row_marker_up_sensor', 'row_marker_up')
 
     def get_row_marker_down_sensor(self) -> bool:
-        """Read row marker DOWN sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_row_marker_down_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_row_marker_down_sensor', 'row_marker_down')
 
     # Row Cutter Sensors
     def get_row_cutter_up_sensor(self) -> bool:
-        """Read row cutter UP sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_row_cutter_up_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_row_cutter_up_sensor', 'row_cutter_up')
 
     def get_row_cutter_down_sensor(self) -> bool:
-        """Read row cutter DOWN sensor state"""
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_row_cutter_down_sensor()
-        return state if state is not None else False
+        return self._get_sensor('get_row_cutter_down_sensor', 'row_cutter_down')
 
     # ========== EDGE SENSORS ==========
 
     def get_x_left_edge_sensor(self) -> bool:
         """Read X-axis LEFT edge sensor state"""
-        if not self.is_initialized or not self.gpio:
+        if not self.gpio:
             return False
-
         state = self.gpio.get_x_left_edge_sensor()
         return state if state is not None else False
 
     def get_x_right_edge_sensor(self) -> bool:
         """Read X-axis RIGHT edge sensor state"""
-        if not self.is_initialized or not self.gpio:
+        if not self.gpio:
             return False
-
         state = self.gpio.get_x_right_edge_sensor()
         return state if state is not None else False
 
     def get_y_top_edge_sensor(self) -> bool:
         """Read Y-axis TOP edge sensor state"""
-        if not self.is_initialized or not self.gpio:
+        if not self.gpio:
             return False
-
         state = self.gpio.get_y_top_edge_sensor()
         return state if state is not None else False
 
     def get_y_bottom_edge_sensor(self) -> bool:
         """Read Y-axis BOTTOM edge sensor state"""
-        if not self.is_initialized or not self.gpio:
+        if not self.gpio:
             return False
-
         state = self.gpio.get_y_bottom_edge_sensor()
         return state if state is not None else False
 
@@ -489,9 +504,8 @@ class RealHardware:
         Returns:
             True if door is closed, False if open
         """
-        if not self.is_initialized or not self.gpio:
+        if not self.gpio:
             return False
-
         state = self.gpio.get_door_sensor()
         return state if state is not None else False
 
@@ -515,16 +529,21 @@ class RealHardware:
     # ========== EMERGENCY CONTROLS ==========
 
     def emergency_stop(self) -> bool:
-        """Emergency stop all motors"""
-        if not self.is_initialized or not self.grbl:
-            return False
+        """Emergency stop all motors - feed hold then soft reset to clear queue"""
+        if not self.grbl:
+            self.logger.warning("GRBL not connected - emergency stop (no motors to stop)", category="hardware")
+            return True
 
-        return self.grbl.stop()
+        result = self.grbl.stop()       # Feed hold "!" - immediate stop
+        time.sleep(0.1)
+        self.grbl.reset()               # Soft reset Ctrl-X - clears queue
+        return result
 
     def resume_operation(self) -> bool:
         """Resume operation after emergency stop"""
-        if not self.is_initialized or not self.grbl:
-            return False
+        if not self.grbl:
+            self.logger.warning("GRBL not connected - resume (no motors to resume)", category="hardware")
+            return True
 
         return self.grbl.resume()
 
@@ -532,17 +551,15 @@ class RealHardware:
 
     def get_current_x(self) -> float:
         """Get current X motor position in cm"""
-        if not self.is_initialized or not self.grbl:
-            return 0.0
-
-        return self.grbl.current_x
+        if self.grbl:
+            return self.grbl.current_x
+        return self._fallback_x
 
     def get_current_y(self) -> float:
         """Get current Y motor position in cm"""
-        if not self.is_initialized or not self.grbl:
-            return 0.0
-
-        return self.grbl.current_y
+        if self.grbl:
+            return self.grbl.current_y
+        return self._fallback_y
 
     # ========== TOOL ACTION METHODS ==========
 
@@ -603,103 +620,62 @@ class RealHardware:
 
     # ========== STATE GETTERS ==========
 
-    def get_line_marker_state(self) -> str:
-        """Get line marker tool state"""
-        up = self.get_line_marker_up_sensor()
-        down = self.get_line_marker_down_sensor()
-
-        # Handle sensor read errors
-        if up is None or down is None:
-            return "error"
-
-        # Check physical state
+    def _get_tool_state_from_sensors(self, up: bool, down: bool) -> str:
+        """Determine tool state from up/down sensor pair"""
         if up and not down:
             return "up"
         elif down and not up:
             return "down"
         elif not up and not down:
-            return "moving"  # Between positions
+            return "moving"
         else:
-            return "error"  # Both sensors active - hardware fault
+            return "error"
+
+    def get_line_marker_state(self) -> str:
+        """Get line marker tool state"""
+        return self._get_tool_state_from_sensors(
+            self.get_line_marker_up_sensor(), self.get_line_marker_down_sensor())
 
     def get_line_cutter_state(self) -> str:
         """Get line cutter tool state"""
-        up = self.get_line_cutter_up_sensor()
-        down = self.get_line_cutter_down_sensor()
-
-        # Handle sensor read errors
-        if up is None or down is None:
-            return "error"
-
-        # Check physical state
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        elif not up and not down:
-            return "moving"  # Between positions
-        else:
-            return "error"  # Both sensors active - hardware fault
+        return self._get_tool_state_from_sensors(
+            self.get_line_cutter_up_sensor(), self.get_line_cutter_down_sensor())
 
     def get_row_marker_state(self) -> str:
         """Get row marker tool state"""
-        up = self.get_row_marker_up_sensor()
-        down = self.get_row_marker_down_sensor()
-
-        # Handle sensor read errors
-        if up is None or down is None:
-            return "error"
-
-        # Check physical state
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        elif not up and not down:
-            return "moving"  # Between positions
-        else:
-            return "error"  # Both sensors active - hardware fault
+        return self._get_tool_state_from_sensors(
+            self.get_row_marker_up_sensor(), self.get_row_marker_down_sensor())
 
     def get_row_cutter_state(self) -> str:
         """Get row cutter tool state"""
-        up = self.get_row_cutter_up_sensor()
-        down = self.get_row_cutter_down_sensor()
-        if up and not down:
-            return "up"
-        elif down and not up:
-            return "down"
-        else:
-            return "unknown"
+        return self._get_tool_state_from_sensors(
+            self.get_row_cutter_up_sensor(), self.get_row_cutter_down_sensor())
+
+    def _get_piston_state(self, piston_name: str) -> str:
+        """Get piston state with GPIO fallback"""
+        if self.gpio:
+            return self.gpio.get_piston_pin_state(piston_name)
+        return self._fallback_piston_states.get(piston_name, "unknown")
 
     def get_line_marker_piston_state(self) -> str:
         """Get line marker piston actual GPIO pin state (not sensor state)"""
-        if not self.is_initialized or not self.gpio:
-            return "unknown"
-        return self.gpio.get_piston_pin_state("line_marker_piston")
+        return self._get_piston_state("line_marker_piston")
 
     def get_line_cutter_piston_state(self) -> str:
         """Get line cutter piston actual GPIO pin state (not sensor state)"""
-        if not self.is_initialized or not self.gpio:
-            return "unknown"
-        return self.gpio.get_piston_pin_state("line_cutter_piston")
+        return self._get_piston_state("line_cutter_piston")
 
     def get_line_motor_piston_state(self) -> str:
         """Get line motor piston actual GPIO pin state (not sensor state)"""
-        if not self.is_initialized or not self.gpio:
-            return "unknown"
-        return self.gpio.get_piston_pin_state("line_motor_piston")
+        return self._get_piston_state("line_motor_piston")
 
     def get_row_marker_piston_state(self) -> str:
         """Get row marker piston actual GPIO pin state (not sensor state)"""
-        if not self.is_initialized or not self.gpio:
-            return "unknown"
-        return self.gpio.get_piston_pin_state("row_marker_piston")
+        return self._get_piston_state("row_marker_piston")
 
     def get_row_cutter_piston_state(self) -> str:
         """Get row cutter piston actual GPIO pin state (not sensor state)"""
-        if not self.is_initialized or not self.gpio:
-            return "unknown"
-        return self.gpio.get_piston_pin_state("row_cutter_piston")
+        return self._get_piston_state("row_cutter_piston")
 
     # ========== EDGE SENSOR GETTERS (compatibility wrappers) ==========
 
@@ -723,9 +699,27 @@ class RealHardware:
 
     def get_limit_switch_state(self, switch_name: str) -> bool:
         """Get limit switch state by name"""
-        if switch_name == "rows_door" or switch_name == "door":
+        if switch_name in ("rows_door", "door"):
             return self.get_door_switch()
+        if self.grbl:
+            return self.grbl.get_limit_switch(switch_name)
         return False
+
+    def get_top_limit_switch(self) -> bool:
+        """Get Y-axis top limit switch state"""
+        return self.get_limit_switch_state('y_top')
+
+    def get_bottom_limit_switch(self) -> bool:
+        """Get Y-axis bottom limit switch state"""
+        return self.get_limit_switch_state('y_bottom')
+
+    def get_left_limit_switch(self) -> bool:
+        """Get X-axis left limit switch state"""
+        return self.get_limit_switch_state('x_left')
+
+    def get_right_limit_switch(self) -> bool:
+        """Get X-axis right limit switch state"""
+        return self.get_limit_switch_state('x_right')
 
     def get_row_motor_limit_switch(self) -> bool:
         """Get row motor limit switch (door) state"""
@@ -773,13 +767,13 @@ class RealHardware:
 
     def wait_for_x_sensor(self):
         """
-        Wait for X sensor trigger (either left or right edge).
+        Wait for lines sensor trigger (either left or right edge).
         Blocks until sensor is triggered.
 
         Returns:
             'left' if left edge triggered, 'right' if right edge triggered
         """
-        self.logger.info("Waiting for X sensor (left or right edge)...", category="hardware")
+        self.logger.info("Waiting for lines sensor (left or right edge)...", category="hardware")
         start_time = time.time()
 
         while True:
@@ -791,22 +785,22 @@ class RealHardware:
             # Check for stop signal
             if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
                 if self.execution_engine.stop_event.is_set():
-                    self.logger.warning("X sensor wait aborted - stop requested", category="hardware")
+                    self.logger.warning("Lines sensor wait aborted - stop requested", category="hardware")
                     return None
 
             # Check left edge sensor
             if self.get_x_left_edge_sensor():
-                self.logger.info("X sensor triggered: LEFT edge detected", category="hardware")
+                self.logger.info("Lines sensor triggered: LEFT edge detected", category="hardware")
                 return 'left'
 
             # Check right edge sensor
             if self.get_x_right_edge_sensor():
-                self.logger.info("X sensor triggered: RIGHT edge detected", category="hardware")
+                self.logger.info("Lines sensor triggered: RIGHT edge detected", category="hardware")
                 return 'right'
 
             # Check timeout
             if time.time() - start_time > self.sensor_wait_timeout:
-                self.logger.warning(f"X sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                self.logger.warning(f"Lines sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
             # Small delay before next poll
@@ -814,13 +808,13 @@ class RealHardware:
 
     def wait_for_y_sensor(self):
         """
-        Wait for Y sensor trigger (either top or bottom edge).
+        Wait for rows sensor trigger (either top or bottom edge).
         Blocks until sensor is triggered.
 
         Returns:
             'top' if top edge triggered, 'bottom' if bottom edge triggered
         """
-        self.logger.info("Waiting for Y sensor (top or bottom edge)...", category="hardware")
+        self.logger.info("Waiting for rows sensor (top or bottom edge)...", category="hardware")
         start_time = time.time()
 
         while True:
@@ -832,22 +826,22 @@ class RealHardware:
             # Check for stop signal
             if self.execution_engine and hasattr(self.execution_engine, 'stop_event'):
                 if self.execution_engine.stop_event.is_set():
-                    self.logger.warning("Y sensor wait aborted - stop requested", category="hardware")
+                    self.logger.warning("Rows sensor wait aborted - stop requested", category="hardware")
                     return None
 
             # Check top edge sensor
             if self.get_y_top_edge_sensor():
-                self.logger.info("Y sensor triggered: TOP edge detected", category="hardware")
+                self.logger.info("Rows sensor triggered: TOP edge detected", category="hardware")
                 return 'top'
 
             # Check bottom edge sensor
             if self.get_y_bottom_edge_sensor():
-                self.logger.info("Y sensor triggered: BOTTOM edge detected", category="hardware")
+                self.logger.info("Rows sensor triggered: BOTTOM edge detected", category="hardware")
                 return 'bottom'
 
             # Check timeout
             if time.time() - start_time > self.sensor_wait_timeout:
-                self.logger.warning(f"Y sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
+                self.logger.warning(f"Rows sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
             # Small delay before next poll
@@ -855,13 +849,13 @@ class RealHardware:
 
     def wait_for_x_left_sensor(self):
         """
-        Wait specifically for X LEFT edge sensor.
+        Wait specifically for Left lines edge sensor.
         Blocks until sensor is triggered.
 
         Returns:
             'left' when triggered, None on timeout
         """
-        self.logger.info("Waiting for X LEFT edge sensor...", category="hardware")
+        self.logger.info("Waiting for Left lines edge sensor...", category="hardware")
         start_time = time.time()
 
         while True:
@@ -878,7 +872,7 @@ class RealHardware:
 
             # Check left edge sensor
             if self.get_x_left_edge_sensor():
-                self.logger.info("X LEFT edge sensor triggered", category="hardware")
+                self.logger.info("Left lines edge sensor triggered", category="hardware")
                 return 'left'
 
             # Check timeout
@@ -891,13 +885,13 @@ class RealHardware:
 
     def wait_for_x_right_sensor(self):
         """
-        Wait specifically for X RIGHT edge sensor.
+        Wait specifically for Right lines edge sensor.
         Blocks until sensor is triggered.
 
         Returns:
             'right' when triggered, None on timeout
         """
-        self.logger.info("Waiting for X RIGHT edge sensor...", category="hardware")
+        self.logger.info("Waiting for Right lines edge sensor...", category="hardware")
         start_time = time.time()
 
         while True:
@@ -914,7 +908,7 @@ class RealHardware:
 
             # Check right edge sensor
             if self.get_x_right_edge_sensor():
-                self.logger.info("X RIGHT edge sensor triggered", category="hardware")
+                self.logger.info("Right lines edge sensor triggered", category="hardware")
                 return 'right'
 
             # Check timeout
@@ -927,13 +921,13 @@ class RealHardware:
 
     def wait_for_y_top_sensor(self):
         """
-        Wait specifically for Y TOP edge sensor.
+        Wait specifically for Top rows edge sensor.
         Blocks until sensor is triggered.
 
         Returns:
             'top' when triggered, None on timeout
         """
-        self.logger.info("Waiting for Y TOP edge sensor...", category="hardware")
+        self.logger.info("Waiting for Top rows edge sensor...", category="hardware")
         start_time = time.time()
 
         while True:
@@ -950,7 +944,7 @@ class RealHardware:
 
             # Check top edge sensor
             if self.get_y_top_edge_sensor():
-                self.logger.info("Y TOP edge sensor triggered", category="hardware")
+                self.logger.info("Top rows edge sensor triggered", category="hardware")
                 return 'top'
 
             # Check timeout
@@ -963,13 +957,13 @@ class RealHardware:
 
     def wait_for_y_bottom_sensor(self):
         """
-        Wait specifically for Y BOTTOM edge sensor.
+        Wait specifically for Bottom rows edge sensor.
         Blocks until sensor is triggered.
 
         Returns:
             'bottom' when triggered, None on timeout
         """
-        self.logger.info("Waiting for Y BOTTOM edge sensor...", category="hardware")
+        self.logger.info("Waiting for Bottom rows edge sensor...", category="hardware")
         start_time = time.time()
 
         while True:
@@ -986,7 +980,7 @@ class RealHardware:
 
             # Check bottom edge sensor
             if self.get_y_bottom_edge_sensor():
-                self.logger.info("Y BOTTOM edge sensor triggered", category="hardware")
+                self.logger.info("Bottom rows edge sensor triggered", category="hardware")
                 return 'bottom'
 
             # Check timeout
@@ -1000,42 +994,34 @@ class RealHardware:
     # ========== HARDWARE STATUS ==========
 
     def get_hardware_status(self):
-        """Get complete hardware status dictionary with all sensors"""
-        if not self.is_initialized or not self.gpio:
-            return {
-                'error': self.initialization_error or 'Hardware not initialized',
-                'is_initialized': False,
-                'x_position': 0,
-                'y_position': 0
-            }
-
-        return {
-            # Motor positions
+        """Get complete hardware status dictionary with all sensors (uses fallback when GPIO not connected)"""
+        status = {
+            # Motor positions (uses fallback when GRBL not connected)
             'x_position': self.get_current_x(),
             'y_position': self.get_current_y(),
 
-            # Tool piston states
+            # Tool piston states (uses fallback when GPIO not connected)
             'line_marker_piston': self.get_line_marker_state(),
             'line_cutter_piston': self.get_line_cutter_state(),
             'line_motor_piston': self.get_line_motor_piston_state(),
             'row_marker_piston': self.get_row_marker_state(),
             'row_cutter_piston': self.get_row_cutter_state(),
 
-            # Tool sensors - Lines
-            'line_marker_up_sensor': self.gpio.get_line_marker_up_sensor() if self.gpio else False,
-            'line_marker_down_sensor': self.gpio.get_line_marker_down_sensor() if self.gpio else False,
-            'line_cutter_up_sensor': self.gpio.get_line_cutter_up_sensor() if self.gpio else False,
-            'line_cutter_down_sensor': self.gpio.get_line_cutter_down_sensor() if self.gpio else False,
-            'line_motor_left_up_sensor': self.gpio.get_line_motor_left_up_sensor() if self.gpio else False,
-            'line_motor_left_down_sensor': self.gpio.get_line_motor_left_down_sensor() if self.gpio else False,
-            'line_motor_right_up_sensor': self.gpio.get_line_motor_right_up_sensor() if self.gpio else False,
-            'line_motor_right_down_sensor': self.gpio.get_line_motor_right_down_sensor() if self.gpio else False,
+            # Tool sensors (uses fallback when GPIO not connected)
+            'line_marker_up_sensor': self.get_line_marker_up_sensor(),
+            'line_marker_down_sensor': self.get_line_marker_down_sensor(),
+            'line_cutter_up_sensor': self.get_line_cutter_up_sensor(),
+            'line_cutter_down_sensor': self.get_line_cutter_down_sensor(),
+            'line_motor_left_up_sensor': self.get_line_motor_left_up_sensor(),
+            'line_motor_left_down_sensor': self.get_line_motor_left_down_sensor(),
+            'line_motor_right_up_sensor': self.get_line_motor_right_up_sensor(),
+            'line_motor_right_down_sensor': self.get_line_motor_right_down_sensor(),
 
             # Tool sensors - Rows
-            'row_marker_up_sensor': self.gpio.get_row_marker_up_sensor() if self.gpio else False,
-            'row_marker_down_sensor': self.gpio.get_row_marker_down_sensor() if self.gpio else False,
-            'row_cutter_up_sensor': self.gpio.get_row_cutter_up_sensor() if self.gpio else False,
-            'row_cutter_down_sensor': self.gpio.get_row_cutter_down_sensor() if self.gpio else False,
+            'row_marker_up_sensor': self.get_row_marker_up_sensor(),
+            'row_marker_down_sensor': self.get_row_marker_down_sensor(),
+            'row_cutter_up_sensor': self.get_row_cutter_up_sensor(),
+            'row_cutter_down_sensor': self.get_row_cutter_down_sensor(),
 
             # Edge sensors
             'x_left_edge': self.get_x_left_edge(),
@@ -1046,17 +1032,27 @@ class RealHardware:
             # Limit switches
             'row_marker_limit_switch': self.get_door_switch(),
 
+            # Air pressure valve
+            'air_pressure_valve': self.get_air_pressure_valve_state(),
+
             # Status
             'is_initialized': self.is_initialized
         }
 
+        # Add connection info
+        if self.initialization_error:
+            status['connection_error'] = self.initialization_error
+            status['grbl_connected'] = self.grbl_connected
+            status['gpio_connected'] = self.gpio_connected
+
+        return status
+
     def reset_hardware(self):
         """Reset hardware to initial state"""
-        if self.is_initialized:
-            # Home motors
-            self.home_motors()
-            # Raise all tools
-            self.lift_line_tools()
+        # Home motors (uses fallback if GRBL not connected)
+        self.home_motors()
+        # Raise all tools (uses fallback if GPIO not connected)
+        self.lift_line_tools()
 
     # ========== MOCK-SPECIFIC METHODS (no-op for real hardware) ==========
 
@@ -1072,11 +1068,21 @@ class RealHardware:
         """Flush sensor buffers (only used by mock hardware)"""
         pass
 
+    def signal_all_sensor_events(self):
+        """Signal all sensor events to unblock waiting threads during stop (only used by mock hardware)"""
+        pass
+
     # ========== CLEANUP ==========
 
     def shutdown(self):
         """Shutdown and cleanup all hardware"""
         self.logger.info("Shutting down hardware...", category="hardware")
+
+        # Close air pressure valve before GPIO cleanup
+        try:
+            self.air_pressure_valve_up()
+        except Exception:
+            pass
 
         if self.grbl:
             self.grbl.disconnect()

@@ -12,11 +12,12 @@ Provides interface for viewing and editing all system settings:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, colorchooser
 import json
 import os
 from datetime import datetime
 import shutil
+from core.translations import t
 
 
 class ConfigTab:
@@ -77,7 +78,7 @@ class ConfigTab:
             self.update_status()
             return True
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save settings: {e}")
+            messagebox.showerror(t("Error"), t("Failed to save settings: {error}", error=str(e)))
             return False
 
     def create_ui(self):
@@ -101,23 +102,23 @@ class ConfigTab:
         top_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
         # Search
-        ttk.Label(top_frame, text="Search:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(top_frame, text=t("Search:")).pack(side=tk.RIGHT, padx=(5, 0))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", self.on_search)
         search_entry = ttk.Entry(top_frame, textvariable=self.search_var, width=30)
-        search_entry.pack(side=tk.LEFT, padx=5)
+        search_entry.pack(side=tk.RIGHT, padx=5)
 
-        ttk.Button(top_frame, text="Clear", command=self.clear_search).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("Clear"), command=self.clear_search).pack(side=tk.RIGHT, padx=2)
 
         # Spacer
-        ttk.Frame(top_frame).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Frame(top_frame).pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Action buttons
-        ttk.Button(top_frame, text="Save Changes", command=self.save_changes).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(top_frame, text="Revert", command=self.revert_changes).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(top_frame, text="Backup", command=self.create_manual_backup).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(top_frame, text="Restore", command=self.restore_backup).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(top_frame, text="Refresh", command=self.refresh_settings).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Save Changes"), command=self.save_changes).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("Revert"), command=self.revert_changes).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("Backup"), command=self.create_manual_backup).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("Restore"), command=self.restore_backup).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("Refresh"), command=self.refresh_settings).pack(side=tk.LEFT, padx=2)
 
     def create_main_content(self):
         """Create main split pane content"""
@@ -125,21 +126,21 @@ class ConfigTab:
         paned = ttk.PanedWindow(self.frame, orient=tk.HORIZONTAL)
         paned.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
-        # Left side - category tree
-        left_frame = ttk.Frame(paned)
-        paned.add(left_frame, weight=1)
-
-        self.create_category_tree(left_frame)
-
-        # Right side - settings editor
+        # Right side - settings editor (add FIRST so it's on the left)
         right_frame = ttk.Frame(paned)
         paned.add(right_frame, weight=2)
 
         self.create_settings_editor(right_frame)
 
+        # Left side - category tree (add SECOND so it's on the right)
+        left_frame = ttk.Frame(paned)
+        paned.add(left_frame, weight=1)
+
+        self.create_category_tree(left_frame)
+
     def create_category_tree(self, parent):
         """Create hierarchical category tree"""
-        tree_frame = ttk.LabelFrame(parent, text="Categories", padding="5")
+        tree_frame = ttk.LabelFrame(parent, text=t("Categories"), padding="5")
         tree_frame.pack(fill=tk.BOTH, expand=True)
         tree_frame.rowconfigure(0, weight=1)
         tree_frame.columnconfigure(0, weight=1)
@@ -159,6 +160,37 @@ class ConfigTab:
         # Populate tree
         self.populate_category_tree()
 
+    def _get_hebrew_title(self, path, key):
+        """Get Hebrew display title for a settings key, falling back to raw key"""
+        desc_sections = self.descriptions.get("sections", {})
+        parts = path.split(".")
+
+        # Top-level section
+        if len(parts) == 1:
+            section = desc_sections.get(key, {})
+            return section.get("title_he", section.get("title", key))
+
+        # Subsection (e.g., hardware_config.raspberry_pi)
+        if len(parts) == 2:
+            section = desc_sections.get(parts[0], {})
+            subsections = section.get("subsections", {})
+            if key in subsections:
+                sub = subsections[key]
+                return sub.get("title_he", sub.get("title", key))
+
+        # Leaf setting - try description_he from descriptions
+        desc_info = self.get_description_info(path)
+        if desc_info:
+            he = desc_info.get("description_he", "")
+            if he:
+                return he
+
+        # Fallback: translate key via translations.py, then raw key
+        translated = t(key)
+        if translated != key:
+            return translated
+        return key
+
     def populate_category_tree(self, filter_text=""):
         """Populate the category tree from settings"""
         # Clear existing
@@ -177,14 +209,17 @@ class ConfigTab:
                     if not self.matches_filter(full_path, value, filter_lower):
                         continue
 
+                display_name = self._get_hebrew_title(full_path, key)
+
                 if isinstance(value, dict):
-                    # Category node
-                    node_id = self.category_tree.insert(parent_id, "end", text=f"📁 {key}", open=True)
+                    # Category node - store real path as tag
+                    node_id = self.category_tree.insert(parent_id, "end", text=f"📁 {display_name}",
+                                                        open=True, tags=(full_path,))
                     add_items(node_id, value, full_path)
                 else:
                     # Leaf node (setting)
                     display_value = str(value)[:30] + "..." if len(str(value)) > 30 else str(value)
-                    self.category_tree.insert(parent_id, "end", text=f"📄 {key}: {display_value}",
+                    self.category_tree.insert(parent_id, "end", text=f"📄 {display_name}: {display_value}",
                                               tags=(full_path,))
 
         add_items("", self.settings)
@@ -204,13 +239,13 @@ class ConfigTab:
 
     def create_settings_editor(self, parent):
         """Create settings editor panel"""
-        editor_frame = ttk.LabelFrame(parent, text="Settings Editor", padding="5")
+        editor_frame = ttk.LabelFrame(parent, text=t("Settings Editor"), padding="5")
         editor_frame.pack(fill=tk.BOTH, expand=True)
         editor_frame.rowconfigure(0, weight=1)
         editor_frame.columnconfigure(0, weight=1)
 
         # Canvas with scrollbar for settings
-        canvas = tk.Canvas(editor_frame, bg="white")
+        canvas = tk.Canvas(editor_frame, bg="white", highlightthickness=0)
         scrollbar_y = ttk.Scrollbar(editor_frame, orient="vertical", command=canvas.yview)
         scrollbar_x = ttk.Scrollbar(editor_frame, orient="horizontal", command=canvas.xview)
 
@@ -221,12 +256,21 @@ class ConfigTab:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=self.settings_frame, anchor="nw")
+        self._canvas_window_id = canvas.create_window((0, 0), window=self.settings_frame, anchor="ne")
         canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
 
-        canvas.grid(row=0, column=0, sticky="nsew")
-        scrollbar_y.grid(row=0, column=1, sticky="ns")
-        scrollbar_x.grid(row=1, column=0, sticky="ew")
+        # RTL: vertical scrollbar on left (column=0), canvas on right (column=1)
+        scrollbar_y.grid(row=0, column=0, sticky="ns")
+        canvas.grid(row=0, column=1, sticky="nsew")
+        scrollbar_x.grid(row=1, column=0, columnspan=2, sticky="ew")
+        editor_frame.columnconfigure(1, weight=1)
+
+        # RTL: keep the settings frame pinned to the right edge of the canvas
+        def _reanchor_rtl(event, c=canvas):
+            c.itemconfigure(self._canvas_window_id, width=event.width)
+            c.coords(self._canvas_window_id, event.width, 0)
+
+        canvas.bind("<Configure>", _reanchor_rtl)
 
         # Enable mousewheel scrolling
         def on_mousewheel(event):
@@ -246,25 +290,18 @@ class ConfigTab:
 
         item = selection[0]
         tags = self.category_tree.item(item, "tags")
+        text = self.category_tree.item(item, "text")
 
-        if tags:
+        if not tags:
+            return
+
+        path = tags[0]
+
+        if text.startswith("📄"):
             # Leaf node selected - show single setting
-            path = tags[0]
             self.show_setting_editor(path)
         else:
             # Category selected - show all settings in category
-            text = self.category_tree.item(item, "text")
-            category_name = text.replace("📁 ", "").strip()
-
-            # Build path from parents
-            path_parts = [category_name]
-            parent = self.category_tree.parent(item)
-            while parent:
-                parent_text = self.category_tree.item(parent, "text").replace("📁 ", "").strip()
-                path_parts.insert(0, parent_text)
-                parent = self.category_tree.parent(parent)
-
-            path = ".".join(path_parts)
             self.show_category_settings(path)
 
     def show_setting_editor(self, path):
@@ -279,8 +316,12 @@ class ConfigTab:
             return
 
         # Header
-        ttk.Label(self.settings_frame, text=f"Setting: {path}",
-                  font=("Arial", 10, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=10)
+        header_frame = ttk.Frame(self.settings_frame)
+        header_frame.grid(row=0, column=0, columnspan=3, sticky="e", pady=10)
+        ttk.Label(header_frame, text=t("Setting: {path}", path=path.split(".")[-1]),
+                  font=("Arial", 10, "bold")).pack(anchor="e")
+        ttk.Label(header_frame, text=path,
+                  font=("Courier", 8), foreground="#999").pack(anchor="e")
 
         self.create_setting_widget(path, value, 1)
 
@@ -295,18 +336,23 @@ class ConfigTab:
         if not isinstance(data, dict):
             return
 
-        # Get section description
+        # Get section description - prefer Hebrew title
         section_info = self.get_section_info(path)
-        section_title = section_info.get("title", path) if section_info else path
-        section_desc = section_info.get("description", "") if section_info else ""
+        section_title = section_info.get("title_he", section_info.get("title", path)) if section_info else path
+        section_desc = section_info.get("description_he", section_info.get("description", "")) if section_info else ""
 
         # Header
-        ttk.Label(self.settings_frame, text=section_title,
-                  font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=(10, 2))
+        header_frame = ttk.Frame(self.settings_frame)
+        header_frame.grid(row=0, column=0, columnspan=3, sticky="e", pady=(10, 2))
+        ttk.Label(header_frame, text=section_title,
+                  font=("Arial", 12, "bold")).pack(anchor="e")
+        # Show settings.json key path in smaller text
+        ttk.Label(header_frame, text=path,
+                  font=("Courier", 8), foreground="#999").pack(anchor="e")
 
         if section_desc:
             ttk.Label(self.settings_frame, text=section_desc,
-                      foreground="gray", wraplength=500).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 10))
+                      foreground="gray", wraplength=500, justify="right").grid(row=1, column=0, columnspan=3, sticky="e", pady=(0, 10))
 
         ttk.Separator(self.settings_frame, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
 
@@ -330,24 +376,30 @@ class ConfigTab:
         min_val = desc_info.get("min") if desc_info else None
         max_val = desc_info.get("max") if desc_info else None
         default_val = desc_info.get("default") if desc_info else None
-        description = desc_info.get("description", "") if desc_info else ""
+        # Prefer Hebrew description
+        description = ""
+        if desc_info:
+            description = desc_info.get("description_he", desc_info.get("description", ""))
 
-        # Setting name with styled frame
+        # RTL: Setting name on right (column=2), editor in middle (column=1), description on left (column=0)
         name_frame = ttk.Frame(self.settings_frame)
-        name_frame.grid(row=row, column=0, sticky="nw", padx=5, pady=5)
+        name_frame.grid(row=row, column=2, sticky="ne", padx=5, pady=5)
 
-        ttk.Label(name_frame, text=key_name, font=("Arial", 9, "bold")).pack(anchor="w")
+        ttk.Label(name_frame, text=key_name, font=("Arial", 9, "bold")).pack(anchor="e")
+
+        # Settings.json key path in smaller text
+        ttk.Label(name_frame, text=path, font=("Courier", 7), foreground="#999").pack(anchor="e")
 
         # Type badge
         type_display = setting_type or self._infer_type(value)
         if unit:
             type_display += f" ({unit})"
         ttk.Label(name_frame, text=type_display, foreground="blue",
-                  font=("Arial", 7)).pack(anchor="w")
+                  font=("Arial", 7)).pack(anchor="e")
 
-        # Create appropriate editor based on type
+        # RTL: Editor in middle column
         editor_frame = ttk.Frame(self.settings_frame)
-        editor_frame.grid(row=row, column=1, sticky="w", padx=5, pady=5)
+        editor_frame.grid(row=row, column=1, sticky="e", padx=5, pady=5)
 
         # Enum type - use dropdown
         if setting_type == "enum" and options:
@@ -361,7 +413,7 @@ class ConfigTab:
         # Boolean - use checkbox
         elif isinstance(value, bool) or setting_type == "bool":
             var = tk.BooleanVar(value=bool(value))
-            widget = ttk.Checkbutton(editor_frame, variable=var, text="Enabled" if var.get() else "Disabled",
+            widget = ttk.Checkbutton(editor_frame, variable=var, text=t("Enabled") if var.get() else t("Disabled"),
                                      command=lambda p=path, v=var: self._on_bool_changed(p, v))
             widget.pack(side=tk.LEFT)
             self.setting_widgets[path] = {"type": "bool", "var": var, "widget": widget}
@@ -405,11 +457,48 @@ class ConfigTab:
         elif isinstance(value, list):
             var = tk.StringVar(value=json.dumps(value))
             preview = str(value)[:40] + "..." if len(str(value)) > 40 else str(value)
-            preview_label = ttk.Label(editor_frame, text=preview, width=35, anchor="w")
+            preview_label = ttk.Label(editor_frame, text=preview, width=35, anchor="e")
             preview_label.pack(side=tk.LEFT)
-            ttk.Button(editor_frame, text="Edit List...",
+            ttk.Button(editor_frame, text=t("Edit List..."),
                        command=lambda p=path, v=value, pl=preview_label: self.open_list_editor(p, v, pl)).pack(side=tk.LEFT, padx=5)
             self.setting_widgets[path] = {"type": "list", "var": var, "widget": preview_label}
+
+        # Color - use swatch + entry + picker button
+        elif setting_type == "color":
+            var = tk.StringVar(value=str(value))
+            # Color swatch preview
+            swatch = tk.Label(editor_frame, text="  ", width=3, relief="solid", borderwidth=1)
+            swatch.pack(side=tk.LEFT, padx=(0, 4))
+            try:
+                swatch.config(bg=str(value))
+            except tk.TclError:
+                swatch.config(bg="#FFFFFF")
+            # Hex entry
+            widget = ttk.Entry(editor_frame, textvariable=var, width=12)
+            widget.pack(side=tk.LEFT)
+
+            def _update_swatch(*args, s=swatch, v=var):
+                try:
+                    s.config(bg=v.get())
+                except tk.TclError:
+                    pass
+
+            var.trace_add("write", _update_swatch)
+
+            def _pick_color(v=var, s=swatch, p=path):
+                initial = v.get()
+                try:
+                    result = colorchooser.askcolor(color=initial, title="Pick Color")
+                except Exception:
+                    result = colorchooser.askcolor(title="Pick Color")
+                if result and result[1]:
+                    v.set(result[1])
+                    self.on_value_changed(p, result[1])
+
+            ttk.Button(editor_frame, text="Pick...", width=6,
+                       command=_pick_color).pack(side=tk.LEFT, padx=4)
+            var.trace_add("write", lambda *args, p=path, v=var: self.on_value_changed(p, v.get()))
+            self.setting_widgets[path] = {"type": "color", "var": var, "widget": widget}
 
         # String - use entry
         elif isinstance(value, str) or setting_type == "string":
@@ -426,18 +515,18 @@ class ConfigTab:
             ttk.Label(editor_frame, text=str(value)[:50]).pack(side=tk.LEFT)
             return
 
-        # Description column
+        # RTL: Description on left (column=0)
         desc_frame = ttk.Frame(self.settings_frame)
-        desc_frame.grid(row=row, column=2, sticky="nw", padx=5, pady=5)
+        desc_frame.grid(row=row, column=0, sticky="ne", padx=5, pady=5)
 
         if description:
             ttk.Label(desc_frame, text=description, foreground="gray",
-                      wraplength=300, font=("Arial", 8)).pack(anchor="w")
+                      wraplength=300, justify="right", font=("Arial", 8)).pack(anchor="e")
 
         # Default value info
         if default_val is not None:
-            ttk.Label(desc_frame, text=f"Default: {default_val}", foreground="#888",
-                      font=("Arial", 7, "italic")).pack(anchor="w")
+            ttk.Label(desc_frame, text=t("Default: {default}", default=default_val), foreground="#888",
+                      font=("Arial", 7, "italic")).pack(anchor="e")
 
     def _infer_type(self, value):
         """Infer type name from value"""
@@ -461,18 +550,18 @@ class ConfigTab:
         # Update checkbox text
         widget_info = self.setting_widgets.get(path)
         if widget_info:
-            widget_info["widget"].config(text="Enabled" if value else "Disabled")
+            widget_info["widget"].config(text=t("Enabled") if value else t("Disabled"))
         self.on_value_changed(path, value)
 
     def open_list_editor(self, path, current_value, preview_label):
         """Open a dialog to edit a list value"""
         dialog = tk.Toplevel(self.frame)
-        dialog.title(f"Edit List: {path.split('.')[-1]}")
+        dialog.title(t("Edit List: {key}", key=path.split('.')[-1]))
         dialog.geometry("400x300")
         dialog.transient(self.frame)
         dialog.grab_set()
 
-        ttk.Label(dialog, text="Edit list items (one per line):").pack(pady=5, anchor="w", padx=10)
+        ttk.Label(dialog, text=t("Edit list items (one per line):")).pack(pady=5, anchor="e", padx=10)
 
         # Text area for editing
         text_frame = ttk.Frame(dialog)
@@ -526,8 +615,8 @@ class ConfigTab:
 
         btn_frame = ttk.Frame(dialog)
         btn_frame.pack(pady=10)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Save", command=save_list).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text=t("Save"), command=save_list).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text=t("Cancel"), command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
     def on_value_changed(self, path, new_value, value_type=None):
         """Handle value change"""
@@ -656,33 +745,33 @@ class ConfigTab:
     def save_changes(self):
         """Save pending changes"""
         if not self.pending_changes:
-            messagebox.showinfo("No Changes", "There are no pending changes to save.")
+            messagebox.showinfo(t("No Changes"), t("There are no pending changes to save."))
             return
 
         num_changes = len(self.pending_changes)
-        if messagebox.askyesno("Save Changes",
-                               f"Save {num_changes} pending change(s)?"):
+        if messagebox.askyesno(t("Save Changes"),
+                               t("Save {num_changes} pending change(s)?", num_changes=num_changes)):
             if self.save_settings():
                 # Refresh the category tree to show updated values on the left side
                 self.populate_category_tree(self.search_var.get())
-                messagebox.showinfo("Success", "Settings saved successfully.")
+                messagebox.showinfo(t("Success"), t("Settings saved successfully."))
                 if hasattr(self.app, 'log'):
-                    self.app.log("SUCCESS", f"Saved {num_changes} configuration changes")
+                    self.app.log("SUCCESS", t("Saved {num_changes} configuration changes", num_changes=num_changes))
 
     def revert_changes(self):
         """Revert pending changes"""
         if not self.pending_changes:
-            messagebox.showinfo("No Changes", "There are no pending changes to revert.")
+            messagebox.showinfo(t("No Changes"), t("There are no pending changes to revert."))
             return
 
-        if messagebox.askyesno("Revert Changes",
-                               f"Revert {len(self.pending_changes)} pending change(s)?"):
+        if messagebox.askyesno(t("Revert Changes"),
+                               t("Revert {num_changes} pending change(s)?", num_changes=len(self.pending_changes))):
             self.settings = json.loads(json.dumps(self.original_settings))
             self.pending_changes.clear()
             self.update_status()
             # Refresh the editor
             self.populate_category_tree()
-            messagebox.showinfo("Success", "Changes reverted.")
+            messagebox.showinfo(t("Success"), t("Changes reverted."))
 
     def create_backup(self, reason="manual"):
         """Create a backup of current settings"""
@@ -703,32 +792,32 @@ class ConfigTab:
         """Create manual backup"""
         backup_file = self.create_backup("manual")
         if backup_file:
-            messagebox.showinfo("Backup Created", f"Backup saved to:\n{backup_file}")
+            messagebox.showinfo(t("Backup Created"), t("Backup saved to:\n{backup_file}", backup_file=backup_file))
         else:
-            messagebox.showerror("Error", "Failed to create backup")
+            messagebox.showerror(t("Error"), t("Failed to create backup"))
 
     def restore_backup(self):
         """Restore from backup"""
         # Ensure backup directory exists
         if not os.path.exists(self.BACKUP_DIR):
-            messagebox.showinfo("No Backups", "No backup files found.")
+            messagebox.showinfo(t("No Backups"), t("No backup files found."))
             return
 
         # List available backups
         backups = sorted([f for f in os.listdir(self.BACKUP_DIR) if f.endswith('.json')], reverse=True)
 
         if not backups:
-            messagebox.showinfo("No Backups", "No backup files found.")
+            messagebox.showinfo(t("No Backups"), t("No backup files found."))
             return
 
         # Create selection dialog
         dialog = tk.Toplevel(self.frame)
-        dialog.title("Restore Backup")
+        dialog.title(t("Restore Backup"))
         dialog.geometry("500x400")
         dialog.transient(self.frame)
         dialog.grab_set()
 
-        ttk.Label(dialog, text="Select backup to restore:").pack(pady=10)
+        ttk.Label(dialog, text=t("Select backup to restore:")).pack(pady=10)
 
         # Listbox for backups
         listbox = tk.Listbox(dialog, width=60, height=15)
@@ -740,14 +829,13 @@ class ConfigTab:
         def do_restore():
             selection = listbox.curselection()
             if not selection:
-                messagebox.showwarning("No Selection", "Please select a backup file.")
+                messagebox.showwarning(t("No Selection"), t("Please select a backup file."))
                 return
 
             backup_file = os.path.join(self.BACKUP_DIR, backups[selection[0]])
 
-            if messagebox.askyesno("Restore Backup",
-                                   f"Restore settings from:\n{backups[selection[0]]}\n\n"
-                                   "Current settings will be backed up first."):
+            if messagebox.askyesno(t("Restore Backup"),
+                                   t("Restore settings from:\n{backup}\n\nCurrent settings will be backed up first.", backup=backups[selection[0]])):
                 # Backup current before restore
                 self.create_backup("pre_restore")
 
@@ -759,27 +847,31 @@ class ConfigTab:
                 self.update_status()
 
                 dialog.destroy()
-                messagebox.showinfo("Success", "Settings restored successfully.")
+                messagebox.showinfo(t("Success"), t("Settings restored successfully."))
 
         btn_frame = ttk.Frame(dialog)
         btn_frame.pack(pady=10)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Restore", command=do_restore).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text=t("Restore"), command=do_restore).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text=t("Cancel"), command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
     def refresh_settings(self):
         """Reload settings from file"""
         if self.pending_changes:
-            if not messagebox.askyesno("Unsaved Changes",
-                                       "You have unsaved changes. Refresh anyway?"):
+            if not messagebox.askyesno(t("Unsaved Changes"),
+                                       t("You have unsaved changes. Refresh anyway?")):
                 return
 
+        self.refresh_ui()
+
+    def refresh_ui(self):
+        """Reload settings from file and refresh UI without prompts"""
         self.load_settings()
         self.pending_changes.clear()
         self.populate_category_tree()
         self.update_status()
 
     def create_status_bar(self):
-        """Create bottom status bar"""
+        """Create bottom status bar - RTL: status on right, changes on left"""
         status_frame = ttk.Frame(self.frame)
         status_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
 
@@ -795,13 +887,13 @@ class ConfigTab:
         """Update status bar"""
         if self.pending_changes:
             self.changes_label.config(
-                text=f"{len(self.pending_changes)} unsaved change(s)",
+                text=t("{num_changes} unsaved change(s)", num_changes=len(self.pending_changes)),
                 foreground="orange"
             )
         else:
             self.changes_label.config(
-                text="No unsaved changes",
+                text=t("No unsaved changes"),
                 foreground="green"
             )
 
-        self.status_label.config(text=f"Settings file: {self.SETTINGS_FILE}")
+        self.status_label.config(text=t("Settings file: {file}", file=self.SETTINGS_FILE))
