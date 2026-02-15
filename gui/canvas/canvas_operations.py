@@ -99,6 +99,80 @@ class CanvasOperations:
         
         # Legend is now drawn in center panel UI instead of on canvas
     
+    def _calculate_adaptive_line_style(self, spacing_cm, scale):
+        """Calculate adaptive line width, dash pattern, and label settings based on pixel spacing.
+
+        For small programs with many lines packed tightly, reduces line width and dash sizes
+        so lines remain individually distinguishable instead of merging into a blob.
+        """
+        spacing_px = spacing_cm * scale
+
+        base_width = visualization_settings.get("line_width_marks", 3)
+
+        if spacing_px < 4:
+            # Extremely tight - minimal styling
+            line_width = 1
+            dash_pending = (2, 2)
+            dash_in_progress = (3, 1)
+            dash_completed = (4, 1)
+            label_every_n = 0  # No labels - they'd overlap completely
+        elif spacing_px < 8:
+            # Tight - thin lines, small dashes
+            line_width = 1
+            dash_pending = (3, 3)
+            dash_in_progress = (4, 2)
+            dash_completed = (6, 1)
+            label_every_n = 5  # Show every 5th label
+        elif spacing_px < 15:
+            # Moderate - slightly reduced
+            line_width = max(1, base_width - 1)
+            dash_pending = (4, 4)
+            dash_in_progress = (6, 3)
+            dash_completed = (8, 2)
+            label_every_n = 2  # Show every 2nd label
+        else:
+            # Plenty of room - use default settings
+            line_width = base_width
+            dash_pending = tuple(visualization_settings.get("dash_pattern_pending", [5, 5]))
+            dash_in_progress = tuple(visualization_settings.get("dash_pattern_in_progress", [8, 4]))
+            dash_completed = tuple(visualization_settings.get("dash_pattern_completed", [10, 2]))
+            label_every_n = 1  # Show all labels
+
+        return {
+            'line_width': line_width,
+            'dash_pending': dash_pending,
+            'dash_in_progress': dash_in_progress,
+            'dash_completed': dash_completed,
+            'label_every_n': label_every_n,
+            'spacing_px': spacing_px
+        }
+
+    def _calculate_adaptive_row_style(self, min_spacing_cm, scale):
+        """Calculate adaptive row line width and label settings based on pixel spacing between row marks."""
+        spacing_px = min_spacing_cm * scale
+
+        base_width = visualization_settings.get("line_width_marks", 3)
+
+        if spacing_px < 6:
+            line_width = 1
+            label_font_size = 6
+            show_labels = False
+        elif spacing_px < 15:
+            line_width = max(1, base_width - 1)
+            label_font_size = 7
+            show_labels = True
+        else:
+            line_width = base_width
+            label_font_size = int(ui_fonts.get("label", ["Arial", 8, "bold"])[1])
+            show_labels = True
+
+        return {
+            'line_width': line_width,
+            'label_font_size': label_font_size,
+            'show_labels': show_labels,
+            'spacing_px': spacing_px
+        }
+
     def draw_work_lines(self, program, paper_x, paper_y, max_y_cm):
         """Draw visualization of lines that will be marked and cut with REPEAT SUPPORT"""
 
@@ -114,16 +188,6 @@ class CanvasOperations:
 
         # Load colors from settings (fallback colors match WORK OPERATIONS STATUS)
         operation_colors = self.main_app.settings.get("operation_colors", {})
-        # mark_colors = operation_colors.get("lines", {
-        #     "pending": "#FF6600",
-        #     "in_progress": "#FF8800",
-        #     "completed": "#00AA00"
-        # })
-        # rows_colors = operation_colors.get("rows", {
-        #     "pending": "#8800FF",
-        #     "in_progress": "#FF0088",
-        #     "completed": "#AA00AA"
-        # })
         mark_colors = operation_colors.get("mark", {
             "pending": "#8800FF",
             "in_progress": "#FF0088",
@@ -138,78 +202,121 @@ class CanvasOperations:
         self.logger.debug(f" DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm", category="gui")
         self.logger.debug(f"🎨 Mark colors: {mark_colors}", category="gui")
         self.logger.debug(f"🎨 Cuts colors: {cuts_colors}", category="gui")
-        
+
         # CORRECTED REPEAT VISUALIZATION: Process each repeated section individually
         # Each section has its own margins - match step generator logic exactly
         self.logger.debug(f"🖼 CANVAS REPEAT: {program.repeat_lines} sections of {program.high}cm each", category="gui")
-        
+
+        # Pre-calculate line spacing for adaptive styling (use first section as reference)
+        section_height = program.high
+        first_line_y_ref = section_height - program.top_padding
+        last_line_y_ref = program.bottom_padding
+        available_space_ref = first_line_y_ref - last_line_y_ref
+        if program.number_of_lines > 1:
+            line_spacing_ref = available_space_ref / (program.number_of_lines - 1)
+        else:
+            line_spacing_ref = available_space_ref
+
+        # Calculate adaptive line styling based on pixel density
+        line_style = self._calculate_adaptive_line_style(line_spacing_ref, self.main_app.scale_y)
+        self.logger.debug(f" Adaptive line style: spacing={line_spacing_ref:.2f}cm ({line_style['spacing_px']:.1f}px), width={line_style['line_width']}, labels every {line_style['label_every_n']}", category="gui")
+
+        # Determine label font based on density
+        if line_style['label_every_n'] == 0:
+            label_font = None  # No labels
+        elif line_style['spacing_px'] < 15:
+            label_font = ("Arial", 7)  # Smaller font for tight spacing
+        else:
+            label_font = tuple(ui_fonts.get("normal", ["Arial", 9, "bold"]))
+
         # Process each repeated section from top to bottom
         overall_line_num = 0
         for section_num in range(program.repeat_lines):
             section_start_y = paper_y + (program.repeat_lines - section_num) * program.high  # Top of this section
             section_end_y = paper_y + (program.repeat_lines - section_num - 1) * program.high  # Bottom of this section
-            
+
             # Calculate line positions within THIS section (with section-specific margins)
             first_line_y_section = section_start_y - program.top_padding
             last_line_y_section = section_end_y + program.bottom_padding
             available_space_section = first_line_y_section - last_line_y_section
-            
+
             if program.number_of_lines > 1:
                 line_spacing_section = available_space_section / (program.number_of_lines - 1)
             else:
                 line_spacing_section = 0
-            
+
             self.logger.debug(f" Canvas Section {section_num + 1}: lines from {first_line_y_section:.1f} to {last_line_y_section:.1f}cm", category="gui")
-            
+
             # Draw all lines in this section
             for line_in_section in range(program.number_of_lines):
                 overall_line_num += 1
                 line_y_real = first_line_y_section - (line_in_section * line_spacing_section)
-                
+
                 # Convert to canvas coordinates - lines span ENTIRE repeated paper width
                 line_y_canvas = self.main_app.offset_y + (max_y_cm - line_y_real) * self.main_app.scale_y
                 line_x1_canvas = self.main_app.offset_x + paper_x * self.main_app.scale_x
                 line_x2_canvas = self.main_app.offset_x + (paper_x + actual_paper_width) * self.main_app.scale_x
-                
-                # DASHED lines - color changes based on state (using settings)
+
+                # DASHED lines - color and dash pattern change based on state (adaptive to density)
                 state = self.main_app.operation_states['lines'].get(overall_line_num, 'pending')
                 if state == 'completed':
                     line_color = mark_colors['completed']
-                    dash_pattern = (10, 2)  # Almost solid
+                    dash_pattern = line_style['dash_completed']
                 elif state == 'in_progress':
                     line_color = mark_colors['in_progress']
-                    dash_pattern = (8, 4)  # Medium dash
+                    dash_pattern = line_style['dash_in_progress']
                 else:  # pending
                     line_color = mark_colors['pending']
-                    dash_pattern = (5, 5)  # Dashed
+                    dash_pattern = line_style['dash_pending']
 
-                # Draw line - DASHED LINE
+                # Draw line - DASHED LINE with adaptive width
                 line_id = self.main_app.canvas.create_line(
                     line_x1_canvas, line_y_canvas, line_x2_canvas, line_y_canvas,
-                    fill=line_color, width=visualization_settings.get("line_width_marks", 3), dash=dash_pattern, tags="work_lines"
+                    fill=line_color, width=line_style['line_width'], dash=dash_pattern, tags="work_lines"
                 )
-                
-                # Store line object for dynamic updates (using settings colors)
+
+                # Store line object for dynamic updates (including adaptive dash patterns)
                 self.main_app.work_line_objects[f'line_{overall_line_num}'] = {
                     'id': line_id,
                     'type': 'line',
                     'color_pending': mark_colors['pending'],
                     'color_in_progress': mark_colors['in_progress'],
-                    'color_completed': mark_colors['completed']
+                    'color_completed': mark_colors['completed'],
+                    'dash_pending': line_style['dash_pending'],
+                    'dash_in_progress': line_style['dash_in_progress'],
+                    'dash_completed': line_style['dash_completed']
                 }
-                
-                # Add line number label with matching color
-                label_id = self.main_app.canvas.create_text(
-                    line_x1_canvas - 25, line_y_canvas,
-                    text=f"L{overall_line_num}", font=tuple(ui_fonts.get("normal", ["Arial", 9, "bold"])), fill=line_color, tags="work_lines"
+
+                # Add line number label only when there's enough room (adaptive)
+                show_this_label = (
+                    line_style['label_every_n'] > 0 and
+                    (overall_line_num == 1 or  # Always show first
+                     overall_line_num == program.number_of_lines * program.repeat_lines or  # Always show last
+                     overall_line_num % line_style['label_every_n'] == 0)  # Show every Nth
                 )
-                self.main_app.work_line_objects[f'line_{overall_line_num}']['label_id'] = label_id
+
+                if show_this_label and label_font is not None:
+                    label_id = self.main_app.canvas.create_text(
+                        line_x1_canvas - 25, line_y_canvas,
+                        text=f"L{overall_line_num}", font=label_font, fill=line_color, tags="work_lines"
+                    )
+                    self.main_app.work_line_objects[f'line_{overall_line_num}']['label_id'] = label_id
         
         # Draw vertical lines (Row Pattern) WITH REPEAT SUPPORT - Each section is a duplicate with same layout
         # Calculate TOTAL pages across all repeated sections
         total_pages = program.number_of_pages * program.repeat_rows
 
         self.logger.debug(f"📄 DRAWING PAGES: {total_pages} total pages ({program.number_of_pages} per section × {program.repeat_rows} sections)", category="gui")
+
+        # Calculate adaptive row styling based on minimum spacing between vertical lines
+        if program.number_of_pages > 0:
+            min_row_spacing = min(program.page_width, program.left_margin + program.right_margin) if program.number_of_pages == 1 else min(program.page_width, program.buffer_between_pages) if program.buffer_between_pages > 0 else program.page_width
+        else:
+            min_row_spacing = program.width
+        row_style = self._calculate_adaptive_row_style(min_row_spacing, self.main_app.scale_x)
+        self.logger.debug(f" Adaptive row style: min_spacing={min_row_spacing:.2f}cm ({row_style['spacing_px']:.1f}px), width={row_style['line_width']}", category="gui")
+
+        row_label_font = ("Arial", row_style['label_font_size'], "bold")
 
         # Draw each page's start and end marks (across entire repeated area)
         page_mark_id = 1  # For tracking state
@@ -228,12 +335,12 @@ class CanvasOperations:
 
             # Calculate page end position
             page_end_x = page_start_x + program.page_width
-            
+
             # Draw page START mark - spans ACTUAL paper height
             page_start_canvas = self.main_app.offset_x + page_start_x * self.main_app.scale_x
             page_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + actual_paper_height)) * self.main_app.scale_y
             page_y2_canvas = self.main_app.offset_y + (max_y_cm - paper_y) * self.main_app.scale_y
-            
+
             # Individual row state tracking - each edge is independent
             # Convert LEFT-TO-RIGHT drawing to RIGHT-TO-LEFT numbering
             # Drawing: page_num 0,1,2,3 (left to right)
@@ -242,72 +349,77 @@ class CanvasOperations:
             individual_row_num = total_pages * 2 - rtl_drawing_row_num + 1  # Convert to RTL numbering (use total_pages for repeats)
             row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num}', 'pending')
 
-            # Rows with color AND dash pattern changes based on state
+            # Rows with color AND dash pattern changes based on state (using adaptive style)
             if row_state == 'completed':
                 start_color = mark_colors['completed']
-                start_dash = (10, 2)  # Almost solid
+                start_dash = line_style['dash_completed']
             elif row_state == 'in_progress':
                 start_color = mark_colors['in_progress']
-                start_dash = (8, 4)  # Medium dash
+                start_dash = line_style['dash_in_progress']
             else:  # pending
                 start_color = mark_colors['pending']
-                start_dash = (5, 5)  # Dashed
+                start_dash = line_style['dash_pending']
 
-            # Create individual row line (right edge) with dash pattern
+            # Create individual row line (right edge) with adaptive width
             row_start_id = self.main_app.canvas.create_line(
                 page_start_canvas, page_y1_canvas,
                 page_start_canvas, page_y2_canvas,
-                fill=start_color, width=visualization_settings.get("line_width_marks", 3), dash=start_dash, tags="work_lines"
+                fill=start_color, width=row_style['line_width'], dash=start_dash, tags="work_lines"
             )
-            
-            # Row label (R1, R3, R5, etc.)
-            self.main_app.canvas.create_text(
-                page_start_canvas, page_y2_canvas + 15,
-                text=f"R{individual_row_num}", font=tuple(ui_fonts.get("label", ["Arial", 8, "bold"])), 
-                fill=start_color, tags="work_lines"
-            )
-            
+
+            # Row label (R1, R3, R5, etc.) - only when there's room
+            if row_style['show_labels']:
+                self.main_app.canvas.create_text(
+                    page_start_canvas, page_y2_canvas + 15,
+                    text=f"R{individual_row_num}", font=row_label_font,
+                    fill=start_color, tags="work_lines"
+                )
+
             # Draw page END mark
             page_end_canvas = self.main_app.offset_x + page_end_x * self.main_app.scale_x
-            
+
             # Individual row state tracking - left edge is independent
             # Convert LEFT-TO-RIGHT drawing to RIGHT-TO-LEFT numbering for left edges
             rtl_drawing_row_num_left = (page_num * 2) + 2  # Drawing row number for left edges
             individual_row_num_left = total_pages * 2 - rtl_drawing_row_num_left + 1  # Convert to RTL numbering (use total_pages for repeats)
             end_row_state = self.main_app.operation_states['rows'].get(f'row_{rtl_drawing_row_num_left}', 'pending')
 
-            # Rows with color AND dash pattern changes based on state
+            # Rows with color AND dash pattern changes based on state (using adaptive style)
             if end_row_state == 'completed':
                 end_color = mark_colors['completed']
-                end_dash = (10, 2)  # Almost solid
+                end_dash = line_style['dash_completed']
             elif end_row_state == 'in_progress':
                 end_color = mark_colors['in_progress']
-                end_dash = (8, 4)  # Medium dash
+                end_dash = line_style['dash_in_progress']
             else:  # pending
                 end_color = mark_colors['pending']
-                end_dash = (5, 5)  # Dashed
+                end_dash = line_style['dash_pending']
 
-            # Create individual row line (left edge) with dash pattern
+            # Create individual row line (left edge) with adaptive width
             row_end_id = self.main_app.canvas.create_line(
                 page_end_canvas, page_y1_canvas,
                 page_end_canvas, page_y2_canvas,
-                fill=end_color, width=visualization_settings.get("line_width_marks", 3), dash=end_dash, tags="work_lines"
+                fill=end_color, width=row_style['line_width'], dash=end_dash, tags="work_lines"
             )
-            
-            # Row label (R2, R4, R6, etc.)
-            self.main_app.canvas.create_text(
-                page_end_canvas, page_y2_canvas + 15,
-                text=f"R{individual_row_num_left}", font=tuple(ui_fonts.get("label", ["Arial", 8, "bold"])), 
-                fill=end_color, tags="work_lines"
-            )
-            
-            # Store individual row objects for dynamic updates (using settings colors)
+
+            # Row label (R2, R4, R6, etc.) - only when there's room
+            if row_style['show_labels']:
+                self.main_app.canvas.create_text(
+                    page_end_canvas, page_y2_canvas + 15,
+                    text=f"R{individual_row_num_left}", font=row_label_font,
+                    fill=end_color, tags="work_lines"
+                )
+
+            # Store individual row objects for dynamic updates (including adaptive dash patterns)
             self.main_app.work_line_objects[f'row_{rtl_drawing_row_num}'] = {
                 'id': row_start_id,
                 'type': 'row',
                 'color_pending': mark_colors['pending'],
                 'color_in_progress': mark_colors['in_progress'],
-                'color_completed': mark_colors['completed']
+                'color_completed': mark_colors['completed'],
+                'dash_pending': line_style['dash_pending'],
+                'dash_in_progress': line_style['dash_in_progress'],
+                'dash_completed': line_style['dash_completed']
             }
 
             self.main_app.work_line_objects[f'row_{rtl_drawing_row_num_left}'] = {
@@ -315,7 +427,10 @@ class CanvasOperations:
                 'type': 'row',
                 'color_pending': mark_colors['pending'],
                 'color_in_progress': mark_colors['in_progress'],
-                'color_completed': mark_colors['completed']
+                'color_completed': mark_colors['completed'],
+                'dash_pending': line_style['dash_pending'],
+                'dash_in_progress': line_style['dash_in_progress'],
+                'dash_completed': line_style['dash_completed']
             }
         
         # Draw cut edges - horizontal cuts (top and bottom) using ACTUAL dimensions with repeats
@@ -692,14 +807,14 @@ class CanvasOperations:
                         self.logger.debug(f" {cut_name.title()} cut edge → IN PROGRESS", category="gui")
     
     def refresh_work_lines_colors(self):
-        """Refresh colors of work lines based on current operation states"""
+        """Refresh colors and dash patterns of work lines based on current operation states"""
         if not hasattr(self.main_app, 'work_line_objects') or not hasattr(self.main_app, 'operation_states'):
             return
-        
+
         for obj_key, obj_data in self.main_app.work_line_objects.items():
             obj_type = obj_data['type']
             obj_id = obj_data['id']
-            
+
             # Determine current state with safe access
             if obj_type == 'line':
                 line_num = int(obj_key.split('_')[1])
@@ -713,19 +828,28 @@ class CanvasOperations:
                 state = self.main_app.operation_states.get('cuts', {}).get(cut_name, 'pending')
             else:
                 continue
-            
-            # Get color for current state (handle both 'in_progress' and 'progress' for backwards compatibility)
+
+            # Get color for current state
             if state == 'in_progress':
                 color_key = 'color_in_progress'
+                dash_key = 'dash_in_progress'
+            elif state == 'completed':
+                color_key = 'color_completed'
+                dash_key = 'dash_completed'
             else:
-                color_key = f'color_{state}'
+                color_key = 'color_pending'
+                dash_key = 'dash_pending'
 
             if color_key in obj_data:
                 new_color = obj_data[color_key]
-                
+
                 # Update canvas object color
                 self.main_app.canvas.itemconfig(obj_id, fill=new_color)
-                
+
+                # Update dash pattern if stored (lines and rows have adaptive dash patterns)
+                if dash_key in obj_data:
+                    self.main_app.canvas.itemconfig(obj_id, dash=obj_data[dash_key])
+
                 # Update label color if it exists
                 if 'label_id' in obj_data:
                     self.main_app.canvas.itemconfig(obj_data['label_id'], fill=new_color)
