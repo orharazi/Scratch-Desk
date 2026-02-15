@@ -226,14 +226,32 @@ class AnalyticsCollector:
                     total_steps = len(self._engine.steps)
                     completed_steps = len(self._engine.step_results)
 
-                # Determine hardware mode
+                # Determine hardware mode from settings + runtime check
                 hardware_mode = 'mock'
+                try:
+                    settings = _load_settings()
+                    if settings.get('hardware_config', {}).get('use_real_hardware', False):
+                        hardware_mode = 'real'
+                except Exception:
+                    pass
+                # Also verify via runtime type if possible
                 try:
                     from hardware.implementations.real.real_hardware import RealHardware
                     if self._engine and isinstance(self._engine.hardware, RealHardware):
                         hardware_mode = 'real'
                 except ImportError:
                     pass
+
+                # If program didn't complete all steps and status is not already
+                # set to an error/stop status, mark as 'error' (unexpected stop)
+                if (self._completion_status == 'success'
+                        and total_steps > 0
+                        and completed_steps < total_steps):
+                    self._completion_status = 'error'
+                    self._error_message = (
+                        self._error_message or
+                        f'התוכנית הופסקה באמצע - בוצעו {completed_steps} מתוך {total_steps} צעדים'
+                    )
 
                 # Program info
                 program_number = ''

@@ -14,7 +14,7 @@ from tkinter import ttk, messagebox, filedialog
 import csv
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from core.translations import t
 
@@ -62,16 +62,45 @@ class AnalyticsTab:
         top_bar = ttk.Frame(main_frame)
         top_bar.pack(fill=tk.X, pady=(0, 5))
 
-        # Date range filter (RTL: labels on right)
+        # Date range filter with spinbox-style date pickers (RTL: labels on right)
+        now = datetime.now()
+        one_month_ago = now - timedelta(days=30)
+
         ttk.Label(top_bar, text=t("Date From:"), font=("Arial", 9)).pack(side=tk.RIGHT, padx=(5, 2))
-        self.date_from_var = tk.StringVar()
-        self.date_from_entry = ttk.Entry(top_bar, textvariable=self.date_from_var, width=12)
-        self.date_from_entry.pack(side=tk.RIGHT, padx=2)
+
+        self.date_from_frame = ttk.Frame(top_bar)
+        self.date_from_frame.pack(side=tk.RIGHT, padx=2)
+
+        self.from_day_var = tk.StringVar(value=str(one_month_ago.day).zfill(2))
+        self.from_month_var = tk.StringVar(value=str(one_month_ago.month).zfill(2))
+        self.from_year_var = tk.StringVar(value=str(one_month_ago.year))
+
+        ttk.Spinbox(self.date_from_frame, from_=1, to=31, width=3,
+                     textvariable=self.from_day_var, format='%02.0f').pack(side=tk.RIGHT)
+        ttk.Label(self.date_from_frame, text="/").pack(side=tk.RIGHT)
+        ttk.Spinbox(self.date_from_frame, from_=1, to=12, width=3,
+                     textvariable=self.from_month_var, format='%02.0f').pack(side=tk.RIGHT)
+        ttk.Label(self.date_from_frame, text="/").pack(side=tk.RIGHT)
+        ttk.Spinbox(self.date_from_frame, from_=2020, to=2030, width=5,
+                     textvariable=self.from_year_var).pack(side=tk.RIGHT)
 
         ttk.Label(top_bar, text=t("Date To:"), font=("Arial", 9)).pack(side=tk.RIGHT, padx=(10, 2))
-        self.date_to_var = tk.StringVar()
-        self.date_to_entry = ttk.Entry(top_bar, textvariable=self.date_to_var, width=12)
-        self.date_to_entry.pack(side=tk.RIGHT, padx=2)
+
+        self.date_to_frame = ttk.Frame(top_bar)
+        self.date_to_frame.pack(side=tk.RIGHT, padx=2)
+
+        self.to_day_var = tk.StringVar(value=str(now.day).zfill(2))
+        self.to_month_var = tk.StringVar(value=str(now.month).zfill(2))
+        self.to_year_var = tk.StringVar(value=str(now.year))
+
+        ttk.Spinbox(self.date_to_frame, from_=1, to=31, width=3,
+                     textvariable=self.to_day_var, format='%02.0f').pack(side=tk.RIGHT)
+        ttk.Label(self.date_to_frame, text="/").pack(side=tk.RIGHT)
+        ttk.Spinbox(self.date_to_frame, from_=1, to=12, width=3,
+                     textvariable=self.to_month_var, format='%02.0f').pack(side=tk.RIGHT)
+        ttk.Label(self.date_to_frame, text="/").pack(side=tk.RIGHT)
+        ttk.Spinbox(self.date_to_frame, from_=2020, to=2030, width=5,
+                     textvariable=self.to_year_var).pack(side=tk.RIGHT)
 
         ttk.Button(top_bar, text=t("Refresh"), command=self.load_data).pack(side=tk.RIGHT, padx=5)
         ttk.Button(top_bar, text=t("Export CSV"), command=self.export_csv).pack(side=tk.LEFT, padx=5)
@@ -196,7 +225,7 @@ class AnalyticsTab:
         self.subject_prefix_var = tk.StringVar()
         ttk.Entry(addr_row, textvariable=self.subject_prefix_var, width=25).pack(side=tk.RIGHT, padx=2)
 
-        # Schedule row
+        # Schedule row 1: checkboxes + frequency
         schedule_row = ttk.Frame(email_frame)
         schedule_row.pack(fill=tk.X, pady=2)
 
@@ -208,18 +237,54 @@ class AnalyticsTab:
         ttk.Checkbutton(schedule_row, text=t("Schedule Enabled"),
                         variable=self.schedule_enabled_var).pack(side=tk.RIGHT, padx=5)
 
-        ttk.Label(schedule_row, text=t("Interval (hours):"), anchor="e").pack(side=tk.RIGHT, padx=2)
-        self.schedule_interval_var = tk.StringVar()
-        ttk.Entry(schedule_row, textvariable=self.schedule_interval_var, width=5).pack(side=tk.RIGHT, padx=2)
+        ttk.Label(schedule_row, text=t("Frequency:"), anchor="e").pack(side=tk.RIGHT, padx=(10, 2))
+        self.schedule_frequency_var = tk.StringVar(value='daily')
+        freq_combo = ttk.Combobox(schedule_row, textvariable=self.schedule_frequency_var,
+                                  values=['daily', 'weekly', 'monthly'],
+                                  state='readonly', width=8)
+        freq_combo.pack(side=tk.RIGHT, padx=2)
+        freq_combo.bind('<<ComboboxSelected>>', self._on_frequency_changed)
 
-        ttk.Label(schedule_row, text=t("Send Time:"), anchor="e").pack(side=tk.RIGHT, padx=(10, 2))
+        ttk.Label(schedule_row, text=t("Send Time (HH:MM):"), anchor="e").pack(side=tk.RIGHT, padx=(10, 2))
         self.schedule_time_var = tk.StringVar()
         ttk.Entry(schedule_row, textvariable=self.schedule_time_var, width=6).pack(side=tk.RIGHT, padx=2)
+
+        # Schedule row 2: day-of-week / day-of-month selectors
+        self.schedule_day_row = ttk.Frame(email_frame)
+        self.schedule_day_row.pack(fill=tk.X, pady=2)
+
+        # Day of week (for weekly)
+        self.dow_frame = ttk.Frame(self.schedule_day_row)
+        ttk.Label(self.dow_frame, text=t("Day of Week:"), anchor="e").pack(side=tk.RIGHT, padx=(10, 2))
+        self.schedule_dow_var = tk.StringVar(value='0')
+        dow_values = [
+            ('0', t('Monday')), ('1', t('Tuesday')), ('2', t('Wednesday')),
+            ('3', t('Thursday')), ('4', t('Friday')), ('5', t('Saturday')), ('6', t('Sunday')),
+        ]
+        dow_combo = ttk.Combobox(self.dow_frame, textvariable=self.schedule_dow_var,
+                                 values=[f"{v} - {lbl}" for v, lbl in dow_values],
+                                 state='readonly', width=16)
+        dow_combo.pack(side=tk.RIGHT, padx=2)
+        dow_combo.current(0)
+
+        # Day of month (for monthly)
+        self.dom_frame = ttk.Frame(self.schedule_day_row)
+        ttk.Label(self.dom_frame, text=t("Day of Month:"), anchor="e").pack(side=tk.RIGHT, padx=(10, 2))
+        self.schedule_dom_var = tk.StringVar(value='1')
+        dom_combo = ttk.Combobox(self.dom_frame, textvariable=self.schedule_dom_var,
+                                 values=[str(d) for d in range(1, 29)],
+                                 state='readonly', width=4)
+        dom_combo.pack(side=tk.RIGHT, padx=2)
+        dom_combo.current(0)
+
+        # Show/hide based on initial frequency
+        self._on_frequency_changed()
 
         # Buttons row
         btn_row = ttk.Frame(email_frame)
         btn_row.pack(fill=tk.X, pady=(5, 0))
 
+        ttk.Button(btn_row, text=t("Test Connection"), command=self.test_email_connection).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_row, text=t("Send Report Now"), command=self.send_report_now).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_row, text=t("Save Email Settings"), command=self.save_email_settings).pack(side=tk.LEFT, padx=5)
 
@@ -247,8 +312,22 @@ class AnalyticsTab:
         self.recipient_email_var.set(email.get('recipient_email', ''))
         self.subject_prefix_var.set(email.get('subject_prefix', 'Scratch-Desk Analytics Report'))
         self.schedule_enabled_var.set(email.get('schedule_enabled', False))
-        self.schedule_interval_var.set(str(email.get('schedule_interval_hours', 24)))
+        self.schedule_frequency_var.set(email.get('schedule_frequency', 'daily'))
         self.schedule_time_var.set(email.get('schedule_time', '08:00'))
+
+        # Day of week: set combo to matching index
+        dow = email.get('schedule_day_of_week', 0)
+        try:
+            self.schedule_dow_var.set(self.dow_frame.winfo_children()[-1]['values'][int(dow)])
+        except Exception:
+            pass
+
+        # Day of month
+        dom = email.get('schedule_day_of_month', 1)
+        self.schedule_dom_var.set(str(dom))
+
+        # Show/hide day selectors
+        self._on_frequency_changed()
 
         last_sent = email.get('last_sent', '')
         if last_sent:
@@ -260,8 +339,22 @@ class AnalyticsTab:
         else:
             self.last_sent_label.config(text=t("Last sent: Never"))
 
+    def _on_frequency_changed(self, event=None):
+        """Show/hide day-of-week or day-of-month selectors based on frequency"""
+        freq = self.schedule_frequency_var.get()
+
+        # Hide both first
+        self.dow_frame.pack_forget()
+        self.dom_frame.pack_forget()
+
+        if freq == 'weekly':
+            self.dow_frame.pack(side=tk.RIGHT, padx=5)
+        elif freq == 'monthly':
+            self.dom_frame.pack(side=tk.RIGHT, padx=5)
+        # 'daily' — neither shown
+
     def save_email_settings(self):
-        """Save email settings from UI to config"""
+        """Save email settings from UI to config and update scheduler at runtime"""
         settings = self._load_settings()
         if 'analytics' not in settings:
             settings['analytics'] = {}
@@ -282,30 +375,100 @@ class AnalyticsTab:
         email['recipient_email'] = self.recipient_email_var.get()
         email['subject_prefix'] = self.subject_prefix_var.get()
         email['schedule_enabled'] = self.schedule_enabled_var.get()
-        try:
-            email['schedule_interval_hours'] = int(self.schedule_interval_var.get())
-        except ValueError:
-            email['schedule_interval_hours'] = 24
+        email['schedule_frequency'] = self.schedule_frequency_var.get() or 'daily'
         email['schedule_time'] = self.schedule_time_var.get()
 
+        # Parse day_of_week from combo value like "0 - Monday"
+        try:
+            dow_val = self.schedule_dow_var.get()
+            email['schedule_day_of_week'] = int(dow_val.split(' ')[0])
+        except (ValueError, IndexError):
+            email['schedule_day_of_week'] = 0
+
+        try:
+            email['schedule_day_of_month'] = int(self.schedule_dom_var.get())
+        except ValueError:
+            email['schedule_day_of_month'] = 1
+
         self._save_settings(settings)
+
+        # Runtime scheduler update: restart or stop based on new settings
+        try:
+            from core.email_reporter import get_email_reporter
+            reporter = get_email_reporter()
+            reporter.stop_scheduler()
+            if email['schedule_enabled'] and email['enabled']:
+                reporter.start_scheduler()
+                self.admin_app.log("INFO", t("Email scheduler started"))
+            else:
+                self.admin_app.log("INFO", t("Email scheduler stopped"))
+        except Exception as e:
+            self.admin_app.log("WARNING", f"Scheduler update failed: {e}")
+
         self.email_status_label.config(text=t("Settings saved"), foreground="green")
         self.admin_app.log("INFO", t("Email settings saved"))
 
+    def test_email_connection(self):
+        """Test SMTP connection using current UI values (without saving first)"""
+        self.email_status_label.config(text=t("Testing..."), foreground="blue")
+        self.parent_frame.update_idletasks()
+
+        import smtplib
+        smtp_server = self.smtp_server_var.get().strip()
+        smtp_username = self.smtp_username_var.get().strip()
+        smtp_password = self.smtp_password_var.get().strip()
+        try:
+            smtp_port = int(self.smtp_port_var.get())
+        except ValueError:
+            smtp_port = 587
+        smtp_use_tls = self.smtp_tls_var.get()
+
+        if not smtp_server or not smtp_username or not smtp_password:
+            self.email_status_label.config(text=t("Fill server, username & password"), foreground="red")
+            return
+
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=15)
+            if smtp_use_tls:
+                server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.quit()
+            self.email_status_label.config(text=t("Connection OK!"), foreground="green")
+            self.admin_app.log("SUCCESS", t("SMTP connection test passed"))
+        except smtplib.SMTPAuthenticationError:
+            self.email_status_label.config(text=t("Auth failed - check App Password"), foreground="red")
+            self.admin_app.log("ERROR", t("SMTP auth failed - wrong username or App Password"))
+        except smtplib.SMTPConnectError:
+            self.email_status_label.config(text=t("Cannot connect to server"), foreground="red")
+            self.admin_app.log("ERROR", f"Cannot connect to {smtp_server}:{smtp_port}")
+        except Exception as e:
+            self.email_status_label.config(text=t("Error: {error}", error=str(e)[:50]), foreground="red")
+            self.admin_app.log("ERROR", f"SMTP test failed: {e}")
+
     def send_report_now(self):
-        """Send analytics report immediately"""
+        """Send analytics report immediately using the current UI date filter"""
         self.email_status_label.config(text=t("Sending..."), foreground="blue")
         self.parent_frame.update_idletasks()
 
         try:
             from core.email_reporter import get_email_reporter
             reporter = get_email_reporter()
-            success, error = reporter.send_report()
+
+            # Build period from the date filter the user set in the UI
+            date_from, date_to = self._get_filter_dates()
+            period = None
+            if date_from and date_to:
+                period_start = datetime.strptime(date_from, '%Y-%m-%d')
+                period_end = datetime.strptime(date_to, '%Y-%m-%d').replace(
+                    hour=23, minute=59, second=59
+                )
+                period = (period_start, period_end)
+
+            success, error = reporter.send_report(period=period)
 
             if success:
                 self.email_status_label.config(text=t("Report sent!"), foreground="green")
                 self.admin_app.log("SUCCESS", t("Analytics report sent"))
-                # Refresh last sent time
                 self._load_email_settings()
             else:
                 self.email_status_label.config(text=t("Failed: {error}", error=error[:50]), foreground="red")
@@ -331,10 +494,34 @@ class AnalyticsTab:
         self._update_summary()
         self._update_table()
 
+    def _get_filter_dates(self):
+        """Read date-from and date-to from the spinbox widgets.
+
+        Returns:
+            (date_from_str, date_to_str) in YYYY-MM-DD format, or ('', '') if invalid.
+        """
+        try:
+            df = (f"{int(self.from_year_var.get()):04d}-"
+                  f"{int(self.from_month_var.get()):02d}-"
+                  f"{int(self.from_day_var.get()):02d}")
+            # Validate
+            datetime.strptime(df, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            df = ''
+
+        try:
+            dt = (f"{int(self.to_year_var.get()):04d}-"
+                  f"{int(self.to_month_var.get()):02d}-"
+                  f"{int(self.to_day_var.get()):02d}")
+            datetime.strptime(dt, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            dt = ''
+
+        return df, dt
+
     def _apply_filter(self):
         """Apply date range filter to runs data"""
-        date_from = self.date_from_var.get().strip()
-        date_to = self.date_to_var.get().strip()
+        date_from, date_to = self._get_filter_dates()
 
         self.filtered_data = self.runs_data[:]
 
@@ -345,8 +532,7 @@ class AnalyticsTab:
             ]
 
         if date_to:
-            # Add time component to include the full day
-            date_to_full = date_to + 'T23:59:59' if 'T' not in date_to else date_to
+            date_to_full = date_to + 'T23:59:59'
             self.filtered_data = [
                 r for r in self.filtered_data
                 if r.get('timestamp_start', '') <= date_to_full

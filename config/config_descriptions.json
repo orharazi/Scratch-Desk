@@ -2030,14 +2030,12 @@
           "default": false,
           "category": "important"
         },
-        "email.schedule_interval_hours": {
-          "description": "Minimum hours between scheduled report sends",
-          "description_he": "מינימום שעות בין שליחות דוחות מתוזמנים",
-          "type": "int",
-          "default": 24,
-          "min": 1,
-          "max": 720,
-          "unit": "hours",
+        "email.schedule_frequency": {
+          "description": "How often to send scheduled reports: daily, weekly, or monthly",
+          "description_he": "תדירות שליחת דוחות מתוזמנים: יומי, שבועי או חודשי",
+          "type": "string",
+          "default": "daily",
+          "options": ["daily", "weekly", "monthly"],
           "category": "important"
         },
         "email.schedule_time": {
@@ -2045,6 +2043,24 @@
           "description_he": "שעה ביום לשליחת דוחות מתוזמנים (פורמט HH:MM)",
           "type": "string",
           "default": "08:00",
+          "category": "important"
+        },
+        "email.schedule_day_of_week": {
+          "description": "Day of week for weekly reports (0=Monday, 6=Sunday)",
+          "description_he": "יום בשבוע לדוחות שבועיים (0=שני, 6=ראשון)",
+          "type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 6,
+          "category": "important"
+        },
+        "email.schedule_day_of_month": {
+          "description": "Day of month for monthly reports (1-28)",
+          "description_he": "יום בחודש לדוחות חודשיים (1-28)",
+          "type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 28,
           "category": "important"
         }
       }

@@ -12,7 +12,7 @@
     "min_line_spacing": 0.3
   },
   "admin": {
-    "password": "123"
+    "password": "12345"
   },
   "gui_settings": {
     "update_interval_ms": 500,
@@ -339,15 +339,17 @@
       "smtp_server": "smtp.gmail.com",
       "smtp_port": 587,
       "smtp_use_tls": true,
-      "smtp_username": "YOUR_GMAIL@gmail.com",
-      "smtp_password": "YOUR_APP_PASSWORD_HERE",
-      "sender_email": "YOUR_GMAIL@gmail.com",
-      "recipient_email": "YOUR_GMAIL@gmail.com",
-      "subject_prefix": "Scratch-Desk Analytics Report",
-      "schedule_enabled": false,
-      "schedule_interval_hours": 24,
+      "smtp_username": "uridesk35@gmail.com\n",
+      "smtp_password": "egwinocrndmjlnsp",
+      "sender_email": "uridesk35@gmail.com\n",
+      "recipient_email": "orharazi@gmail.com",
+      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
+      "schedule_enabled": true,
+      "schedule_frequency": "monthly",
       "schedule_time": "08:00",
-      "last_sent": ""
+      "schedule_day_of_week": 0,
+      "schedule_day_of_month": 1,
+      "last_sent": "2026-02-15T16:24:09.285258"
     }
   }
 }
