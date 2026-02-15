@@ -367,7 +367,7 @@
         }
       ],
       "monitor": {
-        "enabled": false,
+        "enabled": true,
         "operation_context": [
           "rows"
         ],

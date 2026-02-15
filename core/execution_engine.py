@@ -46,6 +46,8 @@ class ExecutionEngine:
         self.step_results = []
         self.start_time = None
         self.end_time = None
+        self.execution_completed = False
+        self.execution_failed = False
 
         # Status callback (for GUI updates)
         self.status_callback = None
@@ -91,6 +93,8 @@ class ExecutionEngine:
         # Reset state
         self.is_running = True
         self.is_paused = False
+        self.execution_completed = False
+        self.execution_failed = False
         self.stop_event.clear()
         self.pause_event.set()
         self.current_step_index = 0
@@ -185,6 +189,8 @@ class ExecutionEngine:
         self.end_time = None
         self.is_paused = False
         self.is_running = False
+        self.execution_completed = False
+        self.execution_failed = False
 
         # Optionally clear steps list (when loading new program)
         if clear_steps:
@@ -455,6 +461,7 @@ class ExecutionEngine:
                 self.logger.info("Execution stopped by user", category="execution")
                 self._update_status("stopped")
             else:
+                self.execution_completed = True
                 self.logger.success("Execution completed successfully", category="execution")
                 self._update_status("completed")
 
@@ -462,6 +469,7 @@ class ExecutionEngine:
             self.logger.error(f"Execution error: {e}", category="execution")
             self.is_running = False
             self.is_paused = False
+            self.execution_failed = True
             self._update_status("error", {'error': str(e)})
 
     def _execute_step(self, step):
@@ -662,7 +670,9 @@ class ExecutionEngine:
                 return {'success': True, 'action': action}
 
             elif operation == 'program_start':
-                self.logger.info(f"=== Starting Program {parameters['program_number']}: {parameters['program_name']} ===", category="execution")
+                prog_num = parameters.get('program_number', '')
+                prog_name = parameters.get('program_name', parameters.get('program_number', ''))
+                self.logger.info(f"=== Starting Program {prog_num}: {prog_name} ===", category="execution")
                 return {'success': True, 'program_info': parameters}
 
             elif operation == 'workflow_separator':
@@ -670,7 +680,8 @@ class ExecutionEngine:
                 return {'success': True}
 
             elif operation == 'program_complete':
-                self.logger.success(f"=== Program Complete: {parameters['program_name']} ===", category="execution")
+                prog_name = parameters.get('program_name', parameters.get('program_number', ''))
+                self.logger.success(f"=== Program Complete: {prog_name} ===", category="execution")
                 return {'success': True, 'program_info': parameters}
 
             else:
@@ -754,8 +765,13 @@ class ExecutionEngine:
         return self.current_operation_type
 
     def _safety_monitor_loop(self):
-        """Real-time safety monitoring loop - runs in separate thread"""
-        self.logger.info("Real-time safety monitoring started", category="execution")
+        """Real-time safety monitoring loop - evaluates monitor rules from safety_rules.json"""
+        from core.safety_system import safety_system
+
+        self.logger.info("Real-time safety monitoring started (rule-based)", category="execution")
+
+        # Track which rules caused the current pause (for recovery checking)
+        violated_rule_ids = []
 
         try:
             while not self.safety_monitor_stop.is_set():
@@ -764,13 +780,12 @@ class ExecutionEngine:
 
                     # Skip safety monitoring during transitions
                     if self.in_transition:
-                        self.logger.debug("Skipping safety monitor during lines→rows transition...", category="execution")
+                        self.logger.debug("Skipping safety monitor during lines\u2192rows transition...", category="execution")
                         time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
                         continue
 
                     # Skip safety monitoring during setup steps and rows start position steps
                     if hasattr(self, 'current_step_description'):
-                        from core.safety_system import safety_system
                         if safety_system._is_setup_movement(self.current_step_description):
                             self.logger.debug(f"Skipping safety monitor for setup step: {self.current_step_description[:50]}...", category="execution")
                             time.sleep(timing_settings.get("safety_check_interval", 0.1))
@@ -780,138 +795,54 @@ class ExecutionEngine:
                             time.sleep(timing_settings.get("safety_check_interval", 0.1))
                             continue
 
-                    # Check safety based on current operation type
                     try:
-                        row_motor_limit_switch = self.hardware.get_row_motor_limit_switch()
+                        # Evaluate all monitor rules for current operation type from safety_rules.json
+                        violated_rules = safety_system.rules_manager.evaluate_monitor_rules(self.current_operation_type)
 
-                        safety_violation = False
-                        violation_message = ""
+                        if violated_rules:
+                            if not self.is_paused:
+                                # New violation detected - use highest priority rule for the notification
+                                primary_rule = violated_rules[0]
+                                violated_rule_ids = [r.get('id') for r in violated_rules]
 
-                        # DEBUG: Show current monitoring state (less frequent)
-                        # self.logger.debug(f"Safety Monitor: Operation={self.current_operation_type}, Programmed={row_marker_programmed.upper()}, Physical={row_motor_limit_switch.upper()}", category="execution")
+                                safety_code = primary_rule.get('id', 'UNKNOWN')
+                                violation_message = primary_rule.get('message', 'Safety violation detected')
 
-                        if self.current_operation_type == 'lines':
-                            # LINES OPERATIONS: Two safety checks
-                            # 1. Row marker MUST be UP (door closed)
-                            # 2. Line motor piston must be DOWN (Y motor assembly lowered)
-                            line_motor_piston = self.hardware.get_line_motor_piston_state()
+                                self.logger.error("REAL-TIME SAFETY VIOLATION DETECTED!", category="execution")
+                                self.logger.error(f"Rule: {safety_code} - {violation_message}", category="execution")
+                                for rule in violated_rules:
+                                    self.logger.error(f"  Violated: {rule.get('id')} - {rule.get('name', '')}", category="execution")
 
-                            # Check 1: Row marker down during lines operations
-                            if row_motor_limit_switch == "down":
-                                safety_violation = True
-                                violation_message = (
-                                    f"LINES OPERATION EMERGENCY STOP!\n"
-                                    f"   Row marker changed to DOWN during lines operation\n"
-                                    f"   State: {row_motor_limit_switch.upper()}\n"
-                                    f"   IMMEDIATE ACTION: Close the rows door (set marker UP)"
-                                )
-
-                            # Check 2: Line motor piston UP during operations
-                            # EXCEPTION: Piston can be UP if rows motor (X-axis) is at position 0
-                            elif line_motor_piston == "up":
-                                current_x = self.hardware.get_current_x()
-
-                                # Only trigger violation if X motor is NOT at position 0
-                                if current_x != 0:
-                                    safety_violation = True
-                                    violation_message = (
-                                        f"LINE MOTOR PISTON SAFETY VIOLATION!\n"
-                                        f"   Line motor piston is UP during lines operation\n"
-                                        f"   Piston state: {line_motor_piston.upper()}\n"
-                                        f"   Rows motor position: {current_x:.1f}cm (must be at 0cm for safe piston operation)\n"
-                                        f"   RULE VIOLATED: Line motor piston can only be UP when rows motor is at 0cm\n"
-                                        f"   IMMEDIATE ACTION: Move rows motor to 0cm OR lower line motor piston"
-                                    )
-
-                        elif self.current_operation_type == 'rows':
-                            # ROWS OPERATIONS: Three safety checks
-                            # 1. Door can only be CLOSED (limit switch DOWN) when line motor piston is DOWN
-                            # 2. Row motor limit switch must be DOWN during rows operations
-                            # 3. Line motor piston must be DOWN (Y motor assembly lowered)
-                            line_motor_piston = self.hardware.get_line_motor_piston_state()
-                            row_motor_limit_switch = self.hardware.get_row_motor_limit_switch()
-
-                            # Check 1: Door closed while line motor piston UP
-                            if row_motor_limit_switch == "down" and line_motor_piston == "up":
-                                safety_violation = True
-                                violation_message = (
-                                    f"ROWS MOTOR DOOR SAFETY VIOLATION!\n"
-                                    f"   Door CLOSED (limit switch DOWN) while line motor piston is UP\n"
-                                    f"   Line motor piston: {line_motor_piston.upper()} (must be DOWN to close door)\n"
-                                    f"   Limit switch: {row_motor_limit_switch.upper()}\n"
-                                    f"   IMMEDIATE ACTION: Open the rows motor door (set limit switch to OFF)"
-                                )
-
-                            # Check 2: Row motor limit switch UP during rows operations
-                            elif row_motor_limit_switch == "up":
-                                safety_violation = True
-                                violation_message = (
-                                    f"ROWS OPERATION SAFETY VIOLATION!\n"
-                                    f"   Row motor limit switch is UP during rows operation\n"
-                                    f"   Limit switch state: {row_motor_limit_switch.upper()}\n"
-                                    f"   RULE VIOLATED: Row motor door must be CLOSED during rows operations\n"
-                                    f"   IMMEDIATE ACTION: Close the rows motor door (set limit switch to DOWN)"
-                                )
-
-                            # Check 3: Line motor piston UP during operations
-                            elif line_motor_piston == "up":
-                                safety_violation = True
-                                violation_message = (
-                                    f"LINE MOTOR PISTON SAFETY VIOLATION!\n"
-                                    f"   Line motor piston is UP during rows operation\n"
-                                    f"   Piston state: {line_motor_piston.upper()}\n"
-                                    f"   RULE VIOLATED: Line motor piston must be DOWN during operations\n"
-                                    f"   IMMEDIATE ACTION: Lower line motor piston (Y motor assembly must be DOWN)"
-                                )
-
-                        if safety_violation:
-                            self.logger.error("REAL-TIME SAFETY VIOLATION DETECTED!", category="execution")
-                            self.logger.error(violation_message, category="execution")
-
-                            # PAUSE execution instead of stopping completely
-                            if not self.is_paused:  # Only pause if not already paused
+                                # PAUSE execution
                                 self.is_paused = True
                                 self.pause_event.clear()
 
-                                # Update status with emergency stop
+                                # Update status with emergency stop (triggers safety dialog via rule ID)
                                 self._update_status("emergency_stop", {
                                     'violation_message': violation_message,
-                                    'safety_code': f"{self.current_operation_type.upper()}_DOOR_VIOLATION",
+                                    'safety_code': safety_code,
                                     'monitor_type': 'real_time'
                                 })
 
-                        # Check for safety violation recovery (when paused due to violation)
-                        elif self.is_paused:
-                            # Check if previous violation has been resolved
-                            violation_resolved = False
+                        # Check for safety violation recovery (when paused due to monitor violation)
+                        elif self.is_paused and violated_rule_ids:
+                            # Check recovery conditions for ALL previously violated rules
+                            all_recovered = True
+                            for rule_id in violated_rule_ids:
+                                rule = next((r for r in safety_system.rules_manager.rules if r.get('id') == rule_id), None)
+                                if rule:
+                                    if not safety_system.rules_manager.evaluate_recovery_conditions(rule):
+                                        all_recovered = False
+                                        break
 
-                            if self.current_operation_type == 'lines':
-                                # LINES: Check limit switch, line motor piston, and X position
-                                line_motor_piston = self.hardware.get_line_motor_piston_state()
-                                current_x = self.hardware.get_current_x()
+                            if all_recovered:
+                                self.logger.success(f"All safety violations resolved for {self.current_operation_type.upper()} operations", category="execution")
 
-                                # Violation resolved if:
-                                # 1. Limit switch UP AND
-                                # 2. (Piston DOWN OR X motor at 0)
-                                if row_motor_limit_switch == "up" and (line_motor_piston == "down" or current_x == 0):
-                                    violation_resolved = True
-                                    if line_motor_piston == "down":
-                                        self.logger.success("LINES SAFETY VIOLATION RESOLVED: Door open and line motor piston down", category="execution")
-                                    else:
-                                        self.logger.success(f"LINES SAFETY VIOLATION RESOLVED: Door open and rows motor at 0cm (piston UP allowed)", category="execution")
-
-                            elif self.current_operation_type == 'rows':
-                                # ROWS: Check door, limit switch, and line motor piston
-                                line_motor_piston = self.hardware.get_line_motor_piston_state()
-
-                                # Violation resolved if limit switch DOWN AND line motor piston DOWN
-                                if row_motor_limit_switch == "down" and line_motor_piston == "down":
-                                    violation_resolved = True
-                                    self.logger.success("ROWS SAFETY VIOLATION RESOLVED: Door closed and line motor piston down", category="execution")
-
-                            if violation_resolved:
                                 # Flush all sensor buffers to ignore triggers that happened during pause
                                 self.hardware.flush_all_sensor_buffers()
+
+                                # Clear violated rules tracking
+                                violated_rule_ids = []
 
                                 # Auto-resume execution
                                 self.is_paused = False

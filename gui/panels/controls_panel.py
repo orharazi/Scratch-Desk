@@ -759,7 +759,26 @@ class ControlsPanel:
             self.main_app.operation_label.config(text=t("Execution Stopped - press Run to restart"), fg='orange')
     
     def auto_reload_after_completion(self):
-        """Auto-reload program after execution completes so it's ready to run again"""
+        """Show success for 5 seconds, then auto-reload program for next run"""
+        # Show success state
+        self.progress_label.config(text=t("Program Completed Successfully!"), fg='green')
+        self.main_app.operation_label.config(text=t("Program Completed Successfully!"), fg='green')
+
+        if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
+            self.main_app.progress['value'] = 100
+            self.main_app.progress_text.config(text=t("100% Complete - Success!"))
+
+        # Disable all buttons during success display
+        self.run_btn.config(state=tk.DISABLED)
+        self.pause_btn.config(state=tk.DISABLED)
+        self.stop_btn.config(state=tk.DISABLED)
+        self.reset_btn.config(state=tk.DISABLED)
+
+        # After 5 seconds, reload for next run
+        self.main_app.root.after(5000, self._reload_after_success)
+
+    def _reload_after_success(self):
+        """Called after 5s success display - prepares program for next run"""
         self._prepare_for_new_run()
         self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
 

@@ -358,12 +358,13 @@ class ProgramPanel:
             return
 
         p = self.main_app.current_program
-        # Use RLE (Right-to-Left Embedding) for Hebrew program name in entry field
+        # Use RLM + RLE for Hebrew program name in entry field to force RTL direction
         # (cannot use rtl/get_display here as it reorders chars, breaking read-back)
+        RLM = '\u200F'  # Right-to-Left Mark
         RLE = '\u202B'  # Right-to-Left Embedding
         PDF = '\u202C'  # Pop Directional Formatting
         field_values = {
-            'program_name': f"{RLE}{p.program_name}{PDF}",
+            'program_name': f"{RLM}{RLE}{p.program_name}{PDF}",
             'program_number': str(p.program_number),
             'high': str(p.high),
             'number_of_lines': str(p.number_of_lines),

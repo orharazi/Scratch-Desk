@@ -536,6 +536,7 @@ HEBREW_TRANSLATIONS = {
     "Execution Paused": "הביצוע הושהה",
     "Execution Stopped": "הביצוע נעצר",
     "Execution Completed": "הביצוע הושלם",
+    "Program Completed Successfully!": "!התוכנית הושלמה בהצלחה",
     "Error: {message}": "שגיאה: {message}",
     "Executing step...": "...מבצע צעד",
     "Waiting for {sensor} sensor": "ממתין לחיישן {sensor}",
@@ -554,6 +555,8 @@ HEBREW_TRANSLATIONS = {
     "✅ Safety resolved - {operation_type} execution resuming": "✅ בטיחות נפתרה - ביצוע {operation_type} ממשיך",
     "⏸️  Waiting: {from_op} → {to_op} transition": "⏸️  ממתין: מעבר מ-{from_op} ל-{to_op}",
     "{progress:.1f}% - Waiting for rows motor door CLOSED": "{progress:.1f}% - ממתין לדלת מנוע עמודות סגורה",
+    "{progress:.1f}% - Rows motor door CLOSED, resuming...": "{progress:.1f}% - דלת מנוע עמודות סגורה, ממשיך...",
+    "Transition to rows operations": "מעבר לפעולות עמודות",
     "▶️  Rows operations starting...": "▶️  פעולות עמודות מתחילות...",
     "SAFETY VIOLATION - Execution Stopped": "הפרת בטיחות - ביצוע נעצר",
     "Safety Violation": "הפרת בטיחות",
@@ -573,6 +576,7 @@ HEBREW_TRANSLATIONS = {
 
     "{progress}% Complete ({step_index}/{total_steps} steps)": "{progress}% הושלם ({step_index}/{total_steps} צעדים)",
     "100% Complete - Execution finished": "100% הושלם - הביצוע הסתיים",
+    "100% Complete - Success!": "!100% הושלם - הצלחה",
     "🚨 EMERGENCY STOP - Safety Violation": "🚨 עצירת חירום - הפרת בטיחות",
     "Execution has been immediately stopped due to a safety violation!": "!הביצוע נעצר מיידית עקב הפרת בטיחות",
     "Safety Code: {code}": "קוד בטיחות: {code}",
@@ -1457,7 +1461,7 @@ def t(text, **kwargs):
     # Apply RTL (Right-to-Left) formatting for proper Hebrew display
     if BIDI_AVAILABLE and _current_language == "he":
         try:
-            translated = get_display(translated)
+            translated = get_display(translated, base_dir='R')
         except Exception as e:
             print(f"RTL formatting error for '{text}': {e}")
 
@@ -1471,7 +1475,9 @@ def rtl(text):
     """
     if BIDI_AVAILABLE and _current_language == "he":
         try:
-            return get_display(text)
+            # Process each line separately for proper bidi handling of multiline text
+            lines = text.split('\n')
+            return '\n'.join(get_display(line, base_dir='R') for line in lines)
         except Exception:
             pass
     return text

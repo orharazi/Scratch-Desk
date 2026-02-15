@@ -45,6 +45,7 @@ class ExecutionController:
     def __init__(self, main_app):
         self.main_app = main_app
         self.safety_modal = None
+        self.transition_modal = None
         self.logger = get_logger()
 
     def cleanup_for_reset(self):
@@ -57,33 +58,42 @@ class ExecutionController:
                 pass
             self.safety_modal = None
 
+        # Destroy any open transition modal
+        if self.transition_modal:
+            try:
+                self.transition_modal.destroy()
+            except Exception:
+                pass
+            self.transition_modal = None
+
         # Clear inline safety error
         self._clear_inline_safety_error()
 
         self.logger.debug("ExecutionController cleaned up for reset", category="gui")
 
-    def _schedule_panel_unlock(self, status):
-        """Schedule program panel unlock on the main thread as a safety net.
-
-        Called FIRST in on_execution_status for terminal states so that even if
-        subsequent GUI updates raise an exception, the panel will still be unlocked.
+    def on_execution_status(self, status, info=None):
+        """Handle execution status updates (called from execution thread).
+        Marshals all GUI updates to the main thread via root.after() for thread safety.
         """
         try:
-            if status == 'completed' and hasattr(self.main_app, 'controls_panel'):
-                self.main_app.root.after(100, self.main_app.controls_panel.auto_reload_after_completion)
-            elif hasattr(self.main_app, 'controls_panel'):
-                # For stopped/error: reset engine and prepare for fresh run
-                self.main_app.root.after(100, self.main_app.controls_panel._prepare_for_new_run)
-            elif hasattr(self.main_app, 'program_panel'):
-                self.main_app.root.after(100, lambda: self.main_app.program_panel.set_locked(False))
+            self.main_app.root.after(0, lambda s=status, i=info: self._on_execution_status_impl(s, i))
         except Exception as e:
-            self.logger.error(f"Failed to schedule panel unlock: {e}", category="gui")
+            self.logger.error(f"Failed to marshal status update to main thread: {e}", category="gui")
 
-    def on_execution_status(self, status, info=None):
-        """Handle execution status updates (called from execution thread)"""
+    def _on_execution_status_impl(self, status, info=None):
+        """Actual execution status handler - runs on main thread via root.after()"""
         # Ensure panel unlock for terminal states, even if GUI updates below fail
         if status in ('completed', 'stopped', 'error'):
-            self._schedule_panel_unlock(status)
+            try:
+                if status == 'completed' and hasattr(self.main_app, 'controls_panel'):
+                    self.main_app.controls_panel.auto_reload_after_completion()
+                elif hasattr(self.main_app, 'controls_panel'):
+                    # For stopped/error: reset engine and prepare for fresh run
+                    self.main_app.controls_panel._prepare_for_new_run()
+                elif hasattr(self.main_app, 'program_panel'):
+                    self.main_app.program_panel.set_locked(False)
+            except Exception as e:
+                self.logger.error(f"Failed to unlock panel: {e}", category="gui")
 
         if hasattr(self.main_app, 'progress_label'):
             if status == 'running':
@@ -93,7 +103,7 @@ class ExecutionController:
             elif status == 'stopped':
                 self.main_app.progress_label.config(text=t("Execution Stopped"), fg='red')
             elif status == 'completed':
-                self.main_app.progress_label.config(text=t("Execution Completed"), fg='blue')
+                self.main_app.progress_label.config(text=t("Program Completed Successfully!"), fg='green')
             elif status == 'error':
                 error_msg = info.get('message', t('Unknown error')) if info else t('Unknown error')
                 self.main_app.progress_label.config(text=t("Error: {error_msg}", error_msg=error_msg), fg='red')
@@ -182,6 +192,18 @@ class ExecutionController:
                 sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
                 sensor_name_hebrew = t(sensor_name)  # Translate sensor name (e.g., "y_top" -> "Y עליון")
                 self.main_app.operation_label.config(text=t("Waiting for {sensor} sensor", sensor=sensor_name_hebrew), fg='orange')
+            elif status == 'transition_alert':
+                from_op = t(info.get('from_operation', 'lines').title()) if info else t('Lines')
+                to_op = t(info.get('to_operation', 'rows').title()) if info else t('Rows')
+                self.main_app.operation_label.config(
+                    text=t("\u23f8\ufe0f  Waiting: {from_op} \u2192 {to_op} transition", from_op=from_op, to_op=to_op),
+                    fg='orange'
+                )
+            elif status == 'transition_complete':
+                self.main_app.operation_label.config(
+                    text=t("\u25b6\ufe0f  Rows operations starting..."),
+                    fg='green'
+                )
 
         # Update progress bar if available
         if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
@@ -202,9 +224,9 @@ class ExecutionController:
 
             elif status == 'completed':
                 self.main_app.progress['value'] = 100
-                self.main_app.progress_text.config(text=t("100% Complete - Execution finished"))
-                # Note: auto_reload_after_completion is called separately below with root.after()
-                # to ensure thread-safe GUI update
+                self.main_app.progress_text.config(text=t("100% Complete - Success!"))
+                # Note: auto_reload_after_completion is called via panel unlock
+                # at the top of _on_execution_status_impl
 
             elif status == 'emergency_stop':
                 # EMERGENCY STOP due to safety violation
@@ -290,6 +312,40 @@ class ExecutionController:
                 # Clear inline safety error from bottom bar
                 self._clear_inline_safety_error()
 
+            elif status == 'transition_alert':
+                # Transition from lines to rows - show dialog
+                current_progress = self.main_app.progress['value']
+                from_op = t(info.get('from_operation', 'lines').title()) if info else t('Lines')
+                to_op = t(info.get('to_operation', 'rows').title()) if info else t('Rows')
+                self.main_app.progress_text.config(
+                    text=t("\u23f8\ufe0f  Waiting: {from_op} \u2192 {to_op} transition", from_op=from_op, to_op=to_op),
+                    fg='orange'
+                )
+                self._show_transition_modal(info)
+
+            elif status == 'transition_complete':
+                # Transition complete - door closed, resuming
+                current_progress = self.main_app.progress['value']
+                self.main_app.progress_text.config(
+                    text=t("{progress:.1f}% - Rows motor door CLOSED, resuming...", progress=current_progress),
+                    fg='green'
+                )
+                # Auto-close transition modal
+                if self.transition_modal:
+                    try:
+                        self.transition_modal.destroy()
+                    except Exception:
+                        pass
+                    self.transition_modal = None
+
+            elif status == 'transition_waiting':
+                # Still waiting for door - update progress
+                current_progress = self.main_app.progress['value']
+                self.main_app.progress_text.config(
+                    text=t("{progress:.1f}% - Waiting for rows motor door CLOSED", progress=current_progress),
+                    fg='orange'
+                )
+
             elif status == 'stopped' or status == 'error':
                 # Keep current progress but update text
                 current_progress = self.main_app.progress['value']
@@ -299,7 +355,7 @@ class ExecutionController:
                 if hasattr(self.main_app, 'controls_panel'):
                     self.main_app.controls_panel.update_step_display()
 
-        # Panel unlock is handled by _schedule_panel_unlock() at the top of this method
+        # Panel unlock is handled at the top of _on_execution_status_impl
 
         # Handle safety violations
         if status == 'safety_violation':
@@ -528,6 +584,122 @@ class ExecutionController:
             pass
         if self.safety_modal is dialog:
             self.safety_modal = None
+
+    def _show_transition_modal(self, info):
+        """Show transition dialog when moving from lines to rows operations.
+        Non-modal so user can interact with hardware controls.
+        Auto-closes on transition_complete status."""
+        try:
+            # Close existing transition modal
+            if self.transition_modal:
+                try:
+                    self.transition_modal.destroy()
+                except Exception:
+                    pass
+                self.transition_modal = None
+
+            # Use operational styling (orange)
+            style = REASON_STYLE.get("operational", REASON_FALLBACK)
+            icon = style["icon"]
+            bg = style["bg"]
+            accent = style["accent"]
+            btn_color = style["btn_color"]
+
+            dialog = tk.Toplevel(self.main_app.root)
+            dialog.title(t("Transition to rows operations"))
+            dialog.configure(bg=bg)
+
+            # Size and center
+            dialog_width = 650
+            dialog_height = 420
+            screen_width = dialog.winfo_screenwidth()
+            screen_height = dialog.winfo_screenheight()
+            x = (screen_width - dialog_width) // 2
+            y = (screen_height - dialog_height) // 2
+            dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+            dialog.minsize(dialog_width, dialog_height)
+            dialog.resizable(False, False)
+
+            # Non-modal so user can interact with hardware controls
+            dialog.transient(self.main_app.root)
+
+            main_frame = tk.Frame(dialog, bg=bg, padx=30, pady=20)
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Title
+            tk.Label(
+                main_frame,
+                text=rtl(f"{icon}  \u05de\u05e2\u05d1\u05e8 \u05dc\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea"),
+                font=('Arial', 24, 'bold'),
+                fg=accent,
+                bg=bg
+            ).pack(pady=(0, 5))
+
+            # Subtitle
+            tk.Label(
+                main_frame,
+                text=rtl("\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05d4\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05d5\u05e9\u05dc\u05de\u05d5"),
+                font=('Arial', 13),
+                fg='#cccccc',
+                bg=bg
+            ).pack(pady=(0, 10))
+
+            # Separator
+            tk.Frame(main_frame, bg=accent, height=3).pack(fill=tk.X, pady=(0, 15))
+
+            # Message
+            tk.Label(
+                main_frame,
+                text=rtl("\u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05d4\u05d5\u05d6\u05d6 \u05dc\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d4\u05ea\u05d7\u05dc\u05d4.\n\n\u05d0\u05e0\u05d0 \u05e1\u05d2\u05d5\u05e8 \u05d0\u05ea \u05d3\u05dc\u05ea \u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05db\u05d3\u05d9 \u05dc\u05d4\u05de\u05e9\u05d9\u05da \u05d1\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea."),
+                font=('Arial', 14),
+                fg='white',
+                bg=bg,
+                wraplength=600,
+                justify=tk.RIGHT,
+                anchor='e'
+            ).pack(pady=(0, 20), fill=tk.X)
+
+            # Auto-resume note (green)
+            tk.Label(
+                main_frame,
+                text=rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05d3\u05dc\u05ea \u05ea\u05d9\u05e1\u05d2\u05e8"),
+                font=('Arial', 13, 'bold'),
+                fg='#66cc66',
+                bg=bg,
+                wraplength=600,
+                justify=tk.RIGHT,
+                anchor='e'
+            ).pack(pady=(0, 25), fill=tk.X)
+
+            # OK button
+            tk.Button(
+                main_frame,
+                text=t("OK"),
+                font=('Arial', 16, 'bold'),
+                bg=btn_color,
+                fg='white',
+                activebackground='#333333',
+                activeforeground='white',
+                command=lambda: self._close_transition_modal(dialog),
+                padx=40,
+                pady=12
+            ).pack()
+
+            dialog.update_idletasks()
+            self.transition_modal = dialog
+            dialog.focus_set()
+
+        except Exception as e:
+            self.logger.error(f"Error showing transition modal: {e}", category="gui")
+
+    def _close_transition_modal(self, dialog):
+        """Handle manual OK click on transition modal"""
+        try:
+            dialog.destroy()
+        except Exception:
+            pass
+        if self.transition_modal is dialog:
+            self.transition_modal = None
 
     def _show_inline_safety_error(self, violation_message, safety_code, step_description, is_waiting=False):
         """Show safety error inline on the bottom bar with full Hebrew rule details"""
