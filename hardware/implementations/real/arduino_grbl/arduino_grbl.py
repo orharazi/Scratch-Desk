@@ -626,8 +626,12 @@ class ArduinoGRBL:
 
         start_time = time.time()
         last_log_time = 0
+        saw_run_state = False  # Track if we've seen GRBL actually start moving
 
         self.logger.debug(f"Waiting for movement to complete: target X={target_x:.2f}cm, Y={target_y:.2f}cm", category="grbl")
+
+        # Small initial delay to allow GRBL to process command and start moving
+        time.sleep(0.05)
 
         while (time.time() - start_time) < timeout:
             status = self.get_status(log_changes_only=True)
@@ -640,6 +644,10 @@ class ArduinoGRBL:
             current_x = status.get('x', 0.0)
             current_y = status.get('y', 0.0)
 
+            # Track if we've seen GRBL in Run state (actually moving)
+            if current_state == 'Run':
+                saw_run_state = True
+
             # Log progress every 2 seconds
             current_time = time.time()
             if current_time - last_log_time >= 2.0:
@@ -649,26 +657,48 @@ class ArduinoGRBL:
                                  category="grbl")
                 last_log_time = current_time
 
+            # Check position tolerance
+            x_ok = abs(current_x - target_x) <= self.position_tolerance
+            y_ok = abs(current_y - target_y) <= self.position_tolerance
+
             # Check if GRBL is idle
             if current_state == 'Idle':
-                # Verify position is within tolerance
-                x_ok = abs(current_x - target_x) <= self.position_tolerance
-                y_ok = abs(current_y - target_y) <= self.position_tolerance
-
+                # If position is at target, movement is complete
                 if x_ok and y_ok:
                     self.logger.debug(f"Movement complete: arrived at X={current_x:.2f}cm, Y={current_y:.2f}cm", category="grbl")
                     return True
-                else:
-                    # GRBL is idle but not at target - this could be a problem
-                    self.logger.warning(
-                        f"GRBL idle but not at target position. "
-                        f"Current: ({current_x:.2f}, {current_y:.2f}), "
-                        f"Target: ({target_x:.2f}, {target_y:.2f}), "
-                        f"Tolerance: {self.position_tolerance}cm",
-                        category="grbl"
-                    )
-                    # Still return True since GRBL is idle - movement is complete even if position differs
+
+                # GRBL is idle but not at target
+                # If we've seen it running before, it might have stopped early (issue)
+                # If we haven't seen it run yet, it might not have started - keep waiting briefly
+                if not saw_run_state:
+                    # GRBL might not have started yet - wait a bit more
+                    elapsed = time.time() - start_time
+                    if elapsed < 0.5:  # Give up to 500ms for GRBL to start moving
+                        time.sleep(self.movement_poll_interval)
+                        continue
+
+                # Either we saw it run and stop, or we've waited long enough
+                # Log warning but verify position one more time
+                self.logger.warning(
+                    f"GRBL idle but not at target position. "
+                    f"Current: ({current_x:.2f}, {current_y:.2f}), "
+                    f"Target: ({target_x:.2f}, {target_y:.2f}), "
+                    f"Tolerance: {self.position_tolerance}cm, "
+                    f"Saw run state: {saw_run_state}",
+                    category="grbl"
+                )
+
+                # If position is close enough (within 2x tolerance), accept it
+                x_close = abs(current_x - target_x) <= self.position_tolerance * 2
+                y_close = abs(current_y - target_y) <= self.position_tolerance * 2
+                if x_close and y_close:
+                    self.logger.warning("Position within 2x tolerance - accepting as complete", category="grbl")
                     return True
+
+                # Position is too far off - movement failed
+                self.logger.error("Movement did not reach target position!", category="grbl")
+                return False
 
             elif current_state == 'Alarm':
                 self.logger.error("GRBL entered ALARM state during movement!", category="grbl")

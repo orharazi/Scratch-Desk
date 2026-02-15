@@ -1692,6 +1692,10 @@ class MockHardware:
     def get_row_motor_limit_switch(self) -> str:
         return get_row_motor_limit_switch()
 
+    def get_rows_limit_switch(self) -> bool:
+        """Get rows limit switch state"""
+        return get_limit_switch_state('rows')
+
     def set_limit_switch_state(self, switch_name: str, state: bool):
         set_limit_switch_state(switch_name, state)
 

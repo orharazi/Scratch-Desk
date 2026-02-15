@@ -205,16 +205,23 @@ class RaspberryPiGPIO:
             except Exception as e:
                 raise RuntimeError(f"Failed to set GPIO mode: {str(e)}. Check GPIO permissions (run with sudo?)")
 
-            # Setup piston pins as outputs (default LOW = retracted/up)
+            # Setup piston pins as outputs
+            # Default: LOW = retracted/up for most pistons
+            # Exception: line_motor_piston defaults to HIGH = extended/down
             self.logger.info(f"Initializing {len(self.piston_pins)} piston outputs...", category="hardware")
             failed_pistons = []
             for piston_name, pin in self.piston_pins.items():
                 try:
                     GPIO.setup(pin, GPIO.OUT)
-                    GPIO.output(pin, GPIO.LOW)
-                    # Track initial state: GPIO.LOW = up (retracted)
-                    self._piston_pin_states[piston_name] = "up"
-                    self.logger.debug(f"Piston '{piston_name}' on GPIO {pin}", category="hardware")
+                    # line_motor_piston defaults to DOWN, all others default to UP
+                    if piston_name == "line_motor_piston":
+                        GPIO.output(pin, GPIO.HIGH)
+                        self._piston_pin_states[piston_name] = "down"
+                        self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: DOWN)", category="hardware")
+                    else:
+                        GPIO.output(pin, GPIO.LOW)
+                        self._piston_pin_states[piston_name] = "up"
+                        self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: UP)", category="hardware")
                 except Exception as e:
                     raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
 
