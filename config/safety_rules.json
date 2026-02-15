@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "last_modified": "2026-02-15T00:05:30.318184",
+  "last_modified": "2026-02-15T21:06:05.909376",
   "global_enabled": true,
   "rules": [
     {
@@ -443,49 +443,6 @@
       "message_he": "הפרת בטיחות בוכנת מנוע שורות!\n   בוכנת מנוע השורות למעלה במהלך פעולת עמודות\n   כלל שהופר: בוכנת מנוע השורות חייבת להיות למטה\n   פעולה מיידית: הורד את בוכנת מנוע השורות",
       "created_at": "2026-02-14T23:00:00Z",
       "created_by": "system_migration"
-    },
-    {
-      "id": "ewew",
-      "name": "ewwewe",
-      "description": "wewewewewer1",
-      "enabled": true,
-      "priority": 50,
-      "severity": "critical",
-      "reason": "",
-      "is_system_rule": false,
-      "conditions": {
-        "operator": "AND",
-        "items": [
-          {
-            "type": "piston",
-            "source": "line_marker",
-            "operator": "equals",
-            "value": "down"
-          }
-        ]
-      },
-      "blocked_operations": [
-        {
-          "operation": "move_x",
-          "exclude_setup": false,
-          "direction": "all_directions"
-        }
-      ],
-      "message": "",
-      "created_at": "2026-02-15T00:05:30.309713",
-      "created_by": "admin",
-      "monitor": {
-        "enabled": true,
-        "operation_context": [
-          "rows"
-        ],
-        "action": "emergency_pause",
-        "recovery_conditions": {
-          "operator": "AND",
-          "items": []
-        },
-        "recovery_action": "auto_resume"
-      }
     }
   ],
   "available_sources": {

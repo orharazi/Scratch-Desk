@@ -358,13 +358,10 @@ class ProgramPanel:
             return
 
         p = self.main_app.current_program
-        # Use RLI (Right-to-Left Isolate) for Hebrew program name in entry field
-        # RLI/PDI are modern Unicode 6.3 isolate chars with better platform support than RLE/PDF
-        # (cannot use rtl/get_display here as it reorders chars, breaking read-back)
-        RLI = '\u2067'  # Right-to-Left Isolate
-        PDI = '\u2069'  # Pop Directional Isolate
+        # Store original program name for later retrieval (rtl() reorders for visual display)
+        self._original_program_name = p.program_name
         field_values = {
-            'program_name': f"{RLI}{p.program_name}{PDI}",
+            'program_name': rtl(p.program_name),
             'program_number': str(p.program_number),
             'high': str(p.high),
             'number_of_lines': str(p.number_of_lines),
@@ -427,13 +424,23 @@ class ProgramPanel:
                     .replace('\u200F', '').replace('\u200E', '')
                     .replace('\u2067', '').replace('\u2069', '').strip())
 
+    def _get_program_name(self):
+        """Get the program name, using stored original if field matches rtl display"""
+        field_value = self.program_fields['program_name'].get().strip()
+        # If we have a stored original and the field shows its rtl version, use original
+        if hasattr(self, '_original_program_name') and self._original_program_name:
+            if field_value == rtl(self._original_program_name):
+                return self._original_program_name
+        # Otherwise, the field was edited - use the field value as-is (user typed in logical order)
+        return self._strip_rtl_chars(field_value)
+
     def _build_program_from_fields(self):
         """Build a temporary ScratchDeskProgram from current field values for validation"""
         from core.program_model import ScratchDeskProgram
         try:
             return ScratchDeskProgram(
                 program_number=int(self.program_fields['program_number'].get() or 0),
-                program_name=self._strip_rtl_chars(self.program_fields['program_name'].get()),
+                program_name=self._get_program_name(),
                 high=float(self.program_fields['high'].get() or 0),
                 number_of_lines=int(self.program_fields['number_of_lines'].get() or 0),
                 top_padding=float(self.program_fields['top_padding'].get() or 0),
@@ -469,7 +476,7 @@ class ProgramPanel:
             p = self.main_app.current_program
 
             # Update program with field values (strip RTL chars for saving)
-            p.program_name = self._strip_rtl_chars(self.program_fields['program_name'].get())
+            p.program_name = self._get_program_name()
             p.program_number = int(self.program_fields['program_number'].get())
             p.high = float(self.program_fields['high'].get())
             p.number_of_lines = int(self.program_fields['number_of_lines'].get())
@@ -640,8 +647,8 @@ class ProgramPanel:
 
     def _save_new_program(self):
         """Build program from fields, validate, add to programs list"""
-        # Check program name (strip RTL chars)
-        name = self._strip_rtl_chars(self.program_fields['program_name'].get())
+        # Check program name
+        name = self._get_program_name()
         if not name:
             messagebox.showerror(t("Error"), t("Program name cannot be empty"))
             return
@@ -687,8 +694,8 @@ class ProgramPanel:
 
     def _cancel_new_program(self):
         """Cancel creation mode, confirm if data was entered, restore previous selection"""
-        # Check if user entered a name (non-default data, strip RTL chars)
-        name = self._strip_rtl_chars(self.program_fields['program_name'].get())
+        # Check if user entered a name (non-default data)
+        name = self._get_program_name()
         if name:
             if not messagebox.askyesno(t("Warning"), t("Discard new program?")):
                 return
