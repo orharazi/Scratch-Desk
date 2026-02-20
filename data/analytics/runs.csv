@@ -53,3 +53,11 @@ ebd7d72d-9830-43e1-bac2-45b41d4e769e,2026-02-20T11:24:13.701070,2026-02-20T11:26
    Left movement blocked until door is closed
    Right movement is allowed
    NOTE: Initial move to start position is allowed with door open",real,1,1
+130f4d0c-05a0-4772-bd7f-df6aae7c0efc,2026-02-20T13:48:43.342185,2026-02-20T13:51:38.877856,175.54,8,מזוזה 10,success,149,149,149,0,,,,real,1,1
+c2826068-ffe1-4e7d-b558-5d77f8834d38,2026-02-20T13:53:47.606688,2026-02-20T13:56:15.396107,147.79,14,"תפילין ראש חב""ד 60",success,49,49,49,0,,,,real,1,1
+aaf6884c-d472-4236-b135-be83f89dba0f,2026-02-20T14:00:28.480421,2026-02-20T14:02:39.611700,131.13,14,"תפילין ראש חב""ד 60",success,47,47,47,0,,,,real,1,1
+06e34a1a-d829-4a60-96b1-eb72a5c9db93,2026-02-20T14:07:55.901530,2026-02-20T14:10:23.715824,147.81,14,"תפילין ראש חב""ד 60",success,49,49,49,0,,,,real,1,1
+b79d8afd-95cd-4b61-a7bc-a873284a0e58,2026-02-20T14:10:30.321416,2026-02-20T14:10:31.202772,0.88,14,"תפילין ראש חב""ד 60",emergency_stop,49,3,3,0,,LINES_MONITOR_DOOR_OPENED,"LINES OPERATION EMERGENCY STOP!
+   Row marker changed to DOWN during lines operation
+   IMMEDIATE ACTION: Close the rows door (set marker UP)",real,1,1
+b7c69014-33cd-483b-849c-9367fffcb5cc,2026-02-20T14:11:57.326744,2026-02-20T14:12:09.572851,12.25,14,"תפילין ראש חב""ד 60",user_stop,49,1,1,0,,,,real,1,1

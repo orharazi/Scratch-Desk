@@ -8,7 +8,7 @@ import os
 import json
 
 # Import translation function
-from core.translations import t
+from core.translations import t, t_title
 
 # Import our modules
 from core.csv_parser import CSVParser
@@ -33,7 +33,7 @@ class ScratchDeskGUI:
 
     def __init__(self, root):
         self.root = root
-        self.root.title(t("Scratch Desk Control System"))
+        self.root.title(t_title("Scratch Desk Control System"))
         self.root.geometry("1500x1000")
         self.root.minsize(1100, 750)
         self.root.resizable(True, True)
@@ -398,7 +398,7 @@ class ScratchDeskGUI:
 
         # Prompt for password
         dialog = tk.Toplevel(self.root)
-        dialog.title(t("Admin Login"))
+        dialog.title(t_title("Admin Login"))
         dialog.geometry("300x150")
         dialog.resizable(False, False)
         dialog.transient(self.root)

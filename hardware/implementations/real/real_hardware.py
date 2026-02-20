@@ -1067,10 +1067,8 @@ class RealHardware:
         }
 
     def reset_hardware(self):
-        """Reset hardware to initial state"""
+        """Reset hardware to initial state (raise tools, no homing)"""
         if self.is_initialized:
-            # Home motors
-            self.home_motors()
             # Raise all tools
             self.lift_line_tools()
 

@@ -2,7 +2,7 @@ import threading
 import time
 import tkinter as tk
 from core.logger import get_logger
-from core.translations import t, rtl
+from core.translations import t, rtl, t_title, rtl_title
 
 
 # Reason-type styling for safety modals
@@ -489,7 +489,7 @@ class ExecutionController:
 
             # Create dialog
             dialog = tk.Toplevel(self.main_app.root)
-            dialog.title(reason_title)
+            dialog.title(rtl_title(reason_title))
             dialog.configure(bg=bg)
 
             # Size and center
@@ -611,7 +611,7 @@ class ExecutionController:
             btn_color = style["btn_color"]
 
             dialog = tk.Toplevel(self.main_app.root)
-            dialog.title(t("Transition to rows operations"))
+            dialog.title(t_title("Transition to rows operations"))
             dialog.configure(bg=bg)
 
             # Size and center
@@ -810,7 +810,7 @@ class ExecutionController:
 
             # Create compact dialog
             dialog = tk.Toplevel(self.main_app.root)
-            dialog.title(style["title_he"])
+            dialog.title(rtl_title(style["title_he"]))
             dialog.configure(bg=bg_color)
 
             dialog_width = 500

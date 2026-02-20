@@ -17,7 +17,7 @@ import json
 import os
 from datetime import datetime
 import shutil
-from core.translations import t, rtl
+from core.translations import t, t_title, rtl
 
 
 class ConfigTab:
@@ -558,7 +558,7 @@ class ConfigTab:
     def open_list_editor(self, path, current_value, preview_label):
         """Open a dialog to edit a list value"""
         dialog = tk.Toplevel(self.frame)
-        dialog.title(t("Edit List: {key}", key=path.split('.')[-1]))
+        dialog.title(t_title("Edit List: {key}", key=path.split('.')[-1]))
         dialog.geometry("400x300")
         dialog.transient(self.frame)
         dialog.grab_set()
@@ -814,7 +814,7 @@ class ConfigTab:
 
         # Create selection dialog
         dialog = tk.Toplevel(self.frame)
-        dialog.title(t("Restore Backup"))
+        dialog.title(t_title("Restore Backup"))
         dialog.geometry("500x400")
         dialog.transient(self.frame)
         dialog.grab_set()

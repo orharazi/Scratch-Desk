@@ -17,7 +17,7 @@ from tkinter import ttk, messagebox, scrolledtext
 import json
 import os
 from datetime import datetime
-from core.translations import t, rtl
+from core.translations import t, t_title, rtl
 
 
 # Known values for different condition types
@@ -773,7 +773,7 @@ class RuleEditorDialog:
         self.is_new = rule is None
 
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title(t("Add New Rule") if self.is_new else t("Edit Rule"))
+        self.dialog.title(t_title("Add New Rule") if self.is_new else t_title("Edit Rule"))
         self.dialog.geometry("900x850")
         self.dialog.transient(parent)
         self.dialog.grab_set()

@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 from typing import Tuple, Optional, Callable
-from core.translations import t
+from core.translations import t, t_title
 from core.logger import get_logger
 
 logger = get_logger()
@@ -74,7 +74,7 @@ class HomingProgressDialog:
     def _create_dialog(self):
         """Create the modal dialog UI"""
         self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title(t("Homing in Progress"))
+        self.dialog.title(t_title("Homing in Progress"))
         self.dialog.geometry("500x350")
         self.dialog.transient(self.parent)
         self.dialog.grab_set()  # Make modal - block all other interaction

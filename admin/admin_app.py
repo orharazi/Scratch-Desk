@@ -25,7 +25,7 @@ import re
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.logger import get_logger
-from core.translations import t, HEBREW_TRANSLATIONS
+from core.translations import t, t_title, HEBREW_TRANSLATIONS
 
 # Import new tabs
 from admin.tabs.safety_tab import SafetyTab
@@ -38,7 +38,7 @@ class AdminToolGUI:
 
     def __init__(self, root, hardware=None, launched_from_app=False):
         self.root = root
-        self.root.title(t("Admin Tool - Scratch Desk CNC"))
+        self.root.title(t_title("Admin Tool - Scratch Desk CNC"))
         self.root.geometry("1400x900")
 
         # Track if launched from main app (to avoid disconnecting shared hardware)
@@ -1424,7 +1424,7 @@ class AdminToolGUI:
     def change_admin_password(self):
         """Open dialog to change the admin password"""
         dialog = tk.Toplevel(self.root)
-        dialog.title(t("Change Admin Password"))
+        dialog.title(t_title("Change Admin Password"))
         dialog.geometry("350x200")
         dialog.resizable(False, False)
         dialog.transient(self.root)

@@ -16,7 +16,7 @@ import json
 import os
 from datetime import datetime, timedelta
 
-from core.translations import t
+from core.translations import t, t_title
 
 
 class AnalyticsTab:
@@ -647,7 +647,7 @@ class AnalyticsTab:
 
         # Create details popup
         popup = tk.Toplevel(self.parent_frame)
-        popup.title(t("Run Details"))
+        popup.title(t_title("Run Details"))
         popup.geometry("500x400")
         popup.transient(self.parent_frame.winfo_toplevel())
 

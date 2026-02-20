@@ -692,12 +692,10 @@ class ControlsPanel:
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)
 
-            # Reset hardware state and move to home position (like full reset)
+            # Reset hardware state (no homing - motors stay where they are)
             self.hardware.reset_hardware()
             if hasattr(self.hardware, 'flush_all_sensor_buffers'):
                 self.hardware.flush_all_sensor_buffers()
-            self.hardware.move_x(0.0)
-            self.hardware.move_y(0.0)
 
             # Reset all operation states to pending so canvas shows fresh colors
             if hasattr(self.main_app, 'operation_states'):

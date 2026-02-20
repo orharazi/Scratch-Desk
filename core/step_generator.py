@@ -145,9 +145,9 @@ def _translate_description_to_hebrew(description):
         'Cut LEFT paper edge: Wait for bottom rows sensor': 'חיתוך קצה שמאלי: המתן לחיישן עמודות תחתון',
         'Cut LEFT paper edge: Close row cutter': 'חיתוך קצה שמאלי: סגור חותך עמודות',
 
-        'Lines complete: Move lines motor to home position (Y=0)': 'שורות הושלמו: הזז מנוע שורות למיקום בית (Y=0)',
         'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שמנוע שורות במיקום בית (Y=0)',
-        'Rows complete: Move rows motor to home position (X=0)': 'עמודות הושלמו: הזז מנוע עמודות למיקום בית (X=0)',
+        'Lines complete: Move lines motor to position 0': 'שורות הושלמו: הזז מנוע שורות למיקום 0',
+        'Rows complete: Move rows motor to position 0': 'עמודות הושלמו: הזז מנוע עמודות למיקום 0',
     }
 
     # Check for exact match first
@@ -593,14 +593,14 @@ def generate_lines_marking_steps(program):
         {'tool': 'line_cutter', 'action': 'up'},
         "Cut bottom edge: Close line cutter"
     ))
-    
-    # LINES OPERATION COMPLETE: Move lines motor to home position (Y=0)
+
+    # Move lines motor back to position 0
     steps.append(create_step(
         'move_y',
         {'position': 0.0},
-        "Lines complete: Move lines motor to home position (Y=0)"
+        "Lines complete: Move lines motor to position 0"
     ))
-    
+
     return steps
 
 def generate_row_marking_steps(program):
@@ -879,14 +879,14 @@ def generate_row_marking_steps(program):
         {'tool': 'row_cutter', 'action': 'up'},
         "Cut LEFT paper edge: Close row cutter"
     ))
-    
-    # ROWS OPERATION COMPLETE: Move rows motor to home position (X=0)
+
+    # Move rows motor back to position 0
     steps.append(create_step(
         'move_x',
         {'position': 0.0},
-        "Rows complete: Move rows motor to home position (X=0)"
+        "Rows complete: Move rows motor to position 0"
     ))
-    
+
     return steps
 
 def generate_complete_program_steps(program):

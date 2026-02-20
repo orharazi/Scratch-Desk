@@ -1513,6 +1513,24 @@ def t(text, **kwargs):
 
     return _apply_bidi(translated)
 
+def t_title(text: str, **kwargs) -> str:
+    """Translate text for use as a Tkinter window title with RTL support.
+
+    Window titles are rendered by the window manager, not Tkinter's Xft,
+    so BiDi reordering doesn't apply. Instead, prepend the Unicode RTL Mark
+    (U+200F) so the WM renders the title right-to-left.
+    """
+    translated = t(text, **kwargs)
+    if _current_language != "en" and translated:
+        return '\u200f' + str(translated)
+    return str(translated)
+
+def rtl_title(text: str) -> str:
+    """Prepend RTL mark to an already-Hebrew string for use as a window title."""
+    if _current_language != "en" and text:
+        return '\u200f' + text
+    return text
+
 def rtl(text):
     """Apply BiDi visual reordering to pre-translated Hebrew text.
 
