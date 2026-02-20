@@ -16,14 +16,9 @@ Usage:
 import json
 import os
 
-# Import bidi for proper RTL (Right-to-Left) text display
-try:
-    from bidi.algorithm import get_display
-    BIDI_AVAILABLE = True
-except ImportError:
-    BIDI_AVAILABLE = False
-    print("WARNING: python-bidi not installed. Hebrew text may display incorrectly.")
-    print("Install with: pip3 install python-bidi")
+# Note: python-bidi's get_display() is NOT used here. Tkinter's text renderer (Pango on Linux)
+# handles BiDi natively. Using get_display() causes double-processing and garbled Hebrew text.
+# Widget-level anchor='e' and justify=RIGHT handle RTL alignment.
 
 # Hebrew translations dictionary
 # Organized by category for maintainability
@@ -1471,18 +1466,9 @@ def t(text, **kwargs):
             print(f"Translation formatting error for '{text}': {e}")
             return text.format(**kwargs)
 
-    # Apply RTL (Right-to-Left) formatting for proper Hebrew display
-    if _current_language == "he":
-        if BIDI_AVAILABLE:
-            try:
-                translated = get_display(translated, base_dir='R')
-            except Exception as e:
-                print(f"RTL formatting error for '{text}': {e}")
-                # Fallback: wrap with Unicode RTL embedding markers
-                translated = '\u202b' + translated + '\u202c'
-        else:
-            # Fallback: wrap with Unicode RTL embedding markers when bidi is unavailable
-            translated = '\u202b' + translated + '\u202c'
+    # RTL note: Tkinter's text renderer (Pango on Linux) handles BiDi natively.
+    # No get_display() or Unicode BiDi markers needed — plain Hebrew text renders correctly
+    # when widgets use anchor='e' and justify=RIGHT.
 
     return translated
 
@@ -1491,16 +1477,10 @@ def rtl(text):
 
     Use this for Hebrew strings that were already translated (e.g., hebDescription
     from step_generator) but still need bidi visual reordering for correct display.
+
+    Note: Tkinter's Pango renderer handles BiDi natively, so this function
+    returns text unchanged. Widget-level anchor='e' and justify=RIGHT handle alignment.
     """
-    if _current_language == "he":
-        lines = text.split('\n')
-        if BIDI_AVAILABLE:
-            try:
-                return '\n'.join(get_display(line, base_dir='R') for line in lines)
-            except Exception:
-                pass
-        # Fallback: wrap each line with Unicode RTL embedding markers
-        return '\n'.join('\u202b' + line + '\u202c' for line in lines)
     return text
 
 def load_language_from_config():
