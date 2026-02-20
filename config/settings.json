@@ -338,13 +338,13 @@
       "smtp_password": "egwinocrndmjlnsp",
       "sender_email": "uridesk35@gmail.com\n",
       "recipient_email": "orharazi@gmail.com",
-      "subject_prefix": "\u05e9\u05d5\u05dc\u05d7\u05df \u05e9\u05e8\u05d8\u05d5\u05d8 \u05d9\u05e9\u05d9\u05d1\u05d4 \u05e9\u05dc \u05d7\u05d9 - \u05d0\u05e0\u05dc\u05d9\u05d8\u05d9\u05e7\u05d5\u05ea",
+      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
       "schedule_enabled": true,
       "schedule_frequency": "monthly",
       "schedule_time": "08:00",
       "schedule_day_of_week": 0,
       "schedule_day_of_month": 1,
-      "last_sent": "2026-02-15T16:24:09.285258"
+      "last_sent": "2026-02-20T03:21:28.707536"
     }
   }
 }

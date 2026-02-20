@@ -1472,11 +1472,17 @@ def t(text, **kwargs):
             return text.format(**kwargs)
 
     # Apply RTL (Right-to-Left) formatting for proper Hebrew display
-    if BIDI_AVAILABLE and _current_language == "he":
-        try:
-            translated = get_display(translated, base_dir='R')
-        except Exception as e:
-            print(f"RTL formatting error for '{text}': {e}")
+    if _current_language == "he":
+        if BIDI_AVAILABLE:
+            try:
+                translated = get_display(translated, base_dir='R')
+            except Exception as e:
+                print(f"RTL formatting error for '{text}': {e}")
+                # Fallback: wrap with Unicode RTL embedding markers
+                translated = '\u202b' + translated + '\u202c'
+        else:
+            # Fallback: wrap with Unicode RTL embedding markers when bidi is unavailable
+            translated = '\u202b' + translated + '\u202c'
 
     return translated
 
@@ -1486,13 +1492,15 @@ def rtl(text):
     Use this for Hebrew strings that were already translated (e.g., hebDescription
     from step_generator) but still need bidi visual reordering for correct display.
     """
-    if BIDI_AVAILABLE and _current_language == "he":
-        try:
-            # Process each line separately for proper bidi handling of multiline text
-            lines = text.split('\n')
-            return '\n'.join(get_display(line, base_dir='R') for line in lines)
-        except Exception:
-            pass
+    if _current_language == "he":
+        lines = text.split('\n')
+        if BIDI_AVAILABLE:
+            try:
+                return '\n'.join(get_display(line, base_dir='R') for line in lines)
+            except Exception:
+                pass
+        # Fallback: wrap each line with Unicode RTL embedding markers
+        return '\n'.join('\u202b' + line + '\u202c' for line in lines)
     return text
 
 def load_language_from_config():
