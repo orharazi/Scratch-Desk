@@ -823,6 +823,10 @@ class ExecutionEngine:
                                     'safety_code': safety_code,
                                     'monitor_type': 'real_time'
                                 })
+                            else:
+                                # Already paused - update violated_rule_ids to match current violations
+                                # so recovery checks the right rules (violations may have changed)
+                                violated_rule_ids = [r.get('id') for r in violated_rules]
 
                         # Check for safety violation recovery (when paused due to monitor violation)
                         elif self.is_paused and violated_rule_ids:

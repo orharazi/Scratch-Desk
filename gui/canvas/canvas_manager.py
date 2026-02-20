@@ -87,6 +87,14 @@ class CanvasManager:
         # Ensure all tools show as up
         self.ensure_all_tools_up()
 
+        # Clear cached display positions so update_position_display() doesn't skip
+        if hasattr(self, '_last_displayed_hardware_x'):
+            del self._last_displayed_hardware_x
+        if hasattr(self, '_last_displayed_hardware_y'):
+            del self._last_displayed_hardware_y
+        if hasattr(self, '_last_displayed_mode'):
+            del self._last_displayed_mode
+
         self.logger.debug("Canvas full reset completed", category="gui")
 
     def prepare_for_new_program(self):

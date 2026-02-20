@@ -79,10 +79,6 @@ class ArduinoGRBL:
         self.feed_rate = self.grbl_settings.get("feed_rate", 1000)  # mm/min
         self.rapid_rate = self.grbl_settings.get("rapid_rate", 3000)  # mm/min
 
-        # Limit switches configuration
-        self.limit_switches = self.grbl_config.get("limit_switches", {})
-        self.door_switch_config = self.limit_switches.get("door", {})
-
         # Load timing configuration values
         timing_config = self.config.get("timing", {})
         self._grbl_init_delay = timing_config.get("grbl_initialization_delay", 2)
@@ -121,8 +117,6 @@ class ArduinoGRBL:
             f"Feed Rate: {self.feed_rate} mm/min, Rapid Rate: {self.rapid_rate} mm/min",
             category="grbl"
         )
-        if self.door_switch_config:
-            self.logger.info(f"Door Switch: Pin {self.door_switch_config.get('pin', 'N/A')}", category="grbl")
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from config/settings.json"""
@@ -822,56 +816,6 @@ class ArduinoGRBL:
         except Exception as e:
             self.logger.error(f"Error unlocking GRBL: {e}", category="grbl")
             return False
-
-    def read_door_switch(self) -> Optional[bool]:
-        """
-        Read door limit switch state from Arduino digital pin
-
-        Returns:
-            True if door is closed (switch activated), False if open, None on error
-        """
-        if not self.is_connected:
-            self.logger.debug("Not connected to Arduino", category="grbl")
-            return None
-
-        if not self.door_switch_config:
-            self.logger.debug("Door switch not configured", category="grbl")
-            return None
-
-        try:
-            # Send custom M-code to read digital pin
-            # This requires custom firmware on Arduino to support reading digital pins
-            # Format: M119 for GRBL built-in limit switch status
-            door_switch_timeout = self.grbl_config.get("door_switch_read_timeout", 1.0)
-            response = self._send_command("M119", timeout=door_switch_timeout)
-
-            if response:
-                # Parse door switch status from response
-                # GRBL M119 format: "Door:X" where X is 0 (open) or 1 (closed)
-                door_match = re.search(r'Door:(\d)', response, re.IGNORECASE)
-                if door_match:
-                    state = int(door_match.group(1))
-                    return bool(state)  # True = closed, False = open
-
-                # Alternative: Check for "Door" keyword in response
-                if "door" in response.lower():
-                    return "closed" in response.lower() or "triggered" in response.lower()
-
-            # If no specific door status, assume open (safe default)
-            return False
-
-        except Exception as e:
-            self.logger.error(f"Error reading door switch: {e}", category="grbl")
-            return None
-
-    def get_door_switch_state(self) -> Optional[bool]:
-        """
-        Get door limit switch state
-
-        Returns:
-            True if door is closed, False if open, None on error
-        """
-        return self.read_door_switch()
 
     def apply_grbl_configuration(self) -> bool:
         """

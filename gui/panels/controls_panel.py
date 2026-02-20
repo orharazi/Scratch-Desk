@@ -688,15 +688,24 @@ class ControlsPanel:
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)
 
+            # Reset hardware state and move to home position (like full reset)
+            self.hardware.reset_hardware()
+            if hasattr(self.hardware, 'flush_all_sensor_buffers'):
+                self.hardware.flush_all_sensor_buffers()
+            self.hardware.move_x(0.0)
+            self.hardware.move_y(0.0)
+
             # Reset all operation states to pending so canvas shows fresh colors
             if hasattr(self.main_app, 'operation_states'):
                 for state_dict in self.main_app.operation_states.values():
                     for key in state_dict:
                         state_dict[key] = 'pending'
 
-            # Refresh canvas colors to reflect pending state
+            # Full canvas rebuild from scratch (grid, motor lines, paper area, work lines)
             if hasattr(self.main_app, 'canvas_manager'):
-                self.main_app.canvas_manager.refresh_work_lines_colors()
+                self.main_app.canvas_manager.full_reset()
+                self.main_app.canvas_manager.canvas_setup.setup_canvas()
+                self.main_app.canvas_manager.update_canvas_paper_area()
 
             # Update step display to show step 1 again
             self.update_step_display()
@@ -769,28 +778,18 @@ class ControlsPanel:
             self.main_app.operation_label.config(text=t("Execution Stopped - press Run to restart"), fg='orange')
     
     def auto_reload_after_completion(self):
-        """Show success message and immediately unlock for next run"""
-        # Show success state
-        self.progress_label.config(text=t("Program Completed Successfully!"), fg='green')
-        self.main_app.operation_label.config(text=t("Program Completed Successfully!"), fg='green')
-
-        if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
-            self.main_app.progress['value'] = 100
-            self.main_app.progress_text.config(text=t("100% Complete - Success!"))
-
-        # Unlock immediately so user can interact right away
+        """Reset to READY state after program completion so user can immediately re-run"""
+        # Reset engine and UI for fresh run (buttons, progress, operation states, panel unlock)
         self._prepare_for_new_run()
 
-        # After 5 seconds, update labels to "ready" state (cosmetic only)
-        self.main_app.root.after(5000, self._update_labels_after_success)
+        # Show ready state labels
+        self.progress_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
+        self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
 
-    def _update_labels_after_success(self):
-        """Called after 5s success display - updates labels to ready state (cosmetic only)"""
-        try:
-            self.progress_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
-            self.main_app.operation_label.config(text=t("Program ready - press Run to repeat"), fg='blue')
-        except Exception:
-            pass  # Widget may have been destroyed
+        # Reset progress to 0%
+        if hasattr(self.main_app, 'progress') and hasattr(self.main_app, 'progress_text'):
+            self.main_app.progress['value'] = 0
+            self.main_app.progress_text.config(text=t("0% Complete"))
 
     def reset_execution(self, clear_steps=False):
         """Reset execution and UI state

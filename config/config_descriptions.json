@@ -734,14 +734,6 @@
               "category": "important",
               "unit": "seconds"
             },
-            "door_switch_read_timeout": {
-              "description": "Timeout for reading door switch state via Arduino",
-              "description_he": "זמן קצוב לקריאת מצב מתג דלת דרך Arduino",
-              "type": "float",
-              "default": 1.0,
-              "category": "important",
-              "unit": "seconds"
-            },
             "$0": {
               "description": "GRBL $0: Step pulse time in microseconds",
               "description_he": "GRBL $0: זמן דופק צעד במיקרושניות",
@@ -1047,27 +1039,6 @@
               "default": 120.0,
               "category": "important",
               "unit": "seconds"
-            },
-            "pin": {
-              "description": "Arduino digital pin for door switch input",
-              "description_he": "פין דיגיטלי ב-Arduino לקלט מתג דלת",
-              "type": "string",
-              "default": "D2",
-              "category": "critical"
-            },
-            "pull_up": {
-              "description": "Enable internal pull-up resistor on door switch pin",
-              "description_he": "אפשר נגד עילי פנימי על פין מתג הדלת",
-              "type": "bool",
-              "default": true,
-              "category": "important"
-            },
-            "type": {
-              "description": "Door switch wiring type (normally_open or normally_closed)",
-              "description_he": "סוג חיווט מתג דלת (פתוח כרגיל או סגור כרגיל)",
-              "type": "string",
-              "default": "normally_open",
-              "category": "important"
             },
             "movement_poll_interval": {
               "description": "Interval for polling GRBL position during movement",

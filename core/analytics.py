@@ -149,14 +149,16 @@ class AnalyticsCollector:
 
     def _on_status(self, status, info=None):
         """Intercept status callback, record data, forward to original"""
+        # Capture callback ref BEFORE processing (_finalize_run clears self._original_callback)
+        original_callback = self._original_callback
         try:
             self._process_status(status, info)
         except Exception as e:
             self.logger.warning(f"Analytics processing error: {e}", category="execution")
 
-        # Always forward to original callback
-        if self._original_callback:
-            self._original_callback(status, info)
+        # Forward using local ref (survives _finalize_run clearing the instance var)
+        if original_callback:
+            original_callback(status, info)
 
     def _process_status(self, status, info):
         """Process a status event for analytics"""

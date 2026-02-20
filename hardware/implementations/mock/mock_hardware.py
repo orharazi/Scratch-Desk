@@ -176,7 +176,6 @@ def reset_hardware():
     global line_motor_right_up_sensor, line_motor_right_down_sensor
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
-    global air_pressure_valve
     global limit_switch_states
     global x_left_edge, x_right_edge, y_top_edge, y_bottom_edge
     global sensor_trigger_states, sensor_trigger_timers, execution_engine_reference
@@ -211,8 +210,8 @@ def reset_hardware():
     row_cutter_up_sensor = True
     row_cutter_down_sensor = False
 
-    # Air pressure valve - default UP (closed)
-    air_pressure_valve = "up"
+    # Air pressure valve - NOT reset here, managed at application lifecycle level
+    # (turned on at app start, turned off at app exit)
 
     # Edge sensors - default off
     x_left_edge = False
@@ -1668,14 +1667,8 @@ class MockHardware:
         }
 
     # ========== LIMIT SWITCHES ==========
-    def get_door_switch(self) -> bool:
-        return get_limit_switch_state("rows_door")
-
     def get_door_sensor(self) -> bool:
-        """Alias for get_door_switch for consistency with other sensors"""
-        return get_limit_switch_state("rows_door")
-
-    def get_rows_door_switch(self) -> bool:
+        """Read door sensor state (from RS485 module bit index 15)"""
         return get_limit_switch_state("rows_door")
 
     def get_limit_switch_state(self, switch_name: str) -> bool:
@@ -1695,10 +1688,6 @@ class MockHardware:
 
     def get_row_motor_limit_switch(self) -> str:
         return get_row_motor_limit_switch()
-
-    def get_rows_limit_switch(self) -> bool:
-        """Get rows limit switch state"""
-        return get_limit_switch_state('rows')
 
     def set_limit_switch_state(self, switch_name: str, state: bool):
         set_limit_switch_state(switch_name, state)

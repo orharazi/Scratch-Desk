@@ -189,8 +189,8 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": true,
-    "start_with_grbl": true,
+    "use_real_hardware": false,
+    "start_with_grbl": false,
     "poc_mode": false,
     "skip_initial_sensor_tests": false,
     "raspberry_pi": {
@@ -255,7 +255,6 @@
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
       "homing_timeout": 120.0,
-      "door_switch_read_timeout": 1.0,
       "position_tolerance_cm": 0.1,
       "movement_timeout": 60.0,
       "movement_poll_interval": 0.1,
@@ -301,13 +300,6 @@
         "$130": 1000.0,
         "$131": 1000.0,
         "$132": 0.0
-      },
-      "limit_switches": {
-        "door": {
-          "pin": "D2",
-          "type": "normally_open",
-          "pull_up": true
-        }
       }
     }
   },

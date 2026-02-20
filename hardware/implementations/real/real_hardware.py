@@ -507,7 +507,7 @@ class RealHardware:
 
     # ========== LIMIT SWITCHES ==========
 
-    def get_door_switch(self) -> bool:
+    def get_door_sensor(self) -> bool:
         """
         Read door sensor state (from RS485 via GPIO interface)
 
@@ -519,23 +519,6 @@ class RealHardware:
 
         state = self.gpio.get_door_sensor()
         return state if state is not None else False
-
-    def get_door_sensor(self) -> bool:
-        """
-        Read door sensor state (alias for get_door_switch for consistency with other sensors)
-
-        Returns:
-            True if door is closed, False if open
-        """
-        return self.get_door_switch()
-
-    def get_rows_door_switch(self) -> bool:
-        """
-        Read rows door switch state (legacy method)
-
-        DEPRECATED: Use get_door_switch() instead
-        """
-        return self.get_door_switch()
 
     # ========== EMERGENCY CONTROLS ==========
 
@@ -763,10 +746,6 @@ class RealHardware:
         """
         door_closed = self.get_door_sensor()
         return "down" if door_closed else "up"
-
-    def get_rows_limit_switch(self) -> bool:
-        """Get rows limit switch state (from RS485 door_sensor at address 15)"""
-        return self.get_door_sensor()
 
     def set_limit_switch_state(self, switch_name: str, state: bool):
         """Set limit switch state (not supported in real hardware mode)"""

@@ -1224,7 +1224,6 @@ HEBREW_TRANSLATIONS = {
     "connection_timeout": "זמן המתנה לחיבור",
     "command_timeout": "זמן המתנה לפקודה",
     "homing_timeout": "זמן המתנה לביות",
-    "door_switch_read_timeout": "זמן קריאת מתג דלת",
     "position_tolerance_cm": "סובלנות מיקום",
     "movement_timeout": "זמן המתנה לתנועה",
     "movement_poll_interval": "תדירות דגימת תנועה",
@@ -1271,13 +1270,10 @@ HEBREW_TRANSLATIONS = {
     "$131": "נסיעה מקסימלית Y ($131)",
     "$132": "נסיעה מקסימלית Z ($132)",
 
-    # --- limit_switches ---
     "door": "דלת",
     "pin": "פין",
     "type": "סוג",
-    "normally_open": "פתוח כרגיל",
     "pull_up": "נגד עילי",
-    "limit_switches": "מתגי גבול",
     "grbl_settings": "הגדרות GRBL",
     "grbl_configuration": "הגדרות GRBL מתקדמות",
     "pistons": "בוכנות",

@@ -43,6 +43,9 @@ def main():
     app = ScratchDeskGUI(root)
     _hardware = app.hardware
 
+    # Turn on air pressure when application starts
+    _hardware.air_pressure_valve_down()
+
     # Register cleanup for any exit path
     atexit.register(_shutdown_air_pressure)
     signal.signal(signal.SIGTERM, _signal_handler)

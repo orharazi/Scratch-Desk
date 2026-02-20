@@ -312,13 +312,13 @@
         ],
         "action": "emergency_pause",
         "recovery_conditions": {
-          "operator": "AND",
+          "operator": "OR",
           "items": [
             {
               "type": "sensor",
               "source": "row_motor_limit_switch",
               "operator": "equals",
-              "value": "down"
+              "value": "up"
             },
             {
               "type": "piston",
@@ -423,12 +423,6 @@
         "recovery_conditions": {
           "operator": "AND",
           "items": [
-            {
-              "type": "sensor",
-              "source": "row_motor_limit_switch",
-              "operator": "equals",
-              "value": "down"
-            },
             {
               "type": "piston",
               "source": "line_motor",

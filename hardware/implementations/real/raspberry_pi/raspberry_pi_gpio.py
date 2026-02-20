@@ -654,9 +654,8 @@ class RaspberryPiGPIO:
 
         return states
 
-    # REMOVED get_all_limit_switch_states - not part of user's machine
-    # Note: Door limit switch has been moved to Arduino GRBL
-    # Use hardware_interface.get_door_switch() instead
+    # Note: Door sensor moved FROM Arduino GRBL to RS485 module (bit index 15)
+    # Use hardware_interface.get_door_sensor() instead
 
     # ========== SENSOR INITIALIZATION ==========
 
