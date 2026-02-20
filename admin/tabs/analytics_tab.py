@@ -154,11 +154,11 @@ class AnalyticsTab:
         self.tree.heading('info', text=t("Info"))
 
         self.tree.column('datetime', width=140, minwidth=120)
-        self.tree.column('program', width=120, minwidth=80)
-        self.tree.column('status', width=100, minwidth=80)
+        self.tree.column('program', width=120, minwidth=80, anchor="e")
+        self.tree.column('status', width=100, minwidth=80, anchor="e")
         self.tree.column('duration', width=80, minwidth=60)
         self.tree.column('steps', width=80, minwidth=60)
-        self.tree.column('info', width=200, minwidth=100)
+        self.tree.column('info', width=200, minwidth=100, anchor="e")
 
         # Scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)

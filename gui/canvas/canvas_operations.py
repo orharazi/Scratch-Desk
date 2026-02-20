@@ -2,7 +2,7 @@ import tkinter as tk
 import re
 import json
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, rtl
 
 # Load settings
 def load_settings():
@@ -84,9 +84,9 @@ class CanvasOperations:
         repeats_info = f"{p.repeat_rows}×{p.repeat_lines}" if (p.repeat_rows > 1 or p.repeat_lines > 1) else ""
         
         if repeats_info:
-            label_text = f"{p.program_name}\nActual: {paper_width}×{paper_height}cm (Pattern: {single_size}, Repeats: {repeats_info})"
+            label_text = rtl(f"{p.program_name}") + f"\nActual: {paper_width}×{paper_height}cm (Pattern: {single_size}, Repeats: {repeats_info})"
         else:
-            label_text = f"{p.program_name}\n{paper_width}×{paper_height}cm"
+            label_text = rtl(f"{p.program_name}") + f"\n{paper_width}×{paper_height}cm"
         
         self.main_app.canvas.create_text(
             canvas_x1 + (canvas_x2 - canvas_x1) / 2, canvas_y1 - 25,

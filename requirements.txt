@@ -5,3 +5,6 @@ pyserial>=3.5
 
 # Optional: Raspberry Pi GPIO (only needed on Raspberry Pi)
 # RPi.GPIO>=0.7.1  # Uncomment if running on Raspberry Pi
+
+# BiDi text support - required on Linux for Hebrew RTL display in Tkinter
+python-bidi>=0.4.2

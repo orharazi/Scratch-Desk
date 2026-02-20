@@ -15,10 +15,22 @@ Usage:
 
 import json
 import os
+import sys
 
-# Note: python-bidi's get_display() is NOT used here. Tkinter's text renderer (Pango on Linux)
-# handles BiDi natively. Using get_display() causes double-processing and garbled Hebrew text.
-# Widget-level anchor='e' and justify=RIGHT handle RTL alignment.
+# Platform-aware BiDi for Hebrew in Tkinter:
+#   - Linux (Xft): NO native BiDi → must use python-bidi's get_display()
+#   - macOS (Core Text): Native BiDi → get_display() would cause double-processing
+#   - Windows (Uniscribe): Native BiDi → same as macOS
+_NEEDS_BIDI_REORDER = (sys.platform == 'linux')
+_bidi_get_display = None
+
+if _NEEDS_BIDI_REORDER:
+    try:
+        from bidi.algorithm import get_display as _bidi_get_display
+    except ImportError:
+        print("WARNING: python-bidi not installed. Hebrew text will display incorrectly on Linux.")
+        print("Install with: pip install python-bidi")
+        _NEEDS_BIDI_REORDER = False
 
 # Hebrew translations dictionary
 # Organized by category for maintainability
@@ -754,6 +766,28 @@ HEBREW_TRANSLATIONS = {
     "Homing sequence completed successfully!\n\nMachine is now at home position (0, 0).": "תהליך הביות הושלם בהצלחה!\n\nהמכונה נמצאת כעת במיקום בית (0, 0).",
     "Door is closed - please open the door to continue": "הדלת סגורה - נא לפתוח את הדלת כדי להמשיך",
 
+    # Admin Tool button and login
+    "Admin Tool": "כלי ניהול",
+    "Admin Login": "כניסת מנהל",
+    "Enter admin password:": "הזן סיסמת מנהל:",
+    "Wrong password": "סיסמה שגויה",
+    "Login": "כניסה",
+
+    # Startup homing confirmation
+    "Homing Required": "נדרש ביות",
+    "Real hardware mode is active.\n\nThe machine needs to be homed before operation.\nThis will:\n1. Apply GRBL configuration\n2. Check door is open\n3. Lift line motor pistons\n4. Run GRBL homing ($H)\n5. Reset work coordinates\n6. Lower line motor pistons\n\nMake sure the machine is clear and ready.\n\nRun homing now?": "מצב חומרה אמיתית פעיל.\n\nיש לבצע ביות למכונה לפני הפעלה.\nפעולה זו תבצע:\n1. החלת הגדרות GRBL\n2. בדיקה שהדלת פתוחה\n3. הרמת בוכנות מנוע שורות\n4. הפעלת ביות GRBL ($H)\n5. איפוס קואורדינטות עבודה\n6. הורדת בוכנות מנוע שורות\n\nוודא שהמכונה פנויה ומוכנה.\n\nלהפעיל ביות עכשיו?",
+    "Machine was NOT homed.\n\nYou can run homing later from the Hardware Test GUI\nor by switching hardware modes in the settings panel.": "המכונה לא עברה ביות.\n\nניתן להפעיל ביות מאוחר יותר מממשק בדיקת החומרה\nאו על ידי החלפת מצב חומרה בלוח ההגדרות.",
+
+    # Manual homing confirmation
+    "Run Homing": "הפעל ביות",
+    "Cannot Home": "לא ניתן לבצע ביות",
+    "Cannot run homing while a program is executing.\nStop execution first.": "לא ניתן לבצע ביות בזמן שתוכנית רצה.\nעצור את הביצוע קודם.",
+    "This will run the homing sequence.\n\nMake sure the machine is clear and ready.\n\nRun homing now?": "פעולה זו תפעיל את תהליך הביות.\n\nוודא שהמכונה פנויה ומוכנה.\n\nלהפעיל ביות עכשיו?",
+
+    # Homing status
+    "HOMING": "ביות",
+    "Running homing sequence...": "מבצע תהליך ביות...",
+
     # ============================================================================
     # ADMIN TOOL - Piston Control Messages
     # ============================================================================
@@ -1433,6 +1467,17 @@ def get_language():
     """Get the current language code"""
     return _current_language
 
+def _apply_bidi(text):
+    """Convert Hebrew text from logical to visual order on Linux (Xft)."""
+    if not _NEEDS_BIDI_REORDER or _bidi_get_display is None:
+        return text
+    if not text or not isinstance(text, str):
+        return text
+    # Process multi-line text line by line
+    if '\n' in text:
+        return '\n'.join(_apply_bidi(line) for line in text.split('\n'))
+    return _bidi_get_display(text)
+
 def t(text, **kwargs):
     """
     Translate text to Hebrew with proper RTL display formatting
@@ -1466,22 +1511,15 @@ def t(text, **kwargs):
             print(f"Translation formatting error for '{text}': {e}")
             return text.format(**kwargs)
 
-    # RTL note: Tkinter's text renderer (Pango on Linux) handles BiDi natively.
-    # No get_display() or Unicode BiDi markers needed — plain Hebrew text renders correctly
-    # when widgets use anchor='e' and justify=RIGHT.
-
-    return translated
+    return _apply_bidi(translated)
 
 def rtl(text):
-    """Apply RTL formatting to Hebrew text without translation lookup.
+    """Apply BiDi visual reordering to pre-translated Hebrew text.
 
-    Use this for Hebrew strings that were already translated (e.g., hebDescription
-    from step_generator) but still need bidi visual reordering for correct display.
-
-    Note: Tkinter's Pango renderer handles BiDi natively, so this function
-    returns text unchanged. Widget-level anchor='e' and justify=RIGHT handle alignment.
+    For Hebrew strings not from HEBREW_TRANSLATIONS (e.g., hebDescription
+    from step_generator). On macOS/Windows, returns text unchanged.
     """
-    return text
+    return _apply_bidi(text)
 
 def load_language_from_config():
     """

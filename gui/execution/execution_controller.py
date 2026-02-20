@@ -9,21 +9,21 @@ from core.translations import t, rtl
 REASON_STYLE = {
     "operational": {
         "icon": "\u2699\ufe0f",
-        "title_he": "\u05ea\u05e0\u05d0\u05d9 \u05ea\u05e4\u05e2\u05d5\u05dc\u05d9",
+        "title_he": rtl("\u05ea\u05e0\u05d0\u05d9 \u05ea\u05e4\u05e2\u05d5\u05dc\u05d9"),
         "bg": "#2d1a00",
         "accent": "#ff9900",
         "btn_color": "#cc7700",
     },
     "collision": {
         "icon": "\ud83d\udea8",
-        "title_he": "\u05e1\u05db\u05e0\u05ea \u05d4\u05ea\u05e0\u05d2\u05e9\u05d5\u05ea!",
+        "title_he": rtl("\u05e1\u05db\u05e0\u05ea \u05d4\u05ea\u05e0\u05d2\u05e9\u05d5\u05ea!"),
         "bg": "#2d0000",
         "accent": "#ff3333",
         "btn_color": "#cc0000",
     },
     "mechanical": {
         "icon": "\u26a0\ufe0f",
-        "title_he": "\u05e1\u05db\u05e0\u05ea \u05e0\u05d6\u05e7 \u05de\u05db\u05e0\u05d9",
+        "title_he": rtl("\u05e1\u05db\u05e0\u05ea \u05e0\u05d6\u05e7 \u05de\u05db\u05e0\u05d9"),
         "bg": "#1a002d",
         "accent": "#cc66ff",
         "btn_color": "#9933cc",
@@ -32,7 +32,7 @@ REASON_STYLE = {
 
 REASON_FALLBACK = {
     "icon": "\ud83d\udea8",
-    "title_he": "\u05d4\u05e4\u05e8\u05ea \u05d1\u05d8\u05d9\u05d7\u05d5\u05ea",
+    "title_he": rtl("\u05d4\u05e4\u05e8\u05ea \u05d1\u05d8\u05d9\u05d7\u05d5\u05ea"),
     "bg": "#2d0000",
     "accent": "#ff3333",
     "btn_color": "#cc0000",

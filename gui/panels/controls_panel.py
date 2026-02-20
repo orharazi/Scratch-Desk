@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.logger import get_logger
-from core.translations import t, rtl
+from core.translations import t, rtl, HEBREW_TRANSLATIONS
 from core.program_model import translate_validation_error
 
 
@@ -296,7 +296,8 @@ class ControlsPanel:
 
         # Progress indicator (compact) with better visibility
         self.progress_label = tk.Label(exec_frame, text=t("Ready"),
-                                      bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'))
+                                      bg='lightblue', fg='darkblue', font=('Arial', 7, 'bold'),
+                                      anchor='e')
         self.progress_label.pack(pady=1)
 
         # TEST CONTROLS SECTION - Hardware testing controls (compact layout)
@@ -526,13 +527,16 @@ class ControlsPanel:
             self.step_info_label.config(text=t("Error generating steps: {error}", error=e))
     
     def _format_param_value(self, key, value):
-        """Format a parameter value with units and Hebrew translation"""
-        # Translate the value itself for known enum values
-        translated_value = t(str(value)) if isinstance(value, str) else value
+        """Format a parameter value with units and Hebrew translation.
+
+        Returns raw Hebrew (logical order) — caller applies rtl() once.
+        """
+        # Translate the value itself for known enum values (raw Hebrew, no bidi)
+        translated_value = HEBREW_TRANSLATIONS.get(str(value), str(value)) if isinstance(value, str) else value
 
         # Add units for dimension keys
         if key in ('position', 'actual_width', 'actual_height') and isinstance(value, (int, float)):
-            return f"{value} {t('cm')}"
+            return f"{value} {HEBREW_TRANSLATIONS.get('cm', 'cm')}"
         return str(translated_value)
 
     def _format_parameters(self, params):
@@ -544,7 +548,7 @@ class ControlsPanel:
             # Skip internal/description keys that duplicate the description field
             if key == 'description':
                 continue
-            heb_key = t(key)
+            heb_key = HEBREW_TRANSLATIONS.get(key, key)
             heb_value = self._format_param_value(key, value)
             lines.append(f"{heb_value} :{heb_key}")
         return "\n".join(lines)
@@ -600,7 +604,7 @@ class ControlsPanel:
             self.current_step_label.config(text=t("Step {current}/{total}: {operation}",
                                                  current=current_index + 1,
                                                  total=len(self.main_app.steps),
-                                                 operation=rtl(heb_op)))
+                                                 operation=heb_op))
 
             # Update step details - clean Hebrew-only display
             heb_desc = current_step.get('hebDescription', current_step['description'])

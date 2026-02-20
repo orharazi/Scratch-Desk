@@ -25,7 +25,7 @@ import re
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, HEBREW_TRANSLATIONS
 
 # Import new tabs
 from admin.tabs.safety_tab import SafetyTab
@@ -111,7 +111,9 @@ class AdminToolGUI:
     def _setup_from_app(self):
         """Set up admin tool when launched from main app with existing hardware"""
         # Update UI to reflect connected state
-        mode = t("REAL HARDWARE") if hasattr(self.hardware, 'gpio') else t("MOCK/SIMULATION")
+        # Use raw Hebrew (not bidi-processed) for mode kwarg — t() will bidi the full string
+        mode_key = "REAL HARDWARE" if hasattr(self.hardware, 'gpio') else "MOCK/SIMULATION"
+        mode = HEBREW_TRANSLATIONS.get(mode_key, mode_key)
         self.mode_label.config(text=t("Mode: {mode}", mode=mode))
         self.hw_status_label.config(text=t("Connected"), foreground="green")
         self.connect_btn.config(text=t("Disconnect"), state="disabled")
@@ -877,7 +879,9 @@ class AdminToolGUI:
 
             self.hardware = get_hardware_interface()
 
-            mode = t("REAL HARDWARE") if hasattr(self.hardware, 'gpio') else t("MOCK/SIMULATION")
+            # Use raw Hebrew (not bidi-processed) for mode kwarg — t() will bidi the full string
+            mode_key = "REAL HARDWARE" if hasattr(self.hardware, 'gpio') else "MOCK/SIMULATION"
+            mode = HEBREW_TRANSLATIONS.get(mode_key, mode_key)
             self.mode_label.config(text=t("Mode: {mode}", mode=mode))
             self.log("INFO", t("Hardware mode: {mode}", mode=mode))
 

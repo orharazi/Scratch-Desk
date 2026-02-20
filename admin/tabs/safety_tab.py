@@ -17,7 +17,7 @@ from tkinter import ttk, messagebox, scrolledtext
 import json
 import os
 from datetime import datetime
-from core.translations import t
+from core.translations import t, rtl
 
 
 # Known values for different condition types
@@ -26,11 +26,11 @@ SENSOR_VALUES = ["active", "not_active"]
 
 # Operation descriptions - Hebrew with motor names
 OPERATION_DESCRIPTIONS = {
-    "move_x": "תנועת ציר X (מנוע עמודות)",
-    "move_y": "תנועת ציר Y (מנוע שורות)",
-    "move_position": "תנועה למיקום מוחלט (שני צירים)",
-    "tool_action": "פעולות כלים (בוכנות למעלה/למטה)",
-    "wait_sensor": "המתנה לחיישן"
+    "move_x": rtl("תנועת ציר X (מנוע עמודות)"),
+    "move_y": rtl("תנועת ציר Y (מנוע שורות)"),
+    "move_position": rtl("תנועה למיקום מוחלט (שני צירים)"),
+    "tool_action": rtl("פעולות כלים (בוכנות למעלה/למטה)"),
+    "wait_sensor": rtl("המתנה לחיישן")
 }
 
 # Available tools for tool_action operations
@@ -66,8 +66,8 @@ SEVERITY_DISPLAY = {
 SEVERITY_REVERSE = {v: k for k, v in SEVERITY_DISPLAY.items()}
 
 OPERATION_DISPLAY = {
-    "move_x": t("move_x") + " (עמודות)",
-    "move_y": t("move_y") + " (שורות)",
+    "move_x": t("move_x") + rtl(" (עמודות)"),
+    "move_y": t("move_y") + rtl(" (שורות)"),
     "move_position": t("move_position"),
     "tool_action": t("tool_action"),
     "wait_sensor": t("wait_sensor")
@@ -224,7 +224,7 @@ class SafetyTab:
         self.rules_tree.heading("type", text=t("Type"))
 
         self.rules_tree.column("enabled", width=40, anchor="center")
-        self.rules_tree.column("name", width=250)
+        self.rules_tree.column("name", width=250, anchor="e")
         self.rules_tree.column("severity", width=80, anchor="center")
         self.rules_tree.column("type", width=80, anchor="center")
 
@@ -359,7 +359,7 @@ class SafetyTab:
             severity = SEVERITY_DISPLAY.get(severity_raw, severity_raw)
 
             # Prefer Hebrew name if available
-            display_name = rule.get("name_he", rule.get("name", rule["id"]))
+            display_name = rtl(rule.get("name_he", rule.get("name", rule["id"])))
 
             self.rules_tree.insert("", "end", iid=rule["id"], values=(
                 enabled_text,
@@ -414,7 +414,7 @@ class SafetyTab:
         self.detail_id.config(text=rule.get("id", "-"))
         # Prefer Hebrew name/description/message
         display_name = rule.get("name_he", rule.get("name", "-"))
-        self.detail_name.config(text=display_name)
+        self.detail_name.config(text=rtl(display_name))
 
         # Status with color
         if rule.get("enabled", True):
@@ -430,7 +430,7 @@ class SafetyTab:
         reason = rule.get("reason", "")
         reason_display = rule.get("reason_he", REASON_DISPLAY.get(reason, reason)) if reason else "-"
         reason_color = REASON_COLORS.get(reason, "black")
-        self.detail_reason.config(text=reason_display, foreground=reason_color)
+        self.detail_reason.config(text=rtl(reason_display), foreground=reason_color)
 
         # Real-time monitoring field
         monitor = rule.get("monitor", {})
@@ -446,7 +446,7 @@ class SafetyTab:
             )
 
         display_desc = rule.get("description_he", rule.get("description", "-"))
-        self.detail_description.config(text=display_desc)
+        self.detail_description.config(text=rtl(display_desc))
 
         # Format conditions - use Text widget
         conditions = rule.get("conditions", {})
@@ -476,7 +476,7 @@ class SafetyTab:
             return t("No conditions")
 
         # Operator symbols
-        op_symbol = "וגם" if operator == "AND" else "או"
+        op_symbol = rtl("וגם") if operator == "AND" else rtl("או")
 
         lines = []
         prefix = "  " * indent

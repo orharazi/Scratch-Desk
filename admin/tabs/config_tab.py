@@ -17,7 +17,7 @@ import json
 import os
 from datetime import datetime
 import shutil
-from core.translations import t
+from core.translations import t, rtl
 
 
 class ConfigTab:
@@ -168,7 +168,8 @@ class ConfigTab:
         # Top-level section
         if len(parts) == 1:
             section = desc_sections.get(key, {})
-            return section.get("title_he", section.get("title", key))
+            title = section.get("title_he", section.get("title", key))
+            return rtl(title) if title != key else key
 
         # Subsection (e.g., hardware_config.raspberry_pi)
         if len(parts) == 2:
@@ -176,14 +177,15 @@ class ConfigTab:
             subsections = section.get("subsections", {})
             if key in subsections:
                 sub = subsections[key]
-                return sub.get("title_he", sub.get("title", key))
+                title = sub.get("title_he", sub.get("title", key))
+                return rtl(title) if title != key else key
 
         # Leaf setting - try description_he from descriptions
         desc_info = self.get_description_info(path)
         if desc_info:
             he = desc_info.get("description_he", "")
             if he:
-                return he
+                return rtl(he)
 
         # Fallback: translate key via translations.py, then raw key
         translated = t(key)
@@ -338,8 +340,8 @@ class ConfigTab:
 
         # Get section description - prefer Hebrew title
         section_info = self.get_section_info(path)
-        section_title = section_info.get("title_he", section_info.get("title", path)) if section_info else path
-        section_desc = section_info.get("description_he", section_info.get("description", "")) if section_info else ""
+        section_title = rtl(section_info.get("title_he", section_info.get("title", path))) if section_info else path
+        section_desc = rtl(section_info.get("description_he", section_info.get("description", ""))) if section_info else ""
 
         # Header
         header_frame = ttk.Frame(self.settings_frame)
@@ -379,7 +381,7 @@ class ConfigTab:
         # Prefer Hebrew description
         description = ""
         if desc_info:
-            description = desc_info.get("description_he", desc_info.get("description", ""))
+            description = rtl(desc_info.get("description_he", desc_info.get("description", "")))
 
         # RTL: Setting name on right (column=2), editor in middle (column=1), description on left (column=0)
         name_frame = ttk.Frame(self.settings_frame)
