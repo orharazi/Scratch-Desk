@@ -9,6 +9,9 @@ import signal
 # Add the current directory to the Python path so we can import our modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from gui.wayland_focus import patch_wayland_focus
+patch_wayland_focus()
+
 from gui.main_app import ScratchDeskGUI
 
 # Global reference for cleanup handlers
