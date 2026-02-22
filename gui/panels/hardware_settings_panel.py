@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 import json
 import serial.tools.list_ports
 from core.logger import get_logger
-from core.translations import t
+from core.translations import t, t_title
 from core.machine_state import MachineState, get_state_manager
 
 
@@ -299,7 +299,7 @@ class HardwareSettingsPanel:
 
         if use_real == current_is_real:
             messagebox.showinfo(
-                t("No Change"),
+                t_title("No Change"),
                 t("Hardware mode unchanged. Already in {mode} mode.",
                   mode=t("Real Hardware") if use_real else t("Simulation"))
             )
@@ -309,13 +309,13 @@ class HardwareSettingsPanel:
         # Check if safe to switch
         can_switch, reason = self._can_switch_mode()
         if not can_switch:
-            messagebox.showwarning(t("Cannot Switch"), reason)
+            messagebox.showwarning(t_title("Cannot Switch"), reason)
             return
 
         # Confirm the switch
         if use_real:
             if not messagebox.askyesno(
-                t("Switch to Real Hardware"),
+                t_title("Switch to Real Hardware"),
                 t("This will:\n"
                   "1. Switch to real hardware mode\n"
                   "2. Connect to Arduino/GPIO\n"
@@ -326,7 +326,7 @@ class HardwareSettingsPanel:
                 return
         else:
             if not messagebox.askyesno(
-                t("Switch to Simulation"),
+                t_title("Switch to Simulation"),
                 t("Switch to simulation mode?\n\n"
                   "This will disconnect from real hardware.")
             ):
@@ -398,7 +398,7 @@ class HardwareSettingsPanel:
             if not success:
                 state_manager.set_state(MachineState.ERROR, error)
                 messagebox.showerror(
-                    t("Hardware Switch Failed"),
+                    t_title("Hardware Switch Failed"),
                     t("Failed to switch hardware:\n\n{error}", error=error)
                 )
                 self._set_ui_enabled(True)
@@ -430,7 +430,7 @@ class HardwareSettingsPanel:
             self.logger.info(f"Hardware switched to {'Real' if use_real else 'Simulation'} mode", category="gui")
 
             messagebox.showinfo(
-                t("Hardware Switched"),
+                t_title("Hardware Switched"),
                 t("Successfully switched to {mode} mode.",
                   mode=t("Real Hardware") if use_real else t("Simulation"))
             )
@@ -438,7 +438,7 @@ class HardwareSettingsPanel:
         except Exception as e:
             state_manager.set_state(MachineState.ERROR, str(e))
             self.logger.error(f"Hardware switch error: {e}", category="gui")
-            messagebox.showerror(t("Error"), str(e))
+            messagebox.showerror(t_title("Error"), str(e))
         finally:
             self._set_ui_enabled(True)
             self.apply_btn.config(state=tk.DISABLED)
@@ -519,7 +519,7 @@ class HardwareSettingsPanel:
 
             # Show success message
             messagebox.showinfo(
-                t("Settings Saved"),
+                t_title("Settings Saved"),
                 t("Hardware settings saved to config:\n\n"
                   "Mode: {mode}\n"
                   "Port: {port}\n\n"
@@ -535,7 +535,7 @@ class HardwareSettingsPanel:
         except Exception as e:
             self.logger.error(f"Error saving settings: {e}", category="gui")
             messagebox.showerror(
-                t("Save Error"),
+                t_title("Save Error"),
                 t("Failed to save settings:\n{error}", error=e)
             )
 

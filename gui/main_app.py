@@ -33,6 +33,7 @@ class ScratchDeskGUI:
 
     def __init__(self, root):
         self.root = root
+        self.root.tk.call('tk', 'appname', 'scratch-desk')
         self.root.title(t_title("Scratch Desk Control System"))
         self.root.geometry("1500x1000")
         self.root.minsize(1100, 750)
@@ -150,6 +151,9 @@ class ScratchDeskGUI:
         if self.is_real_hardware:
             self.root.after(500, self._run_startup_homing)
 
+        # Force focus on startup (Wayland/labwc doesn't always focus new windows)
+        self._force_window_focus(self.root)
+
     def load_settings(self):
         """Load settings from config/settings.json"""
         try:
@@ -182,7 +186,7 @@ class ScratchDeskGUI:
                 error_msg = "\n".join(errors[:5])
                 if len(errors) > 5:
                     error_msg += f"\n" + t("... and {count} more errors", count=len(errors) - 5)
-                messagebox.showerror(t("CSV Validation Errors"),
+                messagebox.showerror(t_title("CSV Validation Errors"),
                                    t("Found {count} validation errors:\n{errors}", count=len(errors), errors=error_msg))
 
             if programs:
@@ -192,7 +196,7 @@ class ScratchDeskGUI:
                 if programs:
                     self.program_panel.select_program(0)
             else:
-                messagebox.showerror(t("Error"), t("No valid programs found in {file}", file=file_path))
+                messagebox.showerror(t_title("Error"), t("No valid programs found in {file}", file=file_path))
 
     def create_main_layout(self):
         """Create the main window layout - responsive RTL design"""
@@ -316,7 +320,7 @@ class ScratchDeskGUI:
 
         # Ask user to confirm homing
         if not messagebox.askyesno(
-            t("Homing Required"),
+            t_title("Homing Required"),
             t("Real hardware mode is active.\n\n"
               "The machine needs to be homed before operation.\n"
               "This will:\n"
@@ -331,7 +335,7 @@ class ScratchDeskGUI:
         ):
             self.logger.warning("User skipped startup homing - machine not homed", category="gui")
             messagebox.showwarning(
-                t("Warning"),
+                t_title("Warning"),
                 t("Machine was NOT homed.\n\n"
                   "You can run homing later from the Hardware Test GUI\n"
                   "or by switching hardware modes in the settings panel.")
@@ -361,14 +365,14 @@ class ScratchDeskGUI:
         # Don't allow homing if execution is running
         if self.execution_engine.is_running:
             messagebox.showwarning(
-                t("Cannot Home"),
+                t_title("Cannot Home"),
                 t("Cannot run homing while a program is executing.\nStop execution first.")
             )
             return
 
         # Confirm with user
         if not messagebox.askyesno(
-            t("Run Homing"),
+            t_title("Run Homing"),
             t("This will run the homing sequence.\n\n"
               "Make sure the machine is clear and ready.\n\n"
               "Run homing now?")
@@ -420,8 +424,10 @@ class ScratchDeskGUI:
 
         def try_login(event=None):
             if password_entry.get() == admin_password:
+                dialog.grab_release()
                 dialog.destroy()
-                self._launch_admin_tool()
+                # Small delay to let compositor process the dialog removal before opening admin
+                self.root.after(150, self._launch_admin_tool)
             else:
                 error_label.config(text=t("Wrong password"))
                 password_entry.delete(0, tk.END)
@@ -435,12 +441,20 @@ class ScratchDeskGUI:
         tk.Button(btn_frame, text=t("Login"), command=try_login, width=10,
                   bg='#8E44AD', fg='white').pack(side=tk.LEFT, padx=5)
 
+    def _force_window_focus(self, window):
+        """Force window focus — delegates to wayland_focus utility"""
+        from gui.wayland_focus import force_focus
+        force_focus(window)
+
     def _launch_admin_tool(self):
         """Launch admin tool window with shared hardware"""
         from admin.admin_app import AdminToolGUI
 
         admin_window = tk.Toplevel(self.root)
         AdminToolGUI(admin_window, hardware=self.hardware, launched_from_app=True)
+
+        # Force focus - use topmost trick for Wayland/labwc compatibility
+        self._force_window_focus(admin_window)
 
     def perform_emergency_stop(self):
         """Emergency stop - immediately halt all motors and retract pistons to safe state"""

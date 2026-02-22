@@ -203,13 +203,13 @@ class HomingProgressDialog:
         if not self.success:
             logger.error(f"Homing failed: {self.error_message}", category="hardware")
             messagebox.showerror(
-                t("Homing Failed"),
+                t_title("Homing Failed"),
                 t("Homing sequence failed!\n\nError: {error}", error=self.error_message)
             )
         else:
             logger.info("Homing completed successfully", category="hardware")
             messagebox.showinfo(
-                t("Homing Complete"),
+                t_title("Homing Complete"),
                 t("Homing sequence completed successfully!\n\n"
                   "Machine is now at home position (0, 0).")
             )

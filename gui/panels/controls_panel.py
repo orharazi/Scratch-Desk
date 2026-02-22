@@ -550,7 +550,7 @@ class ControlsPanel:
                 continue
             heb_key = HEBREW_TRANSLATIONS.get(key, key)
             heb_value = self._format_param_value(key, value)
-            lines.append(f"{heb_value} :{heb_key}")
+            lines.append(f"{heb_key}: {heb_value}")
         return "\n".join(lines)
 
     def update_step_display(self):

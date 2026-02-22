@@ -45,7 +45,7 @@ class AnalyticsTab:
             with open('config/settings.json', 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            messagebox.showerror(t("Error"), str(e))
+            messagebox.showerror(t_title("Error"), str(e))
 
     def _get_csv_path(self):
         """Get analytics CSV path"""
@@ -683,7 +683,7 @@ class AnalyticsTab:
     def export_csv(self):
         """Export filtered data to a new CSV file"""
         if not self.filtered_data:
-            messagebox.showinfo(t("No Data"), t("No data to export"))
+            messagebox.showinfo(t_title("No Data"), t("No data to export"))
             return
 
         filename = filedialog.asksaveasfilename(
@@ -704,13 +704,13 @@ class AnalyticsTab:
                     writer.writerow(row)
 
             self.admin_app.log("SUCCESS", t("Analytics exported to {filename}", filename=filename))
-            messagebox.showinfo(t("Success"), t("Data exported to {filename}", filename=filename))
+            messagebox.showinfo(t_title("Success"), t("Data exported to {filename}", filename=filename))
         except Exception as e:
-            messagebox.showerror(t("Error"), str(e))
+            messagebox.showerror(t_title("Error"), str(e))
 
     def clear_data(self):
         """Clear all analytics data"""
-        if not messagebox.askyesno(t("Clear Data"),
+        if not messagebox.askyesno(t_title("Clear Data"),
                                     t("Delete all analytics data? This cannot be undone.")):
             return
 
@@ -723,7 +723,7 @@ class AnalyticsTab:
                     writer.writerow(CSV_COLUMNS)
                 self.admin_app.log("INFO", t("Analytics data cleared"))
             except Exception as e:
-                messagebox.showerror(t("Error"), str(e))
+                messagebox.showerror(t_title("Error"), str(e))
                 return
 
         self.load_data()

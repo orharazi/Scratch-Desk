@@ -157,7 +157,7 @@ class SafetyTab:
                 json.dump(self.rules_data, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
-            messagebox.showerror(t("Error"), t("Failed to save rules: {error}", error=str(e)))
+            messagebox.showerror(t_title("Error"), t("Failed to save rules: {error}", error=str(e)))
             return False
 
     def create_ui(self):
@@ -579,7 +579,7 @@ class SafetyTab:
 
         if not enabled:
             if not messagebox.askyesno(
-                t("Disable Safety"),
+                t_title("Disable Safety"),
                 t("WARNING: Disabling the safety system can lead to hardware damage!\n\nAre you sure you want to disable safety checks?")
             ):
                 self.global_enabled_var.set(True)
@@ -628,10 +628,10 @@ class SafetyTab:
             return
 
         if rule.get("is_system_rule", False):
-            messagebox.showwarning(t("Cannot Delete"), t("System rules cannot be deleted. You can only disable them."))
+            messagebox.showwarning(t_title("Cannot Delete"), t("System rules cannot be deleted. You can only disable them."))
             return
 
-        if messagebox.askyesno(t("Delete Rule"), t("Delete rule '{name}'?", name=rule.get('name', self.selected_rule_id))):
+        if messagebox.askyesno(t_title("Delete Rule"), t("Delete rule '{name}'?", name=rule.get('name', self.selected_rule_id))):
             self.rules_data["rules"] = [r for r in self.rules_data["rules"] if r["id"] != self.selected_rule_id]
             self.save_rules()
             self.populate_rules_list()
@@ -680,7 +680,7 @@ class SafetyTab:
 
                 if "rules" in imported:
                     # Merge or replace?
-                    if messagebox.askyesno(t("Import Rules"), t("Merge with existing rules? (No = Replace all)")):
+                    if messagebox.askyesno(t_title("Import Rules"), t("Merge with existing rules? (No = Replace all)")):
                         # Merge
                         existing_ids = {r["id"] for r in self.rules_data["rules"]}
                         for rule in imported["rules"]:
@@ -692,11 +692,11 @@ class SafetyTab:
 
                     self.save_rules()
                     self.populate_rules_list()
-                    messagebox.showinfo(t("Success"), t("Rules imported successfully"))
+                    messagebox.showinfo(t_title("Success"), t("Rules imported successfully"))
                 else:
-                    messagebox.showerror(t("Error"), t("Invalid rules file format"))
+                    messagebox.showerror(t_title("Error"), t("Invalid rules file format"))
             except Exception as e:
-                messagebox.showerror(t("Error"), t("Failed to import rules: {error}", error=str(e)))
+                messagebox.showerror(t_title("Error"), t("Failed to import rules: {error}", error=str(e)))
 
     def export_rules(self):
         """Export rules to file"""
@@ -717,9 +717,9 @@ class SafetyTab:
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     json.dump(self.rules_data, f, indent=2, ensure_ascii=False)
-                messagebox.showinfo(t("Success"), t("Rules exported to {filename}", filename=filename))
+                messagebox.showinfo(t_title("Success"), t("Rules exported to {filename}", filename=filename))
             except Exception as e:
-                messagebox.showerror(t("Error"), t("Failed to export rules: {error}", error=str(e)))
+                messagebox.showerror(t_title("Error"), t("Failed to export rules: {error}", error=str(e)))
 
     def clear_violations(self):
         """Clear violations log"""
@@ -1417,12 +1417,12 @@ class RuleEditorDialog:
         # Validate
         rule_id = self.id_entry.get().strip()
         if not rule_id:
-            messagebox.showerror(t("Error"), t("Rule ID is required"))
+            messagebox.showerror(t_title("Error"), t("Rule ID is required"))
             return
 
         name = self.name_entry.get().strip()
         if not name:
-            messagebox.showerror(t("Error"), t("Rule name is required"))
+            messagebox.showerror(t_title("Error"), t("Rule name is required"))
             return
 
         # Build conditions - convert display values back to internal

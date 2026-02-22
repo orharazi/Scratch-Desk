@@ -2,7 +2,7 @@ import threading
 import time
 import tkinter as tk
 from core.logger import get_logger
-from core.translations import t, rtl, t_title, rtl_title
+from core.translations import t, rtl, t_title, rtl_title, HEBREW_TRANSLATIONS
 
 
 # Reason-type styling for safety modals
@@ -193,13 +193,18 @@ class ExecutionController:
                         self.main_app.canvas_manager.update_position_display()
 
             elif status == 'waiting_sensor':
-                # Get sensor name and translate it to Hebrew
+                # Get sensor name and translate to Hebrew WITHOUT BiDi (raw Hebrew)
+                # so that the outer t() call applies BiDi once to the full string
                 sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
-                sensor_name_hebrew = t(sensor_name)  # Translate sensor name (e.g., "y_top" -> "Y עליון")
+                sensor_name_hebrew = HEBREW_TRANSLATIONS.get(sensor_name, sensor_name)
                 self.main_app.operation_label.config(text=t("Waiting for {sensor} sensor", sensor=sensor_name_hebrew), fg='orange')
             elif status == 'transition_alert':
-                from_op = t(info.get('from_operation', 'lines').title()) if info else t('Lines')
-                to_op = t(info.get('to_operation', 'rows').title()) if info else t('Rows')
+                # Use raw Hebrew (no BiDi) for substitution values,
+                # so the outer t() applies BiDi once to the full string
+                from_op_key = info.get('from_operation', 'lines').title() if info else 'Lines'
+                to_op_key = info.get('to_operation', 'rows').title() if info else 'Rows'
+                from_op = HEBREW_TRANSLATIONS.get(from_op_key, from_op_key)
+                to_op = HEBREW_TRANSLATIONS.get(to_op_key, to_op_key)
                 self.main_app.operation_label.config(
                     text=t("\u23f8\ufe0f  Waiting: {from_op} \u2192 {to_op} transition", from_op=from_op, to_op=to_op),
                     fg='orange'
@@ -320,8 +325,11 @@ class ExecutionController:
             elif status == 'transition_alert':
                 # Transition from lines to rows - show dialog
                 current_progress = self.main_app.progress['value']
-                from_op = t(info.get('from_operation', 'lines').title()) if info else t('Lines')
-                to_op = t(info.get('to_operation', 'rows').title()) if info else t('Rows')
+                # Use raw Hebrew (no BiDi) for substitution values
+                from_op_key = info.get('from_operation', 'lines').title() if info else 'Lines'
+                to_op_key = info.get('to_operation', 'rows').title() if info else 'Rows'
+                from_op = HEBREW_TRANSLATIONS.get(from_op_key, from_op_key)
+                to_op = HEBREW_TRANSLATIONS.get(to_op_key, to_op_key)
                 self.main_app.progress_text.config(
                     text=t("\u23f8\ufe0f  Waiting: {from_op} \u2192 {to_op} transition", from_op=from_op, to_op=to_op),
                     fg='orange'
