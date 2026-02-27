@@ -73,22 +73,17 @@ class ScratchDeskProgram:
                          (self.buffer_between_pages * (self.number_of_pages - 1)))
         
         if abs(self.width - expected_width) > 0.001:  # Allow small floating point differences
-            errors.append(f"Row pattern validation failed: width ({self.width}) != "
-                         f"left_margin + right_margin + "
-                         f"(page_width * number_of_pages) + (buffer_between_pages * (number_of_pages - 1)) "
-                         f"({expected_width:.3f})")
-        
+            errors.append(f"Row pattern validation failed: width ({self.width}) != expected ({expected_width:.3f})")
+
         # Desk Size Validation - Width
         total_desk_width = self.width * self.repeat_rows
         if total_desk_width > self.MAX_WIDTH_OF_DESK:
-            errors.append(f"Desk width validation failed: width * repeat_rows ({total_desk_width:.1f}cm) > "
-                         f"MAX_WIDTH_OF_DESK ({self.MAX_WIDTH_OF_DESK}cm)")
-        
+            errors.append(f"Desk width exceeded: {total_desk_width:.1f}cm > {self.MAX_WIDTH_OF_DESK}cm")
+
         # Desk Size Validation - Height
         total_desk_height = self.high * self.repeat_lines
         if total_desk_height > self.MAX_HEIGHT_OF_DESK:
-            errors.append(f"Desk height validation failed: high * repeat_lines ({total_desk_height:.1f}cm) > "
-                         f"MAX_HEIGHT_OF_DESK ({self.MAX_HEIGHT_OF_DESK}cm)")
+            errors.append(f"Desk height exceeded: {total_desk_height:.1f}cm > {self.MAX_HEIGHT_OF_DESK}cm")
         
         # Basic value validations
         if self.number_of_lines <= 0:
@@ -163,5 +158,23 @@ def translate_validation_error(error_text):
     if match:
         return t("Line spacing too small ({spacing} cm, minimum {min} cm)",
                  spacing=match.group(1), min=match.group(2))
+
+    # Match "Row pattern validation failed: width (X) != expected (Y)"
+    match = re.match(r'^Row pattern validation failed: width \((.+?)\) != expected \((.+?)\)$', error_text)
+    if match:
+        return t("Row pattern validation failed: width ({actual}) != expected ({expected})",
+                 actual=match.group(1), expected=match.group(2))
+
+    # Match "Desk width exceeded: Xcm > Ycm"
+    match = re.match(r'^Desk width exceeded: (.+?)cm > (.+?)cm$', error_text)
+    if match:
+        return t("Desk width exceeded: {actual}cm > {max}cm",
+                 actual=match.group(1), max=match.group(2))
+
+    # Match "Desk height exceeded: Xcm > Ycm"
+    match = re.match(r'^Desk height exceeded: (.+?)cm > (.+?)cm$', error_text)
+    if match:
+        return t("Desk height exceeded: {actual}cm > {max}cm",
+                 actual=match.group(1), max=match.group(2))
 
     return t(error_text)

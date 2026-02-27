@@ -451,10 +451,44 @@ class ScratchDeskGUI:
         from admin.admin_app import AdminToolGUI
 
         admin_window = tk.Toplevel(self.root)
-        AdminToolGUI(admin_window, hardware=self.hardware, launched_from_app=True)
+        AdminToolGUI(admin_window, hardware=self.hardware, launched_from_app=True,
+                     on_settings_changed=self._on_settings_changed,
+                     can_change_settings=self._can_change_settings)
 
-        # Force focus - use topmost trick for Wayland/labwc compatibility
+        # Force focus with multiple methods for cross-platform compatibility
+        admin_window.lift()
+        admin_window.attributes('-topmost', True)
+        admin_window.focus_force()
+        # Remove topmost after a short delay so window doesn't stay permanently on top
+        admin_window.after(300, lambda: admin_window.attributes('-topmost', False))
         self._force_window_focus(admin_window)
+
+    def _can_change_settings(self):
+        """Check if settings can be changed right now.
+        Returns (allowed, reason) tuple."""
+        engine = self.execution_engine
+        if engine.is_running:
+            return False, t("Cannot change settings while program is running")
+        if hasattr(self, 'controls_panel') and self.controls_panel._stopped_mid_execution:
+            return False, t("Cannot change settings while program is stopped mid-execution. Reset first")
+        return True, ""
+
+    def _on_settings_changed(self):
+        """Called by admin tool when settings are saved — reload and refresh UI"""
+        self.settings = self.load_settings()
+
+        # Update module-level paper offsets in step_generator
+        import core.step_generator as sg
+        sg.PAPER_OFFSET_X, sg.PAPER_OFFSET_Y = sg._load_paper_offsets()
+
+        # Full canvas redraw — redraws grid, start point marker, sensors, etc.
+        self.canvas_manager.setup_canvas()
+        # Redraw program-specific paper area and work lines on top
+        if self.current_program:
+            self.canvas_manager.update_canvas_paper_area()
+            # Regenerate steps with new offsets
+            if hasattr(self, 'controls_panel'):
+                self.controls_panel.generate_steps()
 
     def perform_emergency_stop(self):
         """Emergency stop - immediately halt all motors and retract pistons to safe state"""

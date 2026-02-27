@@ -19,6 +19,13 @@ class ControlsPanel:
         # Track scheduled callbacks for cleanup during reset
         self.scheduled_callbacks = []
 
+        # Track if execution was stopped mid-run (for continue functionality)
+        self._stopped_mid_execution = False
+        self._motor_state_at_stop = None
+
+        # Snapshot of program state when steps were last generated (for stale detection)
+        self._steps_program_snapshot = None
+
         # Responsive font sizing based on window width
         self.update_font_sizes()
 
@@ -171,11 +178,11 @@ class ControlsPanel:
         nav_buttons = tk.Frame(nav_frame, bg='lightblue')
         nav_buttons.pack(fill=tk.X, pady=2)
 
-        self.next_btn = tk.Button(nav_buttons, text=t("► Next"), command=self.next_step,
+        self.next_btn = tk.Button(nav_buttons, text=t("Next ►"), command=self.next_step,
                                  state=tk.DISABLED, width=8, font=('Arial', 8))
         self.next_btn.pack(side=tk.RIGHT)
 
-        self.prev_btn = tk.Button(nav_buttons, text=t("Prev ◄"), command=self.prev_step,
+        self.prev_btn = tk.Button(nav_buttons, text=t("◄ Prev"), command=self.prev_step,
                                  state=tk.DISABLED, width=8, font=('Arial', 8))
         self.prev_btn.pack(side=tk.LEFT)
 
@@ -286,7 +293,7 @@ class ControlsPanel:
                                   bg='darkorange', fg='black', font=('Arial', 7, 'bold'),
                                   width=6, state=tk.DISABLED, relief=tk.RAISED, bd=2,
                                   activebackground='orange', activeforeground='black')
-        self.pause_btn.pack(side=tk.RIGHT, padx=1)
+        # Pause button hidden - stop/continue replaces pause/resume workflow
 
         self.run_btn = tk.Button(button_row1, text=t("▶ RUN"), command=self.run_execution,
                                 bg='darkgreen', fg='black', font=('Arial', 7, 'bold'),
@@ -465,6 +472,26 @@ class ControlsPanel:
         # Disable test controls if in real hardware mode
         self.update_test_controls_state()
     
+    def _snapshot_program(self, program):
+        """Create a hashable snapshot of program parameters for stale detection"""
+        if not program:
+            return None
+        return (
+            program.program_number,
+            program.high,
+            program.number_of_lines,
+            program.top_padding,
+            program.bottom_padding,
+            program.width,
+            program.left_margin,
+            program.right_margin,
+            program.page_width,
+            program.number_of_pages,
+            program.buffer_between_pages,
+            program.repeat_rows,
+            program.repeat_lines,
+        )
+
     def generate_steps(self):
         """Generate steps for current program"""
         if not self.main_app.current_program:
@@ -483,6 +510,7 @@ class ControlsPanel:
             self.logger.error(f"Program validation failed: {program_errors[0]}", category="gui")
             self.main_app.operation_label.config(text=first_error, fg='red')
             self.step_info_label.config(text=t("Program has validation errors"))
+            self.run_btn.config(state=tk.DISABLED)
             return
 
         # Validate paper size fits within work surface
@@ -491,6 +519,7 @@ class ControlsPanel:
             self.logger.error(validation_error, category="gui")
             self.main_app.operation_label.config(text=validation_error, fg='red')
             self.step_info_label.config(text=t("❌ Invalid program - paper too large"))
+            self.run_btn.config(state=tk.DISABLED)
             return
 
         try:
@@ -505,15 +534,26 @@ class ControlsPanel:
 
             # Reset execution engine with new steps
             self.main_app.execution_engine.load_steps(self.main_app.steps)
-            
+
+            # Clear stop-continue state when generating new steps
+            self._stopped_mid_execution = False
+            self._motor_state_at_stop = None
+
             # Update displays
             self.update_step_display()
             
+            # Store program snapshot for stale detection
+            self._steps_program_snapshot = self._snapshot_program(self.main_app.current_program)
+
             # Enable navigation if we have steps
             if self.main_app.steps:
                 self.next_btn.config(state=tk.NORMAL)
                 self.run_btn.config(state=tk.NORMAL)
                 # Keep pointer at starting position (15, 15) - don't move to first line yet
+            else:
+                self.step_info_label.config(text=t("No steps generated"))
+                self.run_btn.config(state=tk.DISABLED)
+                return
             
             # Get step count summary
             summary = get_step_count_summary(self.main_app.current_program)
@@ -525,6 +565,7 @@ class ControlsPanel:
 
         except Exception as e:
             self.step_info_label.config(text=t("Error generating steps: {error}", error=e))
+            self.run_btn.config(state=tk.DISABLED)
     
     def _format_param_value(self, key, value):
         """Format a parameter value with units and Hebrew translation.
@@ -592,9 +633,11 @@ class ControlsPanel:
         if 0 <= current_index < len(self.main_app.steps):
             self.steps_listbox.see(current_index)
         
-        # Update navigation buttons
-        self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
-        self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+        # Update navigation buttons (only when not in automatic execution)
+        engine = self.main_app.execution_engine
+        if not (engine.is_running and not engine.is_paused):
+            self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
         
         # Update current step info
         if self.main_app.steps and 0 <= current_index < len(self.main_app.steps):
@@ -653,35 +696,122 @@ class ControlsPanel:
                 self.selected_step_details.tag_add("rtl", "1.0", "end")
                 self.selected_step_details.config(state=tk.DISABLED)
     
+    # Step types that should be skipped during manual navigation (non-actionable or blocking)
+    _SKIP_EXECUTE_STEP_TYPES = {'wait_sensor', 'program_start', 'program_complete', 'workflow_separator'}
+
+    def _replay_canvas_state_to_current(self):
+        """Reset all operation states to pending, then replay tracking for steps 0..current.
+
+        This ensures the canvas accurately reflects which operations are done
+        up to the current step index (used when stepping backward).
+        """
+        current_index = self.main_app.execution_engine.current_step_index
+
+        # Reset all operation states to pending
+        if hasattr(self.main_app, 'operation_states'):
+            for state_dict in self.main_app.operation_states.values():
+                for key in state_dict:
+                    state_dict[key] = 'pending'
+
+        # Replay track_operation_from_step for steps 0 through current_index
+        if hasattr(self.main_app, 'canvas_manager'):
+            for i in range(current_index + 1):
+                step = self.main_app.steps[i]
+                step_desc = step.get('description', '')
+                if step_desc:
+                    self.main_app.canvas_manager.detect_operation_mode_from_step(step_desc)
+                    self.main_app.canvas_manager.track_operation_from_step(step_desc)
+
+    def _replay_hardware_positions_to_current(self):
+        """Replay motor positions so hardware matches the program state at
+        the current step index.
+
+        Scans steps 0..current_index, finds the last move_x / move_y targets,
+        and moves the hardware there.  This is essential for backward navigation
+        where intermediate non-move steps (tool actions, waits) would otherwise
+        leave the motors at a stale position from a later step.
+        """
+        current_index = self.main_app.execution_engine.current_step_index
+        steps = self.main_app.steps
+
+        last_x = None
+        last_y = None
+
+        for i in range(current_index + 1):
+            op = steps[i].get('operation', '')
+            params = steps[i].get('parameters', {})
+            if op == 'move_x':
+                last_x = params.get('position')
+            elif op == 'move_y':
+                last_y = params.get('position')
+
+        hw = self.main_app.execution_engine.hardware
+        if last_x is not None:
+            hw.move_x(last_x)
+        if last_y is not None:
+            hw.move_y(last_y)
+
+    def _force_canvas_position_update(self):
+        """Force an immediate canvas position update, bypassing cache and deferral.
+
+        Called from manual step navigation (prev/next) which runs on the GUI
+        thread, so direct canvas access is safe.  Clears the cached position
+        first so the update is never skipped.
+        """
+        cm = getattr(self.main_app, 'canvas_manager', None)
+        if cm is None:
+            return
+        # Clear cached position/mode so update_position_display never skips
+        for attr in ('_last_displayed_hardware_x', '_last_displayed_hardware_y', '_last_displayed_mode'):
+            if hasattr(cm, attr):
+                delattr(cm, attr)
+        # Call directly (not via root.after) — we are already on the GUI thread
+        cm.canvas_position.update_position_display()
+        self.main_app.root.update_idletasks()
+
     def prev_step(self):
-        """Go to previous step"""
+        """Go to previous step and execute it on hardware"""
         if self.main_app.execution_engine.step_backward():
-            result = self.main_app.execution_engine.execute_current_step()
-            if (self.main_app.execution_engine.current_step_index < len(self.main_app.steps)):
-                current_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
-                step_desc = current_step.get('description', '')
-                self.main_app.canvas_manager.detect_operation_mode_from_step(step_desc)
-                self.main_app.canvas_manager.track_operation_from_step(step_desc)
+            current_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
+            # Execute actionable, non-blocking steps during manual navigation
+            if current_step.get('operation') not in self._SKIP_EXECUTE_STEP_TYPES:
+                self.main_app.execution_engine.execute_current_step()
+            # Replay motor positions so hardware matches program state at this step
+            self._replay_hardware_positions_to_current()
+            # Revert canvas state: reset all operations to pending, then replay up to current step
+            self._replay_canvas_state_to_current()
+            # Force immediate canvas motor position update
+            self._force_canvas_position_update()
             self.update_step_display()
-    
+
     def next_step(self):
-        """Go to next step"""
+        """Go to next step and execute it on hardware"""
         if self.main_app.execution_engine.step_forward():
-            result = self.main_app.execution_engine.execute_current_step()
+            current_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
+            # Execute actionable, non-blocking steps during manual navigation
+            if current_step.get('operation') not in self._SKIP_EXECUTE_STEP_TYPES:
+                self.main_app.execution_engine.execute_current_step()
+            # Ensure motor positions match program state (handles skipped steps)
+            self._replay_hardware_positions_to_current()
             if (self.main_app.execution_engine.current_step_index < len(self.main_app.steps)):
-                current_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
                 step_desc = current_step.get('description', '')
                 self.main_app.canvas_manager.detect_operation_mode_from_step(step_desc)
                 self.main_app.canvas_manager.track_operation_from_step(step_desc)
+            # Force immediate canvas motor position update
+            self._force_canvas_position_update()
             self.update_step_display()
     
     def _prepare_for_new_run(self):
         """Reset engine and UI to be ready for a fresh run.
 
-        Called after completion, stop, or error to ensure the user can
+        Called after completion or error to ensure the user can
         immediately press RUN to start a new execution.
         """
         try:
+            # Clear stop-continue state
+            self._stopped_mid_execution = False
+            self._motor_state_at_stop = None
+
             # Reset execution engine back to step 0 (keep steps loaded)
             self.main_app.execution_engine.reset_execution(clear_steps=False)
 
@@ -691,6 +821,9 @@ class ControlsPanel:
             self.pause_btn.config(state=tk.DISABLED)
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)
+            # Re-enable next/prev based on step position
+            self.prev_btn.config(state=tk.DISABLED)  # At step 0 after reset
+            self.next_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
 
             # Reset hardware state (no homing - motors stay where they are)
             self.hardware.reset_hardware()
@@ -729,11 +862,81 @@ class ControlsPanel:
                 self.main_app.program_panel.set_locked(False)
 
     def run_execution(self):
-        """Start execution"""
+        """Start, continue, or resume execution"""
         if self.main_app.steps:
-            # Ensure engine is in clean state before starting
             engine = self.main_app.execution_engine
+
+            # CONTINUE from stop: restore motor state and continue from current step
+            if self._stopped_mid_execution and not engine.is_running:
+                # Restore line motor piston if engine raised it on stop
+                if self._motor_state_at_stop:
+                    self.hardware.line_motor_piston_down()
+
+                self._stopped_mid_execution = False
+                self._motor_state_at_stop = None
+
+                # Start execution from current step
+                engine.continue_execution()
+                self.run_btn.config(state=tk.DISABLED, text=t('\u25b6 RUN'), bg='darkgreen')
+                self.stop_btn.config(state=tk.NORMAL)
+                self.reset_btn.config(state=tk.DISABLED)
+                self.next_btn.config(state=tk.DISABLED)
+                self.prev_btn.config(state=tk.DISABLED)
+                if hasattr(self.main_app, 'program_panel'):
+                    self.main_app.program_panel.set_locked(True)
+                return
+
+            # Check for stale steps (program changed since steps were generated)
             if not engine.is_running:
+                current_snapshot = self._snapshot_program(self.main_app.current_program)
+                if self._steps_program_snapshot and current_snapshot != self._steps_program_snapshot:
+                    self.logger.warning("Program parameters changed since steps were generated", category="gui")
+                    self.main_app.operation_label.config(
+                        text=t("Program changed - regenerate steps first!"), fg='red')
+                    self.step_info_label.config(text=t("Steps are stale - press Generate"))
+                    self.run_btn.config(state=tk.DISABLED)
+                    return
+
+                # Verify at least one actionable step exists
+                actionable_ops = {'move_x', 'move_y', 'tool_action', 'tool_positioning'}
+                has_actionable = any(s.get('operation') in actionable_ops for s in self.main_app.steps)
+                if not has_actionable:
+                    self.logger.warning("No actionable steps in program", category="gui")
+                    self.main_app.operation_label.config(
+                        text=t("No actionable steps - check program"), fg='red')
+                    return
+
+            # Check if we need to RESUME (engine is running but paused)
+            if engine.is_running and engine.is_paused:
+                engine.resume_execution()
+                self.run_btn.config(state=tk.DISABLED, text=t('\u25b6 RUN'), bg='darkgreen')
+                self.pause_btn.config(state=tk.NORMAL)
+                self.stop_btn.config(state=tk.NORMAL)
+                self.reset_btn.config(state=tk.DISABLED)
+                # Disable next/prev during automatic execution
+                self.next_btn.config(state=tk.DISABLED)
+                self.prev_btn.config(state=tk.DISABLED)
+                return
+
+            # Fresh start - validate program before starting
+            if not engine.is_running:
+                if self.main_app.current_program:
+                    program_errors = self.main_app.current_program.validate()
+                    if program_errors:
+                        first_error = translate_validation_error(program_errors[0])
+                        self.main_app.operation_label.config(
+                            text=t("Program validation failed - cannot run"), fg='red')
+                        self.step_info_label.config(text=first_error)
+                        self.run_btn.config(state=tk.DISABLED)
+                        return
+
+                    validation_error = self._validate_paper_size(self.main_app.current_program)
+                    if validation_error:
+                        self.main_app.operation_label.config(text=validation_error, fg='red')
+                        self.step_info_label.config(text=t("Invalid program - paper too large"))
+                        self.run_btn.config(state=tk.DISABLED)
+                        return
+
                 engine.reset_execution(clear_steps=False)
 
             # Reset operation states to pending before starting so colors reflect fresh run
@@ -757,6 +960,9 @@ class ControlsPanel:
             self.pause_btn.config(state=tk.NORMAL)
             self.stop_btn.config(state=tk.NORMAL)
             self.reset_btn.config(state=tk.DISABLED)  # Disable reset while running
+            # Disable next/prev during automatic execution
+            self.next_btn.config(state=tk.DISABLED)
+            self.prev_btn.config(state=tk.DISABLED)
 
             # Lock program panel during execution
             if hasattr(self.main_app, 'program_panel'):
@@ -769,15 +975,36 @@ class ControlsPanel:
     def pause_execution(self):
         """Pause execution"""
         if self.main_app.execution_engine.pause_execution():
-            self.run_btn.config(state=tk.NORMAL)
+            self.run_btn.config(state=tk.NORMAL, text=t('\u25b6 RESUME'), bg='#006400')
             self.pause_btn.config(state=tk.DISABLED)
+            # Enable next/prev for stepping while paused
+            current_index = self.main_app.execution_engine.current_step_index
+            self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
     
     def stop_execution(self):
-        """Stop execution"""
-        if self.main_app.execution_engine.stop_execution():
-            # Reset engine and UI for fresh run
-            self._prepare_for_new_run()
-            self.main_app.operation_label.config(text=t("Execution Stopped - press Run to restart"), fg='orange')
+        """Stop execution - preserves current step for continue"""
+        engine = self.main_app.execution_engine
+        if engine.stop_execution():
+            # Engine conditionally raised line_motor_piston based on its state
+            self._stopped_mid_execution = True
+            self._motor_state_at_stop = getattr(engine, '_raised_motor_on_stop', False)
+
+            # Set up UI for continue (not reset)
+            current_index = engine.current_step_index
+            self.run_btn.config(state=tk.NORMAL, text=t('\u25b6 CONTINUE'), bg='#006400')
+            self.stop_btn.config(state=tk.DISABLED)
+            self.reset_btn.config(state=tk.NORMAL)
+            # Enable navigation while stopped
+            self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+
+            # Unlock program panel
+            if hasattr(self.main_app, 'program_panel'):
+                self.main_app.program_panel.set_locked(False)
+
+            self.update_step_display()
+            self.main_app.operation_label.config(text=t("Stopped - press Continue to resume from current step"), fg='orange')
     
     def auto_reload_after_completion(self):
         """Reset to READY state after program completion so user can immediately re-run"""
@@ -812,9 +1039,14 @@ class ControlsPanel:
         # Reset execution engine (with optional steps clearing)
         self.main_app.execution_engine.reset_execution(clear_steps=clear_steps)
 
+        # Clear stop-continue state
+        self._stopped_mid_execution = False
+        self._motor_state_at_stop = None
+
         # Clear steps in main_app if requested
         if clear_steps:
             self.main_app.steps = []
+            self._steps_program_snapshot = None
 
         # Reset hardware state (position, tools, sensors)
         self.hardware.reset_hardware()
@@ -1157,11 +1389,21 @@ class ControlsPanel:
         if hasattr(self, 'reset_btn'):
             self.reset_btn.config(state=state)
 
-        # Navigation buttons
-        if hasattr(self, 'prev_btn'):
-            self.prev_btn.config(state=tk.DISABLED)  # Keep disabled unless steps loaded
-        if hasattr(self, 'next_btn'):
-            self.next_btn.config(state=tk.DISABLED if not enabled else (tk.NORMAL if self.main_app.steps else tk.DISABLED))
+        # Navigation buttons - respect current step position when enabling
+        if hasattr(self, 'prev_btn') and hasattr(self, 'next_btn'):
+            if not enabled:
+                self.prev_btn.config(state=tk.DISABLED)
+                self.next_btn.config(state=tk.DISABLED)
+            elif self.main_app.steps:
+                current_index = self.main_app.execution_engine.current_step_index
+                engine = self.main_app.execution_engine
+                # Only update nav buttons if not in active (non-paused) execution
+                if not (engine.is_running and not engine.is_paused):
+                    self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
+                    self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+            else:
+                self.prev_btn.config(state=tk.DISABLED)
+                self.next_btn.config(state=tk.DISABLED)
 
         # Test controls frame (only if visible - hidden on real hardware)
         if hasattr(self, 'test_controls_frame') and self.test_controls_frame.winfo_ismapped():

@@ -51,7 +51,7 @@ class MachineStateManager:
 
         self._state = MachineState.IDLE
         self._observers: List[Callable[[MachineState, MachineState], None]] = []
-        self._state_lock = threading.Lock()
+        self._state_lock = threading.RLock()
         self._error_message: Optional[str] = None
         self._initialized = True
 

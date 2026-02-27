@@ -311,14 +311,23 @@ class ArduinoGRBL:
 
                 self.serial_connection.write(f"{command}\n".encode())
 
-                # Read response
+                # Read response with buffering for partial serial data
                 start_time = time.time()
                 response_lines = []
+                read_buffer = ""
 
                 while time.time() - start_time < timeout:
                     if self.serial_connection.in_waiting > 0:
-                        line = self.serial_connection.readline().decode().strip()
-                        if line:
+                        raw_data = self.serial_connection.read(self.serial_connection.in_waiting)
+                        read_buffer += raw_data.decode(errors='replace')
+
+                        # Process complete lines from the buffer
+                        while '\n' in read_buffer:
+                            line, read_buffer = read_buffer.split('\n', 1)
+                            line = line.strip()
+                            if not line:
+                                continue
+
                             # Only log non-status responses at debug level
                             if not is_status_query:
                                 self.logger.debug(f"GRBL << {line}", category="grbl")
@@ -349,9 +358,60 @@ class ArduinoGRBL:
                     self.logger.debug(f"Command timeout after {timeout}s", category="grbl")
                 return "\n".join(response_lines) if response_lines else None
 
+        except serial.SerialException as e:
+            self.logger.error(f"Serial error: {e}. Attempting reconnect...", category="grbl")
+            if self._reconnect():
+                return self._send_command(command, timeout)  # retry once after reconnect
+            return None
         except Exception as e:
             self.logger.error(f"Error sending command: {e}", category="grbl")
             return None
+
+    def _reconnect(self) -> bool:
+        """
+        Attempt to reconnect to GRBL serial port after connection loss.
+
+        Returns:
+            True if reconnection successful, False otherwise
+        """
+        self.logger.warning("Attempting GRBL serial reconnection...", category="grbl")
+        try:
+            # Close existing connection if any
+            if self.serial_connection:
+                try:
+                    self.serial_connection.close()
+                except Exception:
+                    pass
+
+            self.is_connected = False
+
+            # Re-open serial connection
+            self.serial_connection = serial.Serial(
+                port=self.serial_port,
+                baudrate=self.baud_rate,
+                timeout=self.connection_timeout
+            )
+
+            # Wait for GRBL to initialize after reconnect
+            time.sleep(self._grbl_init_delay)
+            self.serial_connection.flushInput()
+
+            # Verify connection with status query
+            self.serial_connection.write(b"?\n")
+            time.sleep(0.1)
+            if self.serial_connection.in_waiting > 0:
+                response = self.serial_connection.readline().decode().strip()
+                if response:
+                    self.is_connected = True
+                    self.logger.success("GRBL reconnection successful", category="grbl")
+                    return True
+
+            self.logger.error("GRBL reconnection failed - no response", category="grbl")
+            return False
+
+        except Exception as e:
+            self.logger.error(f"GRBL reconnection failed: {e}", category="grbl")
+            return False
 
     def move_to(self, x: float, y: float, rapid: bool = False, wait_for_completion: bool = True) -> bool:
         """
@@ -874,11 +934,12 @@ class ArduinoGRBL:
         Sequence:
         1. Apply GRBL configuration from settings.json
         2. Check door is open (safety check)
-        3. Lift line motor pistons (both sides)
-        4. Run GRBL homing ($H)
-        5. Wait for OK
-        6. Reset work coordinates to (0, 0) using G10 L20 P1 X0 Y0
-        7. Lower line motor pistons back down
+        3. Reset all pistons to default position (all tools UP)
+        4. Lift line motor pistons (both sides)
+        5. Run GRBL homing ($H)
+        6. Wait for OK
+        7. Reset work coordinates to (0, 0) using G10 L20 P1 X0 Y0
+        8. Lower line motor pistons back down
 
         Args:
             hardware_interface: Reference to hardware interface (for piston control)
@@ -978,10 +1039,33 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(2, "Check door is open", "done")
 
-            # Step 3: Lift line motor pistons (both sides)
+            # Step 3: Reset all pistons to default position (all tools UP)
             if progress_callback:
-                progress_callback(3, "Lift line motor pistons", "running")
-            self.logger.info("Step 3: Lifting line motor pistons...", category="grbl")
+                progress_callback(3, "Reset all pistons to default position", "running")
+            self.logger.info("Step 3: Resetting all pistons to default (UP) position...", category="grbl")
+            if hardware_interface:
+                # Retract all tool pistons to UP position to clear any leftover state
+                self.logger.info("Retracting line marker piston...", category="grbl")
+                hardware_interface.line_marker_piston_up()
+                self.logger.info("Retracting line cutter piston...", category="grbl")
+                hardware_interface.line_cutter_piston_up()
+                self.logger.info("Retracting row marker piston...", category="grbl")
+                hardware_interface.row_marker_piston_up()
+                self.logger.info("Retracting row cutter piston...", category="grbl")
+                hardware_interface.row_cutter_piston_up()
+
+                # Wait for all pistons to fully retract
+                time.sleep(2.0)
+                self.logger.success("All pistons reset to default (UP) position", category="grbl")
+            else:
+                self.logger.warning("No hardware interface - skipping piston reset", category="grbl")
+            if progress_callback:
+                progress_callback(3, "Reset all pistons to default position", "done")
+
+            # Step 4: Lift line motor pistons (both sides)
+            if progress_callback:
+                progress_callback(4, "Lift line motor pistons", "running")
+            self.logger.info("Step 4: Lifting line motor pistons...", category="grbl")
             self.logger.info("Calling hardware_interface.line_motor_piston_up()...", category="grbl")
             if hardware_interface:
                 result = hardware_interface.line_motor_piston_up()
@@ -991,7 +1075,7 @@ class ArduinoGRBL:
                     error_msg = "Failed to lift line motor pistons"
                     self.logger.error(error_msg, category="grbl")
                     if progress_callback:
-                        progress_callback(3, "Lift line motor pistons", "error")
+                        progress_callback(4, "Lift line motor pistons", "error")
                     return False, error_msg
 
                 self.logger.success("✓ Line motor pistons commanded UP", category="grbl")
@@ -1004,12 +1088,12 @@ class ArduinoGRBL:
             else:
                 self.logger.warning("No hardware interface - skipping piston lift", category="grbl")
             if progress_callback:
-                progress_callback(3, "Lift line motor pistons", "done")
+                progress_callback(4, "Lift line motor pistons", "done")
 
-            # Step 4: Run GRBL homing ($H)
+            # Step 5: Run GRBL homing ($H)
             if progress_callback:
-                progress_callback(4, "Run GRBL homing ($H)", "running")
-            self.logger.info("Step 4: Running GRBL homing ($H)...", category="grbl")
+                progress_callback(5, "Run GRBL homing ($H)", "running")
+            self.logger.info("Step 5: Running GRBL homing ($H)...", category="grbl")
             self.logger.info("This may take up to 30 seconds...", category="grbl")
 
             homing_timeout = self.grbl_config.get("homing_timeout", 30.0)
@@ -1021,7 +1105,7 @@ class ArduinoGRBL:
                 self.logger.error(error_msg, category="grbl")
 
                 if progress_callback:
-                    progress_callback(4, "Run GRBL homing ($H)", "error")
+                    progress_callback(5, "Run GRBL homing ($H)", "error")
 
                 # Lower pistons before returning
                 if hardware_interface:
@@ -1076,7 +1160,7 @@ class ArduinoGRBL:
 
                 self.logger.error(error_msg, category="grbl")
                 if progress_callback:
-                    progress_callback(4, "Run GRBL homing ($H)", "error")
+                    progress_callback(5, "Run GRBL homing ($H)", "error")
 
                 # Lower pistons before returning
                 if hardware_interface:
@@ -1087,12 +1171,12 @@ class ArduinoGRBL:
 
             # Mark homing as done ONLY after it's actually complete
             if progress_callback:
-                progress_callback(4, "Run GRBL homing ($H)", "done")
+                progress_callback(5, "Run GRBL homing ($H)", "done")
 
-            # Step 5: Reset work coordinates to (0, 0)
+            # Step 6: Reset work coordinates to (0, 0)
             if progress_callback:
-                progress_callback(5, "Reset work coordinates to (0,0)", "running")
-            self.logger.info("Step 5: Resetting work coordinates to (0, 0)...", category="grbl")
+                progress_callback(6, "Reset work coordinates to (0,0)", "running")
+            self.logger.info("Step 6: Resetting work coordinates to (0, 0)...", category="grbl")
             self.logger.info("Sending: G10 L20 P1 X0 Y0 (Set WCS origin to current position)", category="grbl")
             response = self._send_command("G10 L20 P1 X0 Y0")
 
@@ -1109,12 +1193,12 @@ class ArduinoGRBL:
             else:
                 self.logger.warning(f"Failed to reset work coordinates: {response}", category="grbl")
             if progress_callback:
-                progress_callback(5, "Reset work coordinates to (0,0)", "done")
+                progress_callback(6, "Reset work coordinates to (0,0)", "done")
 
-            # Step 6: Lower line motor pistons back down
+            # Step 7: Lower line motor pistons back down
             if progress_callback:
-                progress_callback(6, "Lower line motor pistons", "running")
-            self.logger.info("Step 6: Lowering line motor pistons...", category="grbl")
+                progress_callback(7, "Lower line motor pistons", "running")
+            self.logger.info("Step 7: Lowering line motor pistons...", category="grbl")
             self.logger.info("Calling hardware_interface.line_motor_piston_down()...", category="grbl")
             if hardware_interface:
                 result = hardware_interface.line_motor_piston_down()
@@ -1130,7 +1214,7 @@ class ArduinoGRBL:
             else:
                 self.logger.warning("No hardware interface - skipping piston lower", category="grbl")
             if progress_callback:
-                progress_callback(6, "Lower line motor pistons", "done")
+                progress_callback(7, "Lower line motor pistons", "done")
 
             self.logger.info("="*60, category="grbl")
             self.logger.success("COMPLETE HOMING SEQUENCE FINISHED SUCCESSFULLY", category="grbl")

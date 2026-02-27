@@ -36,13 +36,18 @@ from admin.tabs.analytics_tab import AnalyticsTab
 class AdminToolGUI:
     """Admin Tool GUI - Main Application Class"""
 
-    def __init__(self, root, hardware=None, launched_from_app=False):
+    def __init__(self, root, hardware=None, launched_from_app=False,
+                 on_settings_changed=None, can_change_settings=None):
         self.root = root
         self.root.title(t_title("Admin Tool - Scratch Desk CNC"))
         self.root.geometry("1400x900")
 
         # Track if launched from main app (to avoid disconnecting shared hardware)
         self.launched_from_app = launched_from_app
+        # Callback to notify main app when settings change
+        self.on_settings_changed = on_settings_changed
+        # Callback to check if settings can be changed (returns (allowed, reason))
+        self.can_change_settings = can_change_settings
 
         # Make window resizable
         self.root.rowconfigure(0, weight=1)
@@ -177,6 +182,54 @@ class AdminToolGUI:
         except Exception as e:
             print(f"Error loading hardware mode: {e}")
             self.use_real_hardware.set(False)
+
+    def _load_hardware_limits(self):
+        """Load hardware limits from settings.json"""
+        try:
+            import json
+            with open('config/settings.json', 'r') as f:
+                config = json.load(f)
+            return config.get('hardware_limits', {})
+        except Exception:
+            return {}
+
+    def _save_paper_start_position(self):
+        """Save paper starting position to settings.json"""
+        # Block changes while program is executing or stopped mid-execution
+        if self.can_change_settings:
+            allowed, reason = self.can_change_settings()
+            if not allowed:
+                self.log("WARNING", reason)
+                messagebox.showwarning(t_title("Cannot Save"), reason)
+                return
+
+        try:
+            x = float(self.paper_start_x_entry.get())
+            y = float(self.paper_start_y_entry.get())
+
+            import json
+            with open('config/settings.json', 'r') as f:
+                config = json.load(f)
+
+            if 'hardware_limits' not in config:
+                config['hardware_limits'] = {}
+            config['hardware_limits']['paper_start_x'] = x
+            config['hardware_limits']['paper_start_y'] = y
+
+            with open('config/settings.json', 'w') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            self.log("SUCCESS", t("Paper starting position saved: X={x}, Y={y}", x=x, y=y))
+            messagebox.showinfo(t_title("Saved"), t("Paper starting position updated."))
+
+            # Notify main app to reload settings live
+            if self.on_settings_changed:
+                self.on_settings_changed()
+        except ValueError:
+            self.log("ERROR", t("Invalid position values"))
+            messagebox.showerror(t_title("Error"), t("Please enter valid numbers"))
+        except Exception as e:
+            self.log("ERROR", t("Error saving: {error}", error=str(e)))
 
     def create_ui(self):
         """Create the main user interface with tabs"""
@@ -388,6 +441,25 @@ class AdminToolGUI:
         ttk.Radiobutton(speed_frame, text=t("Slow"), variable=self.speed_var, value="slow").pack(side=tk.RIGHT, padx=5)
         ttk.Radiobutton(speed_frame, text=t("Normal"), variable=self.speed_var, value="normal").pack(side=tk.RIGHT, padx=5)
         ttk.Radiobutton(speed_frame, text=t("Fast"), variable=self.speed_var, value="fast").pack(side=tk.RIGHT, padx=5)
+
+        # Paper Starting Point
+        start_pos_frame = ttk.LabelFrame(right_frame, text=t("Paper Starting Point"), padding="10")
+        start_pos_frame.pack(fill="x", pady=5)
+
+        hardware_limits = self._load_hardware_limits()
+
+        # RTL: labels on right, entries in middle, save button on left
+        ttk.Label(start_pos_frame, text=t("Start X (cm):")).grid(row=0, column=2, sticky="e", pady=2)
+        self.paper_start_x_entry = ttk.Entry(start_pos_frame, width=10)
+        self.paper_start_x_entry.insert(0, str(hardware_limits.get("paper_start_x", 15.0)))
+        self.paper_start_x_entry.grid(row=0, column=1, padx=5, pady=2)
+
+        ttk.Label(start_pos_frame, text=t("Start Y (cm):")).grid(row=1, column=2, sticky="e", pady=2)
+        self.paper_start_y_entry = ttk.Entry(start_pos_frame, width=10)
+        self.paper_start_y_entry.insert(0, str(hardware_limits.get("paper_start_y", 31.0)))
+        self.paper_start_y_entry.grid(row=1, column=1, padx=5, pady=2)
+
+        ttk.Button(start_pos_frame, text=t("Save"), command=self._save_paper_start_position, width=15).grid(row=0, column=0, rowspan=2, padx=10)
 
         # Limit switches
         limit_frame = ttk.LabelFrame(right_frame, text=t("Limit Switches (Live)"), padding="10")
@@ -1159,6 +1231,33 @@ class AdminToolGUI:
         except:
             pass
 
+    def _check_execution_running_warning(self, action_name):
+        """Check if the main app's execution engine is running and warn the user.
+        Returns True if safe to proceed, False if user cancelled or blocked."""
+        try:
+            from core.machine_state import MachineState, MachineStateManager
+            state_manager = MachineStateManager()
+            if state_manager.state == MachineState.RUNNING:
+                # Actively running - block entirely
+                messagebox.showwarning(
+                    t("Blocked"),
+                    t("Cannot change {action} while execution is actively running. Pause or stop execution first.",
+                      action=action_name)
+                )
+                return False
+            elif state_manager.state == MachineState.PAUSED:
+                # Paused - warn but allow with confirmation
+                result = messagebox.askokcancel(
+                    t("Warning"),
+                    t("Execution is paused. Changing {action} manually may cause safety violations. Continue?",
+                      action=action_name),
+                    icon='warning'
+                )
+                return result
+        except Exception:
+            pass  # If we can't check, allow the action
+        return True
+
     # Piston control methods
     def piston_up(self, piston_key):
         """Raise piston"""
@@ -1166,6 +1265,11 @@ class AdminToolGUI:
             return
 
         name, _ = self.piston_methods[piston_key]
+
+        # Warn if execution is running
+        if not self._check_execution_running_warning(name):
+            return
+
         self.log("INFO", t("Raising {name}", name=name))
 
         success = False
@@ -1192,6 +1296,11 @@ class AdminToolGUI:
             return
 
         name, _ = self.piston_methods[piston_key]
+
+        # Warn if execution is running
+        if not self._check_execution_running_warning(name):
+            return
+
         self.log("INFO", t("Lowering {name}", name=name))
 
         success = False

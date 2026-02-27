@@ -218,48 +218,76 @@ class RS485ModbusInterface:
             self.logger.error("RS485 not connected - cannot read inputs", category="hardware")
             return None
 
-        try:
-            with self.lock:
-                # Read holding registers from N4DIH32 (Function Code 03)
-                response = self.client.read_holding_registers(
-                    address=self.register_address_low,  # Start register (configurable, default: 192/0x00C0)
-                    count=self.bulk_read_register_count,  # Number of registers (configurable, default: 2)
-                    device_id=self.device_id
-                )
+        max_attempts = self.default_retry_count + 1  # e.g. 3 attempts total
 
-                # Check if read was successful
-                if response.isError():
-                    self.logger.error(
-                        f"N4DIH32 read error (device {self.device_id}): {response}",
-                        category="hardware"
+        for attempt in range(max_attempts):
+            try:
+                with self.lock:
+                    # Read holding registers from N4DIH32 (Function Code 03)
+                    response = self.client.read_holding_registers(
+                        address=self.register_address_low,  # Start register (configurable, default: 192/0x00C0)
+                        count=self.bulk_read_register_count,  # Number of registers (configurable, default: 2)
+                        device_id=self.device_id
                     )
-                    return None
 
-                # Extract the two 16-bit registers
-                reg0 = response.registers[0]  # X00-X15
-                reg1 = response.registers[1]  # X16-X31
+                    # Check if read was successful
+                    if response.isError():
+                        self.logger.error(
+                            f"N4DIH32 read error (device {self.device_id}, attempt {attempt + 1}/{max_attempts}): {response}",
+                            category="hardware"
+                        )
+                        if attempt < max_attempts - 1:
+                            time.sleep(self.retry_delay)
+                        continue
 
-                # Convert registers to list of 32 boolean values
-                inputs = []
+                    # Validate register count before parsing
+                    if not hasattr(response, 'registers') or len(response.registers) < self.bulk_read_register_count:
+                        actual_count = len(response.registers) if hasattr(response, 'registers') else 0
+                        self.logger.error(
+                            f"N4DIH32 returned {actual_count} registers, expected {self.bulk_read_register_count} "
+                            f"(attempt {attempt + 1}/{max_attempts})",
+                            category="hardware"
+                        )
+                        if attempt < max_attempts - 1:
+                            time.sleep(self.retry_delay)
+                        continue
 
-                # Extract X00-X15 from reg0 (bits 0-15)
-                for i in range(16):
-                    bit_value = (reg0 >> i) & 1
-                    inputs.append(bool(bit_value))
+                    # Extract the two 16-bit registers
+                    reg0 = response.registers[0]  # X00-X15
+                    reg1 = response.registers[1]  # X16-X31
 
-                # Extract X16-X31 from reg1 (bits 0-15)
-                for i in range(16):
-                    bit_value = (reg1 >> i) & 1
-                    inputs.append(bool(bit_value))
+                    # Convert registers to list of 32 boolean values
+                    inputs = []
 
-                return inputs
+                    # Extract X00-X15 from reg0 (bits 0-15)
+                    for i in range(16):
+                        bit_value = (reg0 >> i) & 1
+                        inputs.append(bool(bit_value))
 
-        except ModbusException as e:
-            self.logger.error(f"Modbus exception during bulk read: {e}", category="hardware")
-            return None
-        except Exception as e:
-            self.logger.error(f"Error during bulk read: {e}", category="hardware")
-            return None
+                    # Extract X16-X31 from reg1 (bits 0-15)
+                    for i in range(16):
+                        bit_value = (reg1 >> i) & 1
+                        inputs.append(bool(bit_value))
+
+                    return inputs
+
+            except ModbusException as e:
+                self.logger.error(
+                    f"Modbus exception during bulk read (attempt {attempt + 1}/{max_attempts}): {e}",
+                    category="hardware"
+                )
+                if attempt < max_attempts - 1:
+                    time.sleep(self.retry_delay)
+            except Exception as e:
+                self.logger.error(
+                    f"Error during bulk read (attempt {attempt + 1}/{max_attempts}): {e}",
+                    category="hardware"
+                )
+                if attempt < max_attempts - 1:
+                    time.sleep(self.retry_delay)
+
+        self.logger.error(f"Bulk read failed after {max_attempts} attempts", category="hardware")
+        return None
 
     def refresh_bulk_cache(self) -> bool:
         """
@@ -273,6 +301,9 @@ class RS485ModbusInterface:
             self.bulk_read_cache = inputs
             self.bulk_read_timestamp = time.time()
             return True
+        # Invalidate stale cache on failure to prevent returning wrong data
+        self.bulk_read_cache = None
+        self.bulk_read_timestamp = 0
         return False
 
     def get_cached_bulk_read(self) -> Optional[list]:

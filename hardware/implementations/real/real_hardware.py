@@ -10,6 +10,7 @@ This class contains ONLY real hardware implementation.
 
 import json
 import time
+import threading
 from typing import Optional, Dict
 from hardware.implementations.real.raspberry_pi.raspberry_pi_gpio import RaspberryPiGPIO
 from hardware.implementations.real.arduino_grbl.arduino_grbl import ArduinoGRBL
@@ -44,6 +45,9 @@ class RealHardware:
 
         # Execution engine reference for pause checking during sensor waits
         self.execution_engine = None
+
+        # Event to interrupt sensor-wait polling loops on stop
+        self._stop_sensor_wait = threading.Event()
 
         # Timing settings for sensor polling
         timing_config = self.config.get("timing", {})
@@ -799,9 +803,14 @@ class RealHardware:
         start_time = time.time()
 
         while True:
+            # Check for fast-unblock signal (from signal_all_sensor_events)
+            if self._stop_sensor_wait.is_set():
+                self.logger.warning("X sensor wait aborted - stop signal received", category="hardware")
+                return None
+
             # Check if execution is paused
             if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
-                time.sleep(self.sensor_poll_interval)
+                self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
                 continue
 
             # Check for stop signal
@@ -825,8 +834,8 @@ class RealHardware:
                 self.logger.warning(f"X sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
-            # Small delay before next poll
-            time.sleep(self.sensor_poll_interval)
+            # Small delay before next poll (interruptible by stop signal)
+            self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
 
     def wait_for_y_sensor(self):
         """
@@ -840,9 +849,14 @@ class RealHardware:
         start_time = time.time()
 
         while True:
+            # Check for fast-unblock signal (from signal_all_sensor_events)
+            if self._stop_sensor_wait.is_set():
+                self.logger.warning("Y sensor wait aborted - stop signal received", category="hardware")
+                return None
+
             # Check if execution is paused
             if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
-                time.sleep(self.sensor_poll_interval)
+                self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
                 continue
 
             # Check for stop signal
@@ -866,8 +880,8 @@ class RealHardware:
                 self.logger.warning(f"Y sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
-            # Small delay before next poll
-            time.sleep(self.sensor_poll_interval)
+            # Small delay before next poll (interruptible by stop signal)
+            self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
 
     def wait_for_x_left_sensor(self):
         """
@@ -881,9 +895,14 @@ class RealHardware:
         start_time = time.time()
 
         while True:
+            # Check for fast-unblock signal
+            if self._stop_sensor_wait.is_set():
+                self.logger.warning("X left sensor wait aborted - stop signal received", category="hardware")
+                return None
+
             # Check if execution is paused
             if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
-                time.sleep(self.sensor_poll_interval)
+                self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
                 continue
 
             # Check for stop signal
@@ -902,8 +921,8 @@ class RealHardware:
                 self.logger.warning(f"X left sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
-            # Small delay before next poll
-            time.sleep(self.sensor_poll_interval)
+            # Small delay before next poll (interruptible by stop signal)
+            self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
 
     def wait_for_x_right_sensor(self):
         """
@@ -917,9 +936,14 @@ class RealHardware:
         start_time = time.time()
 
         while True:
+            # Check for fast-unblock signal
+            if self._stop_sensor_wait.is_set():
+                self.logger.warning("X right sensor wait aborted - stop signal received", category="hardware")
+                return None
+
             # Check if execution is paused
             if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
-                time.sleep(self.sensor_poll_interval)
+                self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
                 continue
 
             # Check for stop signal
@@ -938,8 +962,8 @@ class RealHardware:
                 self.logger.warning(f"X right sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
-            # Small delay before next poll
-            time.sleep(self.sensor_poll_interval)
+            # Small delay before next poll (interruptible by stop signal)
+            self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
 
     def wait_for_y_top_sensor(self):
         """
@@ -953,9 +977,14 @@ class RealHardware:
         start_time = time.time()
 
         while True:
+            # Check for fast-unblock signal
+            if self._stop_sensor_wait.is_set():
+                self.logger.warning("Y top sensor wait aborted - stop signal received", category="hardware")
+                return None
+
             # Check if execution is paused
             if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
-                time.sleep(self.sensor_poll_interval)
+                self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
                 continue
 
             # Check for stop signal
@@ -974,8 +1003,8 @@ class RealHardware:
                 self.logger.warning(f"Y top sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
-            # Small delay before next poll
-            time.sleep(self.sensor_poll_interval)
+            # Small delay before next poll (interruptible by stop signal)
+            self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
 
     def wait_for_y_bottom_sensor(self):
         """
@@ -989,9 +1018,14 @@ class RealHardware:
         start_time = time.time()
 
         while True:
+            # Check for fast-unblock signal
+            if self._stop_sensor_wait.is_set():
+                self.logger.warning("Y bottom sensor wait aborted - stop signal received", category="hardware")
+                return None
+
             # Check if execution is paused
             if self.execution_engine and hasattr(self.execution_engine, 'is_paused') and self.execution_engine.is_paused:
-                time.sleep(self.sensor_poll_interval)
+                self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
                 continue
 
             # Check for stop signal
@@ -1010,8 +1044,8 @@ class RealHardware:
                 self.logger.warning(f"Y bottom sensor wait timeout after {self.sensor_wait_timeout}s", category="hardware")
                 return None
 
-            # Small delay before next poll
-            time.sleep(self.sensor_poll_interval)
+            # Small delay before next poll (interruptible by stop signal)
+            self._stop_sensor_wait.wait(timeout=self.sensor_poll_interval)
 
     # ========== HARDWARE STATUS ==========
 
@@ -1083,8 +1117,13 @@ class RealHardware:
         self.logger.debug("Execution engine reference set", category="hardware")
 
     def flush_all_sensor_buffers(self):
-        """Flush sensor buffers (only used by mock hardware)"""
-        pass
+        """Clear the stop-sensor-wait event so sensor waits can resume normally"""
+        self._stop_sensor_wait.clear()
+
+    def signal_all_sensor_events(self):
+        """Signal all sensor wait loops to unblock immediately during stop"""
+        self.logger.info("Signaling all sensor wait loops to unblock for stop", category="hardware")
+        self._stop_sensor_wait.set()
 
     # ========== CLEANUP ==========
 

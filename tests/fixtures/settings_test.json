@@ -1,0 +1,87 @@
+{
+  "hardware_config": {
+    "use_real_hardware": false,
+    "grbl": {
+      "port": "/dev/ttyUSB0",
+      "baudrate": 115200
+    },
+    "rs485": {
+      "port": "/dev/ttyUSB1",
+      "baudrate": 9600,
+      "slave_address": 1
+    },
+    "raspberry_pi": {
+      "pistons": {
+        "line_marker_piston": 6,
+        "line_cutter_piston": 16,
+        "line_motor_piston": 13,
+        "row_marker_piston": 5,
+        "row_cutter_piston": 19
+      }
+    }
+  },
+  "hardware_limits": {
+    "max_x_position": 120.0,
+    "max_y_position": 80.0,
+    "min_x_position": 0.0,
+    "min_y_position": 0.0,
+    "paper_start_x": 15.0,
+    "paper_start_y": 15.0,
+    "min_line_spacing": 0.3,
+    "max_line_spacing": 50.0,
+    "min_page_width": 1.0,
+    "max_page_width": 100.0
+  },
+  "timing": {
+    "motor_movement_delay_per_cm": 0.001,
+    "max_motor_movement_delay": 0.01,
+    "tool_action_delay": 0.001,
+    "sensor_wait_timeout": 2.0,
+    "sensor_poll_timeout": 0.01,
+    "row_marker_stable_delay": 0.01,
+    "execution_loop_delay": 0.001,
+    "thread_join_timeout_execution": 1.0,
+    "thread_join_timeout_safety": 0.5,
+    "safety_check_interval": 0.01,
+    "transition_monitor_interval": 0.01,
+    "piston_action_delay": 0.001,
+    "piston_up_delay": 0.001,
+    "piston_down_delay": 0.001
+  },
+  "safety": {
+    "setup_movement_keywords": ["home position", "ensure", "init:"],
+    "rows_start_position_keywords": ["rows start:"],
+    "enable_safety_checks": true,
+    "allow_override": false
+  },
+  "logging": {
+    "level": "WARNING",
+    "console_output": false,
+    "file_output": false,
+    "log_file": "logs/scratch_desk.log",
+    "use_colors": false,
+    "use_icons": false,
+    "categories": {
+      "hardware": "WARNING",
+      "execution": "WARNING",
+      "safety": "WARNING",
+      "grbl": "WARNING",
+      "rs485": "WARNING",
+      "gpio": "WARNING"
+    }
+  },
+  "gui": {
+    "window_title": "Scratch-Desk CNC Control - Test Mode",
+    "window_width": 1400,
+    "window_height": 900,
+    "canvas_width": 800,
+    "canvas_height": 600,
+    "update_interval": 100
+  },
+  "execution": {
+    "max_retries": 3,
+    "retry_delay": 0.01,
+    "enable_pause": true,
+    "enable_stop": true
+  }
+}

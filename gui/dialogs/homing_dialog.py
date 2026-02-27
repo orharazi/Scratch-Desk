@@ -22,22 +22,24 @@ class HomingProgressDialog:
     """
     Modal dialog showing homing sequence progress.
 
-    Displays a 6-step homing sequence with real-time status updates:
+    Displays a 7-step homing sequence with real-time status updates:
     1. Apply GRBL configuration
     2. Check door is open
-    3. Lift line motor pistons
-    4. Run GRBL homing ($H)
-    5. Reset work coordinates to (0,0)
-    6. Lower line motor pistons
+    3. Reset all pistons to default position
+    4. Lift line motor pistons
+    5. Run GRBL homing ($H)
+    6. Reset work coordinates to (0,0)
+    7. Lower line motor pistons
     """
 
     STEPS = [
         "1. Apply GRBL configuration",
         "2. Check door is open",
-        "3. Lift line motor pistons",
-        "4. Run GRBL homing ($H)",
-        "5. Reset work coordinates to (0,0)",
-        "6. Lower line motor pistons"
+        "3. Reset all pistons to default position",
+        "4. Lift line motor pistons",
+        "5. Run GRBL homing ($H)",
+        "6. Reset work coordinates to (0,0)",
+        "7. Lower line motor pistons"
     ]
 
     def __init__(self, parent: tk.Tk, hardware, on_complete: Optional[Callable] = None):
@@ -75,7 +77,7 @@ class HomingProgressDialog:
         """Create the modal dialog UI"""
         self.dialog = tk.Toplevel(self.parent)
         self.dialog.title(t_title("Homing in Progress"))
-        self.dialog.geometry("500x350")
+        self.dialog.geometry("500x380")
         self.dialog.transient(self.parent)
         self.dialog.grab_set()  # Make modal - block all other interaction
         self.dialog.protocol("WM_DELETE_WINDOW", lambda: None)  # Prevent closing with X
@@ -83,8 +85,8 @@ class HomingProgressDialog:
         # Center the dialog on screen
         self.dialog.update_idletasks()
         x = (self.dialog.winfo_screenwidth() // 2) - 250
-        y = (self.dialog.winfo_screenheight() // 2) - 175
-        self.dialog.geometry(f"500x350+{x}+{y}")
+        y = (self.dialog.winfo_screenheight() // 2) - 190
+        self.dialog.geometry(f"500x380+{x}+{y}")
 
         # Title
         title_label = ttk.Label(

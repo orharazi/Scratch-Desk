@@ -5,10 +5,10 @@
     "max_y_position": 80.0,
     "min_x_position": 0.0,
     "min_y_position": 0.0,
-    "paper_start_x": 15.0,
+    "paper_start_x": 5.0,
     "safe_movement_speed": 10.0,
     "max_acceleration": 5.0,
-    "paper_start_y": 15.0,
+    "paper_start_y": 5.0,
     "min_line_spacing": 0.3
   },
   "admin": {
@@ -189,7 +189,7 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": true,
+    "use_real_hardware": false,
     "start_with_grbl": true,
     "poc_mode": false,
     "skip_initial_sensor_tests": false,
@@ -250,7 +250,7 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/ttyUSB0",
+      "serial_port": "/dev/cu.debug-console",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
@@ -338,7 +338,7 @@
       "smtp_password": "egwinocrndmjlnsp",
       "sender_email": "uridesk35@gmail.com\n",
       "recipient_email": "orharazi@gmail.com",
-      "subject_prefix": "\u05e9\u05d5\u05dc\u05d7\u05df \u05e9\u05e8\u05d8\u05d5\u05d8 \u05d9\u05e9\u05d9\u05d1\u05d4 \u05e9\u05dc \u05d7\u05d9 - \u05d0\u05e0\u05dc\u05d9\u05d8\u05d9\u05e7\u05d5\u05ea",
+      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
       "schedule_enabled": true,
       "schedule_frequency": "monthly",
       "schedule_time": "08:00",

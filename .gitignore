@@ -41,3 +41,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Test / Coverage
+.coverage
+htmlcov/
+
+# Scratch files
+plan.md
+
+# Runtime data
+data/analytics/runs.csv

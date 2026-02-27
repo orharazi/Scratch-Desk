@@ -55,7 +55,24 @@ def main():
     signal.signal(signal.SIGINT, _signal_handler)
 
     def on_closing():
-        """Handle window close (X button) - ensure air pressure is turned off"""
+        """Handle window close (X button) - safe shutdown sequence"""
+        # 1. Stop execution engine if running
+        try:
+            if app.execution_engine.is_running:
+                app.execution_engine.stop_execution()
+        except Exception:
+            pass
+
+        # 2. Raise all pistons to safe position
+        try:
+            _hardware.line_marker_up()
+            _hardware.line_cutter_up()
+            _hardware.row_marker_up()
+            _hardware.row_cutter_up()
+        except Exception:
+            pass
+
+        # 3. Shut off air pressure
         _shutdown_air_pressure()
         try:
             root.destroy()

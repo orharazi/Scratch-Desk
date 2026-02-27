@@ -101,6 +101,7 @@ class RaspberryPiGPIO:
 
         # Track piston GPIO output pin states (for displaying actual piston control state)
         self._piston_pin_states = {}  # Maps piston_name -> current GPIO state ("up" or "down")
+        self._piston_state_lock = threading.Lock()  # Protects _piston_pin_states
 
         # Polling thread for continuous switch monitoring
         self.polling_thread = None
@@ -216,11 +217,13 @@ class RaspberryPiGPIO:
                     # line_motor_piston defaults to DOWN, all others default to UP
                     if piston_name == "line_motor_piston":
                         GPIO.output(pin, GPIO.HIGH)
-                        self._piston_pin_states[piston_name] = "down"
+                        with self._piston_state_lock:
+                            self._piston_pin_states[piston_name] = "down"
                         self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: DOWN)", category="hardware")
                     else:
                         GPIO.output(pin, GPIO.LOW)
-                        self._piston_pin_states[piston_name] = "up"
+                        with self._piston_state_lock:
+                            self._piston_pin_states[piston_name] = "up"
                         self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: UP)", category="hardware")
                 except Exception as e:
                     raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
@@ -346,6 +349,15 @@ class RaspberryPiGPIO:
 
     # ========== PISTON CONTROL METHODS ==========
 
+    # Piston-to-sensor mapping for verification
+    _PISTON_SENSOR_MAP = {
+        'line_marker_piston': {'down': 'line_marker_down_sensor', 'up': 'line_marker_up_sensor'},
+        'line_cutter_piston': {'down': 'line_cutter_down_sensor', 'up': 'line_cutter_up_sensor'},
+        'row_marker_piston': {'down': 'row_marker_down_sensor', 'up': 'row_marker_up_sensor'},
+        'row_cutter_piston': {'down': 'row_cutter_down_sensor', 'up': 'row_cutter_up_sensor'},
+        'line_motor_piston': {'down': 'line_motor_left_down_sensor', 'up': 'line_motor_left_up_sensor'},
+    }
+
     def set_piston(self, piston_name: str, state: str) -> bool:
         """
         Set piston state with COMPREHENSIVE electrical interference suppression
@@ -377,17 +389,65 @@ class RaspberryPiGPIO:
             GPIO.output(pin, gpio_state)
 
             # Track the actual GPIO pin state
-            self._piston_pin_states[piston_name] = state
+            with self._piston_state_lock:
+                self._piston_pin_states[piston_name] = state
 
             self.logger.debug(f"Piston '{piston_name}' set to {state.upper()} (GPIO {pin} = {'HIGH' if gpio_state else 'LOW'})", category="hardware")
 
             # Settling delay to allow electrical noise to dissipate
             time.sleep(self._piston_settling_time)
 
+            # Verify piston reached target position via sensor (best-effort)
+            if not self._verify_piston_position(piston_name, state):
+                self.logger.warning(f"Piston '{piston_name}' may not have reached '{state}' position", category="gpio")
+                return False
+
             return True
         except Exception as e:
             self.logger.error(f"Error setting piston {piston_name}: {e}", category="hardware")
             return False
+
+    def _verify_piston_position(self, piston_name: str, expected_state: str, timeout: float = 0.5) -> bool:
+        """
+        Verify piston reached target position by reading the corresponding sensor.
+
+        Args:
+            piston_name: Name of piston
+            expected_state: Expected state ('up' or 'down')
+            timeout: Maximum time to wait for sensor confirmation (seconds)
+
+        Returns:
+            True if sensor confirms position, False if not
+        """
+        # Look up the sensor for this piston/state combination
+        sensor_map = self._PISTON_SENSOR_MAP.get(piston_name)
+        if not sensor_map:
+            # No sensor mapping for this piston (e.g. air_pressure_valve) - skip verification
+            return True
+
+        sensor_name = sensor_map.get(expected_state)
+        if not sensor_name:
+            return True
+
+        # Check if RS485 is available for sensor reading
+        if not self.rs485:
+            # No RS485 module - can't verify, assume success
+            return True
+
+        # Poll sensor with timeout
+        start_time = time.time()
+        poll_interval = 0.05  # 50ms between polls
+
+        while time.time() - start_time < timeout:
+            try:
+                sensor_value = self.read_sensor(sensor_name)
+                if sensor_value is True:
+                    return True
+            except Exception:
+                pass
+            time.sleep(poll_interval)
+
+        return False
 
     def piston_up(self, piston_name: str) -> bool:
         """Retract piston (set to UP position)"""
@@ -415,7 +475,8 @@ class RaspberryPiGPIO:
             return "unknown"
 
         # Return the tracked state (what we last set the GPIO pin to)
-        return self._piston_pin_states.get(piston_name, "unknown")
+        with self._piston_state_lock:
+            return self._piston_pin_states.get(piston_name, "unknown")
 
     # ========== LINE MOTOR PISTON CONTROL (Single GPIO for both sides) ==========
 

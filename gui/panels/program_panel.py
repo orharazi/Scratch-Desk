@@ -462,10 +462,7 @@ class ProgramPanel:
         if self.main_app.current_program or self._creating_new_program:
             self.validate_from_fields()
             self.update_paper_size_display_from_fields()
-
-            # Live canvas preview during creation mode
-            if self._creating_new_program:
-                self._update_canvas_preview()
+            self._update_canvas_preview()
 
     def update_current_program(self):
         """Update current program with field values, refresh canvas and steps"""

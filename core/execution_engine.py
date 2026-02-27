@@ -6,6 +6,7 @@ import json
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.safety_system import SafetyViolation, check_step_safety
 from core.logger import get_logger
+from core.machine_state import MachineState, MachineStateManager
 
 # Load settings
 def load_settings():
@@ -40,6 +41,7 @@ class ExecutionEngine:
         self.pause_event = threading.Event()
         self.stop_event = threading.Event()
         self.safety_monitor_stop = threading.Event()
+        self._transition_lock = threading.Lock()  # Protects in_transition flag
         self.in_transition = False  # Flag to pause safety monitoring during transitions
 
         # Progress tracking
@@ -93,6 +95,7 @@ class ExecutionEngine:
         # Reset state
         self.is_running = True
         self.is_paused = False
+        self.in_transition = False  # Ensure clean transition state for new run
         self.execution_completed = False
         self.execution_failed = False
         self.stop_event.clear()
@@ -103,6 +106,9 @@ class ExecutionEngine:
 
         # Pass execution engine reference to mock hardware for sensor waiting functions
         self.hardware.set_execution_engine_reference(self)
+
+        # Update machine state
+        MachineStateManager().set_state(MachineState.RUNNING)
 
         # Start execution thread
         self.execution_thread = threading.Thread(target=self._execution_loop, daemon=True)
@@ -125,6 +131,7 @@ class ExecutionEngine:
 
         self.is_paused = True
         self.pause_event.clear()
+        MachineStateManager().set_state(MachineState.PAUSED)
         self.logger.info("Execution paused", category="execution")
         self._update_status("paused")
         return True
@@ -140,6 +147,7 @@ class ExecutionEngine:
 
         self.is_paused = False
         self.pause_event.set()
+        MachineStateManager().set_state(MachineState.RUNNING)
         self.logger.info("Execution resumed", category="execution")
         self._update_status("resumed")
         return True
@@ -150,6 +158,7 @@ class ExecutionEngine:
             self.logger.warning("Execution not running", category="execution")
             return False
 
+        self.in_transition = False  # Clear transition flag to restore safety monitoring
         self.stop_event.set()
         self.pause_event.set()  # Ensure thread can proceed to check stop event
 
@@ -166,10 +175,86 @@ class ExecutionEngine:
         if self.safety_monitor_thread and self.safety_monitor_thread.is_alive():
             self.safety_monitor_thread.join(timeout=timing_settings.get("thread_join_timeout_safety", 1.0))
 
+        # Raise line motor piston only if it's currently down (lines operation)
+        # Don't raise during rows operations where it should stay in its current position
+        self._raised_motor_on_stop = False
+        try:
+            motor_state = self.hardware.get_line_motor_piston_state()
+            if motor_state == "down":
+                self.hardware.line_motor_piston_up()
+                self._raised_motor_on_stop = True
+                self.logger.info("Line motor piston raised for safety after stop (was down)", category="execution")
+            else:
+                self.logger.debug("Line motor piston already up - no raise needed", category="execution")
+        except Exception:
+            pass  # Best effort
+
+        # Sync position with actual hardware (best-effort)
+        try:
+            status = self.hardware.get_grbl_status() if hasattr(self.hardware, 'get_grbl_status') else None
+            if status:
+                if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                    self.hardware.grbl.current_x = status.get('x', self.hardware.grbl.current_x)
+                    self.hardware.grbl.current_y = status.get('y', self.hardware.grbl.current_y)
+                    self.logger.debug(
+                        f"Position synced after stop: X={self.hardware.grbl.current_x:.2f}, Y={self.hardware.grbl.current_y:.2f}",
+                        category="execution"
+                    )
+        except Exception:
+            pass  # Best effort - don't fail stop on position query error
+
         self.is_running = False
         self.is_paused = False
+        MachineStateManager().set_state(MachineState.IDLE)
         self.logger.info("Execution stopped - safety monitoring disabled", category="execution")
         self._update_status("stopped")
+        return True
+
+    def continue_execution(self):
+        """Continue execution from current step (after stop).
+
+        Unlike start_execution(), this does NOT reset current_step_index to 0.
+        Used to resume from the point where execution was stopped.
+        """
+        if self.is_running:
+            self.logger.warning("Execution already running", category="execution")
+            return False
+
+        if not self.steps:
+            self.logger.warning("No steps loaded", category="execution")
+            return False
+
+        if self.current_step_index >= len(self.steps):
+            self.logger.info("All steps already completed", category="execution")
+            return False
+
+        # Reset control state for continuation (but NOT step index)
+        self.is_running = True
+        self.is_paused = False
+        self.in_transition = False
+        self.execution_completed = False
+        self.execution_failed = False
+        self.stop_event.clear()
+        self.pause_event.set()
+        # current_step_index preserved from where we stopped
+
+        # Pass execution engine reference to hardware
+        self.hardware.set_execution_engine_reference(self)
+
+        # Update machine state
+        MachineStateManager().set_state(MachineState.RUNNING)
+
+        # Start execution thread
+        self.execution_thread = threading.Thread(target=self._execution_loop, daemon=True)
+        self.execution_thread.start()
+
+        # Start safety monitoring thread
+        self.safety_monitor_stop.clear()
+        self.safety_monitor_thread = threading.Thread(target=self._safety_monitor_loop, daemon=True)
+        self.safety_monitor_thread.start()
+
+        self.logger.info(f"Execution continued from step {self.current_step_index + 1}/{len(self.steps)}", category="execution")
+        self._update_status("started")
         return True
 
     def reset_execution(self, clear_steps=False):
@@ -264,7 +349,7 @@ class ExecutionEngine:
 
     def execute_current_step(self):
         """Execute current step manually (for step-by-step operation)"""
-        if self.is_running:
+        if self.is_running and not self.is_paused:
             self.logger.warning("Cannot execute manually while automatic execution is running", category="execution")
             return None
 
@@ -345,7 +430,8 @@ class ExecutionEngine:
                     self.logger.debug(f"PREVIOUS OP: {previous_operation}, DETECTED OP: {temp_operation_type}", category="execution")
 
                     # CRITICAL: Set transition flag BEFORE any safety checks can run
-                    self.in_transition = True
+                    with self._transition_lock:
+                        self.in_transition = True
                     self.logger.info("TRANSITION FLAG SET IMMEDIATELY - ALL SAFETY CHECKS BYPASSED", category="execution")
 
                     try:
@@ -398,6 +484,17 @@ class ExecutionEngine:
                         'step': step
                     })
 
+                    break
+
+                # Check if step failed (non-safety failure)
+                if step_result and not step_result.get('success', True) and not step_result.get('safety_violation'):
+                    self.logger.error(f"STEP FAILED: {step.get('description', '')} - {step_result.get('error', 'Unknown error')}", category="execution")
+                    self.execution_failed = True
+                    self._update_status("error", {
+                        'error': step_result.get('error', 'Step execution failed'),
+                        'step': step,
+                        'step_index': self.current_step_index
+                    })
                     break
 
                 # Notify step execution completed (for immediate position updates)
@@ -458,9 +555,14 @@ class ExecutionEngine:
             self.safety_monitor_stop.set()
 
             if self.stop_event.is_set():
+                MachineStateManager().set_state(MachineState.IDLE)
                 self.logger.info("Execution stopped by user", category="execution")
                 self._update_status("stopped")
+            elif self.execution_failed:
+                MachineStateManager().set_state(MachineState.ERROR, error_message="Step execution failed")
+                self.logger.error("Execution ended due to step failure", category="execution")
             else:
+                MachineStateManager().set_state(MachineState.IDLE)
                 self.execution_completed = True
                 self.logger.success("Execution completed successfully", category="execution")
                 self._update_status("completed")
@@ -470,6 +572,7 @@ class ExecutionEngine:
             self.is_running = False
             self.is_paused = False
             self.execution_failed = True
+            MachineStateManager().set_state(MachineState.ERROR, error_message=str(e))
             self._update_status("error", {'error': str(e)})
 
     def _execute_step(self, step):
@@ -482,7 +585,9 @@ class ExecutionEngine:
 
         # SAFETY CHECK: Validate step safety before execution (skip during transitions)
         # If safety violation occurs, wait for condition to clear instead of stopping
-        if not self.in_transition:
+        with self._transition_lock:
+            skip_safety = self.in_transition
+        if not skip_safety:
             safety_wait_interval = 0.5  # Check every 500ms
             max_safety_wait = 300  # Maximum wait time (5 minutes)
             safety_wait_time = 0
@@ -779,7 +884,9 @@ class ExecutionEngine:
                 if self.is_running and self.current_operation_type:
 
                     # Skip safety monitoring during transitions
-                    if self.in_transition:
+                    with self._transition_lock:
+                        is_transitioning = self.in_transition
+                    if is_transitioning:
                         self.logger.debug("Skipping safety monitor during lines\u2192rows transition...", category="execution")
                         time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
                         continue
@@ -816,6 +923,7 @@ class ExecutionEngine:
                                 # PAUSE execution
                                 self.is_paused = True
                                 self.pause_event.clear()
+                                MachineStateManager().set_state(MachineState.PAUSED)
 
                                 # Update status with emergency stop (triggers safety dialog via rule ID)
                                 self._update_status("emergency_stop", {
@@ -851,6 +959,7 @@ class ExecutionEngine:
                                 # Auto-resume execution
                                 self.is_paused = False
                                 self.pause_event.set()
+                                MachineStateManager().set_state(MachineState.RUNNING)
 
                                 # Update status to show recovery
                                 self._update_status("safety_recovered", {

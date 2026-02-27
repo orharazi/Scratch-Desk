@@ -72,13 +72,13 @@ class ExecutionController:
         self.logger.debug("ExecutionController cleaned up for reset", category="gui")
 
     def on_execution_status(self, status, info=None):
-        """Handle execution status updates (called from execution thread).
-        Marshals all GUI updates to the main thread via root.after() for thread safety.
+        """Handle execution status updates.
+        Called from main thread (already marshalled via root.after() in main_app.on_execution_status).
         """
         try:
-            self.main_app.root.after(0, lambda s=status, i=info: self._on_execution_status_impl(s, i))
+            self._on_execution_status_impl(status, info)
         except Exception as e:
-            self.logger.error(f"Failed to marshal status update to main thread: {e}", category="gui")
+            self.logger.error(f"Failed to handle status update: {e}", category="gui")
 
     def _on_execution_status_impl(self, status, info=None):
         """Actual execution status handler - runs on main thread via root.after()"""
@@ -87,9 +87,14 @@ class ExecutionController:
             try:
                 if status == 'completed' and hasattr(self.main_app, 'controls_panel'):
                     self.main_app.controls_panel.auto_reload_after_completion()
-                elif hasattr(self.main_app, 'controls_panel'):
-                    # For stopped/error: reset engine and prepare for fresh run
+                elif status == 'error' and hasattr(self.main_app, 'controls_panel'):
+                    # For error: reset engine and prepare for fresh run
                     self.main_app.controls_panel._prepare_for_new_run()
+                elif status == 'stopped':
+                    # For stopped: UI already set up by controls_panel.stop_execution()
+                    # Just ensure program panel is unlocked
+                    if hasattr(self.main_app, 'program_panel'):
+                        self.main_app.program_panel.set_locked(False)
                 elif hasattr(self.main_app, 'program_panel'):
                     self.main_app.program_panel.set_locked(False)
             except Exception as e:
