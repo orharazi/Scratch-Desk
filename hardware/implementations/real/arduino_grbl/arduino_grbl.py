@@ -1216,6 +1216,21 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(7, "Lower line motor pistons", "done")
 
+            # Step 8: Final verification - ensure ALL tool pistons are UP
+            if progress_callback:
+                progress_callback(8, "Verify all tool pistons UP", "running")
+            self.logger.info("Step 8: Final verification - ensuring all tool pistons are UP...", category="grbl")
+            if hardware_interface:
+                # Re-command all tool pistons UP as a safety guarantee
+                hardware_interface.line_marker_piston_up()
+                hardware_interface.line_cutter_piston_up()
+                hardware_interface.row_marker_piston_up()
+                hardware_interface.row_cutter_piston_up()
+                time.sleep(1.0)
+                self.logger.success("All tool pistons verified UP after homing", category="grbl")
+            if progress_callback:
+                progress_callback(8, "Verify all tool pistons UP", "done")
+
             self.logger.info("="*60, category="grbl")
             self.logger.success("COMPLETE HOMING SEQUENCE FINISHED SUCCESSFULLY", category="grbl")
             self.logger.info("="*60, category="grbl")

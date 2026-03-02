@@ -364,7 +364,7 @@ class AdminToolGUI:
         self.grbl_work_pos_label.grid(row=1, column=0, padx=5, sticky="e")
 
         homing_frame = ttk.Frame(status_frame)
-        homing_frame.grid(row=0, column=2, sticky="w", padx=10)
+        homing_frame.grid(row=0, column=2, sticky="e", padx=10)
         ttk.Button(homing_frame, text=t("Start Homing Sequence"),
                   command=self.start_homing_sequence).pack(pady=5)
 
@@ -759,7 +759,7 @@ class AdminToolGUI:
         self.grbl_command_entry.pack(side=tk.RIGHT, fill="x", expand=True, padx=5)
         self.grbl_command_entry.bind("<Return>", lambda e: self.send_grbl_command())
 
-        ttk.Button(input_frame, text=t("Send"), command=self.send_grbl_command).pack(side=tk.LEFT)
+        ttk.Button(input_frame, text=t("Send"), command=self.send_grbl_command).pack(side=tk.RIGHT)
 
         ttk.Label(gcode_frame, text=t("Response:")).pack(anchor="e", pady=(5, 0))
         self.grbl_response_text = scrolledtext.ScrolledText(gcode_frame, height=12, width=40, font=("Courier", 9))
@@ -785,8 +785,8 @@ class AdminToolGUI:
         self.auto_scroll_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(log_control_frame, text=t("Auto-scroll"), variable=self.auto_scroll_var).pack(side=tk.RIGHT, padx=20)
 
-        ttk.Button(log_control_frame, text=t("Save Log"), command=self.save_log).pack(side=tk.LEFT, padx=5)
-        ttk.Button(log_control_frame, text=t("Clear Log"), command=self.clear_log).pack(side=tk.LEFT, padx=5)
+        ttk.Button(log_control_frame, text=t("Save Log"), command=self.save_log).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(log_control_frame, text=t("Clear Log"), command=self.clear_log).pack(side=tk.RIGHT, padx=5)
 
         self.console_text = scrolledtext.ScrolledText(log_frame, height=10, width=100,
                                                       font=("Courier", 9), bg="black", fg="white")

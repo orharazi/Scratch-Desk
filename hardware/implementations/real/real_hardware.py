@@ -1101,10 +1101,14 @@ class RealHardware:
         }
 
     def reset_hardware(self):
-        """Reset hardware to initial state (raise tools, no homing)"""
+        """Reset hardware to initial state (raise ALL tools, no homing)"""
         if self.is_initialized:
-            # Raise all tools
-            self.lift_line_tools()
+            # Raise ALL tool pistons to safe UP state
+            self.line_marker_up()
+            self.line_cutter_up()
+            self.row_marker_up()
+            self.row_cutter_up()
+            self.line_motor_piston_up()
 
     # ========== MOCK-SPECIFIC METHODS (no-op for real hardware) ==========
 

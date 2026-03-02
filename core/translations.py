@@ -774,11 +774,14 @@ HEBREW_TRANSLATIONS = {
     "Homing in Progress...": "ביות בתהליך...",
     "1. Apply GRBL configuration": "1. החלת הגדרות GRBL",
     "2. Check door is open": "2. בדיקה שהדלת פתוחה",
-    "3. Lift line motor pistons": "3. הרמת בוכנות מנוע שורות",
-    "4. Run GRBL homing ($H)": "4. הפעלת ביות GRBL ($H)",
-    "5. Reset work coordinates to (0,0)": "5. איפוס קואורדינטות עבודה ל-(0,0)",
-    "6. Lower line motor pistons": "6. הורדת בוכנות מנוע שורות",
+    "3. Reset all pistons to default position": "3. איפוס כל הבוכנות למצב ברירת מחדל",
+    "4. Lift line motor pistons": "4. הרמת בוכנות מנוע שורות",
+    "5. Run GRBL homing ($H)": "5. הפעלת ביות GRBL ($H)",
+    "6. Reset work coordinates to (0,0)": "6. איפוס קואורדינטות עבודה ל-(0,0)",
+    "7. Lower line motor pistons": "7. הורדת בוכנות מנוע שורות",
+    "8. Verify all tool pistons UP": "8. אימות שכל הבוכנות למעלה",
     "Homing Failed": "הביות נכשל",
+    "Homing failed!\n\nError: {error}\n\nTry again?": "הביות נכשל!\n\nשגיאה: {error}\n\nלנסות שוב?",
     "Homing sequence failed!\n\nError: {error}": "תהליך הביות נכשל!\n\nשגיאה: {error}",
     "Homing Complete": "הביות הושלם",
     "Homing sequence completed successfully!\n\nMachine is now at home position (0, 0).": "תהליך הביות הושלם בהצלחה!\n\nהמכונה נמצאת כעת במיקום בית (0, 0).",
@@ -795,6 +798,9 @@ HEBREW_TRANSLATIONS = {
     "Homing Required": "נדרש ביות",
     "Real hardware mode is active.\n\nThe machine needs to be homed before operation.\nThis will:\n1. Apply GRBL configuration\n2. Check door is open\n3. Lift line motor pistons\n4. Run GRBL homing ($H)\n5. Reset work coordinates\n6. Lower line motor pistons\n\nMake sure the machine is clear and ready.\n\nRun homing now?": "מצב חומרה אמיתית פעיל.\n\nיש לבצע ביות למכונה לפני הפעלה.\nפעולה זו תבצע:\n1. החלת הגדרות GRBL\n2. בדיקה שהדלת פתוחה\n3. הרמת בוכנות מנוע שורות\n4. הפעלת ביות GRBL ($H)\n5. איפוס קואורדינטות עבודה\n6. הורדת בוכנות מנוע שורות\n\nוודא שהמכונה פנויה ומוכנה.\n\nלהפעיל ביות עכשיו?",
     "Machine was NOT homed.\n\nYou can run homing later from the Hardware Test GUI\nor by switching hardware modes in the settings panel.": "המכונה לא עברה ביות.\n\nניתן להפעיל ביות מאוחר יותר מממשק בדיקת החומרה\nאו על ידי החלפת מצב חומרה בלוח ההגדרות.",
+    "Machine was NOT homed.\n\nYou must run homing before running any program.\nUse the homing button to run homing.": "המכונה לא עברה ביות.\n\nיש לבצע ביות לפני הפעלת תוכנית.\nהשתמש בכפתור הביות.",
+    "Machine not homed! Run homing first": "המכונה לא עברה ביות! יש לבצע ביות קודם",
+    "Cannot run program - machine has not been homed!\n\nYou must complete homing before running any program.\nUse the homing button to run homing.": "לא ניתן להריץ תוכנית - המכונה לא עברה ביות!\n\nיש להשלים ביות לפני הפעלת תוכנית.\nהשתמש בכפתור הביות.",
 
     # Manual homing confirmation
     "Run Homing": "הפעל ביות",
@@ -1466,6 +1472,77 @@ HEBREW_TRANSLATIONS = {
     "Friday": "יום שישי",
     "Saturday": "שבת",
     "Sunday": "יום ראשון",
+
+    # ============================================================================
+    # MISSING DIALOG & MESSAGEBOX TRANSLATIONS
+    # ============================================================================
+
+    # --- Hardware Settings Panel - Mode switching dialogs ---
+    "No Change": "ללא שינוי",
+    "Hardware mode unchanged. Already in {mode} mode.": "מצב חומרה לא השתנה. כבר במצב {mode}.",
+    "Real Hardware": "חומרה אמיתית",
+    "Cannot Switch": "לא ניתן להחליף",
+    "Switch to Real Hardware": "עבור לחומרה אמיתית",
+    "This will:\n1. Switch to real hardware mode\n2. Connect to Arduino/GPIO\n3. Run homing sequence\n\nMake sure the machine is clear and ready.\n\nContinue?": "פעולה זו תבצע:\n1. מעבר למצב חומרה אמיתית\n2. חיבור ל-Arduino/GPIO\n3. הפעלת תהליך ביות\n\nוודא שהמכונה פנויה ומוכנה.\n\nלהמשיך?",
+    "Switch to Simulation": "עבור לסימולציה",
+    "Switch to simulation mode?\n\nThis will disconnect from real hardware.": "לעבור למצב סימולציה?\n\nפעולה זו תנתק מהחומרה האמיתית.",
+    "Switching hardware mode...": "מחליף מצב חומרה...",
+    "Hardware Switch Failed": "החלפת חומרה נכשלה",
+    "Failed to switch hardware:\n\n{error}": "כשלון בהחלפת חומרה:\n\n{error}",
+    "Hardware Switched": "החומרה הוחלפה",
+    "Successfully switched to {mode} mode.": "הוחלף בהצלחה למצב {mode}.",
+    "Cannot switch while execution is in progress": "לא ניתן להחליף בזמן שביצוע פעיל",
+    "No ports detected": "לא זוהו פורטים",
+    "Hardware settings saved to config:\n\nMode: {mode}\nPort: {port}\n\nUse 'Apply Settings' to switch now,\nor settings will be used on next app launch.": "הגדרות חומרה נשמרו להגדרות:\n\nמצב: {mode}\nפורט: {port}\n\nהשתמש ב'החל הגדרות' כדי להחליף עכשיו,\nאו שההגדרות יופעלו בהפעלה הבאה.",
+
+    # --- Hardware Status Panel ---
+    "Safety:": "בטיחות:",
+    "SWITCHING": "מחליף",
+    "Changing hardware mode...": "מחליף מצב חומרה...",
+    "Check hardware connection": "בדוק חיבור חומרה",
+
+    # --- Controls Panel - Test controls & sensors ---
+    "⚠️ Disabled - Real Hardware Mode": "⚠️ מושבת - מצב חומרה אמיתית",
+    "Door:": "דלת:",
+    "Stop execution first!": "עצור את הביצוע קודם!",
+    "Program changed - regenerate steps first!": "התוכנית השתנתה - יש ליצור צעדים מחדש!",
+    "Steps are stale - press Generate": "הצעדים לא עדכניים - לחץ ייצר צעדים",
+    "No actionable steps - check program": "אין צעדים ישימים - בדוק את התוכנית",
+    "Sensor: Ready": "חיישן: מוכן",
+    "State: Idle": "מצב: מנוח",
+    "Sensor: X-Left Triggered": "חיישן: שורות-שמאל הופעל",
+    "Sensor: X-Right Triggered": "חיישן: שורות-ימין הופעל",
+    "Sensor: Y-Top Triggered": "חיישן: עמודות-עליון הופעל",
+    "Sensor: Y-Bottom Triggered": "חיישן: עמודות-תחתון הופעל",
+    "❌ Invalid program - paper too large": "❌ תוכנית לא חוקית - הנייר גדול מדי",
+    "Limit switch {name} toggled: {state}": "מתג גבול {name} הופעל: {state}",
+    "Test controls HIDDEN - Real hardware mode active": "בקרות בדיקה מוסתרות - מצב חומרה אמיתית פעיל",
+
+    # --- Program Panel - File dialog & validation ---
+    "Select CSV Program File": "בחר קובץ תוכנית CSV",
+    "CSV files": "קבצי CSV",
+    "All files": "כל הקבצים",
+    "Invalid values": "ערכים לא תקינים",
+    "⚠️ Check your input values": "⚠️ בדוק את ערכי הקלט",
+    "Width exceeds desk ({actual} > {max})": "רוחב חורג מהשולחן ({actual} > {max})",
+    "Height exceeds desk ({actual} > {max})": "גובה חורג מהשולחן ({actual} > {max})",
+    "⚠️ {warnings}": "⚠️ {warnings}",
+
+    # --- Execution Controller ---
+    "Running...": "...רץ",
+    "SAFETY WAIT - Will auto-resume": "המתנת בטיחות - יחודש אוטומטית",
+    "⏸️ SAFETY - Waiting for condition to clear...": "⏸️ בטיחות - ממתין לפתרון תנאי...",
+
+    # --- Main App - Validation ---
+    "Found {count} validation errors:\n{errors}": "נמצאו {count} שגיאות אימות:\n{errors}",
+    "... and {count} more errors": "... ועוד {count} שגיאות",
+    "No valid programs found in {file}": "לא נמצאו תוכניות תקינות ב-{file}",
+
+    # --- Admin App - Execution check dialogs ---
+    "Saved": "נשמר",
+    "Blocked": "חסום",
+    "Cannot change {action} while execution is actively running. Pause or stop execution first.": "לא ניתן לשנות {action} בזמן שביצוע פעיל. השהה או עצור את הביצוע קודם.",
+    "Execution is paused. Changing {action} manually may cause safety violations. Continue?": "הביצוע מושהה. שינוי {action} ידני עלול לגרום להפרות בטיחות. להמשיך?",
 }
 
 # Current language setting

@@ -132,6 +132,10 @@ class ScratchDeskGUI:
         from hardware.implementations.real.real_hardware import RealHardware
         self.is_real_hardware = isinstance(self.hardware, RealHardware)
 
+        # Track whether homing was completed successfully (real hardware only)
+        # Programs CANNOT run on real hardware until this is True
+        self.homing_completed = not self.is_real_hardware  # Mock mode is always "homed"
+
         # Open air pressure valve on startup (air flows to pistons)
         self.hardware.air_pressure_valve_down()
 
@@ -313,9 +317,6 @@ class ScratchDeskGUI:
 
     def _run_startup_homing(self):
         """Run homing sequence on startup when using real hardware"""
-        from tkinter import messagebox
-        from gui.dialogs.homing_dialog import HomingProgressDialog
-
         self.logger.info("Real hardware detected - starting homing sequence", category="gui")
 
         # Ask user to confirm homing
@@ -337,31 +338,47 @@ class ScratchDeskGUI:
             messagebox.showwarning(
                 t_title("Warning"),
                 t("Machine was NOT homed.\n\n"
-                  "You can run homing later from the Hardware Test GUI\n"
-                  "or by switching hardware modes in the settings panel.")
+                  "You must run homing before running any program.\n"
+                  "Use the homing button to run homing.")
             )
             return
 
-        # Set machine state to homing
-        self.state_manager.set_state(MachineState.HOMING)
+        self._execute_homing_with_retry()
 
-        # Show homing dialog
-        homing_dialog = HomingProgressDialog(self.root, self.hardware)
-        homing_success, homing_error = homing_dialog.show()
+    def _execute_homing_with_retry(self):
+        """Execute homing sequence with retry option on failure"""
+        from gui.dialogs.homing_dialog import HomingProgressDialog
 
-        if homing_success:
-            self.state_manager.set_state(MachineState.IDLE)
-            self.logger.info("Startup homing completed successfully", category="gui")
-            # Update position display after homing
-            self.canvas_manager.update_position_display()
-        else:
+        while True:
+            # Set machine state to homing
+            self.state_manager.set_state(MachineState.HOMING)
+
+            # Show homing dialog
+            homing_dialog = HomingProgressDialog(self.root, self.hardware)
+            homing_success, homing_error = homing_dialog.show()
+
+            if homing_success:
+                self.homing_completed = True
+                self.state_manager.set_state(MachineState.IDLE)
+                self.logger.info("Homing completed successfully", category="gui")
+                self.canvas_manager.update_position_display()
+                return
+
+            # Homing failed - offer retry
             self.state_manager.set_state(MachineState.ERROR, homing_error)
-            self.logger.error(f"Startup homing failed: {homing_error}", category="gui")
+            self.logger.error(f"Homing failed: {homing_error}", category="gui")
+
+            # Show failure dialog with "Try Again" option
+            retry = messagebox.askyesno(
+                t_title("Homing Failed"),
+                t("Homing failed!\n\nError: {error}\n\n"
+                  "Try again?", error=homing_error)
+            )
+            if not retry:
+                return
 
     def _run_homing(self):
         """Run homing sequence triggered by user button"""
-        from gui.dialogs.homing_dialog import HomingProgressDialog
-
         # Don't allow homing if execution is running
         if self.execution_engine.is_running:
             messagebox.showwarning(
@@ -379,20 +396,7 @@ class ScratchDeskGUI:
         ):
             return
 
-        # Set machine state to homing
-        self.state_manager.set_state(MachineState.HOMING)
-
-        # Show homing dialog
-        homing_dialog = HomingProgressDialog(self.root, self.hardware)
-        homing_success, homing_error = homing_dialog.show()
-
-        if homing_success:
-            self.state_manager.set_state(MachineState.IDLE)
-            self.logger.info("Manual homing completed successfully", category="gui")
-            self.canvas_manager.update_position_display()
-        else:
-            self.state_manager.set_state(MachineState.ERROR, homing_error)
-            self.logger.error(f"Manual homing failed: {homing_error}", category="gui")
+        self._execute_homing_with_retry()
 
     def _open_admin_tool(self):
         """Open admin tool after password verification"""
@@ -437,9 +441,9 @@ class ScratchDeskGUI:
         dialog.configure(bg='white')
         btn_frame = tk.Frame(dialog, bg='white')
         btn_frame.pack(pady=5)
-        tk.Button(btn_frame, text=t("Cancel"), command=dialog.destroy, width=10, fg='black').pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text=t("Cancel"), command=dialog.destroy, width=10, fg='black').pack(side=tk.RIGHT, padx=5)
         tk.Button(btn_frame, text=t("Login"), command=try_login, width=10,
-                  bg='#8E44AD', fg='white').pack(side=tk.LEFT, padx=5)
+                  bg='#8E44AD', fg='white').pack(side=tk.RIGHT, padx=5)
 
     def _force_window_focus(self, window):
         """Force window focus — delegates to wayland_focus utility"""

@@ -22,7 +22,7 @@ class BottomPanel:
         self.system_status_label = tk.Label(self.parent_frame, text=t("System Ready - Load program to begin"),
                                            bg='lightyellow', fg='darkblue', font=('Arial', 9, 'bold'),
                                            anchor='e')
-        self.system_status_label.pack(side=tk.LEFT, padx=8)
+        self.system_status_label.pack(side=tk.RIGHT, padx=8)
 
         # Progress bar (compact version, fills middle)
         progress_frame = tk.Frame(self.parent_frame, bg='lightyellow')

@@ -201,20 +201,16 @@ class HomingProgressDialog:
             self.dialog.destroy()
             self.dialog = None
 
-        # Show result message
-        if not self.success:
-            logger.error(f"Homing failed: {self.error_message}", category="hardware")
-            messagebox.showerror(
-                t_title("Homing Failed"),
-                t("Homing sequence failed!\n\nError: {error}", error=self.error_message)
-            )
-        else:
+        # Show success message (failure is handled by the caller's retry loop)
+        if self.success:
             logger.info("Homing completed successfully", category="hardware")
             messagebox.showinfo(
                 t_title("Homing Complete"),
                 t("Homing sequence completed successfully!\n\n"
                   "Machine is now at home position (0, 0).")
             )
+        else:
+            logger.error(f"Homing failed: {self.error_message}", category="hardware")
 
         # Call completion callback if provided
         if self.on_complete:

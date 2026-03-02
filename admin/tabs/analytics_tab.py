@@ -103,8 +103,8 @@ class AnalyticsTab:
                      textvariable=self.to_year_var).pack(side=tk.RIGHT)
 
         ttk.Button(top_bar, text=t("Refresh"), command=self.load_data).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(top_bar, text=t("Export CSV"), command=self.export_csv).pack(side=tk.LEFT, padx=5)
-        ttk.Button(top_bar, text=t("Clear Data"), command=self.clear_data).pack(side=tk.LEFT, padx=5)
+        ttk.Button(top_bar, text=t("Export CSV"), command=self.export_csv).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(top_bar, text=t("Clear Data"), command=self.clear_data).pack(side=tk.RIGHT, padx=5)
 
         # ---- Content area: summary + table ----
         content_pane = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
@@ -284,9 +284,9 @@ class AnalyticsTab:
         btn_row = ttk.Frame(email_frame)
         btn_row.pack(fill=tk.X, pady=(5, 0))
 
-        ttk.Button(btn_row, text=t("Test Connection"), command=self.test_email_connection).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_row, text=t("Send Report Now"), command=self.send_report_now).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_row, text=t("Save Email Settings"), command=self.save_email_settings).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_row, text=t("Test Connection"), command=self.test_email_connection).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_row, text=t("Send Report Now"), command=self.send_report_now).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_row, text=t("Save Email Settings"), command=self.save_email_settings).pack(side=tk.RIGHT, padx=5)
 
         self.last_sent_label = ttk.Label(btn_row, text=t("Last sent: Never"), font=("Arial", 9))
         self.last_sent_label.pack(side=tk.RIGHT, padx=10)

@@ -202,10 +202,10 @@ class SafetyTab:
         ttk.Frame(top_frame).pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Action buttons
-        ttk.Button(top_frame, text=t("+ Add Rule"), command=self.add_rule).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Import"), command=self.import_rules).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Export"), command=self.export_rules).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Refresh"), command=self.refresh_rules).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("+ Add Rule"), command=self.add_rule).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Import"), command=self.import_rules).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Export"), command=self.export_rules).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Refresh"), command=self.refresh_rules).pack(side=tk.RIGHT, padx=2)
 
     def create_rules_list(self):
         """Create rules list panel"""
@@ -835,7 +835,7 @@ class RuleEditorDialog:
         ttk.Label(main_frame, text=t("Priority:")).grid(row=row, column=1, sticky="e", pady=2)
         priority_frame = ttk.Frame(main_frame)
         priority_frame.grid(row=row, column=0, sticky="e", pady=2)
-        ttk.Label(priority_frame, text=t("(lower = higher priority)"), foreground="gray").pack(side=tk.LEFT, padx=5)
+        ttk.Label(priority_frame, text=t("(lower = higher priority)"), foreground="gray").pack(side=tk.RIGHT, padx=5)
         self.priority_entry = ttk.Entry(priority_frame, width=10)
         self.priority_entry.insert(0, "50")
         self.priority_entry.pack(side=tk.RIGHT)
@@ -874,7 +874,7 @@ class RuleEditorDialog:
         self.conditions_frame.pack(fill=tk.X, pady=5)
         self.condition_widgets = []
 
-        ttk.Button(cond_frame, text=t("+ Add Condition"), command=self.add_condition_row).pack(anchor="w")
+        ttk.Button(cond_frame, text=t("+ Add Condition"), command=self.add_condition_row).pack(anchor="e")
 
         # Add one default condition row
         self.add_condition_row()
@@ -889,7 +889,7 @@ class RuleEditorDialog:
         self.blocked_ops_frame.pack(fill=tk.X, pady=5)
         self.blocked_op_widgets = []
 
-        ttk.Button(ops_frame, text=t("+ Add Blocked Operation"), command=self.add_blocked_operation_row).pack(anchor="w")
+        ttk.Button(ops_frame, text=t("+ Add Blocked Operation"), command=self.add_blocked_operation_row).pack(anchor="e")
 
         # Add one default operation row
         self.add_blocked_operation_row()
@@ -952,7 +952,7 @@ class RuleEditorDialog:
         self.recovery_condition_widgets = []
 
         ttk.Button(monitor_frame, text=t("+ Add Recovery Condition"),
-                   command=self.add_recovery_condition_row).pack(anchor="w")
+                   command=self.add_recovery_condition_row).pack(anchor="e")
 
         # Store reference for toggling
         self.monitor_fields_frame = monitor_frame
@@ -1039,7 +1039,7 @@ class RuleEditorDialog:
             row_frame.destroy()
             self.recovery_condition_widgets = [w for w in self.recovery_condition_widgets if w["frame"].winfo_exists()]
 
-        ttk.Button(row_frame, text="X", width=3, command=remove_row).pack(side=tk.LEFT, padx=2)
+        ttk.Button(row_frame, text="X", width=3, command=remove_row).pack(side=tk.RIGHT, padx=2)
 
         self.recovery_condition_widgets.append({
             "frame": row_frame,
@@ -1159,10 +1159,10 @@ class RuleEditorDialog:
         # Direction dropdown (shown only for movement operations)
         direction_frame = ttk.Frame(row_frame)
         direction_var = tk.StringVar(value="")
-        ttk.Label(direction_frame, text=t("Dir:")).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(direction_frame, text=t("Dir:")).pack(side=tk.RIGHT, padx=(0, 2))
         direction_combo = ttk.Combobox(direction_frame, textvariable=direction_var,
                                         state="readonly", width=10)
-        direction_combo.pack(side=tk.LEFT)
+        direction_combo.pack(side=tk.RIGHT)
 
         # Description label
         desc_label = ttk.Label(row_frame, text=OPERATION_DESCRIPTIONS.get("move_y", ""),
@@ -1231,7 +1231,7 @@ class RuleEditorDialog:
             row_frame.destroy()
             self.blocked_op_widgets = [w for w in self.blocked_op_widgets if w["frame"].winfo_exists()]
 
-        ttk.Button(row_frame, text="X", width=3, command=remove_row).pack(side=tk.LEFT, padx=2)
+        ttk.Button(row_frame, text="X", width=3, command=remove_row).pack(side=tk.RIGHT, padx=2)
 
         self.blocked_op_widgets.append({
             "frame": row_frame,

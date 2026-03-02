@@ -215,6 +215,8 @@ class ExecutionEngine:
 
         Unlike start_execution(), this does NOT reset current_step_index to 0.
         Used to resume from the point where execution was stopped.
+        The caller (controls_panel) is responsible for restoring full machine
+        state before calling this method.
         """
         if self.is_running:
             self.logger.warning("Execution already running", category="execution")
@@ -237,6 +239,20 @@ class ExecutionEngine:
         self.stop_event.clear()
         self.pause_event.set()
         # current_step_index preserved from where we stopped
+
+        # Reset operation type and detect from step history so safety
+        # monitor uses the correct context after navigating back
+        self.current_operation_type = None
+        for i in range(self.current_step_index - 1, -1, -1):
+            detected = self._detect_operation_type_from_step(self.steps[i])
+            if detected in ('lines', 'rows'):
+                self.current_operation_type = detected
+                break
+        self.logger.info(
+            f"Continue: operation type set to '{self.current_operation_type}' "
+            f"from step history",
+            category="execution"
+        )
 
         # Pass execution engine reference to hardware
         self.hardware.set_execution_engine_reference(self)

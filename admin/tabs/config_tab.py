@@ -114,11 +114,11 @@ class ConfigTab:
         ttk.Frame(top_frame).pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
         # Action buttons
-        ttk.Button(top_frame, text=t("Save Changes"), command=self.save_changes).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Revert"), command=self.revert_changes).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Backup"), command=self.create_manual_backup).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Restore"), command=self.restore_backup).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text=t("Refresh"), command=self.refresh_settings).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text=t("Save Changes"), command=self.save_changes).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Revert"), command=self.revert_changes).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Backup"), command=self.create_manual_backup).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Restore"), command=self.restore_backup).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top_frame, text=t("Refresh"), command=self.refresh_settings).pack(side=tk.RIGHT, padx=2)
 
     def create_main_content(self):
         """Create main split pane content"""

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.logger import get_logger
-from core.translations import t, rtl, HEBREW_TRANSLATIONS
+from core.translations import t, t_title, rtl, HEBREW_TRANSLATIONS
 from core.program_model import translate_validation_error
 
 
@@ -184,7 +184,7 @@ class ControlsPanel:
 
         self.prev_btn = tk.Button(nav_buttons, text=t("◄ Prev"), command=self.prev_step,
                                  state=tk.DISABLED, width=8, font=('Arial', 8))
-        self.prev_btn.pack(side=tk.LEFT)
+        self.prev_btn.pack(side=tk.RIGHT)
 
         self.step_info_label = tk.Label(nav_frame, text=t("No steps loaded"),
                                        bg='lightblue', fg='black', font=('Arial', 8), wraplength=250,
@@ -699,6 +699,87 @@ class ControlsPanel:
     # Step types that should be skipped during manual navigation (non-actionable or blocking)
     _SKIP_EXECUTE_STEP_TYPES = {'wait_sensor', 'program_start', 'program_complete', 'workflow_separator'}
 
+    def _restore_full_machine_state_to_current(self):
+        """Restore full machine state (tools + motors) to match expected state
+        at current_step_index. This is the 'back in time' function.
+
+        Scans steps 0..current_step_index-1 (steps already 'completed') to
+        determine what state each tool and motor should be in, then applies
+        that state in a safe order:
+          1. Raise ALL tools to safe UP state
+          2. Move motors to correct positions (safe with all tools up)
+          3. Apply correct tool states for this point in the program
+        """
+        engine = self.main_app.execution_engine
+        current_index = engine.current_step_index
+        steps = self.main_app.steps
+        hw = engine.hardware
+
+        self.logger.info(
+            f"RESTORE STATE: Restoring full machine state to step "
+            f"{current_index + 1}/{len(steps)}",
+            category="gui"
+        )
+
+        # Step 1: Raise ALL tools to safe state before any motor movement
+        self.logger.debug("RESTORE STATE: Raising all tools to safe state", category="gui")
+        hw.line_marker_up()
+        hw.line_cutter_up()
+        hw.row_marker_up()
+        hw.row_cutter_up()
+        hw.line_motor_piston_up()
+
+        # Step 2: Scan steps 0..current_index-1 to determine expected state
+        # (these are steps that would have been completed before the current step)
+        tool_states = {}
+        last_x = None
+        last_y = None
+
+        for i in range(current_index):
+            step = steps[i]
+            op = step.get('operation', '')
+            params = step.get('parameters', {})
+
+            if op == 'tool_action':
+                tool = params.get('tool', '')
+                action = params.get('action', '')
+                if tool and action in ('up', 'down'):
+                    tool_states[tool] = action
+            elif op == 'move_x':
+                last_x = params.get('position')
+            elif op == 'move_y':
+                last_y = params.get('position')
+
+        # Step 3: Move motors to correct positions (safe - all tools are UP)
+        if last_x is not None:
+            self.logger.debug(f"RESTORE STATE: Moving X to {last_x}", category="gui")
+            hw.move_x(last_x)
+        if last_y is not None:
+            self.logger.debug(f"RESTORE STATE: Moving Y to {last_y}", category="gui")
+            hw.move_y(last_y)
+
+        # Step 4: Apply correct tool states
+        tool_hw_map = {
+            'line_marker': {'down': hw.line_marker_down, 'up': hw.line_marker_up},
+            'line_cutter': {'down': hw.line_cutter_down, 'up': hw.line_cutter_up},
+            'row_marker': {'down': hw.row_marker_down, 'up': hw.row_marker_up},
+            'row_cutter': {'down': hw.row_cutter_down, 'up': hw.row_cutter_up},
+            'line_motor_piston': {
+                'down': hw.line_motor_piston_down,
+                'up': hw.line_motor_piston_up
+            },
+        }
+
+        for tool, action in tool_states.items():
+            if tool in tool_hw_map and action in tool_hw_map[tool]:
+                self.logger.debug(f"RESTORE STATE: {tool} -> {action}", category="gui")
+                tool_hw_map[tool][action]()
+
+        self.logger.success(
+            f"RESTORE STATE: Machine state fully restored to step {current_index + 1}",
+            category="gui"
+        )
+
     def _replay_canvas_state_to_current(self):
         """Reset all operation states to pending, then replay tracking for steps 0..current.
 
@@ -770,14 +851,10 @@ class ControlsPanel:
         self.main_app.root.update_idletasks()
 
     def prev_step(self):
-        """Go to previous step and execute it on hardware"""
+        """Go to previous step - safely restore machine state (back in time)"""
         if self.main_app.execution_engine.step_backward():
-            current_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
-            # Execute actionable, non-blocking steps during manual navigation
-            if current_step.get('operation') not in self._SKIP_EXECUTE_STEP_TYPES:
-                self.main_app.execution_engine.execute_current_step()
-            # Replay motor positions so hardware matches program state at this step
-            self._replay_hardware_positions_to_current()
+            # Full safe state restore: raise all tools, move motors, apply correct tool states
+            self._restore_full_machine_state_to_current()
             # Revert canvas state: reset all operations to pending, then replay up to current step
             self._replay_canvas_state_to_current()
             # Force immediate canvas motor position update
@@ -785,18 +862,12 @@ class ControlsPanel:
             self.update_step_display()
 
     def next_step(self):
-        """Go to next step and execute it on hardware"""
+        """Go to next step - safely restore machine state (back in time)"""
         if self.main_app.execution_engine.step_forward():
-            current_step = self.main_app.steps[self.main_app.execution_engine.current_step_index]
-            # Execute actionable, non-blocking steps during manual navigation
-            if current_step.get('operation') not in self._SKIP_EXECUTE_STEP_TYPES:
-                self.main_app.execution_engine.execute_current_step()
-            # Ensure motor positions match program state (handles skipped steps)
-            self._replay_hardware_positions_to_current()
-            if (self.main_app.execution_engine.current_step_index < len(self.main_app.steps)):
-                step_desc = current_step.get('description', '')
-                self.main_app.canvas_manager.detect_operation_mode_from_step(step_desc)
-                self.main_app.canvas_manager.track_operation_from_step(step_desc)
+            # Full safe state restore: raise all tools, move motors, apply correct tool states
+            self._restore_full_machine_state_to_current()
+            # Replay canvas state from beginning to reflect correct visual state
+            self._replay_canvas_state_to_current()
             # Force immediate canvas motor position update
             self._force_canvas_position_update()
             self.update_step_display()
@@ -866,11 +937,26 @@ class ControlsPanel:
         if self.main_app.steps:
             engine = self.main_app.execution_engine
 
-            # CONTINUE from stop: restore motor state and continue from current step
+            # CRITICAL: Block execution if real hardware has not been homed
+            if getattr(self.main_app, 'is_real_hardware', False) and \
+               not getattr(self.main_app, 'homing_completed', False):
+                self.logger.error("Cannot run: machine not homed!", category="gui")
+                self.main_app.operation_label.config(
+                    text=t("Machine not homed! Run homing first"), fg='red')
+                from tkinter import messagebox
+                messagebox.showerror(
+                    t_title("Homing Required"),
+                    t("Cannot run program - machine has not been homed!\n\n"
+                      "You must complete homing before running any program.\n"
+                      "Use the homing button to run homing.")
+                )
+                return
+
+            # CONTINUE from stop: full "back in time" state restore before continuing
             if self._stopped_mid_execution and not engine.is_running:
-                # Restore line motor piston if engine raised it on stop
-                if self._motor_state_at_stop:
-                    self.hardware.line_motor_piston_down()
+                # Full state restore: raise all tools, move motors to correct
+                # positions, then apply correct tool states for this step
+                self._restore_full_machine_state_to_current()
 
                 self._stopped_mid_execution = False
                 self._motor_state_at_stop = None
