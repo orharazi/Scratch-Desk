@@ -123,6 +123,13 @@ class ExecutionController:
             if status == 'running':
                 # Clear any inline safety error when resuming
                 self._clear_inline_safety_error()
+                # Auto-close safety modal when resuming (e.g., after safety_waiting resolves)
+                if self.safety_modal:
+                    try:
+                        self.safety_modal.destroy()
+                    except Exception:
+                        pass
+                    self.safety_modal = None
                 # Reset operation label when resuming (e.g., after safety wait)
                 self.main_app.operation_label.config(text=t("Running..."), fg='green')
             elif status == 'step_executing':
@@ -374,6 +381,14 @@ class ExecutionController:
                     self.main_app.controls_panel.update_step_display()
 
         # Panel unlock is handled at the top of _on_execution_status_impl
+
+        # Handle emergency stop - ensure modal always shows even if progress bar is missing
+        if status == 'emergency_stop' and not self.safety_modal:
+            safety_code = info.get('safety_code', '') if info else ''
+            violation_msg = info.get('violation_message', t('Unknown safety violation')) if info else ''
+            rule = self._load_safety_rule(safety_code)
+            self._show_safety_modal(rule, safety_code, violation_msg)
+            self._show_inline_safety_error(violation_msg, safety_code, '', is_waiting=False)
 
         # Handle safety violations
         if status == 'safety_violation':

@@ -112,7 +112,7 @@
             "type": "sensor",
             "source": "line_cutter_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           },
           {
             "type": "piston",
@@ -124,7 +124,7 @@
             "type": "sensor",
             "source": "line_marker_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           }
         ]
       },
@@ -164,7 +164,7 @@
             "type": "sensor",
             "source": "row_cutter_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           },
           {
             "type": "piston",
@@ -176,7 +176,7 @@
             "type": "sensor",
             "source": "row_marker_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           }
         ]
       },
@@ -292,7 +292,7 @@
             "type": "sensor",
             "source": "line_cutter_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           },
           {
             "type": "piston",
@@ -304,7 +304,7 @@
             "type": "sensor",
             "source": "line_marker_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           },
           {
             "type": "piston",
@@ -316,7 +316,7 @@
             "type": "sensor",
             "source": "row_cutter_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           },
           {
             "type": "piston",
@@ -328,7 +328,7 @@
             "type": "sensor",
             "source": "row_marker_down_sensor",
             "operator": "equals",
-            "value": "triggered"
+            "value": true
           }
         ]
       },

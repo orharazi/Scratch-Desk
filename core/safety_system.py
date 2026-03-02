@@ -92,7 +92,18 @@ class SafetyRulesManager:
             # Sensor states
             "sensors": {
                 "row_motor_limit_switch": self.hardware.get_row_motor_limit_switch(),
-                # Add more sensors as needed
+                "line_cutter_up_sensor": self.hardware.get_line_cutter_up_sensor(),
+                "line_cutter_down_sensor": self.hardware.get_line_cutter_down_sensor(),
+                "line_marker_up_sensor": self.hardware.get_line_marker_up_sensor(),
+                "line_marker_down_sensor": self.hardware.get_line_marker_down_sensor(),
+                "row_cutter_up_sensor": self.hardware.get_row_cutter_up_sensor(),
+                "row_cutter_down_sensor": self.hardware.get_row_cutter_down_sensor(),
+                "row_marker_up_sensor": self.hardware.get_row_marker_up_sensor(),
+                "row_marker_down_sensor": self.hardware.get_row_marker_down_sensor(),
+                "line_motor_left_up_sensor": self.hardware.get_line_motor_left_up_sensor(),
+                "line_motor_left_down_sensor": self.hardware.get_line_motor_left_down_sensor(),
+                "line_motor_right_up_sensor": self.hardware.get_line_motor_right_up_sensor(),
+                "line_motor_right_down_sensor": self.hardware.get_line_motor_right_down_sensor(),
             },
             # Positions
             "positions": {
