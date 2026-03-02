@@ -409,7 +409,7 @@ class ExecutionController:
         self._show_inline_safety_error(violation_message, safety_code, step_description, is_waiting=True)
 
     def handle_safety_violation(self, info):
-        """Handle safety violation - show inline error on main screen"""
+        """Handle safety violation - show modal dialog and inline error on main screen"""
         if not info:
             return
 
@@ -426,6 +426,10 @@ class ExecutionController:
         # Update operation label
         if hasattr(self.main_app, 'operation_label'):
             self.main_app.operation_label.config(text=t("SAFETY VIOLATION - Execution Stopped"), fg='red')
+
+        # Load the rule and show safety modal dialog
+        rule = self._load_safety_rule(safety_code)
+        self._show_safety_modal(rule, safety_code, violation_message)
 
         # Show inline safety error on the bottom bar
         self._show_inline_safety_error(violation_message, safety_code, step_description, is_waiting=False)

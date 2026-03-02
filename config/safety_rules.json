@@ -1,59 +1,19 @@
 {
-  "version": "2.0.0",
-  "last_modified": "2026-02-15T21:06:05.909376",
+  "version": "4.0.0",
+  "last_modified": "2026-03-02T00:00:00.000000",
   "global_enabled": true,
   "rules": [
     {
-      "id": "Y_AXIS_BLOCKED",
-      "name": "Y-Axis Blocked by Row Marker",
-      "name_he": "ציר Y חסום על ידי סמן העמודות",
-      "description": "Lines axis (Y-axis) cannot move if row marker is DOWN. Row marker lies across the lines axis when down, blocking movement.",
-      "description_he": "ציר השורות (Y) לא יכול לנוע אם סמן העמודות למטה. סמן העמודות חוצה את ציר השורות כשהוא למטה וחוסם תנועה.",
+      "id": "LINES_DOOR_SAFETY",
+      "name": "Lines Safety: Door/Marker Must Be Up",
+      "name_he": "בטיחות שורות: הדלת/סמן חייבים להיות למעלה",
+      "description": "During lines operations, the row marker must be UP and door closed. Row marker crosses the Y-axis path when down, blocking movement. Also monitors in real-time for door opening mid-operation.",
+      "description_he": "במהלך פעולות שורות, סמן העמודות חייב להיות למעלה והדלת סגורה. סמן העמודות חוצה את נתיב ציר Y כשהוא למטה וחוסם תנועה. גם מנטר בזמן אמת פתיחת דלת באמצע פעולה.",
       "enabled": true,
       "priority": 10,
       "severity": "critical",
       "reason": "collision",
       "reason_he": "התנגשות",
-      "is_system_rule": true,
-      "conditions": {
-        "operator": "OR",
-        "items": [
-          {
-            "type": "piston",
-            "source": "row_marker",
-            "operator": "equals",
-            "value": "down"
-          },
-          {
-            "type": "sensor",
-            "source": "row_motor_limit_switch",
-            "operator": "equals",
-            "value": "down"
-          }
-        ]
-      },
-      "blocked_operations": [
-        {
-          "operation": "move_y",
-          "exclude_setup": true
-        }
-      ],
-      "message": "Cannot move Y-axis! Row marker is DOWN and blocks the lines axis. ACTION REQUIRED: Raise the row marker before Y-axis movement.",
-      "message_he": "לא ניתן להזיז את ציר Y! סמן העמודות למטה וחוסם את ציר השורות. פעולה נדרשת: הרם את סמן העמודות.",
-      "created_at": "2026-02-01T00:00:00Z",
-      "created_by": "system_migration"
-    },
-    {
-      "id": "LINES_DOOR_OPEN",
-      "name": "Lines Operations Require Door Closed",
-      "name_he": "פעולות שורות דורשות דלת סגורה",
-      "description": "During lines operations (Y-axis movement, line_marker/line_cutter tools), the row marker must be UP (door closed) for safety. Lines motor operates with door closed to prevent damage.",
-      "description_he": "במהלך פעולות שורות (תנועת ציר Y, כלי סמן/חותך שורות), סמן העמודות חייב להיות למעלה (דלת סגורה) לבטיחות. מנוע השורות פועל עם דלת סגורה למניעת נזק.",
-      "enabled": true,
-      "priority": 20,
-      "severity": "critical",
-      "reason": "operational",
-      "reason_he": "תפעולי",
       "is_system_rule": true,
       "conditions": {
         "operator": "OR",
@@ -86,83 +46,6 @@
           "exclude_setup": false
         }
       ],
-      "message": "Lines operation blocked! Row marker must be UP during lines operations. Close the rows door (raise marker).",
-      "message_he": "פעולת שורות חסומה! סמן העמודות חייב להיות למעלה במהלך פעולות שורות. סגור את דלת העמודות.",
-      "created_at": "2026-02-01T00:00:00Z",
-      "created_by": "system_migration"
-    },
-    {
-      "id": "ROWS_DOOR_CLOSED",
-      "name": "Rows Door Position Requirement",
-      "name_he": "דרישת מיקום דלת עמודות",
-      "description": "Door can only be CLOSED (limit switch DOWN) when Y motor is at position 0. Closing door with Y motor not at home position could cause collision or damage.",
-      "description_he": "הדלת יכולה להיות סגורה (מתג גבול למטה) רק כאשר מנוע Y במיקום 0. סגירת הדלת כשמנוע Y לא בבית עלולה לגרום להתנגשות או נזק.",
-      "enabled": true,
-      "priority": 30,
-      "severity": "critical",
-      "reason": "collision",
-      "reason_he": "התנגשות",
-      "is_system_rule": true,
-      "conditions": {
-        "operator": "AND",
-        "items": [
-          {
-            "type": "sensor",
-            "source": "row_motor_limit_switch",
-            "operator": "equals",
-            "value": "down"
-          },
-          {
-            "type": "position",
-            "source": "y_position",
-            "operator": "not_equals",
-            "value": 0
-          }
-        ]
-      },
-      "blocked_operations": [
-        {
-          "operation": "move_x",
-          "exclude_setup": true
-        },
-        {
-          "operation": "tool_action",
-          "tools": [
-            "row_marker",
-            "row_cutter"
-          ],
-          "exclude_setup": false
-        }
-      ],
-      "message": "Rows motor door closed while Y-axis not at home! Y position must be 0cm to close door. Open the rows motor door.",
-      "message_he": "דלת מנוע העמודות סגורה כשציר Y לא בבית! מיקום Y חייב להיות 0 לסגירת הדלת.",
-      "created_at": "2026-02-01T00:00:00Z",
-      "created_by": "system_migration"
-    },
-    {
-      "id": "LINES_MONITOR_DOOR_OPENED",
-      "name": "Lines Monitor: Door Opened During Lines",
-      "name_he": "ניטור שורות: דלת נפתחה במהלך פעולות שורות",
-      "description": "Real-time monitor: Row motor limit switch went DOWN (door opened) during lines operations. Door must be closed to continue.",
-      "description_he": "ניטור זמן-אמת: מתג גבול מנוע עמודות ירד (דלת נפתחה) במהלך פעולות שורות. יש לסגור את הדלת כדי להמשיך.",
-      "enabled": true,
-      "priority": 100,
-      "severity": "critical",
-      "reason": "operational",
-      "reason_he": "תפעולי",
-      "is_system_rule": true,
-      "conditions": {
-        "operator": "AND",
-        "items": [
-          {
-            "type": "sensor",
-            "source": "row_motor_limit_switch",
-            "operator": "equals",
-            "value": "down"
-          }
-        ]
-      },
-      "blocked_operations": [],
       "monitor": {
         "enabled": true,
         "operation_context": [
@@ -199,10 +82,270 @@
         },
         "recovery_action": "auto_resume"
       },
-      "message": "LINES OPERATION EMERGENCY STOP!\n   Row marker changed to DOWN during lines operation\n   IMMEDIATE ACTION: Close the rows door (set marker UP)",
-      "message_he": "עצירת חירום בפעולות שורות!\n   סמן העמודות ירד במהלך פעולת שורות\n   פעולה מיידית: סגור את דלת העמודות",
-      "created_at": "2026-02-14T23:00:00Z",
+      "message": "Lines operation blocked! Row marker/door is down and blocks the Y-axis path. Raise the row marker and close the door.",
+      "message_he": "פעולת שורות חסומה! סמן העמודות/דלת למטה וחוסמים את נתיב ציר Y. הרם את סמן העמודות וסגור את הדלת.",
+      "created_at": "2026-02-01T00:00:00Z",
       "created_by": "system_migration"
+    },
+    {
+      "id": "LINE_TOOLS_UP_FOR_LINES",
+      "name": "Lines Safety: Line Tools Must Be Up",
+      "name_he": "בטיחות שורות: כלי שורות חייבים להיות למעלה",
+      "description": "Line cutter and line marker must be UP before the lines motor can move. Moving with a tool down would drag and damage it. Verified by both piston state and physical sensors.",
+      "description_he": "סכין שורות וסמן שורות חייבים להיות למעלה לפני שמנוע השורות יכול לנוע. תנועה עם כלי למטה תגרור ותגרום נזק. מאומת ע\"י מצב בוכנה וחיישנים פיזיים.",
+      "enabled": true,
+      "priority": 15,
+      "severity": "critical",
+      "reason": "collision",
+      "reason_he": "התנגשות",
+      "is_system_rule": true,
+      "conditions": {
+        "operator": "OR",
+        "items": [
+          {
+            "type": "piston",
+            "source": "line_cutter",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "line_cutter_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          },
+          {
+            "type": "piston",
+            "source": "line_marker",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "line_marker_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          }
+        ]
+      },
+      "blocked_operations": [
+        {
+          "operation": "move_y",
+          "exclude_setup": true
+        }
+      ],
+      "message": "Lines motor blocked! Line cutter or line marker is down. Raise all line tools before moving the lines motor.",
+      "message_he": "מנוע שורות חסום! סכין שורות או סמן שורות למטה. הרם את כל כלי השורות לפני הזזת מנוע השורות.",
+      "created_at": "2026-03-02T00:00:00Z",
+      "created_by": "system"
+    },
+    {
+      "id": "ROW_TOOLS_UP_FOR_ROWS",
+      "name": "Rows Safety: Row Tools Must Be Up",
+      "name_he": "בטיחות עמודות: כלי עמודות חייבים להיות למעלה",
+      "description": "Row cutter and row marker must be UP before the rows motor can move. Moving with a tool down would drag and damage it. Verified by both piston state and physical sensors.",
+      "description_he": "סכין עמודות וסמן עמודות חייבים להיות למעלה לפני שמנוע העמודות יכול לנוע. תנועה עם כלי למטה תגרור ותגרום נזק. מאומת ע\"י מצב בוכנה וחיישנים פיזיים.",
+      "enabled": true,
+      "priority": 25,
+      "severity": "critical",
+      "reason": "collision",
+      "reason_he": "התנגשות",
+      "is_system_rule": true,
+      "conditions": {
+        "operator": "OR",
+        "items": [
+          {
+            "type": "piston",
+            "source": "row_cutter",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "row_cutter_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          },
+          {
+            "type": "piston",
+            "source": "row_marker",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "row_marker_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          }
+        ]
+      },
+      "blocked_operations": [
+        {
+          "operation": "move_x",
+          "exclude_setup": true
+        }
+      ],
+      "message": "Rows motor blocked! Row cutter or row marker is down. Raise all row tools before moving the rows motor.",
+      "message_he": "מנוע עמודות חסום! סכין עמודות או סמן עמודות למטה. הרם את כל כלי העמודות לפני הזזת מנוע העמודות.",
+      "created_at": "2026-03-02T00:00:00Z",
+      "created_by": "system"
+    },
+    {
+      "id": "ROWS_MOTOR_HOME_FOR_LINES",
+      "name": "Lines Safety: Rows Motor Must Be at Home",
+      "name_he": "בטיחות שורות: מנוע עמודות חייב להיות בבית",
+      "description": "Rows motor (X axis) must be at position 0 before the lines motor can move. If the rows bar is in the workspace, moving the lines bar would cause a collision.",
+      "description_he": "מנוע העמודות (ציר X) חייב להיות במיקום 0 לפני שמנוע השורות יכול לנוע. אם סרגל העמודות בתוך שטח העבודה, הזזת סרגל השורות תגרום להתנגשות.",
+      "enabled": true,
+      "priority": 20,
+      "severity": "critical",
+      "reason": "collision",
+      "reason_he": "התנגשות",
+      "is_system_rule": true,
+      "conditions": {
+        "operator": "AND",
+        "items": [
+          {
+            "type": "position",
+            "source": "x_position",
+            "operator": "not_equals",
+            "value": 0
+          }
+        ]
+      },
+      "blocked_operations": [
+        {
+          "operation": "move_y",
+          "exclude_setup": true
+        }
+      ],
+      "message": "Lines motor blocked! Rows motor (X axis) is not at home position (0). Move the rows motor to position 0 before moving the lines motor.",
+      "message_he": "מנוע שורות חסום! מנוע העמודות (ציר X) לא במיקום בית (0). הזז את מנוע העמודות למיקום 0 לפני הזזת מנוע השורות.",
+      "created_at": "2026-03-02T00:00:00Z",
+      "created_by": "system"
+    },
+    {
+      "id": "LINES_MOTOR_HOME_FOR_ROWS",
+      "name": "Rows Safety: Lines Motor Must Be at Home",
+      "name_he": "בטיחות עמודות: מנוע שורות חייב להיות בבית",
+      "description": "Lines motor (Y axis) must be at position 0 before the rows motor can move. If the lines bar is not at home, moving the rows bar could cause a collision.",
+      "description_he": "מנוע השורות (ציר Y) חייב להיות במיקום 0 לפני שמנוע העמודות יכול לנוע. אם סרגל השורות לא בבית, הזזת סרגל העמודות עלולה לגרום להתנגשות.",
+      "enabled": true,
+      "priority": 30,
+      "severity": "critical",
+      "reason": "collision",
+      "reason_he": "התנגשות",
+      "is_system_rule": true,
+      "conditions": {
+        "operator": "AND",
+        "items": [
+          {
+            "type": "position",
+            "source": "y_position",
+            "operator": "not_equals",
+            "value": 0
+          }
+        ]
+      },
+      "blocked_operations": [
+        {
+          "operation": "move_x",
+          "exclude_setup": true
+        },
+        {
+          "operation": "tool_action",
+          "tools": [
+            "row_marker",
+            "row_cutter"
+          ],
+          "exclude_setup": false
+        }
+      ],
+      "message": "Rows motor blocked! Lines motor (Y axis) is not at home position (0). Move the lines motor to position 0 before moving the rows motor.",
+      "message_he": "מנוע עמודות חסום! מנוע השורות (ציר Y) לא במיקום בית (0). הזז את מנוע השורות למיקום 0 לפני הזזת מנוע העמודות.",
+      "created_at": "2026-03-02T00:00:00Z",
+      "created_by": "system"
+    },
+    {
+      "id": "ALL_TOOLS_UP_FOR_END_DIVISION",
+      "name": "End Division: All Tools Must Be Up",
+      "name_he": "סיום חלוקה: כל הכלים חייבים להיות למעלה",
+      "description": "All 4 tools (line cutter, line marker, row cutter, row marker) must be UP before end division / return home operations. Returning home with any tool down would drag and damage it. Verified by both piston state and physical sensors.",
+      "description_he": "כל 4 הכלים (סכין שורות, סמן שורות, סכין עמודות, סמן עמודות) חייבים להיות למעלה לפני סיום חלוקה / חזרה הביתה. חזרה הביתה עם כלי למטה תגרור ותגרום נזק. מאומת ע\"י מצב בוכנה וחיישנים פיזיים.",
+      "enabled": true,
+      "priority": 35,
+      "severity": "critical",
+      "reason": "collision",
+      "reason_he": "התנגשות",
+      "is_system_rule": true,
+      "conditions": {
+        "operator": "OR",
+        "items": [
+          {
+            "type": "piston",
+            "source": "line_cutter",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "line_cutter_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          },
+          {
+            "type": "piston",
+            "source": "line_marker",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "line_marker_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          },
+          {
+            "type": "piston",
+            "source": "row_cutter",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "row_cutter_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          },
+          {
+            "type": "piston",
+            "source": "row_marker",
+            "operator": "equals",
+            "value": "down"
+          },
+          {
+            "type": "sensor",
+            "source": "row_marker_down_sensor",
+            "operator": "equals",
+            "value": "triggered"
+          }
+        ]
+      },
+      "blocked_operations": [
+        {
+          "operation": "move_x",
+          "exclude_setup": false
+        },
+        {
+          "operation": "move_y",
+          "exclude_setup": false
+        }
+      ],
+      "message": "End division blocked! One or more tools are still down. Raise all tools (line cutter, line marker, row cutter, row marker) before returning to home position.",
+      "message_he": "סיום חלוקה חסום! כלי אחד או יותר עדיין למטה. הרם את כל הכלים (סכין שורות, סמן שורות, סכין עמודות, סמן עמודות) לפני חזרה למיקום בית.",
+      "created_at": "2026-03-02T00:00:00Z",
+      "created_by": "system"
     },
     {
       "id": "LINES_MONITOR_PISTON_UP",
