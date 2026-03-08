@@ -1562,6 +1562,17 @@ def get_language():
     """Get the current language code"""
     return _current_language
 
+def _strip_surrogates(text):
+    """Remove lone surrogate characters (U+D800-U+DFFF) that BiDi libraries may produce.
+    Tkinter uses UTF-8 internally and rejects surrogates."""
+    if not text:
+        return text
+    # Fast path: check if any surrogates exist before importing re
+    if any('\ud800' <= ch <= '\udfff' for ch in text):
+        import re
+        return re.sub(r'[\ud800-\udfff]', '', text)
+    return text
+
 def _apply_bidi(text):
     """Convert Hebrew text from logical to visual order on Linux (Xft)."""
     if not _NEEDS_BIDI_REORDER or _bidi_get_display is None:
@@ -1571,7 +1582,7 @@ def _apply_bidi(text):
     # Process multi-line text line by line
     if '\n' in text:
         return '\n'.join(_apply_bidi(line) for line in text.split('\n'))
-    return _bidi_get_display(text)
+    return _strip_surrogates(_bidi_get_display(text))
 
 def t(text, **kwargs):
     """

@@ -1,8 +1,17 @@
+import re
 import threading
 import time
 import tkinter as tk
 from core.logger import get_logger
 from core.translations import t, rtl, t_title, rtl_title, HEBREW_TRANSLATIONS
+
+
+def _tk_safe(text):
+    """Remove surrogate characters that BiDi processing may produce.
+    Tkinter uses UTF-8 internally and cannot handle lone surrogates (U+D800-U+DFFF)."""
+    if not text or not isinstance(text, str):
+        return text or ''
+    return re.sub(r'[\ud800-\udfff]', '', text)
 
 
 # Reason-type styling for safety modals
@@ -15,7 +24,7 @@ REASON_STYLE = {
         "btn_color": "#cc7700",
     },
     "collision": {
-        "icon": "\ud83d\udea8",
+        "icon": "\U0001F6A8",
         "title_he": rtl("\u05e1\u05db\u05e0\u05ea \u05d4\u05ea\u05e0\u05d2\u05e9\u05d5\u05ea!"),
         "bg": "#2d0000",
         "accent": "#ff3333",
@@ -31,7 +40,7 @@ REASON_STYLE = {
 }
 
 REASON_FALLBACK = {
-    "icon": "\ud83d\udea8",
+    "icon": "\U0001F6A8",
     "title_he": rtl("\u05d4\u05e4\u05e8\u05ea \u05d1\u05d8\u05d9\u05d7\u05d5\u05ea"),
     "bg": "#2d0000",
     "accent": "#ff3333",
@@ -82,8 +91,27 @@ class ExecutionController:
 
     def _on_execution_status_impl(self, status, info=None):
         """Actual execution status handler - runs on main thread via root.after()"""
+        # CRITICAL: Auto-close safety modal on recovery statuses BEFORE any conditional UI blocks.
+        # This ensures the modal always closes regardless of which UI attributes exist.
+        if status in ('running', 'safety_recovered'):
+            if self.safety_modal:
+                try:
+                    self.safety_modal.destroy()
+                except Exception:
+                    pass
+                self.safety_modal = None
+            self._clear_inline_safety_error()
+
         # Ensure panel unlock for terminal states, even if GUI updates below fail
         if status in ('completed', 'stopped', 'error'):
+            # Also close safety modal on terminal states
+            if self.safety_modal:
+                try:
+                    self.safety_modal.destroy()
+                except Exception:
+                    pass
+                self.safety_modal = None
+            self._clear_inline_safety_error()
             try:
                 if status == 'completed' and hasattr(self.main_app, 'controls_panel'):
                     self.main_app.controls_panel.auto_reload_after_completion()
@@ -253,7 +281,7 @@ class ExecutionController:
             elif status == 'emergency_stop':
                 # EMERGENCY STOP due to safety violation
                 current_progress = self.main_app.progress['value']
-                self.main_app.progress_text.config(text=t("\ud83d\udea8 EMERGENCY STOP - Safety Violation"), fg='red')
+                self.main_app.progress_text.config(text=t("\U0001F6A8 EMERGENCY STOP - Safety Violation"), fg='red')
 
                 # Load the rule and show unified safety modal
                 safety_code = info.get('safety_code', '') if info else ''
@@ -271,7 +299,7 @@ class ExecutionController:
                 # Update GUI controls to emergency stop state
                 if hasattr(self.main_app, 'controls_panel'):
                     # Set emergency stop button states
-                    self.main_app.controls_panel.run_btn.config(state='normal', text=t('\ud83d\udd04 RETRY'), bg='orange')
+                    self.main_app.controls_panel.run_btn.config(state='normal', text=t('\U0001F504 RETRY'), bg='orange')
                     self.main_app.controls_panel.pause_btn.config(state='disabled')
                     self.main_app.controls_panel.stop_btn.config(state='disabled')
 
@@ -283,7 +311,7 @@ class ExecutionController:
                             fg='red'
                         )
 
-                self.main_app.operation_label.config(text=t("\ud83d\udea8 EMERGENCY STOP - Safety Violation"), fg='red')
+                self.main_app.operation_label.config(text=t("\U0001F6A8 EMERGENCY STOP - Safety Violation"), fg='red')
 
             elif status == 'safety_recovered':
                 # Safety violation resolved - auto-resuming
@@ -436,7 +464,7 @@ class ExecutionController:
 
         # Update progress label with safety violation
         if hasattr(self.main_app, 'progress_label'):
-            self.main_app.progress_label.config(text=t("\ud83d\udea8 SAFETY VIOLATION - STOPPED"), fg='red')
+            self.main_app.progress_label.config(text=t("\U0001F6A8 SAFETY VIOLATION - STOPPED"), fg='red')
 
         # Update operation label
         if hasattr(self.main_app, 'operation_label'):
@@ -491,7 +519,8 @@ class ExecutionController:
     def _show_safety_modal(self, rule, safety_code, violation_message):
         """Show unified safety modal styled per the rule's reason type.
         Non-modal so user can still interact with hardware buttons.
-        Auto-closes on safety_recovered status."""
+        Auto-closes on running/safety_recovered status."""
+        dialog = None
         try:
             # Close any existing safety modal first
             if self.safety_modal:
@@ -511,17 +540,21 @@ class ExecutionController:
             accent = style["accent"]
             btn_color = style["btn_color"]
 
-            # Get Hebrew fields from rule
+            # Get Hebrew fields from rule - ensure never None/empty
             if rule:
-                rule_name_he = rule.get('name_he', rule.get('name', safety_code))
-                rule_message_he = rule.get('message_he', rule.get('message', violation_message))
+                rule_name_he = rule.get('name_he') or rule.get('name') or safety_code or 'Safety Rule'
+                rule_message_he = rule.get('message_he') or rule.get('message') or violation_message or 'Safety violation detected'
             else:
-                rule_name_he = safety_code
-                rule_message_he = violation_message
+                rule_name_he = safety_code or 'Safety Rule'
+                rule_message_he = violation_message or 'Safety violation detected'
 
             # Create dialog
             dialog = tk.Toplevel(self.main_app.root)
-            dialog.title(rtl_title(reason_title))
+
+            # CRITICAL: Store reference IMMEDIATELY after creation so it can always be auto-closed
+            self.safety_modal = dialog
+
+            dialog.title(_tk_safe(rtl_title(reason_title)))
             dialog.configure(bg=bg)
 
             # Size and center
@@ -545,7 +578,7 @@ class ExecutionController:
             # 1. Icon + reason title (large, accented)
             tk.Label(
                 main_frame,
-                text=rtl(f"{icon}  {reason_title}"),
+                text=_tk_safe(rtl(f"{icon}  {reason_title}")),
                 font=('Arial', 24, 'bold'),
                 fg=accent,
                 bg=bg
@@ -555,7 +588,7 @@ class ExecutionController:
             code_text = f"{rule_name_he}  [{safety_code}]" if safety_code else rule_name_he
             tk.Label(
                 main_frame,
-                text=rtl(code_text),
+                text=_tk_safe(rtl(code_text)),
                 font=('Arial', 13),
                 fg='#cccccc',
                 bg=bg
@@ -567,7 +600,7 @@ class ExecutionController:
             # 4. Rule message_he (white text)
             tk.Label(
                 main_frame,
-                text=rtl(rule_message_he),
+                text=_tk_safe(rtl(rule_message_he)),
                 font=('Arial', 14),
                 fg='white',
                 bg=bg,
@@ -579,7 +612,7 @@ class ExecutionController:
             # 5. Green auto-resume note
             tk.Label(
                 main_frame,
-                text=rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8"),
+                text=_tk_safe(rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8")),
                 font=('Arial', 13, 'bold'),
                 fg='#66cc66',
                 bg=bg,
@@ -604,14 +637,13 @@ class ExecutionController:
 
             # Ensure content fits
             dialog.update_idletasks()
-
-            # Store reference for auto-close
-            self.safety_modal = dialog
-
             dialog.focus_set()
 
         except Exception as e:
             self.logger.error(f"Error showing safety modal: {e}", category="gui")
+            # If dialog was created but content failed, ensure it's tracked for cleanup
+            if dialog and not self.safety_modal:
+                self.safety_modal = dialog
 
     def _close_safety_modal_manual(self, dialog):
         """Handle manual OK click on safety modal"""
@@ -643,7 +675,7 @@ class ExecutionController:
             btn_color = style["btn_color"]
 
             dialog = tk.Toplevel(self.main_app.root)
-            dialog.title(t_title("Transition to rows operations"))
+            dialog.title(_tk_safe(t_title("Transition to rows operations")))
             dialog.configure(bg=bg)
 
             # Size and center
@@ -666,7 +698,7 @@ class ExecutionController:
             # Title
             tk.Label(
                 main_frame,
-                text=rtl(f"{icon}  \u05de\u05e2\u05d1\u05e8 \u05dc\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea"),
+                text=_tk_safe(rtl(f"{icon}  \u05de\u05e2\u05d1\u05e8 \u05dc\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea")),
                 font=('Arial', 24, 'bold'),
                 fg=accent,
                 bg=bg
@@ -675,7 +707,7 @@ class ExecutionController:
             # Subtitle
             tk.Label(
                 main_frame,
-                text=rtl("\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05d4\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05d5\u05e9\u05dc\u05de\u05d5"),
+                text=_tk_safe(rtl("\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05d4\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05d5\u05e9\u05dc\u05de\u05d5")),
                 font=('Arial', 13),
                 fg='#cccccc',
                 bg=bg
@@ -687,7 +719,7 @@ class ExecutionController:
             # Message (use explicit line breaks - wraplength breaks RTL visual reordering)
             tk.Label(
                 main_frame,
-                text=rtl("\u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05d4\u05d5\u05d6\u05d6 \u05dc\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d4\u05ea\u05d7\u05dc\u05d4.\n\n\u05d0\u05e0\u05d0 \u05e1\u05d2\u05d5\u05e8 \u05d0\u05ea \u05d3\u05dc\u05ea \u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea\n\u05db\u05d3\u05d9 \u05dc\u05d4\u05de\u05e9\u05d9\u05da \u05d1\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea."),
+                text=_tk_safe(rtl("\u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea \u05d4\u05d5\u05d6\u05d6 \u05dc\u05de\u05d9\u05e7\u05d5\u05dd \u05d4\u05d4\u05ea\u05d7\u05dc\u05d4.\n\n\u05d0\u05e0\u05d0 \u05e1\u05d2\u05d5\u05e8 \u05d0\u05ea \u05d3\u05dc\u05ea \u05de\u05e0\u05d5\u05e2 \u05d4\u05e2\u05de\u05d5\u05d3\u05d5\u05ea\n\u05db\u05d3\u05d9 \u05dc\u05d4\u05de\u05e9\u05d9\u05da \u05d1\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e2\u05de\u05d5\u05d3\u05d5\u05ea.")),
                 font=('Arial', 14),
                 fg='white',
                 bg=bg,
@@ -698,7 +730,7 @@ class ExecutionController:
             # Auto-resume note (green)
             tk.Label(
                 main_frame,
-                text=rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05d3\u05dc\u05ea \u05ea\u05d9\u05e1\u05d2\u05e8"),
+                text=_tk_safe(rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05d3\u05dc\u05ea \u05ea\u05d9\u05e1\u05d2\u05e8")),
                 font=('Arial', 13, 'bold'),
                 fg='#66cc66',
                 bg=bg,
@@ -749,9 +781,9 @@ class ExecutionController:
                 rule_name_he = rule.get('name_he', rule.get('name', safety_code))
                 rule_message_he = rule.get('message_he', rule.get('message', violation_message))
                 # Compact: "name | message" in Hebrew
-                error_text = rtl(f"{rule_name_he}  |  {rule_message_he}")
+                error_text = _tk_safe(rtl(f"{rule_name_he}  |  {rule_message_he}"))
             else:
-                error_text = rtl(violation_message)
+                error_text = _tk_safe(rtl(violation_message))
 
             # Prefix icon based on state
             if is_waiting:
@@ -760,7 +792,7 @@ class ExecutionController:
                 fg_color = '#856404'
                 btn_bg = '#cc7700'
             else:
-                error_text = f"\ud83d\udea8  {error_text}"
+                error_text = f"\U0001F6A8  {error_text}"
                 bg_color = '#ffcccc'
                 fg_color = '#cc0000'
                 btn_bg = '#cc0000'
@@ -842,7 +874,7 @@ class ExecutionController:
 
             # Create compact dialog
             dialog = tk.Toplevel(self.main_app.root)
-            dialog.title(rtl_title(style["title_he"]))
+            dialog.title(_tk_safe(rtl_title(style["title_he"])))
             dialog.configure(bg=bg_color)
 
             dialog_width = 500
@@ -861,7 +893,7 @@ class ExecutionController:
             main_frame.pack(fill=tk.BOTH, expand=True)
 
             # Title - Hebrew rule name
-            tk.Label(main_frame, text=rtl(f"{icon}  {rule_name}"),
+            tk.Label(main_frame, text=_tk_safe(rtl(f"{icon}  {rule_name}")),
                      font=('Arial', 16, 'bold'), fg=accent_color, bg=bg_color).pack(pady=(0, 5))
 
             # Safety code + severity
@@ -876,20 +908,20 @@ class ExecutionController:
 
             # Hebrew description
             if rule_desc:
-                tk.Label(main_frame, text=rtl(rule_desc), font=('Arial', 12),
+                tk.Label(main_frame, text=_tk_safe(rtl(rule_desc)), font=('Arial', 12),
                          fg='white', bg=bg_color, wraplength=450,
                          justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 
             # Hebrew action message
             if rule_message:
-                tk.Label(main_frame, text=rtl(rule_message), font=('Arial', 12, 'bold'),
+                tk.Label(main_frame, text=_tk_safe(rtl(rule_message)), font=('Arial', 12, 'bold'),
                          fg='#ffcc00', bg=bg_color, wraplength=450,
                          justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 
             # Auto-resume note for waiting state
             if is_waiting:
                 tk.Label(main_frame,
-                         text=rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8"),
+                         text=_tk_safe(rtl("\u05d4\u05de\u05e2\u05e8\u05db\u05ea \u05ea\u05de\u05e9\u05d9\u05da \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea \u05db\u05e9\u05d4\u05ea\u05e0\u05d0\u05d9 \u05d9\u05d9\u05e4\u05ea\u05e8")),
                          font=('Arial', 10, 'bold'), fg='#66cc66', bg=bg_color,
                          wraplength=450, justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 

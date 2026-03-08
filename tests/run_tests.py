@@ -17,6 +17,7 @@ TEST_FILES = [
     'tests/test_infrastructure.py',
     'tests/test_execution_engine.py',
     'tests/test_integration.py',
+    'tests/test_unexpected_tool_safety.py',
 ]
 
 total_passed = total_failed = total_errors = 0

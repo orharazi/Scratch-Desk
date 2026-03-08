@@ -738,21 +738,24 @@ class TestSafetySystemIntegration:
         assert result is True
 
     def test_setup_movement_bypass(self):
-        """Test that setup movements bypass safety rules"""
+        """Test that setup movements bypass rules with exclude_setup=True.
+        LINES_DOOR_SAFETY has exclude_setup=True, so setup movements bypass it.
+        We trigger it via row_motor_limit_switch (not a tool piston) to avoid
+        ALL_TOOLS_UP_FOR_END_DIVISION which has exclude_setup=False."""
         safety = SafetySystem()
         hw = safety.hardware
 
-        # Row marker down would normally block Y movement
-        hw.row_marker_down()
+        # Trigger LINES_DOOR_SAFETY via limit switch (not tool piston)
+        # rows_door=True → row_motor_limit_switch="down" → triggers LINES_DOOR_SAFETY
+        hw.set_limit_switch_state('rows_door', True)
 
-        # But setup movements should be allowed
+        # Setup movement should bypass LINES_DOOR_SAFETY (exclude_setup=True)
         step = {
             "operation": "move_y",
             "parameters": {"position": 0.0},
             "description": "Init: Move to home position"
         }
 
-        # Should pass because it's a setup movement
         result = safety.check_step_safety(step)
         assert result is True
 

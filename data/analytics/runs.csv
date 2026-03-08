@@ -70,3 +70,20 @@ b7c69014-33cd-483b-849c-9367fffcb5cc,2026-02-20T14:11:57.326744,2026-02-20T14:12
 44924e18-922b-4708-8e67-6bcd2ea4a512,2026-03-02T16:06:43.834148,2026-03-02T16:07:15.167920,31.33,14,"תפילין ראש חב""ד 60",success,49,49,49,0,,,,mock,1,1
 19cd66ef-709f-4a6b-ba3c-703f8583323c,2026-03-02T16:07:17.225125,2026-03-02T16:07:31.616330,14.39,14,"תפילין ראש חב""ד 60",user_stop,49,6,6,0,,,,mock,1,1
 fe6635e1-8536-4f52-bb6c-36c5192a768b,2026-03-02T16:25:38.391370,2026-03-02T16:25:46.057906,7.67,1,ספר 60,emergency_stop,329,11,11,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row marker/door is down and blocks the Y-axis path. Raise the row marker and close the door.,mock,1,1
+8c4fae4b-da47-463a-baf6-51744c71f5b8,2026-03-02T16:59:51.863138,2026-03-03T06:18:29.412678,47917.55,1,ספר 60,user_stop,329,277,277,0,,,,real,1,1
+d896f1fb-3cda-4d91-a050-6dd49ddd61fc,2026-03-03T22:37:52.936297,2026-03-04T12:10:40.556190,48767.62,1,ספר 60,emergency_stop,329,277,277,0,,ROWS_MONITOR_DOOR_OPEN,"ROWS LEFT MOVEMENT BLOCKED!
+   Row motor door is OPEN (limit switch UP)
+   Left movement blocked until door is closed
+   Right movement is allowed
+   NOTE: Initial move to start position is allowed with door open",mock,1,1
+a21cca2d-20a7-4f3b-9f28-df1f9a089cfd,2026-03-06T00:29:53.045478,2026-03-06T00:30:21.713687,28.67,1,ספר 60,emergency_stop,329,41,41,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row marker/door is down and blocks the Y-axis path. Raise the row marker and close the door.,mock,1,1
+f8ea0b2b-dec6-486b-b2c9-719b2b19175e,2026-03-06T00:50:44.882732,2026-03-06T00:51:04.995586,20.11,1,ספר 60,emergency_stop,329,15,15,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row marker/door is down and blocks the Y-axis path. Raise the row marker and close the door.,mock,1,1
+02e9c23d-7beb-451d-a6cf-0187559fe7a2,2026-03-06T01:17:12.885907,2026-03-06T01:17:22.800683,9.91,1,ספר 60,emergency_stop,329,26,26,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_cutter. Raise the tool to continue.,mock,1,1
+7c09febe-8c59-4067-a6d0-dbada5e01451,2026-03-06T01:45:05.788388,2026-03-06T01:45:18.408081,12.62,1,ספר 60,emergency_stop,329,21,21,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row tools/door are down and block the Y-axis path. Raise all row tools and close the door.,mock,1,1
+de2289e3-9570-449a-80ed-fe49ef885d64,2026-03-08T11:42:42.200889,2026-03-08T11:42:50.401662,8.2,1,ספר 60,emergency_stop,329,13,13,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row tools/door are down and block the Y-axis path. Raise all row tools and close the door.,mock,1,1
+2b33b5e5-0cc8-4094-ac44-4f99864b0bfc,2026-03-08T11:53:50.030380,2026-03-08T11:54:17.321993,27.29,1,ספר 60,emergency_stop,329,13,13,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_cutter. Raise the tool to continue.,mock,1,1
+d36ce1cc-187b-4d05-9c17-90af13a79597,2026-03-08T12:13:45.019903,2026-03-08T12:14:46.011167,60.99,1,ספר 60,emergency_stop,329,36,36,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_cutter. Raise the tool to continue.,mock,1,1
+da2772ce-949a-40ef-b3f8-6af3d10289b9,2026-03-08T12:38:18.376221,2026-03-08T12:43:41.124532,322.75,1,ספר 60,emergency_stop,329,35,35,0,,ALL_TOOLS_UP_FOR_END_DIVISION,"🚨 SAFETY VIOLATION: End Division: All Tools Must Be Up
+   Operation: move_y
+   Description: Move to line position: 52.5cm
+   Rule message: End division blocked! One or more tools are still down. Raise all tools (line cutter, line marker, row cutter, row marker) before returning to home position.",mock,1,1

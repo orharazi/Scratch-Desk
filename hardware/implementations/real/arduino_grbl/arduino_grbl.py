@@ -1090,10 +1090,25 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(4, "Lift line motor pistons", "done")
 
-            # Step 5: Run GRBL homing ($H)
+            # Step 5: Move Y axis relative (pre-home clearance)
             if progress_callback:
-                progress_callback(5, "Run GRBL homing ($H)", "running")
-            self.logger.info("Step 5: Running GRBL homing ($H)...", category="grbl")
+                progress_callback(5, "Move Y axis (pre-home clearance)", "running")
+            y_pre_home_mm = self.grbl_config.get("y_pre_home_move_mm", 5.0)
+            self.logger.info(f"Step 5: Moving Y axis {y_pre_home_mm}mm (pre-home clearance)...", category="grbl")
+            self._send_command("G91")  # Relative positioning
+            move_response = self._send_command(f"G0 Y{y_pre_home_mm}")
+            self._send_command("G90")  # Back to absolute positioning
+            if move_response and "ok" in move_response.lower():
+                self.logger.success(f"Y axis moved {y_pre_home_mm}mm for pre-home clearance", category="grbl")
+            else:
+                self.logger.warning(f"Pre-home Y move may have failed: {move_response}", category="grbl")
+            if progress_callback:
+                progress_callback(5, "Move Y axis (pre-home clearance)", "done")
+
+            # Step 6: Run GRBL homing ($H)
+            if progress_callback:
+                progress_callback(6, "Run GRBL homing ($H)", "running")
+            self.logger.info("Step 6: Running GRBL homing ($H)...", category="grbl")
             self.logger.info("This may take up to 30 seconds...", category="grbl")
 
             homing_timeout = self.grbl_config.get("homing_timeout", 30.0)
@@ -1105,7 +1120,7 @@ class ArduinoGRBL:
                 self.logger.error(error_msg, category="grbl")
 
                 if progress_callback:
-                    progress_callback(5, "Run GRBL homing ($H)", "error")
+                    progress_callback(6, "Run GRBL homing ($H)", "error")
 
                 # Lower pistons before returning
                 if hardware_interface:
@@ -1160,7 +1175,7 @@ class ArduinoGRBL:
 
                 self.logger.error(error_msg, category="grbl")
                 if progress_callback:
-                    progress_callback(5, "Run GRBL homing ($H)", "error")
+                    progress_callback(6, "Run GRBL homing ($H)", "error")
 
                 # Lower pistons before returning
                 if hardware_interface:
@@ -1171,12 +1186,12 @@ class ArduinoGRBL:
 
             # Mark homing as done ONLY after it's actually complete
             if progress_callback:
-                progress_callback(5, "Run GRBL homing ($H)", "done")
+                progress_callback(6, "Run GRBL homing ($H)", "done")
 
-            # Step 6: Reset work coordinates to (0, 0)
+            # Step 7: Reset work coordinates to (0, 0)
             if progress_callback:
-                progress_callback(6, "Reset work coordinates to (0,0)", "running")
-            self.logger.info("Step 6: Resetting work coordinates to (0, 0)...", category="grbl")
+                progress_callback(7, "Reset work coordinates to (0,0)", "running")
+            self.logger.info("Step 7: Resetting work coordinates to (0, 0)...", category="grbl")
             self.logger.info("Sending: G10 L20 P1 X0 Y0 (Set WCS origin to current position)", category="grbl")
             response = self._send_command("G10 L20 P1 X0 Y0")
 
@@ -1193,12 +1208,12 @@ class ArduinoGRBL:
             else:
                 self.logger.warning(f"Failed to reset work coordinates: {response}", category="grbl")
             if progress_callback:
-                progress_callback(6, "Reset work coordinates to (0,0)", "done")
+                progress_callback(7, "Reset work coordinates to (0,0)", "done")
 
-            # Step 7: Lower line motor pistons back down
+            # Step 8: Lower line motor pistons back down
             if progress_callback:
-                progress_callback(7, "Lower line motor pistons", "running")
-            self.logger.info("Step 7: Lowering line motor pistons...", category="grbl")
+                progress_callback(8, "Lower line motor pistons", "running")
+            self.logger.info("Step 8: Lowering line motor pistons...", category="grbl")
             self.logger.info("Calling hardware_interface.line_motor_piston_down()...", category="grbl")
             if hardware_interface:
                 result = hardware_interface.line_motor_piston_down()
@@ -1214,12 +1229,12 @@ class ArduinoGRBL:
             else:
                 self.logger.warning("No hardware interface - skipping piston lower", category="grbl")
             if progress_callback:
-                progress_callback(7, "Lower line motor pistons", "done")
+                progress_callback(8, "Lower line motor pistons", "done")
 
-            # Step 8: Final verification - ensure ALL tool pistons are UP
+            # Step 9: Final verification - ensure ALL tool pistons are UP
             if progress_callback:
-                progress_callback(8, "Verify all tool pistons UP", "running")
-            self.logger.info("Step 8: Final verification - ensuring all tool pistons are UP...", category="grbl")
+                progress_callback(9, "Verify all tool pistons UP", "running")
+            self.logger.info("Step 9: Final verification - ensuring all tool pistons are UP...", category="grbl")
             if hardware_interface:
                 # Re-command all tool pistons UP as a safety guarantee
                 hardware_interface.line_marker_piston_up()
@@ -1229,7 +1244,7 @@ class ArduinoGRBL:
                 time.sleep(1.0)
                 self.logger.success("All tool pistons verified UP after homing", category="grbl")
             if progress_callback:
-                progress_callback(8, "Verify all tool pistons UP", "done")
+                progress_callback(9, "Verify all tool pistons UP", "done")
 
             self.logger.info("="*60, category="grbl")
             self.logger.success("COMPLETE HOMING SEQUENCE FINISHED SUCCESSFULLY", category="grbl")

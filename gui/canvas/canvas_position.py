@@ -3,6 +3,7 @@ import re
 import json
 from core.logger import get_logger
 from core.translations import rtl
+from core.safety_system import SafetyViolation, check_step_safety
 
 # Load settings
 def load_settings():
@@ -45,6 +46,18 @@ class CanvasPosition:
         first_line_y = PAPER_OFFSET_Y + program.top_margin  # First line position
 
         self.logger.debug(f"Moving tool to first line at ({first_line_x:.1f}, {first_line_y:.1f})", category="gui")
+        # Safety check before moving
+        for axis, pos in [('move_x', first_line_x), ('move_y', first_line_y)]:
+            step = {'operation': axis, 'parameters': {'position': pos}, 'description': f'Move to first line: {axis} to {pos}'}
+            try:
+                check_step_safety(step)
+            except SafetyViolation as e:
+                self.logger.error(f"SAFETY BLOCK: Cannot move to first line - {e.safety_code}", category="gui")
+                if hasattr(self.main_app, 'execution_controller'):
+                    self.main_app.execution_controller.handle_safety_violation({
+                        'step': step, 'violation_message': e.message, 'safety_code': e.safety_code
+                    })
+                return
         self.hardware.move_x(first_line_x)
         self.hardware.move_y(first_line_y)
         

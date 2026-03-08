@@ -4,6 +4,7 @@ from core.step_generator import generate_complete_program_steps, get_step_count_
 from core.logger import get_logger
 from core.translations import t, t_title, rtl, HEBREW_TRANSLATIONS
 from core.program_model import translate_validation_error
+from core.safety_system import SafetyViolation, check_step_safety
 
 
 class ControlsPanel:
@@ -30,6 +31,34 @@ class ControlsPanel:
         self.update_font_sizes()
 
         self.create_widgets()
+
+    def _safe_move(self, axis, position, description="Manual move", is_setup=False):
+        """Move motor with safety check. Returns True if move succeeded, False if blocked.
+        Shows safety violation dialog through execution controller if blocked."""
+        operation = 'move_x' if axis == 'x' else 'move_y'
+        step = {
+            'operation': operation,
+            'parameters': {'position': position},
+            'description': description
+        }
+        try:
+            check_step_safety(step)
+        except SafetyViolation as e:
+            self.logger.error(f"SAFETY BLOCK: Cannot {operation} to {position} - {e.safety_code}", category="gui")
+            # Show safety dialog through execution controller
+            if hasattr(self.main_app, 'execution_controller'):
+                self.main_app.execution_controller.handle_safety_violation({
+                    'step': step,
+                    'violation_message': e.message,
+                    'safety_code': e.safety_code
+                })
+            return False
+
+        if axis == 'x':
+            self.hardware.move_x(position)
+        else:
+            self.hardware.move_y(position)
+        return True
 
         # Bind to window resize for dynamic font adjustment
         self.main_app.root.bind('<Configure>', self.on_window_resize)
@@ -699,7 +728,7 @@ class ControlsPanel:
     # Step types that should be skipped during manual navigation (non-actionable or blocking)
     _SKIP_EXECUTE_STEP_TYPES = {'wait_sensor', 'program_start', 'program_complete', 'workflow_separator'}
 
-    def _restore_full_machine_state_to_current(self):
+    def _restore_full_machine_state_to_current(self, keep_line_motor_up=False):
         """Restore full machine state (tools + motors) to match expected state
         at current_step_index. This is the 'back in time' function.
 
@@ -709,6 +738,11 @@ class ControlsPanel:
           1. Raise ALL tools to safe UP state
           2. Move motors to correct positions (safe with all tools up)
           3. Apply correct tool states for this point in the program
+
+        Args:
+            keep_line_motor_up: If True, skip restoring line_motor_piston to
+                'down' even if the program state requires it. Used during
+                stopped step navigation so the motor stays up until Continue.
         """
         engine = self.main_app.execution_engine
         current_index = engine.current_step_index
@@ -750,13 +784,17 @@ class ControlsPanel:
             elif op == 'move_y':
                 last_y = params.get('position')
 
-        # Step 3: Move motors to correct positions (safe - all tools are UP)
+        # Step 3: Move motors to correct positions (with safety check)
         if last_x is not None:
             self.logger.debug(f"RESTORE STATE: Moving X to {last_x}", category="gui")
-            hw.move_x(last_x)
+            if not self._safe_move('x', last_x, f"Restore state: move X to {last_x}"):
+                self.logger.error("RESTORE STATE: X move blocked by safety rule", category="gui")
+                return
         if last_y is not None:
             self.logger.debug(f"RESTORE STATE: Moving Y to {last_y}", category="gui")
-            hw.move_y(last_y)
+            if not self._safe_move('y', last_y, f"Restore state: move Y to {last_y}"):
+                self.logger.error("RESTORE STATE: Y move blocked by safety rule", category="gui")
+                return
 
         # Step 4: Apply correct tool states
         tool_hw_map = {
@@ -772,6 +810,13 @@ class ControlsPanel:
 
         for tool, action in tool_states.items():
             if tool in tool_hw_map and action in tool_hw_map[tool]:
+                # When navigating while stopped, keep line_motor_piston UP
+                if keep_line_motor_up and tool == 'line_motor_piston' and action == 'down':
+                    self.logger.debug(
+                        "RESTORE STATE: Skipping line_motor_piston down (stopped navigation)",
+                        category="gui"
+                    )
+                    continue
                 self.logger.debug(f"RESTORE STATE: {tool} -> {action}", category="gui")
                 tool_hw_map[tool][action]()
 
@@ -826,11 +871,14 @@ class ControlsPanel:
             elif op == 'move_y':
                 last_y = params.get('position')
 
-        hw = self.main_app.execution_engine.hardware
         if last_x is not None:
-            hw.move_x(last_x)
+            if not self._safe_move('x', last_x, f"Replay position: move X to {last_x}"):
+                self.logger.error("REPLAY: X move blocked by safety rule", category="gui")
+                return
         if last_y is not None:
-            hw.move_y(last_y)
+            if not self._safe_move('y', last_y, f"Replay position: move Y to {last_y}"):
+                self.logger.error("REPLAY: Y move blocked by safety rule", category="gui")
+                return
 
     def _force_canvas_position_update(self):
         """Force an immediate canvas position update, bypassing cache and deferral.
@@ -853,8 +901,9 @@ class ControlsPanel:
     def prev_step(self):
         """Go to previous step - safely restore machine state (back in time)"""
         if self.main_app.execution_engine.step_backward():
-            # Full safe state restore: raise all tools, move motors, apply correct tool states
-            self._restore_full_machine_state_to_current()
+            # While stopped mid-execution, keep lines motor up - only lower on Continue
+            keep_up = self._stopped_mid_execution
+            self._restore_full_machine_state_to_current(keep_line_motor_up=keep_up)
             # Revert canvas state: reset all operations to pending, then replay up to current step
             self._replay_canvas_state_to_current()
             # Force immediate canvas motor position update
@@ -864,8 +913,9 @@ class ControlsPanel:
     def next_step(self):
         """Go to next step - safely restore machine state (back in time)"""
         if self.main_app.execution_engine.step_forward():
-            # Full safe state restore: raise all tools, move motors, apply correct tool states
-            self._restore_full_machine_state_to_current()
+            # While stopped mid-execution, keep lines motor up - only lower on Continue
+            keep_up = self._stopped_mid_execution
+            self._restore_full_machine_state_to_current(keep_line_motor_up=keep_up)
             # Replay canvas state from beginning to reflect correct visual state
             self._replay_canvas_state_to_current()
             # Force immediate canvas motor position update

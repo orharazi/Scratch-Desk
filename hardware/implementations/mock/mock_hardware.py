@@ -1493,32 +1493,40 @@ class MockHardware:
         if progress_callback:
             progress_callback(4, "Lift line motor pistons", "done")
 
+        # Simulate pre-home Y move
+        if progress_callback:
+            progress_callback(5, "Move Y axis (pre-home clearance)", "running")
+        self.logger.info("Step 5: (Simulated) Moving Y axis 5mm for pre-home clearance", category="hardware")
+        time.sleep(0.2)
+        if progress_callback:
+            progress_callback(5, "Move Y axis (pre-home clearance)", "done")
+
         # Simulate homing
         if progress_callback:
-            progress_callback(5, "Run GRBL homing ($H)", "running")
-        self.logger.info("Step 5: (Simulated) Running GRBL homing", category="hardware")
+            progress_callback(6, "Run GRBL homing ($H)", "running")
+        self.logger.info("Step 6: (Simulated) Running GRBL homing", category="hardware")
         move_x(0.0)
         move_y(0.0)
         time.sleep(1.0)
         if progress_callback:
-            progress_callback(5, "Run GRBL homing ($H)", "done")
+            progress_callback(6, "Run GRBL homing ($H)", "done")
 
         # Simulate coordinate reset
         if progress_callback:
-            progress_callback(6, "Reset work coordinates to (0,0)", "running")
-        self.logger.info("Step 6: (Simulated) Resetting work coordinates to (0, 0)", category="hardware")
+            progress_callback(7, "Reset work coordinates to (0,0)", "running")
+        self.logger.info("Step 7: (Simulated) Resetting work coordinates to (0, 0)", category="hardware")
         time.sleep(0.2)
         if progress_callback:
-            progress_callback(6, "Reset work coordinates to (0,0)", "done")
+            progress_callback(7, "Reset work coordinates to (0,0)", "done")
 
         # Simulate lowering pistons
         if progress_callback:
-            progress_callback(7, "Lower line motor pistons", "running")
-        self.logger.info("Step 7: (Simulated) Lowering line motor pistons", category="hardware")
+            progress_callback(8, "Lower line motor pistons", "running")
+        self.logger.info("Step 8: (Simulated) Lowering line motor pistons", category="hardware")
         line_motor_piston_down()
         time.sleep(0.5)
         if progress_callback:
-            progress_callback(7, "Lower line motor pistons", "done")
+            progress_callback(8, "Lower line motor pistons", "done")
 
         self.logger.success("MOCK: Complete homing sequence finished", category="hardware")
         self.logger.info("="*60, category="hardware")

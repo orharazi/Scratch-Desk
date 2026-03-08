@@ -22,14 +22,15 @@ class HomingProgressDialog:
     """
     Modal dialog showing homing sequence progress.
 
-    Displays a 7-step homing sequence with real-time status updates:
+    Displays an 8-step homing sequence with real-time status updates:
     1. Apply GRBL configuration
     2. Check door is open
     3. Reset all pistons to default position
     4. Lift line motor pistons
-    5. Run GRBL homing ($H)
-    6. Reset work coordinates to (0,0)
-    7. Lower line motor pistons
+    5. Move Y axis (pre-home clearance)
+    6. Run GRBL homing ($H)
+    7. Reset work coordinates to (0,0)
+    8. Lower line motor pistons
     """
 
     STEPS = [
@@ -37,9 +38,10 @@ class HomingProgressDialog:
         "2. Check door is open",
         "3. Reset all pistons to default position",
         "4. Lift line motor pistons",
-        "5. Run GRBL homing ($H)",
-        "6. Reset work coordinates to (0,0)",
-        "7. Lower line motor pistons"
+        "5. Move Y axis (pre-home clearance)",
+        "6. Run GRBL homing ($H)",
+        "7. Reset work coordinates to (0,0)",
+        "8. Lower line motor pistons"
     ]
 
     def __init__(self, parent: tk.Tk, hardware, on_complete: Optional[Callable] = None):

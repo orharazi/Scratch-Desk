@@ -61,6 +61,9 @@ class ExecutionEngine:
         self.safety_monitor_thread = None
         self.current_operation_type = None  # 'lines' or 'rows'
 
+        # Track tools intentionally lowered by execution (vs manually by user)
+        self._engine_lowered_tools = set()
+
         # Set pause event initially (not paused)
         self.pause_event.set()
 
@@ -96,6 +99,7 @@ class ExecutionEngine:
         self.is_running = True
         self.is_paused = False
         self.in_transition = False  # Ensure clean transition state for new run
+        self._engine_lowered_tools = set()  # Clear tool tracking for new run
         self.execution_completed = False
         self.execution_failed = False
         self.stop_event.clear()
@@ -765,8 +769,16 @@ class ExecutionEngine:
                 }
 
                 if tool in tool_functions and action in tool_functions[tool]:
+                    # Track tool DOWN BEFORE hardware call to prevent race with safety monitor
+                    if action == 'down':
+                        self._engine_lowered_tools.add(tool)
+
                     tool_functions[tool][action]()
                     self.logger.success(f"Tool action completed: {tool} {action}", category="execution")
+
+                    # Track tool UP AFTER hardware call confirms completion
+                    if action == 'up':
+                        self._engine_lowered_tools.discard(tool)
 
                     # Special handling for line marker close - should trigger automatic move to next line
                     if tool == 'line_marker' and action == 'up':
@@ -885,6 +897,27 @@ class ExecutionEngine:
         self.logger.debug(f"   → Ambiguous step, keeping current: {self.current_operation_type}", category="execution")
         return self.current_operation_type
 
+    def _get_unexpected_tools_down(self):
+        """Check for tools manually lowered by user (not by execution engine).
+        Returns list of tool names that are unexpectedly down for the current operation."""
+        # Map operation type to the tools that should NOT be manually lowered during it
+        tool_checks = {
+            'lines': {
+                'line_marker': self.hardware.get_line_marker_state,
+                'line_cutter': self.hardware.get_line_cutter_state,
+            },
+            'rows': {
+                'row_marker': self.hardware.get_row_marker_state,
+                'row_cutter': self.hardware.get_row_cutter_state,
+            }
+        }
+        relevant_tools = tool_checks.get(self.current_operation_type, {})
+        unexpected = []
+        for tool_name, state_fn in relevant_tools.items():
+            if state_fn() == 'down' and tool_name not in self._engine_lowered_tools:
+                unexpected.append(tool_name)
+        return unexpected
+
     def _safety_monitor_loop(self):
         """Real-time safety monitoring loop - evaluates monitor rules from safety_rules.json"""
         from core.safety_system import safety_system
@@ -893,6 +926,8 @@ class ExecutionEngine:
 
         # Track which rules caused the current pause (for recovery checking)
         violated_rule_ids = []
+        # Track unexpected tool violations separately
+        unexpected_tool_violation = False
 
         try:
             while not self.safety_monitor_stop.is_set():
@@ -951,6 +986,48 @@ class ExecutionEngine:
                                 # Already paused - update violated_rule_ids to match current violations
                                 # so recovery checks the right rules (violations may have changed)
                                 violated_rule_ids = [r.get('id') for r in violated_rules]
+
+                        # Check for unexpected tool states (user manually lowered a tool during execution)
+                        if not violated_rules and not self.is_paused:
+                            unexpected_tools = self._get_unexpected_tools_down()
+                            if unexpected_tools:
+                                tool_names = ', '.join(unexpected_tools)
+                                op_type = self.current_operation_type or 'unknown'
+                                # Use the matching pre-step rule ID for proper dialog display
+                                if op_type == 'lines':
+                                    safety_code = 'LINE_TOOLS_UP_FOR_LINES'
+                                else:
+                                    safety_code = 'ROW_TOOLS_UP_FOR_ROWS'
+                                violation_message = f"Tool manually lowered during {op_type} execution: {tool_names}. Raise the tool to continue."
+
+                                self.logger.error(f"UNEXPECTED TOOL STATE: {tool_names} down during {op_type} (not lowered by engine)", category="execution")
+
+                                # PAUSE execution
+                                self.is_paused = True
+                                self.pause_event.clear()
+                                unexpected_tool_violation = True
+                                MachineStateManager().set_state(MachineState.PAUSED)
+
+                                self._update_status("emergency_stop", {
+                                    'violation_message': violation_message,
+                                    'safety_code': safety_code,
+                                    'monitor_type': 'unexpected_tool'
+                                })
+
+                        # Check for unexpected tool recovery
+                        if self.is_paused and unexpected_tool_violation and not violated_rules:
+                            unexpected_tools = self._get_unexpected_tools_down()
+                            if not unexpected_tools:
+                                self.logger.success("Unexpected tool state resolved - tools raised", category="execution")
+                                self.hardware.flush_all_sensor_buffers()
+                                unexpected_tool_violation = False
+                                self.is_paused = False
+                                self.pause_event.set()
+                                MachineStateManager().set_state(MachineState.RUNNING)
+                                self._update_status("safety_recovered", {
+                                    'message': f'Tool state resolved - resuming {self.current_operation_type} execution',
+                                    'operation_type': self.current_operation_type
+                                })
 
                         # Check for safety violation recovery (when paused due to monitor violation)
                         elif self.is_paused and violated_rule_ids:

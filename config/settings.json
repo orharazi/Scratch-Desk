@@ -189,7 +189,7 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": true,
+    "use_real_hardware": false,
     "start_with_grbl": true,
     "poc_mode": false,
     "skip_initial_sensor_tests": false,
@@ -234,7 +234,7 @@
           "line_motor_left_down_sensor": 19,
           "line_motor_right_up_sensor": 18,
           "line_motor_right_down_sensor": 20,
-          "x_left_edge": 17,
+          "x_left_edge": 14,
           "x_right_edge": 16,
           "y_top_edge": 31,
           "y_bottom_edge": 30,
@@ -250,11 +250,12 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/ttyUSB0",
+      "serial_port": "/dev/cu.debug-console",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
       "homing_timeout": 120.0,
+      "y_pre_home_move_mm": 5.0,
       "position_tolerance_cm": 0.1,
       "movement_timeout": 60.0,
       "movement_poll_interval": 0.1,
@@ -338,7 +339,7 @@
       "smtp_password": "egwinocrndmjlnsp",
       "sender_email": "uridesk35@gmail.com\n",
       "recipient_email": "orharazi@gmail.com",
-      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
+      "subject_prefix": "\u05e9\u05d5\u05dc\u05d7\u05df \u05e9\u05e8\u05d8\u05d5\u05d8 \u05d9\u05e9\u05d9\u05d1\u05d4 \u05e9\u05dc \u05d7\u05d9 - \u05d0\u05e0\u05dc\u05d9\u05d8\u05d9\u05e7\u05d5\u05ea",
       "schedule_enabled": true,
       "schedule_frequency": "monthly",
       "schedule_time": "08:00",
