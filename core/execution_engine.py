@@ -955,7 +955,10 @@ class ExecutionEngine:
 
                     try:
                         # Evaluate all monitor rules for current operation type from safety_rules.json
-                        violated_rules = safety_system.rules_manager.evaluate_monitor_rules(self.current_operation_type)
+                        violated_rules = safety_system.rules_manager.evaluate_monitor_rules(
+                            self.current_operation_type,
+                            engine_lowered_tools=self._engine_lowered_tools
+                        )
 
                         if violated_rules:
                             if not self.is_paused:

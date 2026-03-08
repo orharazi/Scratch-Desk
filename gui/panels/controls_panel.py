@@ -34,12 +34,17 @@ class ControlsPanel:
 
     def _safe_move(self, axis, position, description="Manual move", is_setup=False):
         """Move motor with safety check. Returns True if move succeeded, False if blocked.
-        Shows safety violation dialog through execution controller if blocked."""
+        Shows safety violation dialog through execution controller if blocked.
+        is_setup=True bypasses position-based inter-motor collision rules (LINES_MOTOR_HOME_FOR_ROWS,
+        ROWS_MOTOR_HOME_FOR_LINES) which have exclude_setup:true - safe because all tools are
+        raised before any restore/navigation move."""
         operation = 'move_x' if axis == 'x' else 'move_y'
+        # Prefix with "init:" so safety rules with exclude_setup:true are bypassed
+        effective_description = f"init: {description}" if is_setup else description
         step = {
             'operation': operation,
             'parameters': {'position': position},
-            'description': description
+            'description': effective_description
         }
         try:
             check_step_safety(step)
@@ -787,12 +792,12 @@ class ControlsPanel:
         # Step 3: Move motors to correct positions (with safety check)
         if last_x is not None:
             self.logger.debug(f"RESTORE STATE: Moving X to {last_x}", category="gui")
-            if not self._safe_move('x', last_x, f"Restore state: move X to {last_x}"):
+            if not self._safe_move('x', last_x, f"Restore state: move X to {last_x}", is_setup=True):
                 self.logger.error("RESTORE STATE: X move blocked by safety rule", category="gui")
                 return
         if last_y is not None:
             self.logger.debug(f"RESTORE STATE: Moving Y to {last_y}", category="gui")
-            if not self._safe_move('y', last_y, f"Restore state: move Y to {last_y}"):
+            if not self._safe_move('y', last_y, f"Restore state: move Y to {last_y}", is_setup=True):
                 self.logger.error("RESTORE STATE: Y move blocked by safety rule", category="gui")
                 return
 
@@ -872,11 +877,11 @@ class ControlsPanel:
                 last_y = params.get('position')
 
         if last_x is not None:
-            if not self._safe_move('x', last_x, f"Replay position: move X to {last_x}"):
+            if not self._safe_move('x', last_x, f"Replay position: move X to {last_x}", is_setup=True):
                 self.logger.error("REPLAY: X move blocked by safety rule", category="gui")
                 return
         if last_y is not None:
-            if not self._safe_move('y', last_y, f"Replay position: move Y to {last_y}"):
+            if not self._safe_move('y', last_y, f"Replay position: move Y to {last_y}", is_setup=True):
                 self.logger.error("REPLAY: Y move blocked by safety rule", category="gui")
                 return
 

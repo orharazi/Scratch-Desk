@@ -112,7 +112,7 @@ class SafetyRulesManager:
             }
         }
 
-    def evaluate_condition(self, condition, state):
+    def evaluate_condition(self, condition, state, excluded_pistons=None):
         """Evaluate a single condition against current hardware state"""
         cond_type = condition.get("type", "")
         source = condition.get("source", "")
@@ -123,8 +123,15 @@ class SafetyRulesManager:
         actual_value = None
 
         if cond_type == "piston":
+            # Skip this condition if the piston is currently engine-controlled
+            if excluded_pistons and source in excluded_pistons:
+                return False
             actual_value = state["pistons"].get(source)
         elif cond_type == "sensor":
+            # Skip sensor conditions that belong to an engine-controlled tool
+            # Sensor names follow the pattern "{tool_name}_up_sensor" / "{tool_name}_down_sensor"
+            if excluded_pistons and any(source.startswith(t + '_') for t in excluded_pistons):
+                return False
             actual_value = state["sensors"].get(source)
         elif cond_type == "position":
             actual_value = state["positions"].get(source)
@@ -188,7 +195,7 @@ class SafetyRulesManager:
         self.logger.debug(f"  -> Condition result: {result}", category="safety")
         return result
 
-    def evaluate_conditions(self, conditions, state):
+    def evaluate_conditions(self, conditions, state, excluded_pistons=None):
         """Evaluate a conditions block (can be nested with AND/OR)"""
         if not conditions:
             return False
@@ -203,10 +210,10 @@ class SafetyRulesManager:
         for item in items:
             if "operator" in item and "items" in item:
                 # Nested condition group
-                result = self.evaluate_conditions(item, state)
+                result = self.evaluate_conditions(item, state, excluded_pistons=excluded_pistons)
             else:
                 # Simple condition
-                result = self.evaluate_condition(item, state)
+                result = self.evaluate_condition(item, state, excluded_pistons=excluded_pistons)
             results.append(result)
 
         # Apply logical operator
@@ -355,13 +362,14 @@ class SafetyRulesManager:
 
         return True, None
 
-    def evaluate_monitor_rules(self, operation_type):
+    def evaluate_monitor_rules(self, operation_type, engine_lowered_tools=None):
         """
         Evaluate all monitor rules for a given operation type (lines/rows).
         Returns list of violated rules sorted by priority.
 
         Args:
             operation_type: 'lines' or 'rows'
+            engine_lowered_tools: Set of tool names currently controlled by the execution engine
 
         Returns:
             List of rule dicts whose conditions are met and whose monitor
@@ -396,7 +404,7 @@ class SafetyRulesManager:
 
             # Evaluate violation conditions
             conditions = rule.get("conditions", {})
-            if self.evaluate_conditions(conditions, state):
+            if self.evaluate_conditions(conditions, state, excluded_pistons=engine_lowered_tools):
                 violated_rules.append(rule)
 
         return violated_rules

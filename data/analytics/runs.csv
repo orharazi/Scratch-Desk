@@ -87,3 +87,7 @@ da2772ce-949a-40ef-b3f8-6af3d10289b9,2026-03-08T12:38:18.376221,2026-03-08T12:43
    Operation: move_y
    Description: Move to line position: 52.5cm
    Rule message: End division blocked! One or more tools are still down. Raise all tools (line cutter, line marker, row cutter, row marker) before returning to home position.",mock,1,1
+e0bcae4a-8994-4b30-8ed4-0cc924200814,2026-03-08T12:53:35.586428,2026-03-08T12:53:38.180757,2.59,1,ספר 60,emergency_stop,329,7,7,0,,LINE_TOOLS_UP_FOR_LINES,Lines motor blocked! Line cutter or line marker is down. Raise all line tools before moving the lines motor.,mock,1,1
+5b2dae43-5c11-4f74-9fd0-2e8f6ac6a344,2026-03-08T12:55:45.715532,2026-03-08T12:56:21.561557,35.85,1,ספר 60,emergency_stop,329,51,51,0,,LINE_TOOLS_UP_FOR_LINES,Lines motor blocked! Line cutter or line marker is down. Raise all line tools before moving the lines motor.,mock,1,1
+8defa3fe-1d73-48ee-ab2d-35642bde85b1,2026-03-08T13:11:17.983297,2026-03-08T13:11:32.619320,14.64,1,ספר 60,emergency_stop,329,21,21,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,mock,1,1
+fdfad322-0e4a-45a0-9ed8-b81a0b134854,2026-03-08T13:21:34.588153,2026-03-08T13:21:51.562100,16.97,1,ספר 60,user_stop,329,21,21,0,,,,mock,1,1
