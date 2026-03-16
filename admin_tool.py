@@ -19,7 +19,7 @@ import sys
 import os
 
 from gui.wayland_focus import patch_wayland_focus, force_focus
-patch_wayland_focus()
+patch_wayland_focus(app_id='scratch-desk-admin')
 
 from admin.admin_app import AdminToolGUI
 
@@ -29,7 +29,7 @@ def main():
     root = tk.Tk()
     root.tk.call('tk', 'appname', 'scratch-desk-admin')
     app = AdminToolGUI(root)
-    force_focus(root)
+    force_focus(root, app_id='scratch-desk-admin')
 
     try:
         root.mainloop()

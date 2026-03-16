@@ -199,7 +199,7 @@ class RealHardware:
 
         return self.grbl.home()
 
-    def perform_complete_homing_sequence(self, progress_callback=None) -> tuple[bool, str]:
+    def perform_complete_homing_sequence(self, progress_callback=None, safety_check=None) -> tuple[bool, str]:
         """
         Perform complete homing sequence with configuration and safety checks
 
@@ -213,6 +213,7 @@ class RealHardware:
 
         Args:
             progress_callback: Optional callback function(step_number, step_name, status, message=None)
+            safety_check: Optional callable() -> (is_safe, violation_info) for LINES_DOOR_SAFETY
 
         Returns:
             Tuple of (success: bool, error_message: str)
@@ -223,7 +224,7 @@ class RealHardware:
             return False, error_msg
 
         # Pass self as hardware_interface so GRBL can control pistons and check door
-        return self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback)
+        return self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback, safety_check=safety_check)
 
     def apply_grbl_configuration(self) -> bool:
         """
@@ -539,6 +540,18 @@ class RealHardware:
             return False
 
         return self.grbl.resume()
+
+    # ========== SAFETY FEED HOLD (via GRBL) ==========
+
+    def safety_feed_hold_grbl(self):
+        """Immediately stop GRBL movement for safety violation"""
+        if self.grbl:
+            self.grbl.safety_feed_hold()
+
+    def safety_resume_grbl(self):
+        """Resume GRBL movement after safety violation is resolved"""
+        if self.grbl:
+            self.grbl.safety_resume()
 
     # ========== POSITION GETTERS ==========
 

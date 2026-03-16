@@ -1036,7 +1036,7 @@
               "description": "Maximum time allowed for homing cycle completion",
               "description_he": "זמן מקסימלי מותר להשלמת מחזור ביות",
               "type": "float",
-              "default": 120.0,
+              "default": 300.0,
               "category": "important",
               "unit": "seconds"
             },

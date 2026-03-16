@@ -559,6 +559,8 @@ HEBREW_TRANSLATIONS = {
     "Error: {message}": "שגיאה: {message}",
     "Executing step...": "...מבצע צעד",
     "Waiting for {sensor} sensor": "ממתין לחיישן {sensor}",
+    "Sensor timeout: {sensor}": "חריגת זמן חיישן: {sensor}",
+    "{progress:.1f}% - Sensor timeout: {sensor}": "{progress:.1f}% - חריגת זמן חיישן: {sensor}",
 
     # Sensor names (X sensors serve lines/שורות operations, Y sensors serve rows/עמודות operations)
     "x_left": "שורות שמאלי",
@@ -778,6 +780,8 @@ HEBREW_TRANSLATIONS = {
     "4. Lift line motor pistons": "4. הרמת בוכנות מנוע שורות",
     "5. Move Y axis (pre-home clearance)": "5. הזזת ציר Y (פינוי לפני ביות)",
     "6. Run GRBL homing ($H)": "6. הפעלת ביות GRBL ($H)",
+    "6. Run GRBL homing ($H) (timeout: {timeout} seconds)": "6. הפעלת ביות GRBL ($H) (זמן קצוב: {timeout} שניות)",
+    "6. Run GRBL homing ($H) (remaining: {remaining} seconds)": "6. הפעלת ביות GRBL ($H) (נותרו: {remaining} שניות)",
     "7. Reset work coordinates to (0,0)": "7. איפוס קואורדינטות עבודה ל-(0,0)",
     "8. Lower line motor pistons": "8. הורדת בוכנות מנוע שורות",
     "9. Verify all tool pistons UP": "9. אימות שכל הבוכנות למעלה",
@@ -807,6 +811,8 @@ HEBREW_TRANSLATIONS = {
     "Run Homing": "הפעל ביות",
     "Cannot Home": "לא ניתן לבצע ביות",
     "Cannot run homing while a program is executing.\nStop execution first.": "לא ניתן לבצע ביות בזמן שתוכנית רצה.\nעצור את הביצוע קודם.",
+    "Program Running": "תוכנית רצה",
+    "Cannot change hardware state while a program is running.\nPause or stop the program first.": "לא ניתן לשנות מצב חומרה בזמן שתוכנית רצה.\nיש להשהות או לעצור את התוכנית קודם.",
     "This will run the homing sequence.\n\nMake sure the machine is clear and ready.\n\nRun homing now?": "פעולה זו תפעיל את תהליך הביות.\n\nוודא שהמכונה פנויה ומוכנה.\n\nלהפעיל ביות עכשיו?",
 
     # Homing status
@@ -1544,6 +1550,15 @@ HEBREW_TRANSLATIONS = {
     "Blocked": "חסום",
     "Cannot change {action} while execution is actively running. Pause or stop execution first.": "לא ניתן לשנות {action} בזמן שביצוע פעיל. השהה או עצור את הביצוע קודם.",
     "Execution is paused. Changing {action} manually may cause safety violations. Continue?": "הביצוע מושהה. שינוי {action} ידני עלול לגרום להפרות בטיחות. להמשיך?",
+    "Cannot move {action} while execution is actively running. Pause or stop execution first.": "לא ניתן להזיז {action} בזמן שביצוע פעיל. השהה או עצור את הביצוע קודם.",
+    "Execution is paused. Moving {action} manually may cause safety violations. Continue?": "הביצוע מושהה. הזזת {action} ידנית עלולה לגרום להפרות בטיחות. להמשיך?",
+    "X Motor": "מנוע X",
+    "Y Motor": "מנוע Y",
+    "Motors": "מנועים",
+    "Cannot change settings while a program is running or paused. Stop execution first.": "לא ניתן לשנות הגדרות בזמן שתוכנית רצה או מושהית. עצור את הביצוע קודם.",
+    "Cannot change settings while program is running": "לא ניתן לשנות הגדרות בזמן שתוכנית רצה",
+    "Cannot change settings while program is stopped mid-execution. Reset first": "לא ניתן לשנות הגדרות בזמן שתוכנית עצרה באמצע ביצוע. אפס קודם",
+    "Settings applied live to all modules": "ההגדרות הוחלו בזמן אמת על כל המודולים",
 }
 
 # Current language setting
@@ -1642,6 +1657,25 @@ def t_title(text: str, **kwargs) -> str:
             return text.format(**kwargs) if kwargs else text
 
     return '\u200f' + str(translated)
+
+def t_raw(text, **kwargs):
+    """Get Hebrew translation without BiDi reordering.
+
+    Use when the result will be embedded in another t() call,
+    to avoid double BiDi processing.
+    """
+    if _current_language == "en":
+        if kwargs:
+            return text.format(**kwargs)
+        return text
+
+    translated = HEBREW_TRANSLATIONS.get(text, text)
+    if kwargs:
+        try:
+            translated = translated.format(**kwargs)
+        except (KeyError, ValueError):
+            return text.format(**kwargs) if kwargs else text
+    return translated
 
 def rtl_title(text: str) -> str:
     """Prepend RTL mark to an already-Hebrew string for use as a window title."""

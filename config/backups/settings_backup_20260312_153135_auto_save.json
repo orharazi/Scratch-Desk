@@ -73,7 +73,7 @@
     "transition_monitor_interval": 0.1,
     "thread_join_timeout_execution": 5.0,
     "thread_join_timeout_safety": 2.0,
-    "sensor_wait_timeout": 300.0,
+    "sensor_wait_timeout": 10.0,
     "piston_gpio_settling_delay": 0.05,
     "gpio_cleanup_delay": 0.1,
     "gpio_busy_recovery_delay": 0.05,

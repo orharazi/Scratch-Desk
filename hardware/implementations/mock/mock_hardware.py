@@ -222,7 +222,8 @@ def reset_hardware():
         y_top_edge = False
         y_bottom_edge = False
 
-        limit_switch_states['rows_door'] = False  # Default is False (UP)
+        # NOTE: rows_door is NOT reset - it represents a physical door state
+        # that doesn't change during software reset. Preserve current state.
         # At position (0,0), x_right and y_bottom limit switches are active (at home)
         limit_switch_states['x_right'] = True
         limit_switch_states['x_left'] = False
@@ -1439,7 +1440,7 @@ class MockHardware:
         move_y(0.0)
         return True
 
-    def perform_complete_homing_sequence(self, progress_callback=None) -> tuple[bool, str]:
+    def perform_complete_homing_sequence(self, progress_callback=None, safety_check=None) -> tuple[bool, str]:
         """
         Perform complete homing sequence (mock implementation)
 
@@ -1447,6 +1448,7 @@ class MockHardware:
 
         Args:
             progress_callback: Optional callback function(step_number, step_name, status, message=None)
+            safety_check: Optional callable for safety monitoring (used by real hardware)
 
         Returns:
             Tuple of (success: bool, error_message: str)
@@ -1493,21 +1495,61 @@ class MockHardware:
         if progress_callback:
             progress_callback(4, "Lift line motor pistons", "done")
 
-        # Simulate pre-home Y move
+        # Simulate pre-home Y move with safety monitoring
         if progress_callback:
             progress_callback(5, "Move Y axis (pre-home clearance)", "running")
         self.logger.info("Step 5: (Simulated) Moving Y axis 5mm for pre-home clearance", category="hardware")
-        time.sleep(0.2)
+        # Poll with safety check like real hardware
+        step5_duration = 0.5
+        step5_start = time.time()
+        while time.time() - step5_start < step5_duration:
+            if safety_check:
+                is_safe, violation_info = safety_check()
+                if not is_safe:
+                    self.logger.warning("MOCK HOMING STEP 5: Safety violation", category="hardware")
+                    if progress_callback:
+                        progress_callback(5, "Move Y axis (pre-home clearance)", "safety_hold", violation_info)
+                    # Wait for recovery
+                    while True:
+                        time.sleep(0.2)
+                        is_safe, _ = safety_check()
+                        if is_safe:
+                            self.logger.info("MOCK HOMING STEP 5: Safety resolved", category="hardware")
+                            if progress_callback:
+                                progress_callback(5, "Move Y axis (pre-home clearance)", "running")
+                            step5_start = time.time()  # Reset timer
+                            break
+            time.sleep(0.1)
         if progress_callback:
             progress_callback(5, "Move Y axis (pre-home clearance)", "done")
 
-        # Simulate homing
+        # Simulate homing with safety monitoring
         if progress_callback:
             progress_callback(6, "Run GRBL homing ($H)", "running")
         self.logger.info("Step 6: (Simulated) Running GRBL homing", category="hardware")
+        # Poll with safety check like real hardware
+        homing_duration = 2.0
+        homing_start = time.time()
+        while time.time() - homing_start < homing_duration:
+            if safety_check:
+                is_safe, violation_info = safety_check()
+                if not is_safe:
+                    self.logger.warning("MOCK HOMING STEP 6: Safety violation - stopping $H", category="hardware")
+                    if progress_callback:
+                        progress_callback(6, "Run GRBL homing ($H)", "safety_hold", violation_info)
+                    # Wait for recovery then re-run
+                    while True:
+                        time.sleep(0.2)
+                        is_safe, _ = safety_check()
+                        if is_safe:
+                            self.logger.info("MOCK HOMING STEP 6: Safety resolved - re-running $H", category="hardware")
+                            if progress_callback:
+                                progress_callback(6, "Run GRBL homing ($H)", "running")
+                            homing_start = time.time()  # Restart homing
+                            break
+            time.sleep(0.2)
         move_x(0.0)
         move_y(0.0)
-        time.sleep(1.0)
         if progress_callback:
             progress_callback(6, "Run GRBL homing ($H)", "done")
 
@@ -1821,6 +1863,14 @@ class MockHardware:
     def signal_all_sensor_events(self):
         """Signal all sensor events to unblock waiting threads during stop"""
         signal_all_sensor_events()
+
+    def safety_feed_hold_grbl(self):
+        """No-op in mock mode - real hardware sends GRBL feed hold '!' on safety violation"""
+        pass
+
+    def safety_resume_grbl(self):
+        """No-op in mock mode - real hardware sends GRBL resume '~' after safety resolved"""
+        pass
 
     def shutdown(self):
         """Shutdown mock hardware"""

@@ -40,14 +40,9 @@ class ScratchDeskGUI:
         self.root.resizable(True, True)
         self.logger = get_logger()
 
-        # Try to maximize window if possible
-        try:
-            self.root.state('zoomed')  # Windows/Linux maximize
-        except tk.TclError:
-            try:
-                self.root.attributes('-zoomed', True)  # Alternative maximize
-            except tk.TclError:
-                pass  # Fall back to normal size
+        # Maximize window (uses wlrctl on labwc where state('zoomed') is a no-op)
+        from gui.wayland_focus import maximize_window
+        maximize_window(self.root)
 
         # Initialize hardware interface
         self.hardware = get_hardware_interface()
@@ -410,6 +405,7 @@ class ScratchDeskGUI:
         dialog.geometry("300x150")
         dialog.resizable(False, False)
         dialog.transient(self.root)
+        dialog.lift()
         dialog.grab_set()
 
         # Center the dialog on the main window
@@ -430,42 +426,75 @@ class ScratchDeskGUI:
             if password_entry.get() == admin_password:
                 dialog.grab_release()
                 dialog.destroy()
-                # Small delay to let compositor process the dialog removal before opening admin
-                self.root.after(150, self._launch_admin_tool)
+                # Launch admin tool immediately — no force_focus_return here
+                # since admin window opens right away and takes focus itself
+                self.root.after(100, self._launch_admin_tool)
             else:
                 error_label.config(text=t("Wrong password"))
                 password_entry.delete(0, tk.END)
+
+        def _cancel_login():
+            dialog.grab_release()
+            dialog.destroy()
+            from gui.wayland_focus import force_focus_return
+            force_focus_return(self.root)
 
         password_entry.bind("<Return>", try_login)
 
         dialog.configure(bg='white')
         btn_frame = tk.Frame(dialog, bg='white')
         btn_frame.pack(pady=5)
-        tk.Button(btn_frame, text=t("Cancel"), command=dialog.destroy, width=10, fg='black').pack(side=tk.RIGHT, padx=5)
+        tk.Button(btn_frame, text=t("Cancel"), command=_cancel_login, width=10, fg='black').pack(side=tk.RIGHT, padx=5)
         tk.Button(btn_frame, text=t("Login"), command=try_login, width=10,
                   bg='#8E44AD', fg='white').pack(side=tk.RIGHT, padx=5)
 
     def _force_window_focus(self, window):
         """Force window focus — delegates to wayland_focus utility"""
         from gui.wayland_focus import force_focus
-        force_focus(window)
+        force_focus(window, app_id='scratch-desk')
 
     def _launch_admin_tool(self):
         """Launch admin tool window with shared hardware"""
         from admin.admin_app import AdminToolGUI
+        from gui.wayland_focus import force_focus, force_focus_return, _HAS_WLRCTL, _wlrctl_focus_title
 
         admin_window = tk.Toplevel(self.root)
+        # NOTE: no transient() — on labwc, transient child Toplevels can't be
+        # independently focused by the compositor via wlrctl.
         AdminToolGUI(admin_window, hardware=self.hardware, launched_from_app=True,
                      on_settings_changed=self._on_settings_changed,
                      can_change_settings=self._can_change_settings)
 
-        # Force focus with multiple methods for cross-platform compatibility
-        admin_window.lift()
+        # Aggressive focus: -topmost temporarily + wlrctl title matching.
+        # The patched Toplevel.__init__ already schedules app_id focus at <Map>
+        # and title focus at +250ms. We add extra attempts here because the
+        # admin window competes with VS Code for compositor focus.
         admin_window.attributes('-topmost', True)
+        admin_window.lift()
         admin_window.focus_force()
-        # Remove topmost after a short delay so window doesn't stay permanently on top
-        admin_window.after(300, lambda: admin_window.attributes('-topmost', False))
-        self._force_window_focus(admin_window)
+
+        admin_title = admin_window.title()
+
+        if _HAS_WLRCTL and admin_title:
+            # Multiple wlrctl title-focus attempts at staggered intervals
+            for delay in (150, 400, 700):
+                admin_window.after(delay, lambda t=admin_title: _wlrctl_focus_title(t))
+
+        # Remove -topmost once focus is established
+        def _settle():
+            if admin_window.winfo_exists():
+                admin_window.attributes('-topmost', False)
+        admin_window.after(800, _settle)
+
+        # Wrap close handler to return focus to main window
+        def _on_admin_close():
+            try:
+                admin_window.destroy()
+            except Exception:
+                pass
+            force_focus_return(self.root)
+
+        admin_window.protocol("WM_DELETE_WINDOW", _on_admin_close)
 
     def _can_change_settings(self):
         """Check if settings can be changed right now.

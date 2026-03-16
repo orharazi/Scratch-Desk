@@ -91,3 +91,61 @@ e0bcae4a-8994-4b30-8ed4-0cc924200814,2026-03-08T12:53:35.586428,2026-03-08T12:53
 5b2dae43-5c11-4f74-9fd0-2e8f6ac6a344,2026-03-08T12:55:45.715532,2026-03-08T12:56:21.561557,35.85,1,ספר 60,emergency_stop,329,51,51,0,,LINE_TOOLS_UP_FOR_LINES,Lines motor blocked! Line cutter or line marker is down. Raise all line tools before moving the lines motor.,mock,1,1
 8defa3fe-1d73-48ee-ab2d-35642bde85b1,2026-03-08T13:11:17.983297,2026-03-08T13:11:32.619320,14.64,1,ספר 60,emergency_stop,329,21,21,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,mock,1,1
 fdfad322-0e4a-45a0-9ed8-b81a0b134854,2026-03-08T13:21:34.588153,2026-03-08T13:21:51.562100,16.97,1,ספר 60,user_stop,329,21,21,0,,,,mock,1,1
+16a411ff-35f5-4da1-8e51-1d3fa5971f3f,2026-03-08T13:31:24.733213,2026-03-08T13:32:30.755182,66.02,1,ספר 60,emergency_stop,329,6,6,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,1,1
+ddff8cd5-4298-46bb-bc76-4af0a0b3f6f7,2026-03-08T13:44:19.854686,2026-03-08T13:45:17.900624,58.05,1,ספר 60,emergency_stop,329,6,6,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+803607bc-139b-4da4-a39c-14526a700907,2026-03-08T13:48:28.750897,2026-03-08T13:49:42.337777,73.59,1,ספר 60,emergency_stop,329,10,10,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+f24bdade-6af4-4db2-b2ba-baf8a93de4df,2026-03-08T14:14:01.699711,2026-03-08T14:17:50.246385,228.55,8,מזוזה 10,emergency_stop,149,148,148,0,,ROWS_MONITOR_DOOR_OPEN,"ROWS LEFT MOVEMENT BLOCKED!
+   Row motor door is OPEN (limit switch UP)
+   Left movement blocked until door is closed
+   Right movement is allowed
+   NOTE: Initial move to start position is allowed with door open",real,1,1
+19500c8b-9167-4a58-8cc3-2a0f66b93ed3,2026-03-08T14:47:00.794146,2026-03-08T14:47:15.870239,15.08,8,מזוזה 10,user_stop,149,1,1,0,,,,real,1,1
+32f4844e-5801-4529-90a6-f51f1a535c9b,2026-03-08T14:47:23.261286,2026-03-08T14:47:33.394794,10.13,8,מזוזה 10,error,149,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+2ac0c675-3763-4ff5-b8dc-59e0aff407c5,2026-03-08T14:47:44.784170,2026-03-08T14:47:54.912207,10.13,8,מזוזה 10,error,149,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+ac32b38a-e957-4b67-b3d1-135eb63285e8,2026-03-08T14:49:54.914297,2026-03-08T14:50:11.285351,16.37,8,מזוזה 10,user_stop,149,1,1,0,,,,real,1,1
+69b37f3c-a685-4174-be2b-a25261a85892,2026-03-08T14:52:07.595096,2026-03-08T14:54:26.399016,138.8,8,מזוזה 10,emergency_stop,149,148,148,0,,ROWS_MONITOR_DOOR_OPEN,"ROWS LEFT MOVEMENT BLOCKED!
+   Row motor door is OPEN (limit switch UP)
+   Left movement blocked until door is closed
+   Right movement is allowed
+   NOTE: Initial move to start position is allowed with door open",real,1,1
+52ea6d1b-8d4e-4c0c-9c3a-dae190549fb1,2026-03-08T14:54:37.713032,2026-03-08T14:54:47.839636,10.13,8,מזוזה 10,error,149,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+925fa49f-1730-45c6-b0e4-54b420f2ba12,2026-03-08T14:54:56.899941,2026-03-08T14:55:07.044808,10.14,8,מזוזה 10,error,149,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+6e6d8516-ab26-418e-9159-0673f2c81cbc,2026-03-08T14:55:37.565148,2026-03-08T14:55:47.729609,10.16,9,מזוזה 12,error,149,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+eceac61f-f0ea-4a77-91c6-2a64bba7dd0f,2026-03-08T14:55:52.184758,2026-03-08T14:56:02.470132,10.29,1,ספר 60,error,329,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+a0dc2b3f-b681-43e1-b025-74fd40a34237,2026-03-08T15:09:07.052403,2026-03-08T15:25:00.816882,953.76,8,מזוזה 10,user_stop,149,13,13,0,,,,real,1,1
+51cbc4e4-e3f8-427e-b7ff-a67112705708,2026-03-08T17:56:51.783892,2026-03-08T17:56:53.027060,1.24,13,"תפילין יד חב""ד",emergency_stop,264,3,3,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,6
+1aebc1cb-d518-40b2-baf5-860dd92bb30d,2026-03-08T18:12:25.599950,2026-03-08T18:22:03.805065,578.21,13,"תפילין יד חב""ד",success,264,264,264,0,,,,real,1,6
+5262bebb-4089-473e-be30-ea6c7570aeb6,2026-03-10T19:37:12.713505,2026-03-10T19:41:41.151946,268.44,9,מזוזה 12,success,149,149,149,0,,,,real,1,1
+dd12a3ad-39e4-4c48-b1b0-b68409a86247,2026-03-10T19:47:14.869580,2026-03-10T19:51:27.266490,252.4,10,מזוזה 15,success,149,149,149,0,,,,real,1,1
+61357fb9-c0f9-477a-99d4-350b03a3129c,2026-03-10T19:57:34.361843,2026-03-10T19:57:59.775386,25.41,10,מזוזה 15,emergency_stop,164,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,2,1
+bf7d2486-d3e5-47bd-8c4f-40442af1d8ef,2026-03-12T13:33:12.156048,2026-03-12T13:34:57.297746,105.14,17,check,success,39,39,39,0,,,,real,1,1
+4e29e4b0-bfa0-4c15-a8d5-5094d5965f31,2026-03-12T13:35:04.492090,2026-03-12T13:35:04.807672,0.32,17,check,emergency_stop,39,3,3,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+96754c9f-77ae-4d62-b0ac-7a26d56cd5bc,2026-03-12T13:45:18.131630,2026-03-12T13:45:29.712410,11.58,1,ספר 60,user_stop,329,4,4,0,,,,real,1,1
+e720eae9-3417-4051-93a0-f2585429460e,2026-03-12T13:47:45.119808,2026-03-12T13:47:55.704355,10.58,1,ספר 60,error,329,1,1,0,Movement to X=0.0 did not complete,,,real,1,1
+e1d493b2-c525-4734-87ca-20431ec808b6,2026-03-12T13:52:51.286672,2026-03-12T13:53:35.183901,43.9,17,check,user_stop,39,11,11,0,,,,real,1,1
+5bcbd44e-5ef1-434b-ad69-28508d7e2dbe,2026-03-12T14:16:19.819364,2026-03-12T14:16:47.003465,27.18,17,check,user_stop,39,6,6,0,,,,real,1,1
+59705b38-b6be-468f-8dde-a679b7452c38,2026-03-12T14:22:25.121579,2026-03-12T14:27:40.101260,314.98,17,check,error,39,6,6,0,Sensor timeout: x_left,,,real,1,1
+4d3c3005-c66e-446b-a3cc-e630fb87b06e,2026-03-12T14:27:59.810367,2026-03-12T14:29:36.628915,96.82,17,check,user_stop,39,6,6,0,,,,real,1,1
+420b3668-f976-4501-8d85-1ecea2264e70,2026-03-12T14:34:21.392954,2026-03-12T14:34:45.986611,24.59,17,check,user_stop,39,6,6,0,,,,real,1,1
+6fe235e2-5166-4003-9c00-3b1fa06f04af,2026-03-12T14:34:51.940264,2026-03-12T14:35:08.135025,16.19,17,check,user_stop,39,2,2,0,,,,real,1,1
+70ccb8bb-ebfd-4442-8b9f-317e254534c6,2026-03-12T14:35:15.222453,2026-03-12T14:35:23.720900,8.5,17,check,user_stop,39,4,4,0,,,,real,1,1
+2fe7c093-9f0a-4bea-bb71-e2003b95f0b9,2026-03-12T14:46:10.386502,2026-03-12T14:46:36.491560,26.11,17,check,user_stop,39,6,6,0,,,,real,1,1
+ffc46516-0c43-4030-b54a-74cff68240e8,2026-03-12T14:46:52.137966,2026-03-12T14:48:15.471825,83.33,17,check,user_stop,39,6,6,0,,,,real,1,1
+05f1eee7-d972-43e8-a656-40c24b828a16,2026-03-12T14:48:59.782348,2026-03-12T14:54:20.856077,321.07,17,check,error,39,6,6,0,Sensor timeout: x_left,,,real,1,1
+dd9160a3-458c-4ef0-b5aa-7f25b004fc33,2026-03-12T14:54:40.535369,2026-03-12T15:00:26.394595,345.86,17,check,error,39,6,6,0,Sensor timeout: x_left,,,real,1,1
+d43feedd-d71f-4001-8fcc-438d0b87b869,2026-03-12T15:13:52.995042,2026-03-12T15:14:53.874128,60.88,17,check,user_stop,39,6,6,0,,,,real,1,1
+9dd3a28e-2546-427b-a579-60d7193a28d0,2026-03-12T15:20:50.675038,2026-03-12T15:21:24.065584,33.39,17,check,user_stop,39,6,6,0,,,,real,1,1
+9cfc00ad-5c4d-41fe-aa28-20ea4190c51f,2026-03-12T15:28:56.879511,2026-03-12T15:29:28.533901,31.65,17,check,user_stop,39,6,6,0,,,,real,1,1
+429b513e-a9cd-4159-a136-06c19a2b38ac,2026-03-12T15:31:49.081154,2026-03-12T15:32:20.214421,31.13,17,check,user_stop,39,6,6,0,,,,real,1,1
+93008e32-a0b5-4681-8692-58d42ab0c257,2026-03-12T15:42:34.057860,2026-03-12T15:42:35.860383,1.8,17,check,emergency_stop,39,4,4,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+05632374-889d-47d2-bdd8-7ab602a98b06,2026-03-12T15:48:15.350680,2026-03-12T15:48:19.801173,4.45,17,check,emergency_stop,39,4,4,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+32128814-2255-4dd1-a313-bf333a0d394e,2026-03-12T15:51:51.250401,2026-03-12T15:52:08.320795,17.07,17,check,emergency_stop,39,4,4,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+a81c67b9-4fdf-4862-9a95-01c3c8143fd6,2026-03-12T16:02:18.448522,2026-03-12T16:02:48.333823,29.89,17,check,user_stop,39,6,6,0,,,,real,1,1
+8b30d50c-0ff2-43d5-a63e-bb32b67c8288,2026-03-12T16:17:26.633695,2026-03-12T16:20:09.502379,162.87,17,check,emergency_stop,39,18,18,0,,ROWS_MONITOR_DOOR_OPEN,"ROWS LEFT MOVEMENT BLOCKED!
+   Row motor door is OPEN (limit switch UP)
+   Left movement blocked until door is closed
+   Right movement is allowed
+   NOTE: Initial move to start position is allowed with door open",real,1,1
+632a373c-64ae-4c1b-8679-3a6bffd2f572,2026-03-12T16:48:06.937273,2026-03-12T16:48:10.430290,3.49,17,check,emergency_stop,39,4,4,0,,LINES_DOOR_SAFETY,Lines operation blocked! Row door is down and block the Y-axis path. Close the door.,real,1,1
+9460c775-159b-4d62-bbbc-2c3d788517ec,2026-03-12T16:52:19.498399,2026-03-12T16:54:09.311933,109.81,17,check,success,39,39,39,0,,,,real,1,1
+41341bd6-cd77-4755-a3c3-6bede72b7b96,2026-03-12T16:56:52.664860,2026-03-12T16:57:10.138661,17.47,9,מזוזה 12,user_stop,149,4,4,0,,,,real,1,1

@@ -776,6 +776,7 @@ class RuleEditorDialog:
         self.dialog.title(t_title("Add New Rule") if self.is_new else t_title("Edit Rule"))
         self.dialog.geometry("900x850")
         self.dialog.transient(parent)
+        self.dialog.lift()
         self.dialog.grab_set()
 
         self.create_ui()

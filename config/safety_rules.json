@@ -29,7 +29,7 @@
       "blocked_operations": [
         {
           "operation": "move_y",
-          "exclude_setup": true
+          "exclude_setup": false
         },
         {
           "operation": "tool_action",
@@ -42,6 +42,7 @@
       ],
       "monitor": {
         "enabled": true,
+        "skip_setup": false,
         "operation_context": [
           "lines"
         ],
@@ -416,6 +417,12 @@
             "source": "line_motor",
             "operator": "equals",
             "value": "up"
+          },
+          {
+            "type": "position",
+            "source": "y_position",
+            "operator": "greater_than",
+            "value": 0
           }
         ]
       },
@@ -427,20 +434,26 @@
         ],
         "action": "emergency_pause",
         "recovery_conditions": {
-          "operator": "AND",
+          "operator": "OR",
           "items": [
             {
               "type": "piston",
               "source": "line_motor",
               "operator": "equals",
               "value": "down"
+            },
+            {
+              "type": "position",
+              "source": "y_position",
+              "operator": "equals",
+              "value": 0
             }
           ]
         },
         "recovery_action": "auto_resume"
       },
-      "message": "LINE MOTOR PISTON SAFETY VIOLATION!\n   Line motor piston is UP during rows operation\n   RULE VIOLATED: Line motor piston must be DOWN during operations\n   IMMEDIATE ACTION: Lower line motor piston (Y motor assembly must be DOWN)",
-      "message_he": "הפרת בטיחות בוכנת מנוע שורות!\n   בוכנת מנוע השורות למעלה במהלך פעולת עמודות\n   כלל שהופר: בוכנת מנוע השורות חייבת להיות למטה\n   פעולה מיידית: הורד את בוכנת מנוע השורות",
+      "message": "LINE MOTOR PISTON SAFETY VIOLATION!\n   Line motor piston is UP during rows operation (not at home position)\n   RULE VIOLATED: Line motor piston must be DOWN during operations when Y > 0\n   IMMEDIATE ACTION: Lower line motor piston OR move lines motor to home (Y=0)",
+      "message_he": "הפרת בטיחות בוכנת מנוע שורות!\n   בוכנת מנוע השורות למעלה במהלך פעולת עמודות (לא במיקום בית)\n   כלל שהופר: בוכנת מנוע השורות חייבת להיות למטה כש-Y > 0\n   פעולה מיידית: הורד את בוכנת מנוע השורות או הזז את מנוע השורות לבית (Y=0)",
       "created_at": "2026-02-14T23:00:00Z",
       "created_by": "system_migration"
     }

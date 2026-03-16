@@ -244,6 +244,10 @@ class ExecutionEngine:
         self.pause_event.set()
         # current_step_index preserved from where we stopped
 
+        # Flush sensor buffers so stale stop signals don't cause immediate timeout
+        if hasattr(self.hardware, 'flush_all_sensor_buffers'):
+            self.hardware.flush_all_sensor_buffers()
+
         # Reset operation type and detect from step history so safety
         # monitor uses the correct context after navigating back
         self.current_operation_type = None
@@ -485,6 +489,13 @@ class ExecutionEngine:
                 })
 
                 step_result = self._execute_step(step)
+
+                # CRITICAL: Check if stop was requested during step execution.
+                # If so, break immediately - don't treat step interruption as an error.
+                # This prevents the "error" status from firing (which would reset to step 0).
+                if self.stop_event.is_set():
+                    self.logger.info("Stop event detected after step execution - exiting loop cleanly", category="execution")
+                    break
 
                 # Check if step execution resulted in safety violation
                 if step_result and step_result.get('safety_violation'):
@@ -751,6 +762,32 @@ class ExecutionEngine:
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
                     self.canvas_manager.update_position_display()
 
+                # Check if sensor timed out (returns None on timeout or stop)
+                if result is None:
+                    if self.stop_event.is_set():
+                        # Stopped by user - don't treat as timeout error
+                        return {'success': False, 'error': 'Execution stopped'}
+                    # Sensor timeout - alert operator and stop (stay on current step)
+                    timeout_seconds = getattr(self.hardware, 'sensor_wait_timeout', 300)
+                    self.logger.error(f"Sensor timeout: {sensor} sensor did not trigger within {timeout_seconds}s", category="execution")
+                    self._update_status("sensor_timeout", {
+                        'sensor': sensor,
+                        'timeout_seconds': timeout_seconds
+                    })
+                    # Raise line motor piston for safety (same as stop_execution)
+                    self._raised_motor_on_stop = False
+                    try:
+                        motor_state = self.hardware.get_line_motor_piston_state()
+                        if motor_state == "down":
+                            self.hardware.line_motor_piston_up()
+                            self._raised_motor_on_stop = True
+                            self.logger.info("Line motor piston raised for safety after sensor timeout", category="execution")
+                    except Exception:
+                        pass
+                    # Set stop event so execution loop treats this as a stop (preserves step index)
+                    self.stop_event.set()
+                    return {'success': False, 'error': 'Execution stopped'}
+
                 return {'success': True, 'sensor_result': result}
 
             elif operation == 'tool_action':
@@ -942,22 +979,25 @@ class ExecutionEngine:
                         time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
                         continue
 
-                    # Skip safety monitoring during setup steps and rows start position steps
+                    # Skip safety monitoring during rows start position steps
                     if hasattr(self, 'current_step_description'):
-                        if safety_system._is_setup_movement(self.current_step_description):
-                            self.logger.debug(f"Skipping safety monitor for setup step: {self.current_step_description[:50]}...", category="execution")
-                            time.sleep(timing_settings.get("safety_check_interval", 0.1))
-                            continue
                         if safety_system._is_rows_start_movement(self.current_step_description):
                             self.logger.debug(f"Skipping safety monitor for rows start position step: {self.current_step_description[:50]}...", category="execution")
                             time.sleep(timing_settings.get("safety_check_interval", 0.1))
                             continue
 
+                    # Determine if current step is a setup movement (passed to monitor rules for per-rule skip)
+                    is_setup = False
+                    if hasattr(self, 'current_step_description'):
+                        is_setup = safety_system._is_setup_movement(self.current_step_description)
+
                     try:
                         # Evaluate all monitor rules for current operation type from safety_rules.json
+                        # Each rule's monitor.skip_setup determines if it runs during setup steps
                         violated_rules = safety_system.rules_manager.evaluate_monitor_rules(
                             self.current_operation_type,
-                            engine_lowered_tools=self._engine_lowered_tools
+                            engine_lowered_tools=self._engine_lowered_tools,
+                            is_setup=is_setup
                         )
 
                         if violated_rules:
@@ -973,6 +1013,10 @@ class ExecutionEngine:
                                 self.logger.error(f"Rule: {safety_code} - {violation_message}", category="execution")
                                 for rule in violated_rules:
                                     self.logger.error(f"  Violated: {rule.get('id')} - {rule.get('name', '')}", category="execution")
+
+                                # IMMEDIATELY stop GRBL motor movement
+                                if hasattr(self.hardware, 'safety_feed_hold_grbl'):
+                                    self.hardware.safety_feed_hold_grbl()
 
                                 # PAUSE execution
                                 self.is_paused = True
@@ -1005,6 +1049,10 @@ class ExecutionEngine:
 
                                 self.logger.error(f"UNEXPECTED TOOL STATE: {tool_names} down during {op_type} (not lowered by engine)", category="execution")
 
+                                # IMMEDIATELY stop GRBL motor movement
+                                if hasattr(self.hardware, 'safety_feed_hold_grbl'):
+                                    self.hardware.safety_feed_hold_grbl()
+
                                 # PAUSE execution
                                 self.is_paused = True
                                 self.pause_event.clear()
@@ -1024,6 +1072,11 @@ class ExecutionEngine:
                                 self.logger.success("Unexpected tool state resolved - tools raised", category="execution")
                                 self.hardware.flush_all_sensor_buffers()
                                 unexpected_tool_violation = False
+
+                                # Resume GRBL movement if it was held
+                                if hasattr(self.hardware, 'safety_resume_grbl'):
+                                    self.hardware.safety_resume_grbl()
+
                                 self.is_paused = False
                                 self.pause_event.set()
                                 MachineStateManager().set_state(MachineState.RUNNING)
@@ -1051,6 +1104,10 @@ class ExecutionEngine:
 
                                 # Clear violated rules tracking
                                 violated_rule_ids = []
+
+                                # Resume GRBL movement if it was held
+                                if hasattr(self.hardware, 'safety_resume_grbl'):
+                                    self.hardware.safety_resume_grbl()
 
                                 # Auto-resume execution
                                 self.is_paused = False

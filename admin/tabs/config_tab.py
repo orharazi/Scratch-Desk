@@ -560,8 +560,10 @@ class ConfigTab:
         dialog = tk.Toplevel(self.frame)
         dialog.title(t_title("Edit List: {key}", key=path.split('.')[-1]))
         dialog.geometry("400x300")
-        dialog.transient(self.frame)
+        dialog.transient(self.frame.winfo_toplevel())
+        dialog.lift()
         dialog.grab_set()
+        dialog.focus_set()
 
         ttk.Label(dialog, text=t("Edit list items (one per line):")).pack(pady=5, anchor="e", padx=10)
 
@@ -744,10 +746,188 @@ class ConfigTab:
         """Clear search filter"""
         self.search_var.set("")
 
+    def _check_execution_allows_settings_change(self):
+        """Check if execution state allows settings changes.
+        Returns True if allowed, False if blocked (shows dialog)."""
+        if hasattr(self.app, 'can_change_settings') and self.app.can_change_settings:
+            allowed, reason = self.app.can_change_settings()
+            if not allowed:
+                messagebox.showwarning(t_title("Blocked"), reason)
+                if hasattr(self.app, 'log'):
+                    self.app.log("WARNING", reason)
+                return False
+        # Also check via MachineState for standalone admin usage
+        try:
+            from core.machine_state import MachineState, MachineStateManager
+            state = MachineStateManager().state
+            if state in (MachineState.RUNNING, MachineState.PAUSED):
+                msg = t("Cannot change settings while a program is running or paused. Stop execution first.")
+                messagebox.showwarning(t_title("Blocked"), msg)
+                if hasattr(self.app, 'log'):
+                    self.app.log("WARNING", msg)
+                return False
+        except Exception:
+            pass
+        return True
+
+    def _notify_settings_changed(self):
+        """Notify the main app and reload ALL module-level and instance-level settings caches.
+        This ensures changes apply immediately without restarting the application."""
+        # Read fresh settings once for reuse
+        try:
+            with open(self.SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                fresh = json.load(f)
+        except Exception:
+            fresh = None
+
+        # --- Notify main app (reloads GUI settings, paper offsets, canvas) ---
+        if hasattr(self.app, 'on_settings_changed') and self.app.on_settings_changed:
+            self.app.on_settings_changed()
+
+        if fresh is None:
+            return
+
+        # --- Module-level caches ---
+
+        # core/execution_engine.py
+        try:
+            import core.execution_engine as ee
+            ee.settings = fresh
+            ee.timing_settings = fresh.get("timing", {})
+        except Exception:
+            pass
+
+        # hardware/implementations/mock/mock_hardware.py
+        try:
+            import hardware.implementations.mock.mock_hardware as mh
+            mh.settings = fresh
+            hw_limits = fresh.get("hardware_limits", {})
+            mh.hardware_limits = hw_limits
+            mh.timing_settings = fresh.get("timing", {})
+            mh.MAX_X_POSITION = hw_limits.get("max_x_position", 100.0)
+            mh.MAX_Y_POSITION = hw_limits.get("max_y_position", 100.0)
+            mh.MIN_X_POSITION = hw_limits.get("min_x_position", 0.0)
+            mh.MIN_Y_POSITION = hw_limits.get("min_y_position", 0.0)
+            mh.PAPER_START_X = hw_limits.get("paper_start_x", 15.0)
+        except Exception:
+            pass
+
+        # gui/canvas/canvas_sensors.py
+        try:
+            import gui.canvas.canvas_sensors as cs
+            cs.settings = fresh
+            cs.sensor_timeout_settings = fresh.get("sensor_timeouts", {})
+        except Exception:
+            pass
+
+        # gui/canvas/canvas_position.py
+        try:
+            import gui.canvas.canvas_position as cp
+            cp.settings = fresh
+            cp.validation_settings = fresh.get("validation", {})
+        except Exception:
+            pass
+
+        # gui/canvas/canvas_operations.py
+        try:
+            import gui.canvas.canvas_operations as co
+            co.settings = fresh
+            co.visualization_settings = fresh.get("visualization", {})
+            co.ui_fonts = fresh.get("ui_fonts", {})
+        except Exception:
+            pass
+
+        # core/step_generator.py
+        try:
+            import core.step_generator as sg
+            sg.PAPER_OFFSET_X, sg.PAPER_OFFSET_Y = sg._load_paper_offsets()
+        except Exception:
+            pass
+
+        # core/program_model.py
+        try:
+            import core.program_model as pm
+            hw_limits = fresh.get("hardware_limits", {})
+            pm.ScratchDeskProgram._limits = hw_limits
+            pm.ScratchDeskProgram.MAX_WIDTH_OF_DESK = hw_limits.get('max_x_position', 120.0)
+            pm.ScratchDeskProgram.MAX_HEIGHT_OF_DESK = hw_limits.get('max_y_position', 80.0)
+            pm.ScratchDeskProgram.MIN_LINE_SPACING = hw_limits.get('min_line_spacing', 0.3)
+        except Exception:
+            pass
+
+        # core/logger.py (logging config)
+        try:
+            from core.logger import get_logger
+            logger = get_logger()
+            log_config = fresh.get("logging", {})
+            if log_config:
+                from core.logger import LogLevel
+                logger.config = log_config
+                logger.global_level = LogLevel.from_string(log_config.get("level", "INFO"))
+                logger.category_levels = log_config.get("categories", {})
+                logger.show_timestamps = log_config.get("show_timestamps", True)
+                logger.show_thread_names = log_config.get("show_thread_names", False)
+                logger.use_colors = log_config.get("use_colors", True)
+                logger.use_icons = log_config.get("use_icons", True)
+        except Exception:
+            pass
+
+        # --- Instance-level caches (hardware objects) ---
+
+        # real_hardware.py timing settings
+        hw = getattr(self.app, 'hardware', None)
+        if hw is not None:
+            timing = fresh.get("timing", {})
+
+            # RealHardware (sensor_poll_interval, sensor_wait_timeout)
+            if hasattr(hw, 'sensor_poll_interval'):
+                hw.config = fresh
+                hw.sensor_poll_interval = timing.get("sensor_poll_timeout", 0.05)
+                hw.sensor_wait_timeout = timing.get("sensor_wait_timeout", 300.0)
+
+            # ArduinoGRBL timing + limits
+            grbl = getattr(hw, 'grbl', None)
+            if grbl is not None and hasattr(grbl, 'config'):
+                grbl.config = fresh
+                grbl.grbl_config = fresh.get("hardware_config", {}).get("arduino_grbl", {})
+                grbl.feed_rate = grbl.grbl_config.get("grbl_settings", {}).get("feed_rate", 1000)
+                grbl.rapid_rate = grbl.grbl_config.get("grbl_settings", {}).get("rapid_rate", 3000)
+                grbl.command_timeout = grbl.grbl_config.get("command_timeout", 10.0)
+                grbl.position_tolerance = grbl.grbl_config.get("position_tolerance_cm", 0.1)
+                grbl.movement_timeout = grbl.grbl_config.get("movement_timeout", 60.0)
+                grbl.movement_poll_interval = grbl.grbl_config.get("movement_poll_interval", 0.1)
+                grbl._grbl_init_delay = timing.get("grbl_initialization_delay", 2)
+                grbl._grbl_serial_poll_delay = timing.get("grbl_serial_poll_delay", 0.01)
+                grbl._grbl_reset_delay = timing.get("grbl_reset_delay", 2)
+                hw_limits = fresh.get("hardware_limits", {})
+                grbl._max_x = hw_limits.get("max_x_position", 120.0)
+                grbl._max_y = hw_limits.get("max_y_position", 80.0)
+
+            # RaspberryPiGPIO timing
+            gpio = getattr(hw, 'gpio', None)
+            if gpio is not None and hasattr(gpio, 'config'):
+                gpio.config = fresh
+                gpio._piston_settling_time = timing.get("piston_gpio_settling_delay", 0.05)
+                gpio._gpio_cleanup_delay = timing.get("gpio_cleanup_delay", 0.1)
+                gpio._gpio_busy_recovery_delay = timing.get("gpio_busy_recovery_delay", 0.05)
+                gpio._gpio_debounce_samples = timing.get("gpio_debounce_samples", 3)
+                gpio._gpio_debounce_delay = timing.get("gpio_debounce_delay_ms", 1) / 1000.0
+                gpio._gpio_test_read_delay = timing.get("gpio_test_read_delay_ms", 1) / 1000.0
+                gpio._polling_thread_join_timeout = timing.get("polling_thread_join_timeout", 1.0)
+                gpio._switch_polling_interval = timing.get("switch_polling_interval_ms", 10) / 1000.0
+                gpio._polling_status_update_freq = timing.get("polling_status_update_frequency", 1000)
+                gpio._polling_error_recovery_delay = timing.get("polling_error_recovery_delay", 0.1)
+
+        if hasattr(self.app, 'log'):
+            self.app.log("INFO", t("Settings applied live to all modules"))
+
     def save_changes(self):
         """Save pending changes"""
         if not self.pending_changes:
             messagebox.showinfo(t_title("No Changes"), t("There are no pending changes to save."))
+            return
+
+        if not self._check_execution_allows_settings_change():
             return
 
         num_changes = len(self.pending_changes)
@@ -756,6 +936,8 @@ class ConfigTab:
             if self.save_settings():
                 # Refresh the category tree to show updated values on the left side
                 self.populate_category_tree(self.search_var.get())
+                # Notify app and reload module caches
+                self._notify_settings_changed()
                 messagebox.showinfo(t_title("Success"), t("Settings saved successfully."))
                 if hasattr(self.app, 'log'):
                     self.app.log("SUCCESS", t("Saved {num_changes} configuration changes", num_changes=num_changes))
@@ -800,6 +982,9 @@ class ConfigTab:
 
     def restore_backup(self):
         """Restore from backup"""
+        if not self._check_execution_allows_settings_change():
+            return
+
         # Ensure backup directory exists
         if not os.path.exists(self.BACKUP_DIR):
             messagebox.showinfo(t_title("No Backups"), t("No backup files found."))
@@ -816,8 +1001,10 @@ class ConfigTab:
         dialog = tk.Toplevel(self.frame)
         dialog.title(t_title("Restore Backup"))
         dialog.geometry("500x400")
-        dialog.transient(self.frame)
+        dialog.transient(self.frame.winfo_toplevel())
+        dialog.lift()
         dialog.grab_set()
+        dialog.focus_set()
 
         ttk.Label(dialog, text=t("Select backup to restore:")).pack(pady=10)
 
@@ -847,6 +1034,8 @@ class ConfigTab:
                 self.pending_changes.clear()
                 self.populate_category_tree()
                 self.update_status()
+                # Notify app and reload module caches
+                self._notify_settings_changed()
 
                 dialog.destroy()
                 messagebox.showinfo(t_title("Success"), t("Settings restored successfully."))

@@ -25,7 +25,7 @@ import re
 
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.logger import get_logger
-from core.translations import t, t_title, HEBREW_TRANSLATIONS
+from core.translations import t, t_title, t_raw, HEBREW_TRANSLATIONS
 
 # Import new tabs
 from admin.tabs.safety_tab import SafetyTab
@@ -506,12 +506,12 @@ class AdminToolGUI:
         piston_frame.pack(fill="both", expand=True)
 
         self.piston_methods = {
-            "line_marker": (t("Line Marker"), "line_marker_piston"),
-            "line_cutter": (t("Line Cutter"), "line_cutter_piston"),
-            "line_motor": (t("Line Motor (Both)"), "line_motor_piston"),
-            "row_marker": (t("Row Marker"), "row_marker_piston"),
-            "row_cutter": (t("Row Cutter"), "row_cutter_piston"),
-            "air_pressure": (t("Air Pressure"), "air_pressure_valve")
+            "line_marker": ("Line Marker", "line_marker_piston"),
+            "line_cutter": ("Line Cutter", "line_cutter_piston"),
+            "line_motor": ("Line Motor (Both)", "line_motor_piston"),
+            "row_marker": ("Row Marker", "row_marker_piston"),
+            "row_cutter": ("Row Cutter", "row_cutter_piston"),
+            "air_pressure": ("Air Pressure", "air_pressure_valve")
         }
 
         for i, (key, (name, method_base)) in enumerate(self.piston_methods.items()):
@@ -524,7 +524,7 @@ class AdminToolGUI:
                 port_text = f"[{port_info.get('port', 'N/A')}] "
                 ttk.Label(name_frame, text=port_text, font=("Courier", 10, "bold"), foreground="#555555").pack(side=tk.RIGHT, padx=5)
 
-            ttk.Label(name_frame, text=name, font=("Arial", 10, "bold")).pack(side=tk.RIGHT)
+            ttk.Label(name_frame, text=t(name), font=("Arial", 10, "bold")).pack(side=tk.RIGHT)
 
             conn_indicator = tk.Label(piston_frame, text="●", font=("Arial", 12), fg="#95A5A6")
             conn_indicator.grid(row=i, column=2, padx=5, pady=5)
@@ -1124,6 +1124,14 @@ class AdminToolGUI:
             messagebox.showwarning(t_title("Not Connected"), t("Please connect hardware first"))
             return
 
+        motor_name = "X Motor" if axis == 'X' else "Y Motor"
+        if not self._check_execution_running_warning(
+            motor_name,
+            msg_running="Cannot move {action} while execution is actively running. Pause or stop execution first.",
+            msg_paused="Execution is paused. Moving {action} manually may cause safety violations. Continue?"
+        ):
+            return
+
         try:
             step = float(self.jog_step.get())
 
@@ -1146,6 +1154,13 @@ class AdminToolGUI:
         if not self.is_connected:
             return
 
+        if not self._check_execution_running_warning(
+            "Motors",
+            msg_running="Cannot move {action} while execution is actively running. Pause or stop execution first.",
+            msg_paused="Execution is paused. Moving {action} manually may cause safety violations. Continue?"
+        ):
+            return
+
         try:
             x = float(self.x_entry.get())
             y = float(self.y_entry.get())
@@ -1163,6 +1178,13 @@ class AdminToolGUI:
         if not self.is_connected:
             return
 
+        if not self._check_execution_running_warning(
+            "Motors",
+            msg_running="Cannot move {action} while execution is actively running. Pause or stop execution first.",
+            msg_paused="Execution is paused. Moving {action} manually may cause safety violations. Continue?"
+        ):
+            return
+
         self.log("INFO", t("Moving to preset X={x:.2f}, Y={y:.2f}", x=x, y=y))
         if self.hardware.move_to(x, y):
             self.log("SUCCESS", t("Move complete"))
@@ -1172,6 +1194,13 @@ class AdminToolGUI:
     def home_motors(self):
         """Home motors"""
         if not self.is_connected:
+            return
+
+        if not self._check_execution_running_warning(
+            "Motors",
+            msg_running="Cannot move {action} while execution is actively running. Pause or stop execution first.",
+            msg_paused="Execution is paused. Moving {action} manually may cause safety violations. Continue?"
+        ):
             return
 
         if messagebox.askyesno(t_title("Home Motors"), t("Move all motors to home (0, 0)?")):
@@ -1192,6 +1221,13 @@ class AdminToolGUI:
     def start_homing_sequence(self):
         """Start homing sequence"""
         if not self.is_connected:
+            return
+
+        if not self._check_execution_running_warning(
+            "Motors",
+            msg_running="Cannot move {action} while execution is actively running. Pause or stop execution first.",
+            msg_paused="Execution is paused. Moving {action} manually may cause safety violations. Continue?"
+        ):
             return
 
         if not self.grbl_connected:
@@ -1231,26 +1267,28 @@ class AdminToolGUI:
         except:
             pass
 
-    def _check_execution_running_warning(self, action_name):
+    def _check_execution_running_warning(self, action_name, msg_running=None, msg_paused=None):
         """Check if the main app's execution engine is running and warn the user.
+        action_name should be an English translation key (e.g. 'Line Marker', 'X Motor').
         Returns True if safe to proceed, False if user cancelled or blocked."""
         try:
             from core.machine_state import MachineState, MachineStateManager
             state_manager = MachineStateManager()
+            action_display = t_raw(action_name)
             if state_manager.state == MachineState.RUNNING:
                 # Actively running - block entirely
+                running_msg = msg_running or "Cannot change {action} while execution is actively running. Pause or stop execution first."
                 messagebox.showwarning(
-                    t("Blocked"),
-                    t("Cannot change {action} while execution is actively running. Pause or stop execution first.",
-                      action=action_name)
+                    t_title("Blocked"),
+                    t(running_msg, action=action_display)
                 )
                 return False
             elif state_manager.state == MachineState.PAUSED:
                 # Paused - warn but allow with confirmation
+                paused_msg = msg_paused or "Execution is paused. Changing {action} manually may cause safety violations. Continue?"
                 result = messagebox.askokcancel(
-                    t("Warning"),
-                    t("Execution is paused. Changing {action} manually may cause safety violations. Continue?",
-                      action=action_name),
+                    t_title("Warning"),
+                    t(paused_msg, action=action_display),
                     icon='warning'
                 )
                 return result
@@ -1270,7 +1308,7 @@ class AdminToolGUI:
         if not self._check_execution_running_warning(name):
             return
 
-        self.log("INFO", t("Raising {name}", name=name))
+        self.log("INFO", t("Raising {name}", name=t_raw(name)))
 
         success = False
         if piston_key == "line_marker":
@@ -1288,7 +1326,7 @@ class AdminToolGUI:
 
         if success:
             self.piston_widgets[piston_key].config(text=t("UP"), background="#3498DB")
-            self.log("SUCCESS", t("{name} raised", name=name))
+            self.log("SUCCESS", t("{name} raised", name=t_raw(name)))
 
     def piston_down(self, piston_key):
         """Lower piston"""
@@ -1301,7 +1339,7 @@ class AdminToolGUI:
         if not self._check_execution_running_warning(name):
             return
 
-        self.log("INFO", t("Lowering {name}", name=name))
+        self.log("INFO", t("Lowering {name}", name=t_raw(name)))
 
         success = False
         if piston_key == "line_marker":
@@ -1319,7 +1357,7 @@ class AdminToolGUI:
 
         if success:
             self.piston_widgets[piston_key].config(text=t("DOWN"), background="#27AE60")
-            self.log("SUCCESS", t("{name} lowered", name=name))
+            self.log("SUCCESS", t("{name} lowered", name=t_raw(name)))
 
     # GRBL methods
     def read_grbl_settings(self):
@@ -1378,6 +1416,14 @@ class AdminToolGUI:
 
     def save_grbl_to_settings(self):
         """Save GRBL settings to settings.json, apply to GRBL hardware, and update System Config tab"""
+        # Block changes while execution is active
+        if not self._check_execution_running_warning(
+            "Motors",
+            msg_running="Cannot change {action} while execution is actively running. Pause or stop execution first.",
+            msg_paused="Execution is paused. Moving {action} manually may cause safety violations. Continue?"
+        ):
+            return
+
         if not messagebox.askyesno(t_title("Save GRBL Settings"),
                                    t("Save GRBL configuration to settings.json and apply to hardware?")):
             return
@@ -1477,7 +1523,16 @@ class AdminToolGUI:
 
         try:
             if hasattr(self.hardware.grbl, '_send_command'):
-                response = self.hardware.grbl._send_command("$H", timeout=30)
+                # Load homing timeout from settings
+                import json
+                homing_timeout = 150.0
+                try:
+                    with open('config/settings.json', 'r') as f:
+                        settings = json.load(f)
+                    homing_timeout = settings.get('hardware_config', {}).get('arduino_grbl', {}).get('homing_timeout', 300.0)
+                except Exception:
+                    pass
+                response = self.hardware.grbl._send_command("$H", timeout=homing_timeout)
                 if response and "ok" in response.lower():
                     self.log("SUCCESS", t("GRBL homing completed"))
         except Exception as e:
@@ -1537,6 +1592,7 @@ class AdminToolGUI:
         dialog.geometry("350x200")
         dialog.resizable(False, False)
         dialog.transient(self.root)
+        dialog.lift()
         dialog.grab_set()
 
         dialog.update_idletasks()

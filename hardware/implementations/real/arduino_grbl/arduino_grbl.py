@@ -12,7 +12,7 @@ import json
 import time
 import re
 from typing import Optional, Tuple, Dict
-from threading import Lock
+from threading import Lock, Event
 from core.logger import get_logger
 
 # Try to import pyserial, fall back to mock if not available
@@ -96,6 +96,11 @@ class ArduinoGRBL:
         self.position_tolerance = self.grbl_config.get("position_tolerance_cm", 0.1)  # cm
         self.movement_timeout = self.grbl_config.get("movement_timeout", 60.0)  # seconds
         self.movement_poll_interval = self.grbl_config.get("movement_poll_interval", 0.1)  # seconds
+
+        # Safety feed hold mechanism - allows safety monitor to pause/resume GRBL mid-movement
+        self._safety_hold_event = Event()  # Set when safety hold is active
+        self._safety_hold_lock = Lock()
+        self._safety_hold_sent = False  # Track if '!' was already sent
 
         # For change detection (only log when values change)
         self._last_logged_x = None
@@ -516,7 +521,7 @@ class ArduinoGRBL:
 
         try:
             self.logger.info("Homing machine...", category="grbl")
-            homing_timeout = self.grbl_config.get("homing_timeout", 30.0)
+            homing_timeout = self.grbl_config.get("homing_timeout", 300.0)
             response = self._send_command("$H", timeout=homing_timeout)
 
             if response and "ok" in response.lower():
@@ -688,6 +693,24 @@ class ArduinoGRBL:
         time.sleep(0.05)
 
         while (time.time() - start_time) < timeout:
+            # Check for safety feed hold - if active, wait until cleared
+            if self._safety_hold_event.is_set():
+                # Safety hold is active - GRBL should already be stopped via '!'
+                # Pause the timeout while held (don't count hold time against movement timeout)
+                hold_start = time.time()
+                self.logger.debug("Movement paused by safety feed hold - waiting for resolution...", category="grbl")
+
+                while self._safety_hold_event.is_set():
+                    time.sleep(self.movement_poll_interval)
+
+                # Resume sent by safety_resume() - extend timeout by hold duration
+                hold_duration = time.time() - hold_start
+                start_time += hold_duration  # Don't penalize timeout for safety hold time
+                self.logger.info(f"Safety hold cleared after {hold_duration:.1f}s - continuing movement to target", category="grbl")
+
+                # Brief delay for GRBL to process resume command
+                time.sleep(0.1)
+
             status = self.get_status(log_changes_only=True)
 
             if not status:
@@ -714,6 +737,16 @@ class ArduinoGRBL:
             # Check position tolerance
             x_ok = abs(current_x - target_x) <= self.position_tolerance
             y_ok = abs(current_y - target_y) <= self.position_tolerance
+
+            # Handle Hold state - GRBL is paused (safety hold or manual)
+            if current_state == 'Hold' or current_state.startswith('Hold:'):
+                # If safety hold is active, this is expected - just wait
+                if self._safety_hold_event.is_set():
+                    time.sleep(self.movement_poll_interval)
+                    continue
+                # If not safety hold, might be clearing - wait briefly
+                time.sleep(self.movement_poll_interval)
+                continue
 
             # Check if GRBL is idle
             if current_state == 'Idle':
@@ -813,6 +846,49 @@ class ArduinoGRBL:
         except Exception as e:
             self.logger.error(f"Error sending resume: {e}", category="grbl")
             return False
+
+    def safety_feed_hold(self):
+        """
+        Activate safety feed hold - immediately stops GRBL movement.
+        Called by safety monitor when a violation is detected during movement.
+        The movement will resume to its original target when safety_resume() is called.
+        """
+        with self._safety_hold_lock:
+            if self._safety_hold_event.is_set():
+                return  # Already in safety hold
+            self._safety_hold_event.set()
+            self._safety_hold_sent = False  # Will send '!' in wait_for_movement_complete
+        self.logger.warning("SAFETY FEED HOLD activated - GRBL will stop immediately", category="grbl")
+
+        # Send feed hold immediately (don't wait for poll cycle)
+        if self.is_connected and self.serial_connection:
+            try:
+                self.serial_connection.write(b"!")
+                with self._safety_hold_lock:
+                    self._safety_hold_sent = True
+                self.logger.info("GRBL feed hold '!' sent for safety", category="grbl")
+            except Exception as e:
+                self.logger.error(f"Failed to send safety feed hold: {e}", category="grbl")
+
+    def safety_resume(self):
+        """
+        Clear safety feed hold - resumes GRBL movement to original target.
+        Called by safety monitor when the violation condition is resolved.
+        """
+        was_held = self._safety_hold_event.is_set()
+        with self._safety_hold_lock:
+            self._safety_hold_event.clear()
+            self._safety_hold_sent = False
+
+        if was_held and self.is_connected and self.serial_connection:
+            try:
+                self.serial_connection.write(b"~")
+                self.logger.info("GRBL cycle resume '~' sent - continuing movement to target", category="grbl")
+            except Exception as e:
+                self.logger.error(f"Failed to send safety resume: {e}", category="grbl")
+
+        if was_held:
+            self.logger.success("SAFETY FEED HOLD cleared - movement resuming", category="grbl")
 
     def reset(self) -> bool:
         """
@@ -927,7 +1003,7 @@ class ArduinoGRBL:
             self.logger.warning(f"Applied {success_count} settings, {fail_count} failed", category="grbl")
             return False
 
-    def perform_complete_homing_sequence(self, hardware_interface=None, progress_callback=None) -> tuple[bool, str]:
+    def perform_complete_homing_sequence(self, hardware_interface=None, progress_callback=None, safety_check=None) -> tuple[bool, str]:
         """
         Perform complete homing sequence with door check and line motor management
 
@@ -944,7 +1020,10 @@ class ArduinoGRBL:
         Args:
             hardware_interface: Reference to hardware interface (for piston control)
             progress_callback: Optional callback function(step_number, step_name, status, message=None) to report progress
-                             status can be: 'running', 'done', 'error', 'waiting'
+                             status can be: 'running', 'done', 'error', 'waiting', 'safety_hold'
+            safety_check: Optional callable() -> (is_safe: bool, violation_info: dict|None)
+                         Called during motor movement steps to check LINES_DOOR_SAFETY.
+                         If not safe, motors are stopped and homing waits for recovery.
 
         Returns:
             Tuple of (success: bool, error_message: str)
@@ -1090,99 +1169,200 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(4, "Lift line motor pistons", "done")
 
-            # Step 5: Move Y axis relative (pre-home clearance)
+            # Step 5: Move Y axis relative (pre-home clearance) with safety monitoring
             if progress_callback:
                 progress_callback(5, "Move Y axis (pre-home clearance)", "running")
             y_pre_home_mm = self.grbl_config.get("y_pre_home_move_mm", 5.0)
             self.logger.info(f"Step 5: Moving Y axis {y_pre_home_mm}mm (pre-home clearance)...", category="grbl")
             self._send_command("G91")  # Relative positioning
             move_response = self._send_command(f"G0 Y{y_pre_home_mm}")
-            self._send_command("G90")  # Back to absolute positioning
             if move_response and "ok" in move_response.lower():
+                self.logger.info(f"Y axis move command accepted, waiting for completion...", category="grbl")
+                # Wait for movement to actually finish before switching back to absolute
+                move_timeout = 10.0
+                move_start = time.time()
+                while time.time() - move_start < move_timeout:
+                    # Safety check during Y movement (feed-hold / resume)
+                    if safety_check:
+                        is_safe, violation_info = safety_check()
+                        if not is_safe:
+                            self.safety_feed_hold()
+                            self.logger.error("HOMING STEP 5: Safety violation - feed hold", category="grbl")
+                            if progress_callback:
+                                progress_callback(5, "Move Y axis (pre-home clearance)", "safety_hold", violation_info)
+                            # Wait for resolution
+                            while True:
+                                time.sleep(0.2)
+                                is_safe, _ = safety_check()
+                                if is_safe:
+                                    self.safety_resume()
+                                    self.logger.success("HOMING STEP 5: Safety resolved - resuming", category="grbl")
+                                    if progress_callback:
+                                        progress_callback(5, "Move Y axis (pre-home clearance)", "running")
+                                    move_start = time.time()  # Extend timeout
+                                    break
+                            continue
+                    status = self.get_status(log_changes_only=False)
+                    if status and status.get('state') == 'Idle':
+                        break
+                    time.sleep(0.2)
                 self.logger.success(f"Y axis moved {y_pre_home_mm}mm for pre-home clearance", category="grbl")
             else:
                 self.logger.warning(f"Pre-home Y move may have failed: {move_response}", category="grbl")
+            self._send_command("G90")  # Back to absolute positioning
             if progress_callback:
                 progress_callback(5, "Move Y axis (pre-home clearance)", "done")
 
-            # Step 6: Run GRBL homing ($H)
+            # Step 6: Run GRBL homing ($H) with safety monitoring
+            # $H cannot be paused with feed-hold, so on safety violation we
+            # soft-reset GRBL to stop motors immediately, then re-run $H
+            # when the violation clears.
+            # IMPORTANT: $H is sent non-blocking (raw serial write) because
+            # _send_command blocks until "ok" which only arrives when homing
+            # finishes — that would prevent safety checks from running.
             if progress_callback:
                 progress_callback(6, "Run GRBL homing ($H)", "running")
             self.logger.info("Step 6: Running GRBL homing ($H)...", category="grbl")
-            self.logger.info("This may take up to 30 seconds...", category="grbl")
+            homing_timeout = self.grbl_config.get("homing_timeout", 300.0)
+            self.logger.info(f"Homing timeout set to {homing_timeout} seconds", category="grbl")
 
-            homing_timeout = self.grbl_config.get("homing_timeout", 30.0)
-            response = self._send_command("$H", timeout=homing_timeout)
-
-            # Check for OK response (command accepted)
-            if not response or "ok" not in response.lower():
-                error_msg = f"GRBL homing command failed or timed out. Response: {response}"
-                self.logger.error(error_msg, category="grbl")
-
-                if progress_callback:
-                    progress_callback(6, "Run GRBL homing ($H)", "error")
-
-                # Lower pistons before returning
-                if hardware_interface:
-                    self.logger.info("Lowering line motor pistons...", category="grbl")
-                    hardware_interface.line_motor_piston_down()
-
-                return False, error_msg
-
-            self.logger.success("GRBL homing command accepted - waiting for homing to complete...", category="grbl")
-
-            # Wait for GRBL to actually finish homing (poll status until no longer "Home" or "Run")
-            # GRBL states: "Home" while homing, "Idle" when done, "Alarm" if failed
-            max_wait_time = homing_timeout + 5.0  # Extra buffer time
-            start_time = time.time()
             homing_complete = False
-            last_state = None
+            homing_overall_start = time.time()
+            max_wait_time = homing_timeout + 5.0  # Extra buffer time
 
-            while (time.time() - start_time) < max_wait_time:
-                time.sleep(0.5)  # Poll every 500ms
-                status = self.get_status(log_changes_only=False)
+            while not homing_complete:
+                # Send $H non-blocking (write directly, don't wait for response)
+                try:
+                    with self.command_lock:
+                        self.logger.debug("GRBL >> $H (non-blocking)", category="grbl")
+                        self.serial_connection.write(b"$H\n")
+                        self.serial_connection.flush()
+                except Exception as e:
+                    error_msg = f"Failed to send $H command: {e}"
+                    self.logger.error(error_msg, category="grbl")
+                    if progress_callback:
+                        progress_callback(6, "Run GRBL homing ($H)", "error")
+                    if hardware_interface:
+                        hardware_interface.line_motor_piston_down()
+                    return False, error_msg
 
-                if status:
-                    current_state = status.get('state', 'Unknown')
-                    last_state = current_state
-                    self.logger.debug(f"Homing status check: {current_state}", category="grbl")
+                self.logger.info("$H sent - polling for completion with safety checks...", category="grbl")
 
-                    if current_state == 'Idle':
-                        # Homing completed successfully
-                        self.logger.success("GRBL homing physically completed - machine is now at home position", category="grbl")
-                        homing_complete = True
+                # Poll for homing completion with inline safety checking
+                safety_aborted = False
+                last_state = None
+                read_buffer = ""
+
+                while (time.time() - homing_overall_start) < max_wait_time:
+                    # Safety check during $H homing
+                    if safety_check:
+                        is_safe, violation_info = safety_check()
+                        if not is_safe:
+                            # $H ignores feed-hold — soft-reset to stop motors NOW
+                            self.logger.error("HOMING STEP 6: Safety violation - aborting $H with soft reset", category="grbl")
+                            try:
+                                self.serial_connection.write(b'\x18')  # Ctrl+X soft reset
+                                self.serial_connection.flush()
+                                time.sleep(self._grbl_reset_delay)
+                                self.serial_connection.flushInput()
+                                read_buffer = ""  # Clear local buffer too
+                                # Clear the alarm caused by the reset
+                                self._send_command("$X")
+                                time.sleep(0.3)
+                            except Exception as e:
+                                self.logger.warning(f"Soft reset during safety abort: {e}", category="grbl")
+
+                            if progress_callback:
+                                progress_callback(6, "Run GRBL homing ($H)", "safety_hold", violation_info)
+
+                            # Wait for safety condition to clear
+                            while True:
+                                time.sleep(0.2)
+                                is_safe, _ = safety_check()
+                                if is_safe:
+                                    self.logger.success("HOMING STEP 6: Safety resolved - will re-run $H", category="grbl")
+                                    if progress_callback:
+                                        progress_callback(6, "Run GRBL homing ($H)", "running")
+                                    safety_aborted = True
+                                    break
+
+                            break  # Break inner poll loop to re-send $H
+
+                    # Check serial for "ok" or "error" (non-blocking read)
+                    try:
+                        if self.serial_connection.in_waiting > 0:
+                            raw_data = self.serial_connection.read(self.serial_connection.in_waiting)
+                            read_buffer += raw_data.decode(errors='replace')
+
+                            while '\n' in read_buffer:
+                                line, read_buffer = read_buffer.split('\n', 1)
+                                line = line.strip()
+                                if not line:
+                                    continue
+                                self.logger.debug(f"GRBL << {line}", category="grbl")
+
+                                if "ok" in line.lower():
+                                    self.logger.success("GRBL homing $H returned ok", category="grbl")
+                                    homing_complete = True
+                                    break
+                                elif "error" in line.lower():
+                                    error_msg = f"GRBL homing returned error: {line}"
+                                    self.logger.error(error_msg, category="grbl")
+                                    if progress_callback:
+                                        progress_callback(6, "Run GRBL homing ($H)", "error")
+                                    if hardware_interface:
+                                        hardware_interface.line_motor_piston_down()
+                                    return False, error_msg
+                    except Exception as e:
+                        self.logger.warning(f"Serial read during homing: {e}", category="grbl")
+
+                    if homing_complete:
                         break
-                    elif current_state == 'Alarm':
-                        # Homing failed
-                        error_msg = "GRBL entered ALARM state during homing - check limit switches and machine setup"
-                        self.logger.error(error_msg, category="grbl")
-                        break
-                    elif current_state in ['Home', 'Run']:
-                        # Still homing, continue waiting
-                        self.logger.debug(f"Homing still in progress (state: {current_state})...", category="grbl")
-                        continue
+
+                    # Also check GRBL status for state info
+                    status = self.get_status(log_changes_only=False)
+                    if status:
+                        current_state = status.get('state', 'Unknown')
+                        last_state = current_state
+                        self.logger.debug(f"Homing status check: {current_state}", category="grbl")
+
+                        if current_state == 'Idle':
+                            self.logger.success("GRBL homing physically completed - machine is now at home position", category="grbl")
+                            homing_complete = True
+                            break
+                        elif current_state == 'Alarm':
+                            error_msg = "GRBL entered ALARM state during homing - check limit switches and machine setup"
+                            self.logger.error(error_msg, category="grbl")
+                            break
+                        elif current_state in ['Home', 'Run']:
+                            self.logger.debug(f"Homing still in progress (state: {current_state})...", category="grbl")
+
+                    time.sleep(0.3)  # Poll every 300ms
+
+                if safety_aborted:
+                    # Safety resolved — loop back to re-send $H
+                    self.logger.info("Re-running $H after safety recovery", category="grbl")
+                    continue
+
+                # Not a safety abort — check if homing actually finished
+                if not homing_complete:
+                    if last_state == 'Alarm':
+                        error_msg = "GRBL homing failed - GRBL is in ALARM state (check limit switches and machine configuration)"
+                    elif last_state:
+                        error_msg = f"GRBL homing did not complete - machine stuck in '{last_state}' state"
                     else:
-                        # Unknown state, log it but continue waiting
-                        self.logger.warning(f"Unexpected state during homing: {current_state}", category="grbl")
+                        error_msg = "GRBL homing timed out - no response from GRBL controller"
 
-            if not homing_complete:
-                if last_state == 'Alarm':
-                    error_msg = "GRBL homing failed - GRBL is in ALARM state (check limit switches and machine configuration)"
-                elif last_state:
-                    error_msg = f"GRBL homing did not complete - machine stuck in '{last_state}' state"
-                else:
-                    error_msg = "GRBL homing timed out - no response from GRBL controller"
+                    self.logger.error(error_msg, category="grbl")
+                    if progress_callback:
+                        progress_callback(6, "Run GRBL homing ($H)", "error")
 
-                self.logger.error(error_msg, category="grbl")
-                if progress_callback:
-                    progress_callback(6, "Run GRBL homing ($H)", "error")
+                    # Lower pistons before returning
+                    if hardware_interface:
+                        self.logger.info("Lowering line motor pistons...", category="grbl")
+                        hardware_interface.line_motor_piston_down()
 
-                # Lower pistons before returning
-                if hardware_interface:
-                    self.logger.info("Lowering line motor pistons...", category="grbl")
-                    hardware_interface.line_motor_piston_down()
-
-                return False, error_msg
+                    return False, error_msg
 
             # Mark homing as done ONLY after it's actually complete
             if progress_callback:

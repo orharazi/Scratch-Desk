@@ -18,21 +18,21 @@ def _tk_safe(text):
 REASON_STYLE = {
     "operational": {
         "icon": "\u2699\ufe0f",
-        "title_he": rtl("\u05ea\u05e0\u05d0\u05d9 \u05ea\u05e4\u05e2\u05d5\u05dc\u05d9"),
+        "title_he": "\u05ea\u05e0\u05d0\u05d9 \u05ea\u05e4\u05e2\u05d5\u05dc\u05d9",
         "bg": "#2d1a00",
         "accent": "#ff9900",
         "btn_color": "#cc7700",
     },
     "collision": {
         "icon": "\U0001F6A8",
-        "title_he": rtl("\u05e1\u05db\u05e0\u05ea \u05d4\u05ea\u05e0\u05d2\u05e9\u05d5\u05ea!"),
+        "title_he": "\u05e1\u05db\u05e0\u05ea \u05d4\u05ea\u05e0\u05d2\u05e9\u05d5\u05ea!",
         "bg": "#2d0000",
         "accent": "#ff3333",
         "btn_color": "#cc0000",
     },
     "mechanical": {
         "icon": "\u26a0\ufe0f",
-        "title_he": rtl("\u05e1\u05db\u05e0\u05ea \u05e0\u05d6\u05e7 \u05de\u05db\u05e0\u05d9"),
+        "title_he": "\u05e1\u05db\u05e0\u05ea \u05e0\u05d6\u05e7 \u05de\u05db\u05e0\u05d9",
         "bg": "#1a002d",
         "accent": "#cc66ff",
         "btn_color": "#9933cc",
@@ -41,7 +41,7 @@ REASON_STYLE = {
 
 REASON_FALLBACK = {
     "icon": "\U0001F6A8",
-    "title_he": rtl("\u05d4\u05e4\u05e8\u05ea \u05d1\u05d8\u05d9\u05d7\u05d5\u05ea"),
+    "title_he": "\u05d4\u05e4\u05e8\u05ea \u05d1\u05d8\u05d9\u05d7\u05d5\u05ea",
     "bg": "#2d0000",
     "accent": "#ff3333",
     "btn_color": "#cc0000",
@@ -57,23 +57,31 @@ class ExecutionController:
         self.transition_modal = None
         self.logger = get_logger()
 
+    def _destroy_dialog_and_refocus(self, dialog, attr_name):
+        """Destroy a dialog and return focus to the main window.
+
+        Args:
+            dialog: The Toplevel dialog to destroy
+            attr_name: The attribute name on self (e.g. 'safety_modal') to clear
+        """
+        try:
+            dialog.destroy()
+        except Exception:
+            pass
+        if getattr(self, attr_name, None) is dialog:
+            setattr(self, attr_name, None)
+        from gui.wayland_focus import force_focus_return
+        force_focus_return(self.main_app.root)
+
     def cleanup_for_reset(self):
         """Clean up controller state during system reset"""
         # Destroy any open safety modal
         if self.safety_modal:
-            try:
-                self.safety_modal.destroy()
-            except Exception:
-                pass
-            self.safety_modal = None
+            self._destroy_dialog_and_refocus(self.safety_modal, 'safety_modal')
 
         # Destroy any open transition modal
         if self.transition_modal:
-            try:
-                self.transition_modal.destroy()
-            except Exception:
-                pass
-            self.transition_modal = None
+            self._destroy_dialog_and_refocus(self.transition_modal, 'transition_modal')
 
         # Clear inline safety error
         self._clear_inline_safety_error()
@@ -95,22 +103,14 @@ class ExecutionController:
         # This ensures the modal always closes regardless of which UI attributes exist.
         if status in ('running', 'safety_recovered'):
             if self.safety_modal:
-                try:
-                    self.safety_modal.destroy()
-                except Exception:
-                    pass
-                self.safety_modal = None
+                self._destroy_dialog_and_refocus(self.safety_modal, 'safety_modal')
             self._clear_inline_safety_error()
 
         # Ensure panel unlock for terminal states, even if GUI updates below fail
         if status in ('completed', 'stopped', 'error'):
             # Also close safety modal on terminal states
             if self.safety_modal:
-                try:
-                    self.safety_modal.destroy()
-                except Exception:
-                    pass
-                self.safety_modal = None
+                self._destroy_dialog_and_refocus(self.safety_modal, 'safety_modal')
             self._clear_inline_safety_error()
             try:
                 if status == 'completed' and hasattr(self.main_app, 'controls_panel'):
@@ -153,11 +153,7 @@ class ExecutionController:
                 self._clear_inline_safety_error()
                 # Auto-close safety modal when resuming (e.g., after safety_waiting resolves)
                 if self.safety_modal:
-                    try:
-                        self.safety_modal.destroy()
-                    except Exception:
-                        pass
-                    self.safety_modal = None
+                    self._destroy_dialog_and_refocus(self.safety_modal, 'safety_modal')
                 # Reset operation label when resuming (e.g., after safety wait)
                 self.main_app.operation_label.config(text=t("Running..."), fg='green')
             elif status == 'step_executing':
@@ -238,6 +234,12 @@ class ExecutionController:
                 sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
                 sensor_name_hebrew = HEBREW_TRANSLATIONS.get(sensor_name, sensor_name)
                 self.main_app.operation_label.config(text=t("Waiting for {sensor} sensor", sensor=sensor_name_hebrew), fg='orange')
+            elif status == 'sensor_timeout':
+                sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
+                sensor_name_hebrew = HEBREW_TRANSLATIONS.get(sensor_name, sensor_name)
+                self.main_app.operation_label.config(
+                    text=t("Sensor timeout: {sensor}", sensor=sensor_name_hebrew), fg='red'
+                )
             elif status == 'transition_alert':
                 # Use raw Hebrew (no BiDi) for substitution values,
                 # so the outer t() applies BiDi once to the full string
@@ -320,11 +322,7 @@ class ExecutionController:
 
                 # Auto-close the safety modal
                 if self.safety_modal:
-                    try:
-                        self.safety_modal.destroy()
-                    except Exception:
-                        pass
-                    self.safety_modal = None
+                    self._destroy_dialog_and_refocus(self.safety_modal, 'safety_modal')
 
                 # Update progress and status to show recovery
                 current_progress = self.main_app.progress['value']
@@ -385,11 +383,7 @@ class ExecutionController:
                 )
                 # Auto-close transition modal
                 if self.transition_modal:
-                    try:
-                        self.transition_modal.destroy()
-                    except Exception:
-                        pass
-                    self.transition_modal = None
+                    self._destroy_dialog_and_refocus(self.transition_modal, 'transition_modal')
 
             elif status == 'transition_waiting':
                 # Still waiting for door - update progress
@@ -397,6 +391,16 @@ class ExecutionController:
                 self.main_app.progress_text.config(
                     text=t("{progress:.1f}% - Waiting for rows motor door CLOSED", progress=current_progress),
                     fg='orange'
+                )
+
+            elif status == 'sensor_timeout':
+                # Sensor timeout - show in progress bar
+                current_progress = self.main_app.progress['value']
+                sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
+                sensor_name_hebrew = HEBREW_TRANSLATIONS.get(sensor_name, sensor_name)
+                self.main_app.progress_text.config(
+                    text=t("{progress:.1f}% - Sensor timeout: {sensor}", progress=current_progress, sensor=sensor_name_hebrew),
+                    fg='red'
                 )
 
             elif status == 'stopped' or status == 'error':
@@ -409,6 +413,23 @@ class ExecutionController:
                     self.main_app.controls_panel.update_step_display()
 
         # Panel unlock is handled at the top of _on_execution_status_impl
+
+        # Handle sensor timeout - show alert dialog and set up UI for continue
+        if status == 'sensor_timeout':
+            self._show_sensor_timeout_dialog(info)
+            # Set up controls for Continue (like a user-initiated stop)
+            if hasattr(self.main_app, 'controls_panel'):
+                panel = self.main_app.controls_panel
+                panel._stopped_mid_execution = True
+                panel._motor_state_at_stop = getattr(self.main_app.execution_engine, '_raised_motor_on_stop', False)
+                current_index = self.main_app.execution_engine.current_step_index
+                panel.run_btn.config(state=tk.NORMAL, text=t('\u25b6 CONTINUE'), bg='#006400')
+                panel.pause_btn.config(state=tk.DISABLED)
+                panel.stop_btn.config(state=tk.DISABLED)
+                panel.reset_btn.config(state=tk.NORMAL)
+                panel.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
+                panel.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+                panel.update_step_display()
 
         # Handle emergency stop - ensure modal always shows even if progress bar is missing
         if status == 'emergency_stop' and not self.safety_modal:
@@ -570,6 +591,9 @@ class ExecutionController:
 
             # Non-modal so user can interact with hardware controls
             dialog.transient(self.main_app.root)
+            dialog.lift()
+            dialog.attributes('-topmost', True)
+            dialog.after(500, lambda: dialog.attributes('-topmost', False) if dialog.winfo_exists() else None)
 
             # Main frame
             main_frame = tk.Frame(dialog, bg=bg, padx=30, pady=20)
@@ -645,14 +669,100 @@ class ExecutionController:
             if dialog and not self.safety_modal:
                 self.safety_modal = dialog
 
+    def _show_sensor_timeout_dialog(self, info):
+        """Show a dialog alerting the operator that a sensor wait timed out.
+        Execution has already been stopped by the engine."""
+        try:
+            sensor_name = info.get('sensor', 'sensor') if info else 'sensor'
+            timeout_seconds = info.get('timeout_seconds', 300) if info else 300
+            sensor_name_hebrew = HEBREW_TRANSLATIONS.get(sensor_name, sensor_name)
+
+            dialog = tk.Toplevel(self.main_app.root)
+            dialog.title(_tk_safe(rtl_title("\u05d7\u05e8\u05d9\u05d2\u05ea \u05d6\u05de\u05df \u05d7\u05d9\u05d9\u05e9\u05df")))
+            dialog.configure(bg='#2d1a00')
+
+            # Size and center
+            dialog_width = 550
+            dialog_height = 320
+            screen_width = dialog.winfo_screenwidth()
+            screen_height = dialog.winfo_screenheight()
+            x = (screen_width - dialog_width) // 2
+            y = (screen_height - dialog_height) // 2
+            dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+            dialog.minsize(dialog_width, dialog_height)
+            dialog.resizable(False, False)
+            dialog.transient(self.main_app.root)
+
+            main_frame = tk.Frame(dialog, bg='#2d1a00', padx=30, pady=20)
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Icon + title
+            tk.Label(
+                main_frame,
+                text=_tk_safe(rtl("\u05d7\u05e8\u05d9\u05d2\u05ea \u05d6\u05de\u05df \u05d7\u05d9\u05d9\u05e9\u05df  \u23f0")),
+                font=('Arial', 22, 'bold'),
+                fg='#ff9900',
+                bg='#2d1a00'
+            ).pack(pady=(0, 5))
+
+            # Sensor name
+            tk.Label(
+                main_frame,
+                text=_tk_safe(rtl(f"\u05d7\u05d9\u05d9\u05e9\u05df: {sensor_name_hebrew}")),
+                font=('Arial', 14),
+                fg='#cccccc',
+                bg='#2d1a00'
+            ).pack(pady=(0, 10))
+
+            # Separator
+            tk.Frame(main_frame, bg='#ff9900', height=3).pack(fill=tk.X, pady=(0, 15))
+
+            # Message
+            timeout_minutes = int(timeout_seconds) // 60
+            message = f"\u05d4\u05d7\u05d9\u05d9\u05e9\u05df \u05dc\u05d0 \u05d4\u05d5\u05e4\u05e2\u05dc \u05ea\u05d5\u05da {timeout_minutes} \u05d3\u05e7\u05d5\u05ea.\n\u05d4\u05d4\u05e8\u05e6\u05d4 \u05e0\u05e2\u05e6\u05e8\u05d4."
+            tk.Label(
+                main_frame,
+                text=_tk_safe(rtl(message)),
+                font=('Arial', 14),
+                fg='white',
+                bg='#2d1a00',
+                wraplength=500,
+                justify=tk.RIGHT,
+                anchor='e'
+            ).pack(pady=(0, 25), fill=tk.X)
+
+            # OK button
+            def _close_timeout_dialog():
+                try:
+                    dialog.destroy()
+                except Exception:
+                    pass
+                from gui.wayland_focus import force_focus_return
+                force_focus_return(self.main_app.root)
+
+            tk.Button(
+                main_frame,
+                text=t("OK"),
+                font=('Arial', 16, 'bold'),
+                bg='#cc7700',
+                fg='white',
+                activebackground='#333333',
+                activeforeground='white',
+                command=_close_timeout_dialog,
+                padx=40,
+                pady=12
+            ).pack()
+
+            dialog.update_idletasks()
+            dialog.lift()
+            dialog.focus_set()
+
+        except Exception as e:
+            self.logger.error(f"Error showing sensor timeout dialog: {e}", category="gui")
+
     def _close_safety_modal_manual(self, dialog):
         """Handle manual OK click on safety modal"""
-        try:
-            dialog.destroy()
-        except Exception:
-            pass
-        if self.safety_modal is dialog:
-            self.safety_modal = None
+        self._destroy_dialog_and_refocus(dialog, 'safety_modal')
 
     def _show_transition_modal(self, info):
         """Show transition dialog when moving from lines to rows operations.
@@ -691,6 +801,9 @@ class ExecutionController:
 
             # Non-modal so user can interact with hardware controls
             dialog.transient(self.main_app.root)
+            dialog.lift()
+            dialog.attributes('-topmost', True)
+            dialog.after(500, lambda: dialog.attributes('-topmost', False) if dialog.winfo_exists() else None)
 
             main_frame = tk.Frame(dialog, bg=bg, padx=30, pady=20)
             main_frame.pack(fill=tk.BOTH, expand=True)
@@ -761,12 +874,7 @@ class ExecutionController:
 
     def _close_transition_modal(self, dialog):
         """Handle manual OK click on transition modal"""
-        try:
-            dialog.destroy()
-        except Exception:
-            pass
-        if self.transition_modal is dialog:
-            self.transition_modal = None
+        self._destroy_dialog_and_refocus(dialog, 'transition_modal')
 
     def _show_inline_safety_error(self, violation_message, safety_code, step_description, is_waiting=False):
         """Show safety error inline on the bottom bar with full Hebrew rule details"""
@@ -887,6 +995,7 @@ class ExecutionController:
             dialog.minsize(dialog_width, dialog_height)
             dialog.resizable(False, False)
             dialog.transient(self.main_app.root)
+            dialog.lift()
             dialog.grab_set()
 
             main_frame = tk.Frame(dialog, bg=bg_color, padx=20, pady=15)
@@ -926,9 +1035,18 @@ class ExecutionController:
                          wraplength=450, justify=tk.RIGHT, anchor='e').pack(pady=(0, 10), fill=tk.X)
 
             # OK button
+            def _close_details():
+                try:
+                    dialog.grab_release()
+                    dialog.destroy()
+                except Exception:
+                    pass
+                from gui.wayland_focus import force_focus_return
+                force_focus_return(self.main_app.root)
+
             tk.Button(main_frame, text=t("OK"), font=('Arial', 14, 'bold'),
                       bg=btn_color, fg='white', activebackground='#333333',
-                      command=dialog.destroy, padx=30, pady=8).pack()
+                      command=_close_details, padx=30, pady=8).pack()
 
             # Ensure content fits
             dialog.update_idletasks()

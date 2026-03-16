@@ -650,6 +650,9 @@ class AnalyticsTab:
         popup.title(t_title("Run Details"))
         popup.geometry("500x400")
         popup.transient(self.parent_frame.winfo_toplevel())
+        popup.lift()
+        popup.grab_set()
+        popup.focus_set()
 
         text = tk.Text(popup, font=("Courier", 10), wrap=tk.WORD, bg='white', fg='black')
         text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)

@@ -362,7 +362,7 @@ class SafetyRulesManager:
 
         return True, None
 
-    def evaluate_monitor_rules(self, operation_type, engine_lowered_tools=None):
+    def evaluate_monitor_rules(self, operation_type, engine_lowered_tools=None, is_setup=False):
         """
         Evaluate all monitor rules for a given operation type (lines/rows).
         Returns list of violated rules sorted by priority.
@@ -370,6 +370,7 @@ class SafetyRulesManager:
         Args:
             operation_type: 'lines' or 'rows'
             engine_lowered_tools: Set of tool names currently controlled by the execution engine
+            is_setup: True if the current step is a setup/init movement
 
         Returns:
             List of rule dicts whose conditions are met and whose monitor
@@ -395,6 +396,10 @@ class SafetyRulesManager:
             # Check if this rule has monitor config
             monitor = rule.get("monitor")
             if not monitor or not monitor.get("enabled", False):
+                continue
+
+            # Skip this rule during setup steps if its monitor says to (default: skip)
+            if is_setup and monitor.get("skip_setup", True):
                 continue
 
             # Check if operation context matches

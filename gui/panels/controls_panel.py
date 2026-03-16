@@ -1,10 +1,12 @@
 import tkinter as tk
+import threading
+import time
 from tkinter import ttk
 from core.step_generator import generate_complete_program_steps, get_step_count_summary
 from core.logger import get_logger
 from core.translations import t, t_title, rtl, HEBREW_TRANSLATIONS
 from core.program_model import translate_validation_error
-from core.safety_system import SafetyViolation, check_step_safety
+from core.safety_system import SafetyViolation, check_step_safety, safety_system
 
 
 class ControlsPanel:
@@ -32,45 +34,232 @@ class ControlsPanel:
 
         self.create_widgets()
 
-    def _safe_move(self, axis, position, description="Manual move", is_setup=False):
-        """Move motor with safety check. Returns True if move succeeded, False if blocked.
-        Shows safety violation dialog through execution controller if blocked.
+        # Deferred bindings (window resize + checkbox sync) — must run
+        # on the main thread after widgets exist, not inside a monitor thread.
+        self._init_deferred_bindings()
+
+    def _is_execution_running(self, action_name=""):
+        """Check if a program is currently executing.
+        If so, show a blocking dialog with the action name and return True.
+        Otherwise return False."""
+        engine = self.main_app.execution_engine
+        if engine.is_running:
+            from tkinter import messagebox
+            messagebox.showwarning(
+                t("Program Running"),
+                t("Cannot change {action} while a program is running.\nPause or stop the program first.",
+                  action=t(action_name) if action_name else "")
+            )
+            return True
+        return False
+
+    def _safe_move(self, axis, position, description="Manual move", is_setup=False, skip_safety=False):
+        """Move motor with safety check and real-time safety monitoring during movement.
+        Returns True if move succeeded, False only if externally stopped.
+        Waits for safety conditions to clear before moving (shows dialog, auto-resumes).
         is_setup=True bypasses position-based inter-motor collision rules (LINES_MOTOR_HOME_FOR_ROWS,
         ROWS_MOTOR_HOME_FOR_LINES) which have exclude_setup:true - safe because all tools are
-        raised before any restore/navigation move."""
+        raised before any restore/navigation move.
+        skip_safety=True skips both pre-step safety check and real-time monitor entirely.
+        Used during step navigation restore where all tools are already raised to safe state."""
         operation = 'move_x' if axis == 'x' else 'move_y'
-        # Prefix with "init:" so safety rules with exclude_setup:true are bypassed
-        effective_description = f"init: {description}" if is_setup else description
-        step = {
-            'operation': operation,
-            'parameters': {'position': position},
-            'description': effective_description
-        }
-        try:
-            check_step_safety(step)
-        except SafetyViolation as e:
-            self.logger.error(f"SAFETY BLOCK: Cannot {operation} to {position} - {e.safety_code}", category="gui")
-            # Show safety dialog through execution controller
-            if hasattr(self.main_app, 'execution_controller'):
-                self.main_app.execution_controller.handle_safety_violation({
-                    'step': step,
-                    'violation_message': e.message,
-                    'safety_code': e.safety_code
-                })
-            return False
 
-        if axis == 'x':
-            self.hardware.move_x(position)
-        else:
-            self.hardware.move_y(position)
+        if not skip_safety:
+            # Prefix with "init:" so safety rules with exclude_setup:true are bypassed
+            effective_description = f"init: {description}" if is_setup else description
+            step = {
+                'operation': operation,
+                'parameters': {'position': position},
+                'description': effective_description
+            }
+
+            # Wait-and-retry loop: wait for safety conditions to clear before moving
+            safety_dialog_shown = False
+            while True:
+                try:
+                    check_step_safety(step)
+                    # Safety check passed - close dialog if it was shown
+                    if safety_dialog_shown:
+                        self.logger.success("Safety condition cleared - proceeding with move", category="gui")
+                        self._close_init_safety_dialog()
+                    break
+                except SafetyViolation as e:
+                    if not safety_dialog_shown:
+                        self.logger.error(f"SAFETY BLOCK: Cannot {operation} to {position} - {e.safety_code}", category="gui")
+                        # Show safety waiting dialog (auto-resume when condition clears)
+                        if hasattr(self.main_app, 'execution_controller'):
+                            self.main_app.execution_controller.handle_safety_waiting({
+                                'step': step,
+                                'violation_message': e.message,
+                                'safety_code': e.safety_code
+                            })
+                        safety_dialog_shown = True
+                    # Keep GUI responsive while waiting
+                    try:
+                        self.main_app.root.update()
+                    except Exception:
+                        pass
+                    time.sleep(0.5)
+
+        # Start real-time safety monitor for this init movement (skip during restore)
+        monitor_stop = None
+        monitor_thread = None
+        if not skip_safety:
+            step = {
+                'operation': operation,
+                'parameters': {'position': position},
+                'description': f"init: {description}" if is_setup else description
+            }
+            monitor_stop = threading.Event()
+            monitor_thread = threading.Thread(
+                target=self._init_move_safety_monitor,
+                args=(step, monitor_stop, is_setup),
+                daemon=True
+            )
+            monitor_thread.start()
+
+        # Run hardware move in a background thread so the main (GUI) thread
+        # stays responsive.  This allows root.after() callbacks from the
+        # safety monitor to fire (dialog show / auto-close).
+        move_complete = threading.Event()
+
+        def do_move():
+            try:
+                if axis == 'x':
+                    self.hardware.move_x(position)
+                else:
+                    self.hardware.move_y(position)
+            except Exception as e:
+                self.logger.error(f"Move error during _safe_move: {e}", category="gui")
+            finally:
+                move_complete.set()
+
+        move_thread = threading.Thread(target=do_move, daemon=True)
+        move_thread.start()
+
+        # Keep main thread responsive until move finishes
+        while not move_complete.is_set():
+            try:
+                self.main_app.root.update()
+            except Exception:
+                pass
+            move_complete.wait(timeout=0.05)
+
+        # Stop the safety monitor thread
+        if monitor_stop and monitor_thread:
+            monitor_stop.set()
+            monitor_thread.join(timeout=1.0)
+
         return True
 
+    def _close_init_safety_dialog(self):
+        """Auto-close safety dialog and inline error after init/reset move recovery"""
+        if hasattr(self.main_app, 'execution_controller'):
+            ec = self.main_app.execution_controller
+            if ec.safety_modal:
+                try:
+                    ec.safety_modal.destroy()
+                except Exception:
+                    pass
+                ec.safety_modal = None
+            ec._clear_inline_safety_error()
+
+    def _init_move_safety_monitor(self, step, stop_event, is_setup=False):
+        """Real-time safety monitor for init/manual movements (outside execution engine).
+        Checks safety rules during movement and triggers GRBL feed hold on violation,
+        then auto-resumes when the violation clears."""
+        import time
+        import json
+
+        # Load timing settings
+        try:
+            with open('config/settings.json', 'r') as f:
+                settings = json.load(f)
+            check_interval = settings.get("timing", {}).get("safety_check_interval", 0.1)
+        except Exception:
+            check_interval = 0.1
+
+        operation = step.get('operation', '')
+        # Determine operation type for monitor rules
+        op_type = 'rows' if operation == 'move_x' else 'lines'
+        is_held = False
+
+        while not stop_event.is_set():
+            try:
+                # Check pre-step safety rules (re-evaluate current conditions)
+                try:
+                    description = step.get('description', '')
+                    is_setup_move = safety_system._is_setup_movement(description)
+                    is_rows_start = safety_system._is_rows_start_movement(description)
+                    is_safe, violation = safety_system.rules_manager.evaluate_rules(
+                        step, is_setup_move, is_rows_start
+                    )
+                except Exception:
+                    is_safe = True
+                    violation = None
+
+                # Also check monitor rules - pass is_setup for per-rule skip_setup
+                violated_monitor_rules = safety_system.rules_manager.evaluate_monitor_rules(
+                    op_type, is_setup=is_setup
+                )
+
+                if (not is_safe or violated_monitor_rules) and not is_held:
+                    # Safety violation detected - immediately stop GRBL
+                    if hasattr(self.hardware, 'safety_feed_hold_grbl'):
+                        self.hardware.safety_feed_hold_grbl()
+                    is_held = True
+
+                    violation_msg = ""
+                    safety_code = ""
+                    if violation:
+                        violation_msg = violation.message
+                        safety_code = violation.safety_code or ""
+                    elif violated_monitor_rules:
+                        violation_msg = violated_monitor_rules[0].get('message', 'Safety violation')
+                        safety_code = violated_monitor_rules[0].get('id', '')
+
+                    self.logger.error(f"INIT MOVE SAFETY VIOLATION: {violation_msg}", category="gui")
+
+                    # Show safety waiting dialog on GUI (auto-resume when condition clears)
+                    if hasattr(self.main_app, 'execution_controller'):
+                        try:
+                            self.main_app.root.after(0, lambda msg=violation_msg, code=safety_code: (
+                                self.main_app.execution_controller.handle_safety_waiting({
+                                    'step': step,
+                                    'violation_message': msg,
+                                    'safety_code': code,
+                                    'monitor_type': 'init_move'
+                                })
+                            ))
+                        except Exception:
+                            pass
+
+                elif is_safe and not violated_monitor_rules and is_held:
+                    # Violation resolved - resume GRBL movement
+                    if hasattr(self.hardware, 'safety_resume_grbl'):
+                        self.hardware.safety_resume_grbl()
+                    is_held = False
+                    self.logger.success("INIT MOVE: Safety violation resolved - movement resuming", category="gui")
+
+                    # Auto-close safety dialog on main thread
+                    try:
+                        self.main_app.root.after(0, self._close_init_safety_dialog)
+                    except Exception:
+                        pass
+
+            except Exception as e:
+                self.logger.warning(f"Init move safety monitor error: {e}", category="gui")
+
+            stop_event.wait(timeout=check_interval)
+
+    def _init_deferred_bindings(self):
+        """Set up window resize and checkbox sync after widgets are created"""
         # Bind to window resize for dynamic font adjustment
         self.main_app.root.bind('<Configure>', self.on_window_resize)
 
         # Start periodic checkbox state synchronization
         self.schedule_checkbox_sync()
-    
+
     def update_font_sizes(self):
         """Update font sizes based on window dimensions"""
         try:
@@ -789,17 +978,16 @@ class ControlsPanel:
             elif op == 'move_y':
                 last_y = params.get('position')
 
-        # Step 3: Move motors to correct positions (with safety check)
+        # Step 3: Move motors to correct positions
+        # skip_safety=True because all tools were raised in step 1, making it safe
+        # to reposition motors. Rules like LINES_DOOR_SAFETY and ALL_TOOLS_UP_FOR_END_DIVISION
+        # would false-positive here (e.g. door closed is normal during rows context).
         if last_x is not None:
             self.logger.debug(f"RESTORE STATE: Moving X to {last_x}", category="gui")
-            if not self._safe_move('x', last_x, f"Restore state: move X to {last_x}", is_setup=True):
-                self.logger.error("RESTORE STATE: X move blocked by safety rule", category="gui")
-                return
+            self._safe_move('x', last_x, f"Restore state: move X to {last_x}", is_setup=True, skip_safety=True)
         if last_y is not None:
             self.logger.debug(f"RESTORE STATE: Moving Y to {last_y}", category="gui")
-            if not self._safe_move('y', last_y, f"Restore state: move Y to {last_y}", is_setup=True):
-                self.logger.error("RESTORE STATE: Y move blocked by safety rule", category="gui")
-                return
+            self._safe_move('y', last_y, f"Restore state: move Y to {last_y}", is_setup=True, skip_safety=True)
 
         # Step 4: Apply correct tool states
         tool_hw_map = {
@@ -1196,9 +1384,9 @@ class ControlsPanel:
         if hasattr(self.hardware, 'flush_all_sensor_buffers'):
             self.hardware.flush_all_sensor_buffers()
 
-        # Move hardware to motor home positions (0, 0)
-        self.hardware.move_x(0.0)  # Rows motor home position
-        self.hardware.move_y(0.0)  # Lines motor home position
+        # Move hardware to motor home positions (0, 0) with safety monitoring
+        self._safe_move('x', 0.0, "Reset: move rows motor to home", is_setup=True)
+        self._safe_move('y', 0.0, "Reset: move lines motor to home", is_setup=True)
 
         # Reset operation states to pending (always clear, then repopulate if program exists)
         if hasattr(self.main_app, 'operation_states'):
@@ -1276,6 +1464,8 @@ class ControlsPanel:
 
     def trigger_x_left(self):
         """Trigger X left sensor - only sets event, does NOT move motors or canvas"""
+        if self._is_execution_running():
+            return
         self.hardware.trigger_x_left_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
@@ -1287,6 +1477,8 @@ class ControlsPanel:
 
     def trigger_x_right(self):
         """Trigger X right sensor - only sets event, does NOT move motors or canvas"""
+        if self._is_execution_running():
+            return
         self.hardware.trigger_x_right_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
@@ -1298,6 +1490,8 @@ class ControlsPanel:
 
     def trigger_y_top(self):
         """Trigger Y top sensor - only sets event, does NOT move motors or canvas"""
+        if self._is_execution_running():
+            return
         self.hardware.trigger_y_top_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
@@ -1309,6 +1503,8 @@ class ControlsPanel:
 
     def trigger_y_bottom(self):
         """Trigger Y bottom sensor - only sets event, does NOT move motors or canvas"""
+        if self._is_execution_running():
+            return
         self.hardware.trigger_y_bottom_sensor()
         # Update old sensor_label only (status is shown in hardware panel)
         if hasattr(self, 'sensor_label'):
@@ -1317,9 +1513,11 @@ class ControlsPanel:
 
         # NOTE: Canvas visualization is handled automatically during execution when waiting for sensors
         # Manual triggers should only set the sensor event, not move anything
-    
+
     def toggle_ls(self, switch_name):
         """Toggle a limit switch"""
+        if self._is_execution_running():
+            return
         state = self.hardware.toggle_limit_switch(switch_name)
         self.logger.debug(t("Limit switch {name} toggled: {state}",
                            name=switch_name,
@@ -1331,6 +1529,9 @@ class ControlsPanel:
 
     def toggle_line_marker(self):
         """Toggle line marker piston"""
+        if self._is_execution_running():
+            self.lines_marker_var.set(not self.lines_marker_var.get())
+            return
         if self.lines_marker_var.get():
             self.hardware.line_marker_down()
         else:
@@ -1340,6 +1541,9 @@ class ControlsPanel:
 
     def toggle_line_cutter(self):
         """Toggle line cutter piston"""
+        if self._is_execution_running():
+            self.lines_cutter_var.set(not self.lines_cutter_var.get())
+            return
         if self.lines_cutter_var.get():
             self.hardware.line_cutter_down()
         else:
@@ -1349,6 +1553,9 @@ class ControlsPanel:
 
     def toggle_line_motor(self):
         """Toggle line motor piston (controls Y motor assembly lift)"""
+        if self._is_execution_running():
+            self.lines_motor_var.set(not self.lines_motor_var.get())
+            return
         if self.lines_motor_var.get():
             self.hardware.line_motor_piston_down()
         else:
@@ -1358,6 +1565,9 @@ class ControlsPanel:
 
     def toggle_row_marker(self):
         """Toggle row marker piston"""
+        if self._is_execution_running():
+            self.rows_marker_var.set(not self.rows_marker_var.get())
+            return
         if self.rows_marker_var.get():
             self.hardware.row_marker_down()
         else:
@@ -1367,6 +1577,9 @@ class ControlsPanel:
 
     def toggle_row_cutter(self):
         """Toggle row cutter piston"""
+        if self._is_execution_running():
+            self.rows_cutter_var.set(not self.rows_cutter_var.get())
+            return
         if self.rows_cutter_var.get():
             self.hardware.row_cutter_down()
         else:
@@ -1376,6 +1589,9 @@ class ControlsPanel:
 
     def toggle_air_pressure(self):
         """Toggle air pressure valve"""
+        if self._is_execution_running():
+            self.air_pressure_var.set(not self.air_pressure_var.get())
+            return
         if self.air_pressure_var.get():
             self.hardware.air_pressure_valve_down()
         else:
