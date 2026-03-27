@@ -28,14 +28,14 @@ class ScratchDeskProgram:
     MAX_HEIGHT_OF_DESK = _limits.get('max_y_position', 80.0)   # cm (from settings)
     MIN_LINE_SPACING = _limits.get('min_line_spacing', 0.3)    # cm (from settings)
     
-    def __init__(self, program_number=0, program_name="", 
+    def __init__(self, program_number=0, program_name="",
                  # Lines Pattern Settings
                  high=0.0, number_of_lines=0, top_padding=0.0, bottom_padding=0.0,
-                 # Row Pattern Settings  
+                 # Row Pattern Settings
                  width=0.0, left_margin=0.0, right_margin=0.0,
                  page_width=0.0, number_of_pages=1, buffer_between_pages=0.0,
                  # Generate Settings
-                 repeat_rows=1, repeat_lines=1):
+                 repeat_rows=1, repeat_lines=1, multi_line=False):
         
         # General Program Information
         self.program_number = int(program_number)
@@ -58,6 +58,7 @@ class ScratchDeskProgram:
         # Generate Settings
         self.repeat_rows = int(repeat_rows)
         self.repeat_lines = int(repeat_lines)
+        self.multi_line = bool(multi_line)
     
     def validate(self):
         """

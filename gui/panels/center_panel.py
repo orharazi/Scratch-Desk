@@ -302,6 +302,11 @@ class CenterPanel:
             "in_progress": "#FF0088",
             "completed": "#AA00AA"
         })
+        mid_line_colors = operation_colors.get("mid_lines", {
+            "pending": "#1177BB",
+            "in_progress": "#00BBEE",
+            "completed": "#009999"
+        })
 
         # Create overlay frame at top-left of canvas using canvas window
         # Use slightly larger fonts and padding for better visibility
@@ -346,6 +351,32 @@ class CenterPanel:
             c.create_line(2, 2, 18, 2, fill=color, width=3)
 
             # Label
+            tk.Label(ind, text=status_text, font=('Arial', 7),
+                    bg='#E8F4F8', fg=color).pack()
+
+        # Separator
+        tk.Frame(ops_row, width=2, bg='gray').pack(side=tk.RIGHT, fill=tk.Y, padx=5)
+
+        # MID LINES Operations (שרטוט כפול - soft middle lines)
+        mid_frame = tk.Frame(ops_row, bg='#E8F4F8')
+        mid_frame.pack(side=tk.RIGHT, padx=8)
+
+        tk.Label(mid_frame, text=t("〰 MID"), font=('Arial', 8, 'bold'),
+                bg='#E8F4F8', fg='#1177BB').pack()
+
+        mid_indicators = tk.Frame(mid_frame, bg='#E8F4F8')
+        mid_indicators.pack(pady=2)
+
+        for status_text, color in [(t("Ready"), mid_line_colors['pending']),
+                                   (t("Work"), mid_line_colors['in_progress']),
+                                   (t("Done"), mid_line_colors['completed'])]:
+            ind = tk.Frame(mid_indicators, bg='#E8F4F8')
+            ind.pack(side=tk.RIGHT, padx=3)
+
+            c = tk.Canvas(ind, width=20, height=4, bg='#E8F4F8', highlightthickness=0)
+            c.pack()
+            c.create_line(2, 2, 18, 2, fill=color, width=2, dash=(3, 3))
+
             tk.Label(ind, text=status_text, font=('Arial', 7),
                     bg='#E8F4F8', fg=color).pack()
 

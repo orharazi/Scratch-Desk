@@ -273,13 +273,13 @@ class TestSensorWait:
 class TestLimitSwitches:
     """Test limit switch functions"""
 
-    def test_get_row_motor_limit_switch(self):
-        """Should return 'up' or 'down' based on rows_door state"""
-        mock_hardware.limit_switch_states['rows_door'] = False
-        assert mock_hardware.get_row_motor_limit_switch() == "up"
+    def test_get_row_motor_door_piston_state(self):
+        """Should return 'up' or 'down' based on row motor door piston state"""
+        mock_hardware.row_motor_door_piston_up()
+        assert mock_hardware.get_row_motor_door_piston_state() == "up"
 
-        mock_hardware.limit_switch_states['rows_door'] = True
-        assert mock_hardware.get_row_motor_limit_switch() == "down"
+        mock_hardware.row_motor_door_piston_down()
+        assert mock_hardware.get_row_motor_door_piston_state() == "down"
 
     def test_set_limit_switch_state(self):
         """Should set limit switch state"""

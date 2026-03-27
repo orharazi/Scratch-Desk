@@ -60,6 +60,11 @@
       "pending": "#8800FF",
       "in_progress": "#FF0088",
       "completed": "#AA00AA"
+    },
+    "mid_lines": {
+      "pending": "#1177BB",
+      "in_progress": "#00BBEE",
+      "completed": "#009999"
     }
   },
   "timing": {
@@ -189,7 +194,7 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": true,
+    "use_real_hardware": false,
     "start_with_grbl": true,
     "poc_mode": false,
     "skip_initial_sensor_tests": false,
@@ -200,9 +205,11 @@
         "line_marker_piston": 6,
         "line_cutter_piston": 16,
         "line_motor_piston": 13,
+        "line_marker_pressure_piston": 20,
         "row_marker_piston": 5,
         "row_cutter_piston": 19,
-        "air_pressure_valve": 26
+        "air_pressure_valve": 26,
+        "row_motor_door_piston": 12
       },
       "rs485": {
         "enabled": true,
@@ -226,6 +233,8 @@
           "line_marker_down_sensor": 27,
           "line_cutter_up_sensor": 25,
           "line_cutter_down_sensor": 29,
+          "line_marker_pressure_up_sensor": 4,
+          "line_marker_pressure_down_sensor": 5,
           "row_cutter_up_sensor": 24,
           "row_cutter_down_sensor": 26,
           "row_marker_up_sensor": 22,
@@ -238,7 +247,10 @@
           "x_right_edge": 16,
           "y_top_edge": 13,
           "y_bottom_edge": 30,
-          "door_sensor": 15
+          "row_door_left_up_sensor": 0,
+          "row_door_left_down_sensor": 1,
+          "row_door_right_up_sensor": 2,
+          "row_door_right_down_sensor": 3
         },
         "nc_sensors": [
           "x_left_edge",
@@ -250,7 +262,7 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/ttyUSB0",
+      "serial_port": "/dev/cu.debug-console",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
@@ -339,7 +351,7 @@
       "smtp_password": "egwinocrndmjlnsp",
       "sender_email": "uridesk35@gmail.com\n",
       "recipient_email": "orharazi@gmail.com",
-      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
+      "subject_prefix": "\u05e9\u05d5\u05dc\u05d7\u05df \u05e9\u05e8\u05d8\u05d5\u05d8 \u05d9\u05e9\u05d9\u05d1\u05d4 \u05e9\u05dc \u05d7\u05d9 - \u05d0\u05e0\u05dc\u05d9\u05d8\u05d9\u05e7\u05d5\u05ea",
       "schedule_enabled": true,
       "schedule_frequency": "monthly",
       "schedule_time": "08:00",

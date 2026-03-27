@@ -198,6 +198,11 @@ class CanvasOperations:
             "in_progress": "#FF0088",
             "completed": "#AA00AA"
         })
+        mid_line_colors = operation_colors.get("mid_lines", {
+            "pending": "#1177BB",
+            "in_progress": "#00BBEE",
+            "completed": "#009999"
+        })
 
         self.logger.debug(f" DRAWING WORK LINES: ACTUAL size {actual_paper_width}×{actual_paper_height}cm", category="gui")
         self.logger.debug(f"🎨 Mark colors: {mark_colors}", category="gui")
@@ -301,7 +306,40 @@ class CanvasOperations:
                         text=f"L{overall_line_num}", font=label_font, fill=line_color, tags="work_lines"
                     )
                     self.main_app.work_line_objects[f'line_{overall_line_num}']['label_id'] = label_id
-        
+
+                # Draw middle (soft) line between this line and the next one (multi_line feature)
+                if getattr(program, 'multi_line', False) and line_in_section < program.number_of_lines - 1:
+                    next_line_y_real = first_line_y_section - ((line_in_section + 1) * line_spacing_section)
+                    mid_y_real = (line_y_real + next_line_y_real) / 2.0
+                    mid_y_canvas = self.main_app.offset_y + (max_y_cm - mid_y_real) * self.main_app.scale_y
+
+                    mid_key = f'mid_line_{overall_line_num}'
+                    mid_state = self.main_app.operation_states.get('mid_lines', {}).get(overall_line_num, 'pending')
+                    if mid_state == 'completed':
+                        mid_color = mid_line_colors['completed']
+                    elif mid_state == 'in_progress':
+                        mid_color = mid_line_colors['in_progress']
+                    else:
+                        mid_color = mid_line_colors['pending']
+
+                    mid_width = max(1, line_style['line_width'] - 1)
+                    mid_dash = (3, 5)  # shorter dashes = visually lighter than regular lines
+
+                    mid_id = self.main_app.canvas.create_line(
+                        line_x1_canvas, mid_y_canvas, line_x2_canvas, mid_y_canvas,
+                        fill=mid_color, width=mid_width, dash=mid_dash, tags="work_lines"
+                    )
+                    self.main_app.work_line_objects[mid_key] = {
+                        'id': mid_id,
+                        'type': 'mid_line',
+                        'color_pending': mid_line_colors['pending'],
+                        'color_in_progress': mid_line_colors['in_progress'],
+                        'color_completed': mid_line_colors['completed'],
+                        'dash_pending': (3, 5),
+                        'dash_in_progress': (6, 4),
+                        'dash_completed': (8, 3),
+                    }
+
         # Draw vertical lines (Row Pattern) WITH REPEAT SUPPORT - Each section is a duplicate with same layout
         # Calculate TOTAL pages across all repeated sections
         total_pages = program.number_of_pages * program.repeat_rows
@@ -585,12 +623,21 @@ class CanvasOperations:
             self.main_app.operation_states['rows'] = {}
         if 'cuts' not in self.main_app.operation_states:
             self.main_app.operation_states['cuts'] = {}
-        
+        if 'mid_lines' not in self.main_app.operation_states:
+            self.main_app.operation_states['mid_lines'] = {}
+
         # Initialize line states (total lines across all repeats)
         total_lines = program.number_of_lines * program.repeat_lines
         for line_num in range(1, total_lines + 1):
             if line_num not in self.main_app.operation_states['lines']:
                 self.main_app.operation_states['lines'][line_num] = 'pending'
+
+        # Always rebuild mid-line states so toggling multi_line reflects immediately
+        self.main_app.operation_states['mid_lines'] = {}
+        if getattr(program, 'multi_line', False) and program.number_of_lines > 1:
+            total_mid_lines = (program.number_of_lines - 1) * program.repeat_lines
+            for mid_num in range(1, total_mid_lines + 1):
+                self.main_app.operation_states['mid_lines'][mid_num] = 'pending'
         
         # Initialize row states (total rows across all repeats)  
         total_rows = program.number_of_pages * 2 * program.repeat_rows  # 2 edges per page
@@ -652,8 +699,8 @@ class CanvasOperations:
             # Change to in_progress ONLY when waiting for LEFT sensor (user needs to trigger)
             # Check both English and Hebrew keywords
             if any(keyword in step_desc for keyword in [
-                'wait for left rows sensor', 'wait left rows sensor',  # English
-                'המתן לחיישן עמודות שמאלי'  # Hebrew: wait for left rows sensor
+                'wait for left lines sensor', 'wait left lines sensor',  # English
+                'המתן לחיישן שורות שמאלי'  # Hebrew: wait for left lines sensor
             ]):
                 self.update_operation_state('lines', line_num, 'in_progress')
                 self.logger.debug(f" Line {line_num} → IN PROGRESS (waiting for LEFT sensor)", category="gui")
@@ -664,6 +711,21 @@ class CanvasOperations:
             ]):
                 self.update_operation_state('lines', line_num, 'completed')
                 self.logger.info(f" Line {line_num} → COMPLETED (marker closed)", category="gui")
+
+        # Track middle line operations - match "Mark middle line N: <action>" or "סמן קו אמצעי N: <action>"
+        mid_line_match = re.search(r'(?:mark middle line|סמן קו אמצעי)\s+(\d+)', step_desc, re.IGNORECASE)
+        if mid_line_match:
+            mid_num = int(mid_line_match.group(1))
+            if any(keyword in step_desc for keyword in [
+                'wait for left lines sensor', 'המתן לחיישן שורות שמאלי'
+            ]):
+                self.update_operation_state('mid_lines', mid_num, 'in_progress')
+                self.logger.debug(f" Mid line {mid_num} → IN PROGRESS", category="gui")
+            elif any(keyword in step_desc for keyword in [
+                'close line marker', 'סגור סמן שורות'
+            ]):
+                self.update_operation_state('mid_lines', mid_num, 'completed')
+                self.logger.info(f" Mid line {mid_num} → COMPLETED", category="gui")
 
         # Track row operations - match "Page X/Y (Section Z, Page W/N)" or "עמוד X/Y (חלק Z, עמוד W/N)" with edge detection
         # Pages are processed with sections and pages within sections
@@ -826,6 +888,9 @@ class CanvasOperations:
                 # Extract cut name - handle both simple cuts (cut_top) and section cuts (cut_section_1_2, cut_row_section_1_2)
                 cut_name = obj_key.replace('cut_', '', 1)  # Remove first 'cut_' prefix only
                 state = self.main_app.operation_states.get('cuts', {}).get(cut_name, 'pending')
+            elif obj_type == 'mid_line':
+                mid_num = int(obj_key.split('_')[2])
+                state = self.main_app.operation_states.get('mid_lines', {}).get(mid_num, 'pending')
             else:
                 continue
 
@@ -842,17 +907,19 @@ class CanvasOperations:
 
             if color_key in obj_data:
                 new_color = obj_data[color_key]
+                try:
+                    # Update canvas object color
+                    self.main_app.canvas.itemconfig(obj_id, fill=new_color)
 
-                # Update canvas object color
-                self.main_app.canvas.itemconfig(obj_id, fill=new_color)
+                    # Update dash pattern if stored (lines and rows have adaptive dash patterns)
+                    if dash_key in obj_data:
+                        self.main_app.canvas.itemconfig(obj_id, dash=obj_data[dash_key])
 
-                # Update dash pattern if stored (lines and rows have adaptive dash patterns)
-                if dash_key in obj_data:
-                    self.main_app.canvas.itemconfig(obj_id, dash=obj_data[dash_key])
-
-                # Update label color if it exists
-                if 'label_id' in obj_data:
-                    self.main_app.canvas.itemconfig(obj_data['label_id'], fill=new_color)
+                    # Update label color if it exists
+                    if 'label_id' in obj_data:
+                        self.main_app.canvas.itemconfig(obj_data['label_id'], fill=new_color)
+                except Exception:
+                    pass  # Canvas item may have been deleted during redraw; skip stale IDs
     
     def draw_enhanced_legend(self):
         """Draw enhanced legend on canvas using colors from settings"""

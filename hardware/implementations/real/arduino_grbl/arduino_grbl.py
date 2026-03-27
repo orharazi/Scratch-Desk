@@ -1085,20 +1085,20 @@ class ArduinoGRBL:
                 progress_callback(2, "Check door is open", "running")
             self.logger.info("Step 2: Checking door sensor...", category="grbl")
             if hardware_interface:
-                door_state = hardware_interface.get_door_sensor()
+                door_state = hardware_interface.get_row_motor_door_piston_state() == "down"
                 if door_state:
-                    # Door is closed - wait for user to open it
-                    self.logger.warning("Door is closed! Waiting for door to be opened...", category="grbl")
+                    # Door piston is deployed - wait for it to retract
+                    self.logger.warning("Row motor door piston is down! Waiting for piston to retract...", category="grbl")
                     if progress_callback:
-                        progress_callback(2, "Check door is open", "waiting", "Door is closed - please open the door to continue")
+                        progress_callback(2, "Check door is open", "waiting", "Row motor door piston is deployed - waiting for retraction")
 
-                    # Poll door sensor until it opens (check every 0.5 seconds)
+                    # Poll door piston until it retracts (check every 0.5 seconds)
                     max_wait = 300  # 5 minutes maximum wait
                     wait_time = 0
                     while door_state and wait_time < max_wait:
                         time.sleep(0.5)
                         wait_time += 0.5
-                        door_state = hardware_interface.get_door_sensor()
+                        door_state = hardware_interface.get_row_motor_door_piston_state() == "down"
                         if not door_state:
                             break
 

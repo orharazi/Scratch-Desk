@@ -88,14 +88,16 @@ class SafetyRulesManager:
                 "line_marker": self.hardware.get_line_marker_state(),
                 "line_cutter": self.hardware.get_line_cutter_state(),
                 "line_motor": self.hardware.get_line_motor_piston_state(),
+                "row_motor_door": self.hardware.get_row_motor_door_piston_state(),
             },
             # Sensor states
             "sensors": {
-                "row_motor_limit_switch": self.hardware.get_row_motor_limit_switch(),
                 "line_cutter_up_sensor": self.hardware.get_line_cutter_up_sensor(),
                 "line_cutter_down_sensor": self.hardware.get_line_cutter_down_sensor(),
                 "line_marker_up_sensor": self.hardware.get_line_marker_up_sensor(),
                 "line_marker_down_sensor": self.hardware.get_line_marker_down_sensor(),
+                "line_marker_pressure_up_sensor": self.hardware.get_line_marker_pressure_up_sensor(),
+                "line_marker_pressure_down_sensor": self.hardware.get_line_marker_pressure_down_sensor(),
                 "row_cutter_up_sensor": self.hardware.get_row_cutter_up_sensor(),
                 "row_cutter_down_sensor": self.hardware.get_row_cutter_down_sensor(),
                 "row_marker_up_sensor": self.hardware.get_row_marker_up_sensor(),
@@ -104,6 +106,10 @@ class SafetyRulesManager:
                 "line_motor_left_down_sensor": self.hardware.get_line_motor_left_down_sensor(),
                 "line_motor_right_up_sensor": self.hardware.get_line_motor_right_up_sensor(),
                 "line_motor_right_down_sensor": self.hardware.get_line_motor_right_down_sensor(),
+                "row_door_left_up_sensor": self.hardware.get_row_door_left_up_sensor(),
+                "row_door_left_down_sensor": self.hardware.get_row_door_left_down_sensor(),
+                "row_door_right_up_sensor": self.hardware.get_row_door_right_up_sensor(),
+                "row_door_right_down_sensor": self.hardware.get_row_door_right_down_sensor(),
             },
             # Positions
             "positions": {
@@ -551,7 +557,7 @@ class SafetySystem:
             'rules_count': len(self.rules_manager.rules),
             'recent_violations': len(self.violations_log),
             'row_marker_programmed': self.hardware.get_row_marker_state(),
-            'row_marker_limit_switch': self.hardware.get_row_motor_limit_switch(),
+            'row_motor_door_piston': self.hardware.get_row_motor_door_piston_state(),
             'current_position': {'x': self.hardware.get_current_x(), 'y': self.hardware.get_current_y()}
         }
 

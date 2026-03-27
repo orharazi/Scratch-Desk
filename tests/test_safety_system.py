@@ -546,12 +546,13 @@ class TestSafetySystem:
         assert safety.safety_enabled is True
 
     def test_check_step_safety_passes(self):
-        """Test that safe step passes safety check (row marker up, move_y)"""
+        """Test that safe step passes safety check (row marker up, door piston down, move_y)"""
         safety = SafetySystem()
         hw = safety.hardware
 
-        # Set row marker up (safe state)
+        # Set row marker up (safe state for lines — door piston is UP by default during lines)
         hw.row_marker_up()
+        hw.row_motor_door_piston_up()
 
         step = {
             "operation": "move_y",
@@ -578,6 +579,8 @@ class TestSafetySystem:
         if hasattr(hw, 'initialize') and not getattr(hw, 'is_initialized', True):
             hw.initialize()
 
+        # Door piston is UP during lines (default — door not involved in lines)
+        hw.row_motor_door_piston_up()
         # Set row marker down (unsafe for Y movement)
         hw.row_marker_down()
 
@@ -592,7 +595,7 @@ class TestSafetySystem:
             safety.check_step_safety(step)
 
         assert exc_info.value.safety_code is not None
-        assert "Y-axis" in str(exc_info.value) or "row marker" in str(exc_info.value).lower()
+        assert any(phrase in str(exc_info.value).lower() for phrase in ["y-axis", "row marker", "door piston", "line tools"])
 
     def test_violations_log(self):
         """Test that violations are logged"""
@@ -660,7 +663,7 @@ class TestSafetySystem:
         assert "rules_count" in status
         assert "recent_violations" in status
         assert "row_marker_programmed" in status
-        assert "row_marker_limit_switch" in status
+        assert "row_motor_door_piston" in status
         assert "current_position" in status
 
         # Check types
@@ -714,6 +717,9 @@ class TestSafetySystemIntegration:
         if hasattr(hw, 'initialize') and not getattr(hw, 'is_initialized', True):
             hw.initialize()
 
+        # Door piston is UP during lines (not involved in lines operations)
+        hw.row_motor_door_piston_up()
+
         # Scenario: Try to move Y-axis with row marker down
         hw.row_marker_down()
 
@@ -730,7 +736,7 @@ class TestSafetySystemIntegration:
         # Violation should be logged
         assert len(safety.violations_log) > 0
 
-        # Fix the issue
+        # Fix the issue - raise row marker (door piston already down)
         hw.row_marker_up()
 
         # Now should pass

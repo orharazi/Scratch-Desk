@@ -197,9 +197,9 @@ class TestSafetyDuringExecution:
         ss.logger = __import__('core.logger', fromlist=['get_logger']).get_logger()
         ss.rules_manager = SafetyRulesManager(hw)
 
-        # Ensure row marker is up and door not blocking
+        # Ensure row marker is up and line motor down (door piston UP during lines — not involved)
         mock_hardware.row_marker_up()
-        mock_hardware.set_limit_switch_state('rows_door', False)  # False = "up" = not blocking
+        mock_hardware.row_motor_door_piston_up()  # Door is UP during lines operations
         mock_hardware.line_motor_piston_down()
 
         step = {

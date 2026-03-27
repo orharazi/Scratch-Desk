@@ -73,6 +73,10 @@ class RealHardware:
             self.logger.error(f"Error loading config: {e}", category="hardware")
             return {}
 
+    def is_real_hardware(self) -> bool:
+        """Returns True — this is real hardware mode"""
+        return True
+
     def initialize(self) -> bool:
         """
         Initialize all hardware components
@@ -301,6 +305,62 @@ class RealHardware:
 
         return self.gpio.line_motor_piston_up()
 
+    def line_marker_pressure_piston_up(self) -> bool:
+        """Retract line marker pressure piston (switch to hard mark mode - default)"""
+        if not self.is_initialized or not self.gpio:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.gpio.line_marker_pressure_piston_up()
+
+    def line_marker_pressure_piston_down(self) -> bool:
+        """Extend line marker pressure piston (switch to soft mark mode for middle lines)"""
+        if not self.is_initialized or not self.gpio:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.gpio.line_marker_pressure_piston_down()
+
+    def get_line_marker_pressure_piston_state(self) -> str:
+        """Get line marker pressure piston state"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_line_marker_pressure_piston_state()
+
+    def get_line_marker_pressure_up_sensor(self) -> Optional[bool]:
+        """Get line marker pressure UP sensor state"""
+        if not self.is_initialized or not self.gpio:
+            return None
+        return self.gpio.get_line_marker_pressure_up_sensor()
+
+    def get_line_marker_pressure_down_sensor(self) -> Optional[bool]:
+        """Get line marker pressure DOWN sensor state"""
+        if not self.is_initialized or not self.gpio:
+            return None
+        return self.gpio.get_line_marker_pressure_down_sensor()
+
+    def row_motor_door_piston_down(self) -> bool:
+        """Deploy row motor door piston (both sides move together - single GPIO control)"""
+        if not self.is_initialized or not self.gpio:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.gpio.row_motor_door_piston_down()
+
+    def row_motor_door_piston_up(self) -> bool:
+        """Retract row motor door piston (both sides move together - single GPIO control)"""
+        if not self.is_initialized or not self.gpio:
+            self.logger.error("Hardware not initialized", category="hardware")
+            return False
+
+        return self.gpio.row_motor_door_piston_up()
+
+    def get_row_motor_door_piston_state(self) -> str:
+        """Get row motor door piston state"""
+        if not self.is_initialized or not self.gpio:
+            return "unknown"
+        return self.gpio.get_row_motor_door_piston_state()
+
     # ========== AIR PRESSURE VALVE CONTROL ==========
 
     def air_pressure_valve_down(self) -> bool:
@@ -428,6 +488,39 @@ class RealHardware:
         state = self.gpio.get_line_motor_right_down_sensor()
         return state if state is not None else False
 
+    # Row Motor Door Piston Sensors
+    def get_row_door_left_up_sensor(self) -> bool:
+        """Read row motor door LEFT piston UP sensor state"""
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_door_left_up_sensor()
+        return state if state is not None else False
+
+    def get_row_door_left_down_sensor(self) -> bool:
+        """Read row motor door LEFT piston DOWN sensor state"""
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_door_left_down_sensor()
+        return state if state is not None else False
+
+    def get_row_door_right_up_sensor(self) -> bool:
+        """Read row motor door RIGHT piston UP sensor state"""
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_door_right_up_sensor()
+        return state if state is not None else False
+
+    def get_row_door_right_down_sensor(self) -> bool:
+        """Read row motor door RIGHT piston DOWN sensor state"""
+        if not self.is_initialized or not self.gpio:
+            return False
+
+        state = self.gpio.get_row_door_right_down_sensor()
+        return state if state is not None else False
+
     # Row Marker Sensors
     def get_row_marker_up_sensor(self) -> bool:
         """Read row marker UP sensor state"""
@@ -511,19 +604,6 @@ class RealHardware:
         }
 
     # ========== LIMIT SWITCHES ==========
-
-    def get_door_sensor(self) -> bool:
-        """
-        Read door sensor state (from RS485 via GPIO interface)
-
-        Returns:
-            True if door is closed, False if open
-        """
-        if not self.is_initialized or not self.gpio:
-            return False
-
-        state = self.gpio.get_door_sensor()
-        return state if state is not None else False
 
     # ========== EMERGENCY CONTROLS ==========
 
@@ -748,21 +828,8 @@ class RealHardware:
 
     def get_limit_switch_state(self, switch_name: str) -> bool:
         """Get limit switch state by name"""
-        # Rows limit switch is read from RS485 door_sensor (address 15)
-        if switch_name in ("rows", "rows_door", "door"):
-            return self.get_door_sensor()
-        # Other limit switches (top, bottom, left, right) are handled by GRBL
+        # Limit switches (top, bottom, left, right) are handled by GRBL
         return False
-
-    def get_row_motor_limit_switch(self) -> str:
-        """
-        Get row motor limit switch (door) state.
-
-        Returns:
-            "down" if door is closed (limit switch engaged), "up" if door is open
-        """
-        door_closed = self.get_door_sensor()
-        return "down" if door_closed else "up"
 
     def set_limit_switch_state(self, switch_name: str, state: bool):
         """Set limit switch state (not supported in real hardware mode)"""
@@ -1105,9 +1172,6 @@ class RealHardware:
             'x_right_edge': self.get_x_right_edge(),
             'y_top_edge': self.get_y_top_edge(),
             'y_bottom_edge': self.get_y_bottom_edge(),
-
-            # Limit switches
-            'row_marker_limit_switch': self.get_row_motor_limit_switch(),
 
             # Status
             'is_initialized': self.is_initialized

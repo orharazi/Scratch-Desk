@@ -190,25 +190,41 @@ class ExecutionController:
                     step_info = info.get('description', '')
 
                     # Detect motor operation mode from completed step
-                    self.main_app.canvas_manager.detect_operation_mode_from_step(step_info)
+                    try:
+                        self.main_app.canvas_manager.detect_operation_mode_from_step(step_info)
+                    except Exception as e:
+                        self.logger.error(f"detect_operation_mode_from_step failed: {e}", category="gui")
 
-                    # Track operation colors AFTER step completes (user has triggered sensor)
-                    self.main_app.canvas_manager.track_operation_from_step(step_info)
-
-                    # Force position update for move operations
+                    # Force position update for move operations — ALWAYS do this before color tracking
+                    # so that canvas position refreshes even if color tracking fails
                     if 'move' in step_info.lower():
                         self.logger.info(f" MOVE COMPLETED - Forcing position update: {step_info}", category="gui")
-                        self.main_app.canvas_manager.update_position_display()
-                        if hasattr(self.main_app.canvas_manager, 'canvas_position'):
-                            self.main_app.canvas_manager.canvas_position.update_position_display()
+                        try:
+                            self.main_app.canvas_manager.update_position_display()
+                            if hasattr(self.main_app.canvas_manager, 'canvas_position'):
+                                self.main_app.canvas_manager.canvas_position.update_position_display()
+                        except Exception as e:
+                            self.logger.error(f"Position update after move failed: {e}", category="gui")
                         self.logger.debug(f" Position display updated after move completion", category="gui")
                     # Update for sensor operations that might change position
                     elif any(keyword in step_info.lower() for keyword in ['init', 'sensor', 'cut', 'mark']):
-                        self.main_app.canvas_manager.update_position_display()
+                        try:
+                            self.main_app.canvas_manager.update_position_display()
+                        except Exception as e:
+                            self.logger.error(f"Position update failed: {e}", category="gui")
+
+                    # Track operation colors AFTER step completes — isolated so failures don't block position updates
+                    try:
+                        self.main_app.canvas_manager.track_operation_from_step(step_info)
+                    except Exception as e:
+                        self.logger.error(f"track_operation_from_step failed: {e}", category="gui")
 
                     # Update tool status indicators for tool actions
                     if any(keyword in step_info.lower() for keyword in ['line marker', 'line cutter', 'row marker', 'row cutter']):
-                        self.main_app.canvas_manager.update_tool_status_from_step(step_info)
+                        try:
+                            self.main_app.canvas_manager.update_tool_status_from_step(step_info)
+                        except Exception as e:
+                            self.logger.error(f"update_tool_status_from_step failed: {e}", category="gui")
 
                     # Special handling for line completion - ensure automatic move to next line
                     if 'close line marker' in step_info.lower() and 'lines' in step_info.lower():

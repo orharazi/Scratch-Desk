@@ -469,8 +469,7 @@ class AdminToolGUI:
             (t("Top Limit"), "top_limit_switch"),
             (t("Bottom Limit"), "bottom_limit_switch"),
             (t("Left Limit"), "left_limit_switch"),
-            (t("Right Limit"), "right_limit_switch"),
-            (t("Door Sensor"), "door_sensor")
+            (t("Right Limit"), "right_limit_switch")
         ]
 
         for i, (name, switch_id) in enumerate(limit_switches):
@@ -509,8 +508,10 @@ class AdminToolGUI:
             "line_marker": ("Line Marker", "line_marker_piston"),
             "line_cutter": ("Line Cutter", "line_cutter_piston"),
             "line_motor": ("Line Motor (Both)", "line_motor_piston"),
+            "line_marker_pressure": ("Line Marker Pressure", "line_marker_pressure_piston"),
             "row_marker": ("Row Marker", "row_marker_piston"),
             "row_cutter": ("Row Cutter", "row_cutter_piston"),
+            "row_motor_door": ("Row Motor Door (Both)", "row_motor_door_piston"),
             "air_pressure": ("Air Pressure", "air_pressure_valve")
         }
 
@@ -574,6 +575,10 @@ class AdminToolGUI:
                 (t("Right UP"), "line_motor_right_up_sensor"),
                 (t("Right DOWN"), "line_motor_right_down_sensor")
             ]),
+            (t("Line Marker Pressure"), [
+                (t("UP Sensor"), "line_marker_pressure_up_sensor"),
+                (t("DOWN Sensor"), "line_marker_pressure_down_sensor")
+            ]),
             (t("Row Marker"), [
                 (t("UP Sensor"), "row_marker_up_sensor"),
                 (t("DOWN Sensor"), "row_marker_down_sensor")
@@ -581,6 +586,12 @@ class AdminToolGUI:
             (t("Row Cutter"), [
                 (t("UP Sensor"), "row_cutter_up_sensor"),
                 (t("DOWN Sensor"), "row_cutter_down_sensor")
+            ]),
+            (t("Row Motor Door Piston"), [
+                (t("Left UP"), "row_door_left_up_sensor"),
+                (t("Left DOWN"), "row_door_left_down_sensor"),
+                (t("Right UP"), "row_door_right_up_sensor"),
+                (t("Right DOWN"), "row_door_right_down_sensor")
             ])
         ]
 
@@ -1075,7 +1086,7 @@ class AdminToolGUI:
                                 if sensor_id in self.sensor_connection_widgets:
                                     self._safe_config(self.sensor_connection_widgets[sensor_id], fg="#27AE60")
 
-                                if "limit_switch" in sensor_id or sensor_id == "door_sensor":
+                                if "limit_switch" in sensor_id:
                                     if state:
                                         self._safe_config(widget, text=t("CLOSED"), background="#27AE60")
                                     else:
@@ -1317,10 +1328,14 @@ class AdminToolGUI:
             success = self.hardware.line_cutter_piston_up()
         elif piston_key == "line_motor":
             success = self.hardware.line_motor_piston_up()
+        elif piston_key == "line_marker_pressure":
+            success = self.hardware.line_marker_pressure_piston_up()
         elif piston_key == "row_marker":
             success = self.hardware.row_marker_piston_up()
         elif piston_key == "row_cutter":
             success = self.hardware.row_cutter_piston_up()
+        elif piston_key == "row_motor_door":
+            success = self.hardware.row_motor_door_piston_up()
         elif piston_key == "air_pressure":
             success = self.hardware.air_pressure_valve_up()
 
@@ -1348,10 +1363,14 @@ class AdminToolGUI:
             success = self.hardware.line_cutter_piston_down()
         elif piston_key == "line_motor":
             success = self.hardware.line_motor_piston_down()
+        elif piston_key == "line_marker_pressure":
+            success = self.hardware.line_marker_pressure_piston_down()
         elif piston_key == "row_marker":
             success = self.hardware.row_marker_piston_down()
         elif piston_key == "row_cutter":
             success = self.hardware.row_cutter_piston_down()
+        elif piston_key == "row_motor_door":
+            success = self.hardware.row_motor_door_piston_down()
         elif piston_key == "air_pressure":
             success = self.hardware.air_pressure_valve_down()
 

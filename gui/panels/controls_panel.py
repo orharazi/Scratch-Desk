@@ -40,10 +40,14 @@ class ControlsPanel:
 
     def _is_execution_running(self, action_name=""):
         """Check if a program is currently executing.
-        If so, show a blocking dialog with the action name and return True.
+        In simulation/mock mode, always allows changes (for testing purposes).
+        In real hardware mode, shows a blocking dialog and returns True if running.
         Otherwise return False."""
         engine = self.main_app.execution_engine
         if engine.is_running:
+            # Allow changes during simulation — block only on real hardware
+            if not self.hardware.is_real_hardware():
+                return False
             from tkinter import messagebox
             messagebox.showwarning(
                 t("Program Running"),
@@ -614,14 +618,6 @@ class ControlsPanel:
                       command=lambda: self.toggle_ls('x_left'), bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=1, column=2, padx=2, sticky='e')
 
-        # Door Sensor (separate row)
-        tk.Label(ls_grid, text=t("Door:"), bg='#F0F8FF', fg='#003366',
-                font=('Arial', 8, 'bold'), width=7, anchor='e').grid(row=2, column=0, sticky='e')
-        self.door_sensor_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(ls_grid, text=t("Door Sensor"), variable=self.door_sensor_var,
-                      command=lambda: self.toggle_ls('rows_door'), bg='#F0F8FF', fg='black',
-                      font=('Arial', 7), selectcolor='#27AE60', width=10, anchor='e').grid(row=2, column=1, padx=2, sticky='e')
-
         # Separator
         tk.Frame(self.test_controls_frame, bg='#7F8C8D', height=2).pack(fill=tk.X, padx=8, pady=5)
 
@@ -650,6 +646,11 @@ class ControlsPanel:
         tk.Checkbutton(lines_pist_frame, text=t("Motor"), variable=self.lines_motor_var,
                       command=self.toggle_line_motor, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=0, column=3, padx=2)
+        self.lines_pressure_var = tk.BooleanVar()
+        self.lines_pressure_cb = tk.Checkbutton(lines_pist_frame, text=t("Hard Mark"), variable=self.lines_pressure_var,
+                      command=self.toggle_line_marker_pressure, bg='#F0F8FF', fg='black',
+                      font=('Arial', 7), selectcolor='#27AE60')
+        self.lines_pressure_cb.grid(row=0, column=4, padx=2)
 
         # Rows Pistons
         tk.Label(lines_pist_frame, text=t("Rows:"), bg='#F0F8FF', fg='#003366',
@@ -662,6 +663,10 @@ class ControlsPanel:
         tk.Checkbutton(lines_pist_frame, text=t("Cutter"), variable=self.rows_cutter_var,
                       command=self.toggle_row_cutter, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=2, padx=2)
+        self.rows_door_var = tk.BooleanVar()
+        tk.Checkbutton(lines_pist_frame, text=t("Door Piston"), variable=self.rows_door_var,
+                      command=self.toggle_row_door_piston, bg='#F0F8FF', fg='black',
+                      font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=3, padx=2)
 
         # System row (Air Pressure)
         tk.Label(lines_pist_frame, text=t("System:"), bg='#F0F8FF', fg='#003366',
@@ -1587,6 +1592,30 @@ class ControlsPanel:
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
+    def toggle_row_door_piston(self):
+        """Toggle row motor door piston"""
+        if self._is_execution_running():
+            self.rows_door_var.set(not self.rows_door_var.get())
+            return
+        if self.rows_door_var.get():
+            self.hardware.row_motor_door_piston_down()
+        else:
+            self.hardware.row_motor_door_piston_up()
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
+    def toggle_line_marker_pressure(self):
+        """Toggle line marker pressure piston (down = soft/middle line, up = hard/regular line)"""
+        if self._is_execution_running():
+            self.lines_pressure_var.set(not self.lines_pressure_var.get())
+            return
+        if self.lines_pressure_var.get():
+            self.hardware.line_marker_pressure_piston_down()
+        else:
+            self.hardware.line_marker_pressure_piston_up()
+        if hasattr(self.main_app, 'canvas_manager'):
+            self.main_app.canvas_manager.update_position_display()
+
     def toggle_air_pressure(self):
         """Toggle air pressure valve"""
         if self._is_execution_running():
@@ -1615,9 +1644,16 @@ class ControlsPanel:
             # For line motor piston: checked = down (opposite of default UP)
             self.lines_motor_var.set(line_motor_piston_state == "down")
 
-            # For row marker and cutter: checked = down
+            # For row marker, cutter, and door piston: checked = down
             self.rows_marker_var.set(row_marker_state == "down")
             self.rows_cutter_var.set(row_cutter_state == "down")
+            row_door_piston_state = self.hardware.get_row_motor_door_piston_state()
+            self.rows_door_var.set(row_door_piston_state == "down")
+
+            # Line marker pressure piston: checked = down (soft/middle line mark)
+            pressure_state = self.hardware.get_line_marker_pressure_piston_state()
+            self.lines_pressure_var.set(pressure_state == "down")
+            self.lines_pressure_cb.config(text=t("Soft Mark") if pressure_state == "down" else t("Hard Mark"))
 
             # Air pressure valve: checked = down (open/air flowing)
             air_pressure_state = self.hardware.get_air_pressure_valve_state()
@@ -1628,7 +1664,6 @@ class ControlsPanel:
             self.y_bottom_ls_var.set(self.hardware.get_limit_switch_state('y_bottom'))
             self.x_right_ls_var.set(self.hardware.get_limit_switch_state('x_right'))
             self.x_left_ls_var.set(self.hardware.get_limit_switch_state('x_left'))
-            self.door_sensor_var.set(self.hardware.get_limit_switch_state('rows_door'))
 
         except Exception as e:
             # Silently ignore errors to avoid flooding console

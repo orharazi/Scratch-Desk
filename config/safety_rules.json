@@ -4,85 +4,6 @@
   "global_enabled": true,
   "rules": [
     {
-      "id": "LINES_DOOR_SAFETY",
-      "name": "Lines Safety: Door/Row Tools Must Be Up",
-      "name_he": "בטיחות שורות: הדלת/כלי עמודות חייבים להיות למעלה",
-      "description": "During lines operations, row marker and row cutter must be UP and door closed. Row tools cross the Y-axis path when down, blocking movement. Also monitors in real-time for unsafe state mid-operation.",
-      "description_he": "במהלך פעולות שורות, סמן העמודות וסכין העמודות חייבים להיות למעלה והדלת סגורה. כלי העמודות חוצים את נתיב ציר Y כשהם למטה וחוסמים תנועה. גם מנטר בזמן אמת מצב לא בטוח באמצע פעולה.",
-      "enabled": true,
-      "priority": 10,
-      "severity": "critical",
-      "reason": "collision",
-      "reason_he": "התנגשות",
-      "is_system_rule": true,
-      "conditions": {
-        "operator": "OR",
-        "items": [
-          {
-            "type": "sensor",
-            "source": "row_motor_limit_switch",
-            "operator": "equals",
-            "value": "down"
-          }
-        ]
-      },
-      "blocked_operations": [
-        {
-          "operation": "move_y",
-          "exclude_setup": false
-        },
-        {
-          "operation": "tool_action",
-          "tools": [
-            "line_marker",
-            "line_cutter"
-          ],
-          "exclude_setup": false
-        }
-      ],
-      "monitor": {
-        "enabled": true,
-        "skip_setup": false,
-        "operation_context": [
-          "lines"
-        ],
-        "action": "emergency_pause",
-        "recovery_conditions": {
-          "operator": "AND",
-          "items": [
-            {
-              "type": "sensor",
-              "source": "row_motor_limit_switch",
-              "operator": "equals",
-              "value": "up"
-            },
-            {
-              "operator": "OR",
-              "items": [
-                {
-                  "type": "piston",
-                  "source": "line_motor",
-                  "operator": "equals",
-                  "value": "down"
-                },
-                {
-                  "type": "position",
-                  "source": "x_position",
-                  "operator": "equals",
-                  "value": 0
-                }
-              ]
-            }
-          ]
-        },
-        "recovery_action": "auto_resume"
-      },
-      "message": "Lines operation blocked! Row door is down and block the Y-axis path. Close the door.",
-      "message_he": "פעולת שורות חסומה! דלת למטה וחוסמת את נתיב ציר Y. הרם את כל כלי העמודות וסגור את הדלת.",
-      "created_at": "2026-02-01T00:00:00Z",
-      "created_by": "system_migration"
-    },
-    {
       "id": "LINE_TOOLS_UP_FOR_LINES",
       "name": "Lines Safety: Line Tools Must Be Up",
       "name_he": "בטיחות שורות: כלי שורות חייבים להיות למעלה",
@@ -221,6 +142,48 @@
       "created_by": "system"
     },
     {
+      "id": "ROWS_DOOR_PISTON_SAFETY",
+      "name": "Rows Safety: Door Piston Must Be Down Before Left Movement",
+      "name_he": "בטיחות עמודות: בוכנת הדלת חייבת להיות למטה לפני תנועה שמאלה",
+      "description": "During rows operations, the row motor door piston must be DOWN (deployed) before any left movement. The door deploys automatically after the initial right move. Blocks leftward movement if door is not yet deployed.",
+      "description_he": "במהלך פעולות עמודות, בוכנת דלת מנוע העמודות חייבת להיות למטה (פרוסה) לפני כל תנועה שמאלה. הדלת נפרסת אוטומטית לאחר התנועה הראשונית ימינה. חוסם תנועה שמאלה אם הדלת עדיין לא פרוסה.",
+      "enabled": true,
+      "priority": 22,
+      "severity": "critical",
+      "reason": "collision",
+      "reason_he": "התנגשות",
+      "is_system_rule": true,
+      "conditions": {
+        "operator": "OR",
+        "items": [
+          {
+            "type": "piston",
+            "source": "row_motor_door",
+            "operator": "equals",
+            "value": "up"
+          },
+          {
+            "type": "sensor",
+            "source": "row_door_left_up_sensor",
+            "operator": "equals",
+            "value": true
+          }
+        ]
+      },
+      "blocked_operations": [
+        {
+          "operation": "move_x",
+          "exclude_setup": true,
+          "exclude_rows_start": true,
+          "direction": "left"
+        }
+      ],
+      "message": "Rows left movement blocked! Row motor door piston is UP (not deployed). Door deploys automatically after moving right to start position.",
+      "message_he": "תנועת עמודות שמאלה חסומה! בוכנת דלת מנוע העמודות למעלה (לא פרוסה). הדלת נפרסת אוטומטית לאחר תנועה ימינה למיקום ההתחלה.",
+      "created_at": "2026-03-27T00:00:00Z",
+      "created_by": "system"
+    },
+    {
       "id": "LINES_MOTOR_HOME_FOR_ROWS",
       "name": "Rows Safety: Lines Motor Must Be at Home",
       "name_he": "בטיחות עמודות: מנוע שורות חייב להיות בבית",
@@ -343,61 +306,6 @@
       "created_by": "system"
     },
     {
-      "id": "ROWS_MONITOR_DOOR_OPEN",
-      "name": "Rows: Door Open Blocks Left Movement",
-      "name_he": "עמודות: דלת פתוחה חוסמת תנועה שמאלה",
-      "description": "Row motor limit switch is UP (door open) during rows operations. Motor can move right but not left when door is open.",
-      "description_he": "מתג גבול מנוע עמודות למעלה (דלת פתוחה). המנוע יכול לנוע ימינה אבל לא שמאלה כשהדלת פתוחה.",
-      "enabled": true,
-      "priority": 130,
-      "severity": "critical",
-      "reason": "operational",
-      "reason_he": "תפעולי",
-      "is_system_rule": true,
-      "conditions": {
-        "operator": "AND",
-        "items": [
-          {
-            "type": "sensor",
-            "source": "row_motor_limit_switch",
-            "operator": "equals",
-            "value": "up"
-          }
-        ]
-      },
-      "blocked_operations": [
-        {
-          "operation": "move_x",
-          "exclude_setup": true,
-          "exclude_rows_start": true,
-          "direction": "left"
-        }
-      ],
-      "monitor": {
-        "enabled": true,
-        "operation_context": [
-          "rows"
-        ],
-        "action": "emergency_pause",
-        "recovery_conditions": {
-          "operator": "AND",
-          "items": [
-            {
-              "type": "sensor",
-              "source": "row_motor_limit_switch",
-              "operator": "equals",
-              "value": "down"
-            }
-          ]
-        },
-        "recovery_action": "auto_resume"
-      },
-      "message": "ROWS LEFT MOVEMENT BLOCKED!\n   Row motor door is OPEN (limit switch UP)\n   Left movement blocked until door is closed\n   Right movement is allowed\n   NOTE: Initial move to start position is allowed with door open",
-      "message_he": "תנועה שמאלה חסומה!\n   דלת מנוע העמודות פתוחה (מתג גבול למעלה)\n   תנועה שמאלה חסומה עד שהדלת תיסגר\n   תנועה ימינה מותרת\n   הערה: תנועה ראשונית למיקום התחלה מותרת עם דלת פתוחה",
-      "created_at": "2026-02-14T23:00:00Z",
-      "created_by": "system_migration"
-    },
-    {
       "id": "ROWS_MONITOR_PISTON_UP",
       "name": "Rows Monitor: Line Motor Piston Up",
       "name_he": "ניטור עמודות: בוכנת מנוע שורות למעלה",
@@ -464,7 +372,9 @@
       "row_cutter",
       "line_marker",
       "line_cutter",
-      "line_motor"
+      "line_marker_pressure",
+      "line_motor",
+      "row_motor_door"
     ],
     "sensors": [
       "row_marker_up_sensor",
@@ -473,6 +383,8 @@
       "row_cutter_down_sensor",
       "line_marker_up_sensor",
       "line_marker_down_sensor",
+      "line_marker_pressure_up_sensor",
+      "line_marker_pressure_down_sensor",
       "line_cutter_up_sensor",
       "line_cutter_down_sensor",
       "line_motor_left_up_sensor",
@@ -483,7 +395,10 @@
       "x_right_edge_sensor",
       "y_top_edge_sensor",
       "y_bottom_edge_sensor",
-      "row_motor_limit_switch"
+      "row_door_left_up_sensor",
+      "row_door_left_down_sensor",
+      "row_door_right_up_sensor",
+      "row_door_right_down_sensor"
     ],
     "positions": [
       "x_position",
@@ -519,9 +434,11 @@
   "available_tools": [
     "line_marker",
     "line_cutter",
+    "line_marker_pressure",
     "line_motor",
     "row_marker",
-    "row_cutter"
+    "row_cutter",
+    "row_motor_door"
   ],
   "available_reasons": [
     "operational",

@@ -76,36 +76,40 @@ class CSVParser:
         """Create ScratchDeskProgram instance from CSV row with new field names"""
         # Convert string values to appropriate types
         program_data = {}
-        
+
         # Integer fields
         integer_fields = [
             'program_number', 'number_of_lines', 'number_of_pages', 'repeat_rows', 'repeat_lines'
         ]
-        
+
         # Float fields
         float_fields = [
-            'high', 'top_padding', 'bottom_padding', 'width', 
+            'high', 'top_padding', 'bottom_padding', 'width',
             'left_margin', 'right_margin',
             'page_width', 'buffer_between_pages'
         ]
-        
+
         # Handle integer conversions
         for field in integer_fields:
             value = row.get(field, '0').strip()
             if not value:
                 value = '0'
             program_data[field] = int(float(value))  # Handle cases like "5.0"
-        
+
         # Handle float conversions
         for field in float_fields:
             value = row.get(field, '0.0').strip()
             if not value:
                 value = '0.0'
             program_data[field] = float(value)
-        
+
         # Handle string field
         program_data['program_name'] = row.get('program_name', '').strip()
-        
+
+        # Handle optional multi_line field (optional, defaults to False)
+        multi_line_value = row.get('multi_line', '').strip().lower()
+        program_data['multi_line'] = multi_line_value in ('1', 'true', 'yes', 't', 'y')
+
         return ScratchDeskProgram(**program_data)
     
     def save_programs_to_csv(self, programs, file_path):

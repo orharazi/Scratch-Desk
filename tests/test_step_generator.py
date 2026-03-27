@@ -84,7 +84,7 @@ class TestGenerateLinesMarkingSteps(unittest.TestCase):
         tool_actions = [s for s in steps if s['operation'] == 'tool_action' and s['parameters'].get('tool') == 'line_marker']
         self.assertGreater(len(tool_actions), 0)
 
-        # Check returns to home
+        # Check returns to home (lines ends with move_y back to 0)
         self.assertEqual(steps[-1]['operation'], 'move_y')
         self.assertEqual(steps[-1]['parameters']['position'], 0.0)
 
@@ -254,7 +254,7 @@ class TestGenerateLinesMarkingSteps(unittest.TestCase):
         self.assertEqual(steps[1]['parameters']['position'], 0.0)
 
     def test_returns_to_home(self):
-        """Last step is move_y(0)"""
+        """Last step is move_y(0) — lines ends by returning Y motor to position 0"""
         steps = generate_lines_marking_steps(self.program)
 
         self.assertEqual(steps[-1]['operation'], 'move_y')

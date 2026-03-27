@@ -448,31 +448,13 @@ class ExecutionEngine:
 
                 # Handle transition from lines to rows operations IMMEDIATELY
                 if previous_operation == 'lines' and temp_operation_type == 'rows':
-                    self.logger.info("OPERATION TRANSITION: Lines → Rows detected", category="execution")
-                    self.logger.debug(f"TRANSITION STEP: {step.get('description', '')}", category="execution")
-                    self.logger.debug(f"STEP OPERATION: {step.get('operation', '')}", category="execution")
-                    self.logger.debug(f"PREVIOUS OP: {previous_operation}, DETECTED OP: {temp_operation_type}", category="execution")
-
-                    # CRITICAL: Set transition flag BEFORE any safety checks can run
+                    self.logger.info("OPERATION TRANSITION: Lines → Rows detected (door auto-managed)", category="execution")
                     with self._transition_lock:
                         self.in_transition = True
-                    self.logger.info("TRANSITION FLAG SET IMMEDIATELY - ALL SAFETY CHECKS BYPASSED", category="execution")
-
-                    try:
-                        transition_result = self._handle_lines_to_rows_transition()
-                        self.logger.debug(f"TRANSITION RESULT: {transition_result}", category="execution")
-                        if not transition_result:
-                            # Transition failed - stop execution
-                            self.logger.error("TRANSITION FAILED - Breaking execution loop", category="execution")
-                            self.in_transition = False  # Clear flag on failure
-                            break
-                    except Exception as e:
-                        self.logger.error(f"TRANSITION EXCEPTION: {e}", category="execution")
-                        self.in_transition = False  # Clear flag on exception
-                        break
-                    # After successful transition, update operation type to 'rows' and continue
+                    self.in_transition = False
                     self.current_operation_type = 'rows'
-                    self.logger.success("TRANSITION COMPLETED - Operation type updated to ROWS - Continuing with triggering step", category="execution")
+                    self._update_transition_canvas()
+                    self.logger.success("TRANSITION COMPLETED - Operation type updated to ROWS", category="execution")
 
                 # Update operation type for non-transition steps
                 if not (previous_operation == 'lines' and temp_operation_type == 'rows'):
@@ -800,9 +782,11 @@ class ExecutionEngine:
                 tool_functions = {
                     'line_marker': {'down': self.hardware.line_marker_down, 'up': self.hardware.line_marker_up},
                     'line_cutter': {'down': self.hardware.line_cutter_down, 'up': self.hardware.line_cutter_up},
+                    'line_marker_pressure_piston': {'down': self.hardware.line_marker_pressure_piston_down, 'up': self.hardware.line_marker_pressure_piston_up},
                     'row_marker': {'down': self._row_marker_tool_down, 'up': self._row_marker_tool_up},
                     'row_cutter': {'down': self.hardware.row_cutter_down, 'up': self.hardware.row_cutter_up},
-                    'line_motor_piston': {'down': self.hardware.line_motor_piston_down, 'up': self.hardware.line_motor_piston_up}
+                    'line_motor_piston': {'down': self.hardware.line_motor_piston_down, 'up': self.hardware.line_motor_piston_up},
+                    'row_motor_door_piston': {'down': self.hardware.row_motor_door_piston_down, 'up': self.hardware.row_motor_door_piston_up}
                 }
 
                 if tool in tool_functions and action in tool_functions[tool]:
@@ -1132,137 +1116,6 @@ class ExecutionEngine:
             self.logger.error(f"Safety monitoring thread error: {e}", category="execution")
 
         self.logger.info("Real-time safety monitoring stopped", category="execution")
-
-    def _handle_lines_to_rows_transition(self):
-        """
-        Handle transition from lines operations to rows operations.
-        First moves the rows motor to the initial start position (allowed with door open),
-        then waits for the door to be closed before continuing with actual rows operations.
-        """
-        try:
-            self.logger.debug("TRANSITION: Starting _handle_lines_to_rows_transition", category="execution")
-
-            # Transition flag is already set in main execution loop
-            self.logger.debug("TRANSITION: Safety monitoring already paused by transition flag", category="execution")
-
-            # STEP 1: Move the rows motor to the initial start position BEFORE waiting for door
-            # The rows motor should be able to reach its start position with the door open
-            self.logger.debug(f"TRANSITION: Looking for first move_x step after current position {self.current_step_index}", category="execution")
-
-            first_move_x_step = None
-            for idx in range(self.current_step_index, min(self.current_step_index + 5, len(self.steps))):
-                step = self.steps[idx]
-                if step.get('operation') == 'move_x':
-                    first_move_x_step = step
-                    self.logger.debug(f"   Found move_x step at index {idx}: {step.get('description')}", category="execution")
-                    break
-
-            if first_move_x_step:
-                target_x = first_move_x_step.get('parameters', {}).get('position', 0)
-                self.logger.info(f"TRANSITION: Moving rows motor to start position ({target_x}cm) before door check", category="execution")
-                move_result = self.hardware.move_x(target_x)
-                if move_result:
-                    self.logger.success(f"TRANSITION: Rows motor now at start position {self.hardware.get_current_x()}cm", category="execution")
-                else:
-                    self.logger.error(f"TRANSITION: Rows motor movement to {target_x}cm failed!", category="execution")
-
-            # STEP 2: Check if door is already closed
-            limit_switch_state = self.hardware.get_row_motor_limit_switch()
-            self.logger.debug(f"TRANSITION: Current rows motor door limit switch: {limit_switch_state}", category="execution")
-
-            if limit_switch_state == "down":
-                self.logger.success("Rows motor door already CLOSED (limit switch ON) - proceeding with rows operations", category="execution")
-                self._update_transition_canvas()
-                self.in_transition = False  # Clear transition flag
-                return True
-
-            # STEP 3: Door is open - pause and wait for it to close
-            self.logger.info("TRANSITION PAUSE: Rows motor at start position. Waiting for door to be CLOSED to continue.", category="execution")
-
-            self.is_paused = True
-            self.pause_event.clear()
-
-            self._update_status("transition_alert", {
-                'from_operation': 'lines',
-                'to_operation': 'rows',
-                'message': 'Lines operations complete. Rows motor moved to start position. Please CLOSE ROWS MOTOR DOOR (toggle limit switch button to ON) to continue with rows operations.',
-                'current_limit_switch': limit_switch_state
-            })
-
-            # Wait for door to close
-            result = self._wait_for_row_marker_down()
-            self.logger.debug(f"TRANSITION: _wait_for_row_marker_down returned: {result}", category="execution")
-            return result
-
-        except Exception as e:
-            self.logger.error(f"TRANSITION EXCEPTION in _handle_lines_to_rows_transition: {e}", category="execution")
-            import traceback
-            traceback.print_exc()
-            self.in_transition = False  # Clear flag on error
-            return False
-
-    def _wait_for_row_marker_down(self):
-        """
-        Wait for rows motor door to be CLOSED (limit switch ON) with real-time monitoring
-        Auto-dismiss alert and resume execution when condition is met.
-        Note: The rows motor is already at its start position (moved before this wait).
-        """
-        import time
-
-        self.logger.info("Monitoring rows motor door - waiting for CLOSED position (limit switch ON)...", category="execution")
-
-        while not self.stop_event.is_set():
-            # Check ONLY limit switch state (motor door sensor)
-            limit_switch_state = self.hardware.get_row_motor_limit_switch()
-
-            if limit_switch_state == "down":
-                self.logger.success("Rows motor door CLOSED (limit switch ON) - verifying stable position...", category="execution")
-
-                # Wait a short time to ensure the position is stable
-                time.sleep(timing_settings.get("row_marker_stable_delay", 0.2))
-
-                # Double-check the limit switch is still ON
-                limit_switch_state_stable = self.hardware.get_row_motor_limit_switch()
-
-                if limit_switch_state_stable == "down":
-                    self.logger.success("Rows motor door limit switch stable - auto-resuming execution", category="execution")
-
-                    # Clear transition flag to resume safety monitoring
-                    self.in_transition = False
-                    self.logger.debug("TRANSITION: Resuming safety monitoring for rows operations", category="execution")
-
-                    # Update operation type to rows BEFORE position update
-                    self.current_operation_type = 'rows'
-                    self.logger.debug("TRANSITION: Set operation type to 'rows'", category="execution")
-
-                    # Update canvas display
-                    self._update_transition_canvas()
-
-                    # Auto-dismiss alert and resume execution
-                    self._update_status("transition_complete", {
-                        'message': 'Rows motor door CLOSED - resuming rows operations'
-                    })
-
-                    # Resume execution automatically
-                    self.is_paused = False
-                    self.pause_event.set()
-                    return True
-                else:
-                    self.logger.warning("Row marker position unstable - continuing to wait...", category="execution")
-                    continue
-
-            # Update status with current limit switch state (for GUI updates)
-            self._update_status("transition_waiting", {
-                'limit_switch_state': limit_switch_state
-            })
-
-            # Check every 500ms for responsive monitoring
-            time.sleep(timing_settings.get("transition_monitor_interval", 0.5))
-
-        # Execution was stopped during transition
-        self.logger.info("Execution stopped during lines→rows transition", category="execution")
-        self.in_transition = False  # Clear transition flag
-        return False
 
     def _update_transition_canvas(self):
         """Update canvas display after transition to rows operations"""

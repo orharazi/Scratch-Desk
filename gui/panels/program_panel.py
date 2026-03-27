@@ -54,6 +54,9 @@ class ProgramPanel:
         # Input Fields
         self.create_input_fields()
 
+        # Action Buttons (outside scroll area so they're always visible)
+        self._create_action_buttons()
+
         # Validation Status
         self.create_validation_section()
 
@@ -172,14 +175,38 @@ class ProgramPanel:
             self.program_fields[field_name] = entry
             row += 1
 
+        # Multi Line checkbox (boolean field)
+        self.multi_line_var = tk.BooleanVar(value=False)
+        multi_line_cb = tk.Checkbutton(
+            self.input_frame, variable=self.multi_line_var,
+            command=self.on_field_change, bg='lightgray', activebackground='lightgray'
+        )
+        multi_line_cb.grid(row=row, column=0, sticky="e", pady=2, padx=(0,5))
+        tk.Label(self.input_frame, text=t("Multi Line:"), font=('Arial', 9),
+                bg='lightgray', fg='black', anchor='e').grid(row=row, column=1, sticky="e", pady=2)
+        row += 1
+
         # Configure grid weights - labels column expands to push content right
         self.input_frame.grid_columnconfigure(0, weight=0)
         self.input_frame.grid_columnconfigure(1, weight=1)
 
+        # Tail frame: validation + paper size live inside the scrollable area
+        self._scrollable_tail = tk.Frame(self.input_frame, bg='lightgray')
+        self._scrollable_tail.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(8, 4))
+
+        # Bind mousewheel scrolling to the canvas
+        def _on_mousewheel(event):
+            self.input_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        self.input_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+    def _create_action_buttons(self):
+        """Create action buttons outside the scroll area so they're always visible"""
+        self._buttons_container = tk.Frame(self.content_frame, bg='lightgray')
+        self._buttons_container.pack(fill=tk.X, padx=3, pady=(0, 3))
+
         # Update and Add New buttons (normal mode)
-        self._button_row = row
-        self.button_frame = tk.Frame(self.input_frame, bg='lightgray')
-        self.button_frame.grid(row=row, column=0, columnspan=2, pady=(10,5), sticky="ew")
+        self.button_frame = tk.Frame(self._buttons_container, bg='lightgray')
+        self.button_frame.pack(fill=tk.X)
 
         self.update_btn = tk.Button(self.button_frame, text=t("Update Program"), command=self.update_current_program,
                  bg='darkorange', fg='black', font=('Arial', 9, 'bold'),
@@ -197,7 +224,7 @@ class ProgramPanel:
         self.delete_btn.pack(fill=tk.X)
 
         # Save and Cancel buttons (creation mode) - hidden by default
-        self.creation_button_frame = tk.Frame(self.input_frame, bg='lightgray')
+        self.creation_button_frame = tk.Frame(self._buttons_container, bg='lightgray')
 
         self.save_new_btn = tk.Button(self.creation_button_frame, text=t("Save Program"), command=self._save_new_program,
                  bg='#27AE60', fg='black', font=('Arial', 9, 'bold'),
@@ -210,8 +237,8 @@ class ProgramPanel:
         self.cancel_new_btn.pack(fill=tk.X)
 
     def create_validation_section(self):
-        """Create validation status section"""
-        self.validation_frame = tk.Frame(self.content_frame, bg='lightgray')
+        """Create validation status section (inside scrollable area)"""
+        self.validation_frame = tk.Frame(self._scrollable_tail, bg='lightgray')
         self.validation_frame.pack(fill=tk.X, padx=10, pady=5)
 
         self.validation_indicator = tk.Label(self.validation_frame, text="●",
@@ -226,9 +253,9 @@ class ProgramPanel:
         self.create_paper_size_section()
 
     def create_paper_size_section(self):
-        """Create paper size calculation display section"""
+        """Create paper size calculation display section (inside scrollable area)"""
         # Paper size calculation frame
-        paper_size_frame = tk.Frame(self.content_frame, bg='lightsteelblue', relief=tk.RIDGE, bd=2)
+        paper_size_frame = tk.Frame(self._scrollable_tail, bg='lightsteelblue', relief=tk.RIDGE, bd=2)
         paper_size_frame.pack(fill=tk.X, padx=3, pady=5)
 
         # Title
@@ -262,6 +289,14 @@ class ProgramPanel:
 
         tk.Label(pattern_frame, text=t("Line distance:"), font=('Arial', 9, 'bold'),
                 bg='lightsteelblue', fg='darkblue').grid(row=2, column=1, sticky="e")
+
+        # Multi line status
+        self.multi_line_display_label = tk.Label(pattern_frame, text=t("No"),
+                                                font=('Arial', 9, 'bold'), bg='lightsteelblue', fg='darkblue')
+        self.multi_line_display_label.grid(row=3, column=0, sticky="e", padx=(0,5))
+
+        tk.Label(pattern_frame, text=t("Multi Line:"), font=('Arial', 9, 'bold'),
+                bg='lightsteelblue', fg='darkblue').grid(row=3, column=1, sticky="e")
 
         # Actual size section (highlighted)
         actual_frame = tk.Frame(paper_size_frame, bg='lightcyan', relief=tk.SUNKEN, bd=2)
@@ -382,6 +417,8 @@ class ProgramPanel:
                 self.program_fields[field_name].delete(0, tk.END)
                 self.program_fields[field_name].insert(0, value)
 
+        self.multi_line_var.set(getattr(p, 'multi_line', False))
+
         self.validate_program()
         self.update_paper_size_display()
 
@@ -453,6 +490,7 @@ class ProgramPanel:
                 buffer_between_pages=float(self.program_fields['buffer_between_pages'].get() or 0),
                 repeat_rows=int(self.program_fields['repeat_rows'].get() or 1),
                 repeat_lines=int(self.program_fields['repeat_lines'].get() or 1),
+                multi_line=self.multi_line_var.get(),
             )
         except (ValueError, TypeError):
             return None
@@ -466,11 +504,16 @@ class ProgramPanel:
 
     def update_current_program(self):
         """Update current program with field values, refresh canvas and steps"""
-        if not self.main_app.current_program:
+        current_index = self.program_combo.current()
+        if current_index < 0 or current_index >= len(self.main_app.programs):
             return
 
         try:
-            p = self.main_app.current_program
+            # Always resolve from the programs list by index — current_program may be a
+            # temporary canvas-preview object that is not part of the list (set by
+            # _update_canvas_preview on every field change).
+            p = self.main_app.programs[current_index]
+            self.main_app.current_program = p
 
             # Update program with field values (strip RTL chars for saving)
             p.program_name = self._get_program_name()
@@ -487,6 +530,7 @@ class ProgramPanel:
             p.buffer_between_pages = float(self.program_fields['buffer_between_pages'].get())
             p.repeat_rows = int(self.program_fields['repeat_rows'].get())
             p.repeat_lines = int(self.program_fields['repeat_lines'].get())
+            p.multi_line = self.multi_line_var.get()
 
             # Update combo box label for the current program (without re-selecting)
             current_index = self.program_combo.current()
@@ -599,8 +643,8 @@ class ProgramPanel:
         self.load_csv_btn.config(state='disabled')
 
         # Swap button frames
-        self.button_frame.grid_forget()
-        self.creation_button_frame.grid(row=self._button_row, column=0, columnspan=2, pady=(10,5), sticky="ew")
+        self.button_frame.pack_forget()
+        self.creation_button_frame.pack(fill=tk.X)
 
         # Update title
         self.title_label.config(text=t("NEW PROGRAM"))
@@ -717,8 +761,8 @@ class ProgramPanel:
         self._creating_new_program = False
 
         # Swap button frames back
-        self.creation_button_frame.grid_forget()
-        self.button_frame.grid(row=self._button_row, column=0, columnspan=2, pady=(10,5), sticky="ew")
+        self.creation_button_frame.pack_forget()
+        self.button_frame.pack(fill=tk.X)
 
         # Re-enable combo and Load CSV
         self.program_combo.config(state='readonly')
@@ -760,6 +804,7 @@ class ProgramPanel:
             self.pattern_size_label.config(text=t("No program selected"))
             self.repeats_label.config(text=t("No program selected"))
             self.line_distance_label.config(text="")
+            self.multi_line_display_label.config(text="")
             self.actual_size_label.config(text=t("No program selected"))
             self.fit_status_label.config(text="")
             return
@@ -779,6 +824,13 @@ class ProgramPanel:
             self.line_distance_label.config(text=t("{distance:.2f} cm", distance=line_distance))
         else:
             self.line_distance_label.config(text=t("{distance:.2f} cm", distance=0.0))
+
+        # Multi line status
+        multi_line = getattr(p, 'multi_line', False)
+        self.multi_line_display_label.config(
+            text=t("Yes") if multi_line else t("No"),
+            fg='darkgreen' if multi_line else 'darkblue'
+        )
 
         # Calculate actual size
         actual_width = p.width * p.repeat_rows
@@ -830,6 +882,13 @@ class ProgramPanel:
                 self.line_distance_label.config(text=t("{distance:.2f} cm", distance=line_distance))
             else:
                 self.line_distance_label.config(text=t("{distance:.2f} cm", distance=0.0))
+
+            # Multi line status
+            multi_line = self.multi_line_var.get()
+            self.multi_line_display_label.config(
+                text=t("Yes") if multi_line else t("No"),
+                fg='darkgreen' if multi_line else 'darkblue'
+            )
 
             # Calculate actual size
             actual_width = width * repeat_rows

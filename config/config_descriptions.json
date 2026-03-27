@@ -410,6 +410,13 @@
               "default": 13,
               "category": "critical"
             },
+            "line_marker_pressure_piston": {
+              "description": "GPIO pin for line marker pressure piston (UP=hard mark default, DOWN=soft mark for middle lines)",
+              "description_he": "פין GPIO לבוכנת לחץ סמן שורות (למעלה=סימון קשה, למטה=סימון רך לקווים אמצעיים)",
+              "type": "int",
+              "default": 20,
+              "category": "critical"
+            },
             "row_cutter_piston": {
               "description": "GPIO pin number for row cutter piston control",
               "description_he": "מספר פין GPIO לבקרת בוכנת חותך עמודות",
@@ -429,6 +436,13 @@
               "description_he": "מספר פין GPIO לבקרת שסתום לחץ אוויר",
               "type": "int",
               "default": 26,
+              "category": "critical"
+            },
+            "row_motor_door_piston": {
+              "description": "GPIO pin number for row motor door piston (controls 2 pistons from one port, GPIO 12)",
+              "description_he": "מספר פין GPIO לבוכנת דלת מנוע עמודות (שולט בשתי בוכנות מיציאה אחת, GPIO 12)",
+              "type": "int",
+              "default": 12,
               "category": "critical"
             },
             "baudrate": {
@@ -542,13 +556,6 @@
               "default": 192,
               "category": "important"
             },
-            "door_sensor": {
-              "description": "RS485 sensor bit index for door position sensor",
-              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב דלת",
-              "type": "int",
-              "default": 15,
-              "category": "important"
-            },
             "line_cutter_down_sensor": {
               "description": "RS485 sensor bit index for line cutter down position",
               "description_he": "אינדקס סיבית חיישן RS485 למצב חותך שורות למטה",
@@ -659,6 +666,34 @@
               "description_he": "אינדקס סיבית חיישן RS485 לזיהוי קצה עליון ציר Y",
               "type": "int",
               "default": 31,
+              "category": "important"
+            },
+            "row_door_left_up_sensor": {
+              "description": "RS485 sensor bit index for row motor door left side UP position sensor",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד שמאל של דלת מנוע עמודות",
+              "type": "int",
+              "default": 0,
+              "category": "important"
+            },
+            "row_door_left_down_sensor": {
+              "description": "RS485 sensor bit index for row motor door left side DOWN position sensor",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד שמאל של דלת מנוע עמודות",
+              "type": "int",
+              "default": 1,
+              "category": "important"
+            },
+            "row_door_right_up_sensor": {
+              "description": "RS485 sensor bit index for row motor door right side UP position sensor",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד ימין של דלת מנוע עמודות",
+              "type": "int",
+              "default": 2,
+              "category": "important"
+            },
+            "row_door_right_down_sensor": {
+              "description": "RS485 sensor bit index for row motor door right side DOWN position sensor",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד ימין של דלת מנוע עמודות",
+              "type": "int",
+              "default": 3,
               "category": "important"
             },
             "serial_port": {

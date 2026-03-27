@@ -79,10 +79,9 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 0, row_offset + 3, t("Bottom Limit Switch"), "bottom_limit_switch", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 4, t("Right Limit Switch"), "right_limit_switch", label_font, tiny_font)
         self._create_grid_item(grid_frame, 0, row_offset + 5, t("Left Limit Switch"), "left_limit_switch", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 6, t("Door Sensor"), "door_sensor", label_font, tiny_font)
-        self._create_grid_item(grid_frame, 0, row_offset + 7, t("Air Pressure"), "air_pressure_valve", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 0, row_offset + 6, t("Air Pressure"), "air_pressure_valve", label_font, tiny_font)
         # System items (merged into same column)
-        row_offset += 8
+        row_offset += 7
         self._create_operation_mode_item(grid_frame, 0, row_offset, heading_font, label_font, tiny_font)
         row_offset += 3
         self._create_progress_section(grid_frame, 0, row_offset, label_font, tiny_font)
@@ -101,8 +100,10 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 1, row_offset + 5, t("Motor Left Down"), "line_motor_left_down_sensor", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 6, t("Motor Right Up"), "line_motor_right_up_sensor", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 7, t("Motor Right Down"), "line_motor_right_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 8, t("Pressure Up"), "line_marker_pressure_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 9, t("Pressure Down"), "line_marker_pressure_down_sensor", label_font, tiny_font)
         # Edge Sensors subsection
-        row_offset += 8
+        row_offset += 10
         self._create_subsection_header(grid_frame, 1, row_offset, t("Edge Sensors"), tiny_font)
         row_offset += 1
         self._create_grid_item(grid_frame, 1, row_offset, t("X Left Edge"), "x_left_edge_sensor", label_font, tiny_font)
@@ -115,6 +116,7 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 1, row_offset + 1, t("Line Cutter"), "lines_piston_cutter", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 2, t("Motor Left"), "lines_piston_motor_left", label_font, tiny_font)
         self._create_grid_item(grid_frame, 1, row_offset + 3, t("Motor Right"), "lines_piston_motor_right", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 1, row_offset + 4, t("Pressure"), "lines_piston_pressure", label_font, tiny_font)
 
         # ROWS Section
         self._create_section_header(grid_frame, 2, row, t("✂️ ROWS"), heading_font)
@@ -126,8 +128,12 @@ class HardwareStatusPanel:
         self._create_grid_item(grid_frame, 2, row_offset + 1, t("Marker Down Sensor"), "row_marker_down_sensor", label_font, tiny_font)
         self._create_grid_item(grid_frame, 2, row_offset + 2, t("Cutter Up Sensor"), "row_cutter_up_sensor", label_font, tiny_font)
         self._create_grid_item(grid_frame, 2, row_offset + 3, t("Cutter Down Sensor"), "row_cutter_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 4, t("Door Left Up"), "row_door_left_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 5, t("Door Left Down"), "row_door_left_down_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 6, t("Door Right Up"), "row_door_right_up_sensor", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 7, t("Door Right Down"), "row_door_right_down_sensor", label_font, tiny_font)
         # Edge Sensors subsection
-        row_offset += 4
+        row_offset += 8
         self._create_subsection_header(grid_frame, 2, row_offset, t("Edge Sensors"), tiny_font)
         row_offset += 1
         self._create_grid_item(grid_frame, 2, row_offset, t("Y Top Edge"), "y_top_edge_sensor", label_font, tiny_font)
@@ -138,6 +144,7 @@ class HardwareStatusPanel:
         row_offset += 1
         self._create_grid_item(grid_frame, 2, row_offset, t("Row Marker"), "rows_piston_marker", label_font, tiny_font)
         self._create_grid_item(grid_frame, 2, row_offset + 1, t("Row Cutter"), "rows_piston_cutter", label_font, tiny_font)
+        self._create_grid_item(grid_frame, 2, row_offset + 2, t("Row Door"), "rows_piston_door", label_font, tiny_font)
 
     def _create_section_header(self, parent, col, row, text, font):
         """Create section header"""
@@ -159,8 +166,8 @@ class HardwareStatusPanel:
         container = tk.Frame(parent, bg=self.section_bg)
         container.grid(row=row, column=col, sticky="ew", padx=1, pady=0)
 
-        # Label on right (RTL) - shrinks to fit text
-        label = tk.Label(container, text=":" + label_text, font=label_font,
+        # Label on right (RTL) - shrinks to fit text, colon at end
+        label = tk.Label(container, text=label_text + ":", font=label_font,
                         bg=self.section_bg, fg=self.label_color,
                         anchor='e')
         label.pack(side=tk.RIGHT, padx=(0, 2))
@@ -304,12 +311,6 @@ class HardwareStatusPanel:
                                t('ON') if x_left_ls else t('OFF'),
                                self.switch_on_color if x_left_ls else self.switch_off_color)
 
-            # Door sensor
-            door_state = self.hardware.get_door_sensor()
-            self._update_widget('door_sensor',
-                               t('ON') if door_state else t('OFF'),
-                               self.switch_on_color if door_state else self.switch_off_color)
-
             # Air pressure valve - DOWN=open (green), UP=closed (gray)
             air_pressure_state = self.hardware.get_air_pressure_valve_state()
             is_air_on = air_pressure_state == "down"
@@ -359,6 +360,16 @@ class HardwareStatusPanel:
                                t('TRIG') if line_motor_right_down else t('READY'),
                                self.sensor_triggered_color if line_motor_right_down else self.sensor_ready_color)
 
+            # Line Marker Pressure Sensors
+            pressure_up = self.hardware.get_line_marker_pressure_up_sensor()
+            self._update_widget('line_marker_pressure_up_sensor',
+                               t('TRIG') if pressure_up else t('READY'),
+                               self.sensor_triggered_color if pressure_up else self.sensor_ready_color)
+            pressure_down = self.hardware.get_line_marker_pressure_down_sensor()
+            self._update_widget('line_marker_pressure_down_sensor',
+                               t('TRIG') if pressure_down else t('READY'),
+                               self.sensor_triggered_color if pressure_down else self.sensor_ready_color)
+
             # Edge Sensors (X-axis for Lines)
             x_left_edge = self.hardware.get_x_left_edge()
             self._update_widget('x_left_edge_sensor',
@@ -387,6 +398,12 @@ class HardwareStatusPanel:
             self._update_widget('lines_piston_motor_right', t(line_motor_right_state),
                                self.piston_down_color if line_motor_right_state == 'DOWN' else self.piston_up_color)
 
+            # Line marker pressure piston (soft/hard mark)
+            pressure_state = self.hardware.get_line_marker_pressure_piston_state()
+            pressure_label = t("Soft Mark") if pressure_state == "down" else t("Hard Mark")
+            self._update_widget('lines_piston_pressure', pressure_label,
+                               self.piston_down_color if pressure_state == 'down' else self.piston_up_color)
+
             # ROWS SECTION - Tool Sensors (UP/DOWN sensors for each tool)
             # Color coded: READY (False)=blue, TRIGGERED (True)=red
             # Row Marker Sensors
@@ -409,6 +426,24 @@ class HardwareStatusPanel:
                                t('TRIG') if row_cutter_down else t('READY'),
                                self.sensor_triggered_color if row_cutter_down else self.sensor_ready_color)
 
+            # Row Door Piston Sensors
+            row_door_left_up = self.hardware.get_row_door_left_up_sensor()
+            self._update_widget('row_door_left_up_sensor',
+                               t('TRIG') if row_door_left_up else t('READY'),
+                               self.sensor_triggered_color if row_door_left_up else self.sensor_ready_color)
+            row_door_left_down = self.hardware.get_row_door_left_down_sensor()
+            self._update_widget('row_door_left_down_sensor',
+                               t('TRIG') if row_door_left_down else t('READY'),
+                               self.sensor_triggered_color if row_door_left_down else self.sensor_ready_color)
+            row_door_right_up = self.hardware.get_row_door_right_up_sensor()
+            self._update_widget('row_door_right_up_sensor',
+                               t('TRIG') if row_door_right_up else t('READY'),
+                               self.sensor_triggered_color if row_door_right_up else self.sensor_ready_color)
+            row_door_right_down = self.hardware.get_row_door_right_down_sensor()
+            self._update_widget('row_door_right_down_sensor',
+                               t('TRIG') if row_door_right_down else t('READY'),
+                               self.sensor_triggered_color if row_door_right_down else self.sensor_ready_color)
+
             # Edge Sensors (Y-axis for Rows)
             y_top_edge = self.hardware.get_y_top_edge()
             self._update_widget('y_top_edge_sensor',
@@ -427,6 +462,10 @@ class HardwareStatusPanel:
             row_cutter_piston_state = self.hardware.get_row_cutter_piston_state().upper()
             self._update_widget('rows_piston_cutter', t(row_cutter_piston_state),
                                self.piston_down_color if row_cutter_piston_state == 'DOWN' else self.piston_up_color)
+
+            row_door_piston_state = self.hardware.get_row_motor_door_piston_state().upper()
+            self._update_widget('rows_piston_door', t(row_door_piston_state),
+                               self.piston_down_color if row_door_piston_state == 'DOWN' else self.piston_up_color)
 
             # Update operation mode
             self._update_operation_mode()

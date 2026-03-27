@@ -124,6 +124,14 @@ def _translate_description_to_hebrew(description):
         'Init: Move rows motor to home position (X=0)': 'אתחול: הזז מנוע עמודות למיקום בית (X=0)',
         'Init: Move lines motor to home position (Y=0)': 'אתחול: הזז מנוע שורות למיקום בית (Y=0)',
         'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת מנוע שורות למטה (מכלול מנוע שורות הונמך למצב ברירת מחדל)',
+        'Switch to soft mark (multi-line middle)': 'עבור לסימון רך (קו אמצעי)',
+        'Switch to hard mark (regular line)': 'עבור לסימון קשה (קו רגיל)',
+        'Mark middle line: Wait for left lines sensor': 'סמן קו אמצעי: המתן לחיישן שורות שמאלי',
+        'Mark middle line: Open line marker': 'סמן קו אמצעי: פתח סמן שורות',
+        'Mark middle line: Wait for right lines sensor': 'סמן קו אמצעי: המתן לחיישן שורות ימני',
+        'Mark middle line: Close line marker': 'סמן קו אמצעי: סגור סמן שורות',
+        # Dynamic numbered versions (pattern matched below)
+        # 'Mark middle line N: ...' → translated dynamically
 
         'Cut top edge: Wait for left lines sensor': 'חיתוך קצה עליון: המתן לחיישן שורות שמאלי',
         'Cut top edge: Open line cutter': 'חיתוך קצה עליון: פתח חותך שורות',
@@ -148,6 +156,8 @@ def _translate_description_to_hebrew(description):
         'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שמנוע שורות במיקום בית (Y=0)',
         'Lines complete: Move lines motor to position 0': 'שורות הושלמו: הזז מנוע שורות למיקום 0',
         'Rows complete: Move rows motor to position 0': 'עמודות הושלמו: הזז מנוע עמודות למיקום 0',
+        'Deploy row motor door piston DOWN (rows operation started, motor at rightmost position)': 'פרוס בוכנת דלת מנוע עמודות למטה (פעולת עמודות התחילה, המנוע במיקום הימני ביותר)',
+        'Retract row motor door piston UP (rows complete, returning home)': 'החזר בוכנת דלת מנוע עמודות למעלה (פעולות עמודות הושלמו, חוזר הביתה)',
     }
 
     # Check for exact match first
@@ -333,6 +343,29 @@ def _translate_description_to_hebrew(description):
             prog, width, height = match.groups()
             return f"=== תוכנית {prog} הושלמה: נייר {width}×{height}ס״מ עובד ==="
 
+    # Pattern: "Mark middle line: Move to Xcm (between lines A and B)"
+    if 'mark middle line: move to' in desc_lower:
+        import re
+        match = re.search(r'(\d+\.\d+)cm.*between lines (\d+) and (\d+)', description.lower())
+        if match:
+            pos, l1, l2 = match.groups()
+            return f'סמן קו אמצעי: הזז ל-{pos}ס״מ (בין קווים {l1} ו-{l2})'
+
+    # Pattern: "Mark middle line N: <action>"
+    if 'mark middle line' in desc_lower:
+        import re
+        m = re.match(r'mark middle line\s+(\d+):\s+(.*)', description, re.IGNORECASE)
+        if m:
+            num, action = m.groups()
+            action_map = {
+                'wait for left lines sensor': 'המתן לחיישן שורות שמאלי',
+                'open line marker': 'פתח סמן שורות',
+                'wait for right lines sensor': 'המתן לחיישן שורות ימני',
+                'close line marker': 'סגור סמן שורות',
+            }
+            heb_action = action_map.get(action.lower(), action)
+            return f'סמן קו אמצעי {num}: {heb_action}'
+
     # If no translation found, return original
     return description
 
@@ -419,7 +452,7 @@ def generate_lines_marking_steps(program):
         {'tool': 'line_motor_piston', 'action': 'down'},
         "Line motor piston DOWN (Y motor assembly lowered to default position)"
     ))
-    
+
     # Cut top edge workflow - LEFT sensor first, then RIGHT sensor
     steps.append(create_step(
         'wait_sensor',
@@ -525,7 +558,55 @@ def generate_lines_marking_steps(program):
                 {'tool': 'line_marker', 'action': 'up'},
                 f"{line_description}: Close line marker"
             ))
-        
+
+            # ADD MULTI-LINE MIDDLE MARK (if enabled and not the last line in section)
+            if program.multi_line and line_in_section < program.number_of_lines - 1:
+                # Calculate middle position between current line and next line
+                next_line_y_position = first_line_y_section - ((line_in_section + 1) * line_spacing_section)
+                mid_y = (line_y_position + next_line_y_position) / 2.0
+
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'line_marker_pressure_piston', 'action': 'down'},
+                    "Switch to soft mark (multi-line middle)"
+                ))
+
+                steps.append(create_step(
+                    'move_y',
+                    {'position': mid_y},
+                    f"Mark middle line: Move to {mid_y:.2f}cm (between lines {overall_line_num} and {overall_line_num + 1})"
+                ))
+
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'x_left', 'description': f'Wait for left lines sensor for middle line between {overall_line_num}-{overall_line_num + 1}'},
+                    f"Mark middle line {overall_line_num}: Wait for left lines sensor"
+                ))
+
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'line_marker', 'action': 'down'},
+                    f"Mark middle line {overall_line_num}: Open line marker"
+                ))
+
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'x_right', 'description': f'Wait for right lines sensor for middle line between {overall_line_num}-{overall_line_num + 1}'},
+                    f"Mark middle line {overall_line_num}: Wait for right lines sensor"
+                ))
+
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'line_marker', 'action': 'up'},
+                    f"Mark middle line {overall_line_num}: Close line marker"
+                ))
+
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'line_marker_pressure_piston', 'action': 'up'},
+                    "Switch to hard mark (regular line)"
+                ))
+
         # ADD CUT BETWEEN SECTIONS (except after the last section)
         if section_num < program.repeat_lines - 1:  # Not the last section
             cut_position = section_end_y  # Cut at the bottom of current section (= top of next section)
@@ -655,7 +736,13 @@ def generate_row_marking_steps(program):
         {'position': right_paper_cut_position},
         f"Cut RIGHT paper edge: Move to {right_paper_cut_position}cm (ACTUAL width)"
     ))
-    
+
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'row_motor_door_piston', 'action': 'down'},
+        "Deploy row motor door piston DOWN (rows operation started, motor at rightmost position)"
+    ))
+
     steps.append(create_step(
         'wait_sensor',
         {'sensor': 'y_top', 'description': 'Wait for top rows sensor for right paper cut'},
@@ -878,6 +965,12 @@ def generate_row_marking_steps(program):
         'tool_action',
         {'tool': 'row_cutter', 'action': 'up'},
         "Cut LEFT paper edge: Close row cutter"
+    ))
+
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'row_motor_door_piston', 'action': 'up'},
+        "Retract row motor door piston UP (rows complete, returning home)"
     ))
 
     # Move rows motor back to position 0
