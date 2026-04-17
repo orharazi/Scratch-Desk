@@ -1318,6 +1318,14 @@ class ControlsPanel:
     
     def stop_execution(self):
         """Stop execution - preserves current step for continue"""
+        # Show immediate loading feedback
+        self.stop_btn.config(text=t("⏹ עוצר..."), state=tk.DISABLED)
+        self.main_app.operation_label.config(text=t("Stopping..."), fg='orange')
+        try:
+            self.main_app.root.update()
+        except Exception:
+            pass
+
         engine = self.main_app.execution_engine
         if engine.stop_execution():
             # Engine conditionally raised line_motor_piston based on its state
@@ -1339,6 +1347,8 @@ class ControlsPanel:
 
             self.update_step_display()
             self.main_app.operation_label.config(text=t("Stopped - press Continue to resume from current step"), fg='orange')
+            self.state_label.config(text=t("State: STOPPED"), fg='red')
+            self.stop_btn.config(text=t("⏹ STOP"))  # restore button text
     
     def auto_reload_after_completion(self):
         """Reset to READY state after program completion so user can immediately re-run"""
@@ -1365,6 +1375,14 @@ class ControlsPanel:
             self.logger.warning("Cannot reset while execution is running - stop first", category="gui")
             self.main_app.operation_label.config(text=t("Stop execution first!"), fg='red')
             return
+
+        # Show immediate loading feedback
+        self.reset_btn.config(state=tk.DISABLED, text=t("מאפס..."))
+        self.main_app.operation_label.config(text=t("Resetting..."), fg='blue')
+        try:
+            self.main_app.root.update()
+        except Exception:
+            pass
 
         # Clean up execution controller (close transition dialogs, etc.)
         if hasattr(self.main_app, 'execution_controller'):
@@ -1457,6 +1475,7 @@ class ControlsPanel:
         self.run_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
         self.pause_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.DISABLED)
+        self.reset_btn.config(text=t("🔄 RESET"))
 
         self.logger.info("Complete system reset - All components restored to initial state", category="gui")
     

@@ -47,7 +47,7 @@ class HomingProgressDialog:
 
     STEPS_TEMPLATE = [
         "1. Apply GRBL configuration",
-        "2. Check door is open",
+        "2. Lift rows motor door piston",
         "3. Reset all pistons to default position",
         "4. Lift line motor pistons",
         "5. Move Y axis (pre-home clearance)",

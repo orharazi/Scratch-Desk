@@ -1567,13 +1567,14 @@ class MockHardware:
         if progress_callback:
             progress_callback(1, "Apply GRBL configuration", "done")
 
-        # Simulate door check
+        # Lift rows motor door piston
         if progress_callback:
-            progress_callback(2, "Check door is open", "running")
-        self.logger.info("Step 2: (Simulated) Checking door sensor - OK", category="hardware")
-        time.sleep(0.1)
+            progress_callback(2, "Lift rows motor door piston", "running")
+        self.logger.info("Step 2: (Simulated) Lifting rows motor door piston", category="hardware")
+        row_motor_door_piston_up()
+        time.sleep(0.2)
         if progress_callback:
-            progress_callback(2, "Check door is open", "done")
+            progress_callback(2, "Lift rows motor door piston", "done")
 
         # Reset all pistons to default position
         if progress_callback:

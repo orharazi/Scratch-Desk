@@ -30,13 +30,13 @@ PAPER_OFFSET_X, PAPER_OFFSET_Y = _load_paper_offsets()
 # Hebrew translations for step UI display
 HEBREW_TRANSLATIONS = {
     # Operations
-    'move_x': 'הזזת מנוע עמודות',
-    'move_y': 'הזזת מנוע שורות',
+    'move_x': 'הזזת סרגל עמודות',
+    'move_y': 'הזזת סרגל שורות',
     'program_start': 'התחלת תוכנית',
     'program_complete': 'סיום תוכנית',
 
     # Tools
-    'line_motor_piston': 'בוכנת מנוע שורות',
+    'line_motor_piston': 'בוכנת סרגל שורות',
     'line_cutter': 'חותך שורות',
     'line_marker': 'סמן שורות',
     'row_cutter': 'חותך עמודות',
@@ -64,11 +64,11 @@ def _generate_heb_operation_title(operation, parameters):
     """Generate user-friendly Hebrew title for operation"""
     if operation == 'move_x':
         pos = parameters.get('position', 0)
-        return f"הזזת מנוע עמודות למיקום {pos:.1f}ס״מ"
+        return f"הזזת סרגל עמודות למיקום {pos:.1f}ס״מ"
 
     elif operation == 'move_y':
         pos = parameters.get('position', 0)
-        return f"הזזת מנוע שורות למיקום {pos:.1f}ס״מ"
+        return f"הזזת סרגל שורות למיקום {pos:.1f}ס״מ"
 
     elif operation == 'tool_action':
         tool = parameters.get('tool', '')
@@ -121,9 +121,9 @@ def _translate_description_to_hebrew(description):
     """Translate English description to Hebrew"""
     # Simple translation mappings for common patterns
     translations = {
-        'Init: Move rows motor to home position (X=0)': 'אתחול: הזז מנוע עמודות למיקום בית (X=0)',
-        'Init: Move lines motor to home position (Y=0)': 'אתחול: הזז מנוע שורות למיקום בית (Y=0)',
-        'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת מנוע שורות למטה (מכלול מנוע שורות הונמך למצב ברירת מחדל)',
+        'Init: Move rows motor to home position (X=0)': 'אתחול: הזז סרגל עמודות למיקום בית (X=0)',
+        'Init: Move lines motor to home position (Y=0)': 'אתחול: הזז סרגל שורות למיקום בית (Y=0)',
+        'Line motor piston DOWN (Y motor assembly lowered to default position)': 'בוכנת סרגל שורות למטה (מכלול סרגל שורות הונמך למצב ברירת מחדל)',
         'Switch to soft mark (multi-line middle)': 'עבור לסימון רך (קו אמצעי)',
         'Switch to hard mark (regular line)': 'עבור לסימון קשה (קו רגיל)',
         'Mark middle line: Wait for left lines sensor': 'סמן קו אמצעי: המתן לחיישן שורות שמאלי',
@@ -153,11 +153,11 @@ def _translate_description_to_hebrew(description):
         'Cut LEFT paper edge: Wait for bottom rows sensor': 'חיתוך קצה שמאלי: המתן לחיישן עמודות תחתון',
         'Cut LEFT paper edge: Close row cutter': 'חיתוך קצה שמאלי: סגור חותך עמודות',
 
-        'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שמנוע שורות במיקום בית (Y=0)',
-        'Lines complete: Move lines motor to position 0': 'שורות הושלמו: הזז מנוע שורות למיקום 0',
-        'Rows complete: Move rows motor to position 0': 'עמודות הושלמו: הזז מנוע עמודות למיקום 0',
-        'Deploy row motor door piston DOWN (rows operation started, motor at rightmost position)': 'פרוס בוכנת דלת מנוע עמודות למטה (פעולת עמודות התחילה, המנוע במיקום הימני ביותר)',
-        'Retract row motor door piston UP (rows complete, returning home)': 'החזר בוכנת דלת מנוע עמודות למעלה (פעולות עמודות הושלמו, חוזר הביתה)',
+        'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שסרגל שורות במיקום בית (Y=0)',
+        'Lines complete: Move lines motor to position 0': 'שורות הושלמו: הזז סרגל שורות למיקום 0',
+        'Rows complete: Move rows motor to position 0': 'עמודות הושלמו: הזז סרגל עמודות למיקום 0',
+        'Deploy row motor door piston DOWN (rows operation started, motor at rightmost position)': 'פרוס בוכנת דלת סרגל עמודות למטה (פעולת עמודות התחילה, הסרגל במיקום הימני ביותר)',
+        'Retract row motor door piston UP (rows complete, returning home)': 'החזר בוכנת דלת סרגל עמודות למעלה (פעולות עמודות הושלמו, חוזר הביתה)',
     }
 
     # Check for exact match first
@@ -317,7 +317,7 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'to ([\d.]+)cm', description)
         if match:
             pos = match.group(1)
-            return f"⚠️ הרמת בוכנת מנוע שורות למעלה (הכנה לתנועה עליונה ל-{pos}ס״מ)"
+            return f"⚠️ הרמת בוכנת סרגל שורות למעלה (הכנה לתנועה עליונה ל-{pos}ס״מ)"
 
     # Pattern: "Init: Move Y motor to X cm..."
     if 'init: move y motor to' in desc_lower:
@@ -325,7 +325,7 @@ def _translate_description_to_hebrew(description):
         match = re.search(r'to ([\d.]+)cm.*\+ ([\d.]+)cm', description)
         if match:
             pos, height = match.groups()
-            return f"אתחול: הזז מנוע שורות ל-{pos}ס״מ (נייר + {height}ס״מ גובה בפועל)"
+            return f"אתחול: הזז סרגל שורות ל-{pos}ס״מ (נייר + {height}ס״מ גובה בפועל)"
 
     # Pattern: "=== Starting Program X: Y (ACTUAL SIZE: ...)"
     if '=== starting program' in desc_lower:

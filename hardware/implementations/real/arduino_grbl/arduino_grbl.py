@@ -1009,7 +1009,7 @@ class ArduinoGRBL:
 
         Sequence:
         1. Apply GRBL configuration from settings.json
-        2. Check door is open (safety check)
+        2. Lift rows motor door piston (auto-retract)
         3. Reset all pistons to default position (all tools UP)
         4. Lift line motor pistons (both sides)
         5. Run GRBL homing ($H)
@@ -1080,43 +1080,19 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(1, "Apply GRBL configuration", "done")
 
-            # Step 2: Check door is open (wait for user to open if closed)
+            # Step 2: Lift rows motor door piston (auto-retract)
             if progress_callback:
-                progress_callback(2, "Check door is open", "running")
-            self.logger.info("Step 2: Checking door sensor...", category="grbl")
+                progress_callback(2, "Lift rows motor door piston", "running")
+            self.logger.info("Step 2: Lifting rows motor door piston...", category="grbl")
             if hardware_interface:
-                door_state = hardware_interface.get_row_motor_door_piston_state() == "down"
-                if door_state:
-                    # Door piston is deployed - wait for it to retract
-                    self.logger.warning("Row motor door piston is down! Waiting for piston to retract...", category="grbl")
-                    if progress_callback:
-                        progress_callback(2, "Check door is open", "waiting", "Row motor door piston is deployed - waiting for retraction")
-
-                    # Poll door piston until it retracts (check every 0.5 seconds)
-                    max_wait = 300  # 5 minutes maximum wait
-                    wait_time = 0
-                    while door_state and wait_time < max_wait:
-                        time.sleep(0.5)
-                        wait_time += 0.5
-                        door_state = hardware_interface.get_row_motor_door_piston_state() == "down"
-                        if not door_state:
-                            break
-
-                    # Check if door was opened or timeout
-                    if door_state:
-                        error_msg = "Timeout waiting for door to open (waited 5 minutes)"
-                        self.logger.error(error_msg, category="grbl")
-                        if progress_callback:
-                            progress_callback(2, "Check door is open", "error")
-                        return False, error_msg
-
-                    self.logger.success("Door opened - safe to proceed", category="grbl")
-                else:
-                    self.logger.success("Door is open - safe to proceed", category="grbl")
+                hardware_interface.row_motor_door_piston_up()
+                self.logger.info("Waiting for rows motor door piston to retract...", category="grbl")
+                time.sleep(2.0)
+                self.logger.success("Rows motor door piston lifted", category="grbl")
             else:
-                self.logger.warning("No hardware interface - skipping door check", category="grbl")
+                self.logger.warning("No hardware interface - skipping rows motor door piston lift", category="grbl")
             if progress_callback:
-                progress_callback(2, "Check door is open", "done")
+                progress_callback(2, "Lift rows motor door piston", "done")
 
             # Step 3: Reset all pistons to default position (all tools UP)
             if progress_callback:

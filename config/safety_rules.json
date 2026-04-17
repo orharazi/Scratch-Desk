@@ -7,8 +7,8 @@
       "id": "LINE_TOOLS_UP_FOR_LINES",
       "name": "Lines Safety: Line Tools Must Be Up",
       "name_he": "בטיחות שורות: כלי שורות חייבים להיות למעלה",
-      "description": "Line cutter and line marker must be UP before the lines motor can move. Moving with a tool down would drag and damage it. Verified by both piston state and physical sensors.",
-      "description_he": "סכין שורות וסמן שורות חייבים להיות למעלה לפני שמנוע השורות יכול לנוע. תנועה עם כלי למטה תגרור ותגרום נזק. מאומת ע\"י מצב בוכנה וחיישנים פיזיים.",
+      "description": "Line cutter and line marker must be 100% UP before the lines motor can move. A tool is safe only when: down sensor NOT triggered AND up sensor IS triggered. Moving with a tool not fully up would drag and damage it.",
+      "description_he": "סכין שורות וסמן שורות חייבים להיות 100% למעלה לפני שמנוע השורות יכול לנוע. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. תנועה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
       "enabled": true,
       "priority": 15,
       "severity": "critical",
@@ -31,6 +31,12 @@
             "value": true
           },
           {
+            "type": "sensor",
+            "source": "line_cutter_up_sensor",
+            "operator": "equals",
+            "value": false
+          },
+          {
             "type": "piston",
             "source": "line_marker",
             "operator": "equals",
@@ -41,6 +47,12 @@
             "source": "line_marker_down_sensor",
             "operator": "equals",
             "value": true
+          },
+          {
+            "type": "sensor",
+            "source": "line_marker_up_sensor",
+            "operator": "equals",
+            "value": false
           }
         ]
       },
@@ -59,8 +71,8 @@
       "id": "ROW_TOOLS_UP_FOR_ROWS",
       "name": "Rows Safety: Row Tools Must Be Up",
       "name_he": "בטיחות עמודות: כלי עמודות חייבים להיות למעלה",
-      "description": "Row cutter and row marker must be UP before the rows motor can move. Moving with a tool down would drag and damage it. Verified by both piston state and physical sensors.",
-      "description_he": "סכין עמודות וסמן עמודות חייבים להיות למעלה לפני שמנוע העמודות יכול לנוע. תנועה עם כלי למטה תגרור ותגרום נזק. מאומת ע\"י מצב בוכנה וחיישנים פיזיים.",
+      "description": "Row cutter and row marker must be 100% UP before the rows motor can move. A tool is safe only when: down sensor NOT triggered AND up sensor IS triggered. Moving with a tool not fully up would drag and damage it.",
+      "description_he": "סכין עמודות וסמן עמודות חייבים להיות 100% למעלה לפני שמנוע העמודות יכול לנוע. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. תנועה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
       "enabled": true,
       "priority": 25,
       "severity": "critical",
@@ -83,6 +95,12 @@
             "value": true
           },
           {
+            "type": "sensor",
+            "source": "row_cutter_up_sensor",
+            "operator": "equals",
+            "value": false
+          },
+          {
             "type": "piston",
             "source": "row_marker",
             "operator": "equals",
@@ -93,6 +111,12 @@
             "source": "row_marker_down_sensor",
             "operator": "equals",
             "value": true
+          },
+          {
+            "type": "sensor",
+            "source": "row_marker_up_sensor",
+            "operator": "equals",
+            "value": false
           }
         ]
       },
@@ -229,8 +253,8 @@
       "id": "ALL_TOOLS_UP_FOR_END_DIVISION",
       "name": "End Division: All Tools Must Be Up",
       "name_he": "סיום חלוקה: כל הכלים חייבים להיות למעלה",
-      "description": "All 4 tools (line cutter, line marker, row cutter, row marker) must be UP before end division / return home operations. Returning home with any tool down would drag and damage it. Verified by both piston state and physical sensors.",
-      "description_he": "כל 4 הכלים (סכין שורות, סמן שורות, סכין עמודות, סמן עמודות) חייבים להיות למעלה לפני סיום חלוקה / חזרה הביתה. חזרה הביתה עם כלי למטה תגרור ותגרום נזק. מאומת ע\"י מצב בוכנה וחיישנים פיזיים.",
+      "description": "All 4 tools (line cutter, line marker, row cutter, row marker) must be 100% UP before end division / return home operations. A tool is safe only when: down sensor NOT triggered AND up sensor IS triggered. Returning home with any tool not fully up would drag and damage it.",
+      "description_he": "כל 4 הכלים (סכין שורות, סמן שורות, סכין עמודות, סמן עמודות) חייבים להיות 100% למעלה לפני סיום חלוקה / חזרה הביתה. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. חזרה הביתה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
       "enabled": true,
       "priority": 35,
       "severity": "critical",
@@ -253,6 +277,12 @@
             "value": true
           },
           {
+            "type": "sensor",
+            "source": "line_cutter_up_sensor",
+            "operator": "equals",
+            "value": false
+          },
+          {
             "type": "piston",
             "source": "line_marker",
             "operator": "equals",
@@ -263,6 +293,12 @@
             "source": "line_marker_down_sensor",
             "operator": "equals",
             "value": true
+          },
+          {
+            "type": "sensor",
+            "source": "line_marker_up_sensor",
+            "operator": "equals",
+            "value": false
           },
           {
             "type": "piston",
@@ -277,6 +313,12 @@
             "value": true
           },
           {
+            "type": "sensor",
+            "source": "row_cutter_up_sensor",
+            "operator": "equals",
+            "value": false
+          },
+          {
             "type": "piston",
             "source": "row_marker",
             "operator": "equals",
@@ -287,6 +329,12 @@
             "source": "row_marker_down_sensor",
             "operator": "equals",
             "value": true
+          },
+          {
+            "type": "sensor",
+            "source": "row_marker_up_sensor",
+            "operator": "equals",
+            "value": false
           }
         ]
       },

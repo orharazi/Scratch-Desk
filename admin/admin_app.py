@@ -200,7 +200,7 @@ class AdminToolGUI:
             allowed, reason = self.can_change_settings()
             if not allowed:
                 self.log("WARNING", reason)
-                messagebox.showwarning(t_title("Cannot Save"), reason)
+                messagebox.showwarning(t_title("Cannot Save"), reason, parent=self.root)
                 return
 
         try:
@@ -220,14 +220,14 @@ class AdminToolGUI:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
             self.log("SUCCESS", t("Paper starting position saved: X={x}, Y={y}", x=x, y=y))
-            messagebox.showinfo(t_title("Saved"), t("Paper starting position updated."))
+            messagebox.showinfo(t_title("Saved"), t("Paper starting position updated."), parent=self.root)
 
             # Notify main app to reload settings live
             if self.on_settings_changed:
                 self.on_settings_changed()
         except ValueError:
             self.log("ERROR", t("Invalid position values"))
-            messagebox.showerror(t_title("Error"), t("Please enter valid numbers"))
+            messagebox.showerror(t_title("Error"), t("Please enter valid numbers"), parent=self.root)
         except Exception as e:
             self.log("ERROR", t("Error saving: {error}", error=str(e)))
 
@@ -1135,6 +1135,15 @@ class AdminToolGUI:
             messagebox.showwarning(t_title("Not Connected"), t("Please connect hardware first"))
             return
 
+        # Check motor constraint - other motor must be at 0 position
+        constraint_msg = t("Cannot move the axis when the other motor is not at position 0. You must return the other motor to position 0 first.")
+        if axis == 'X' and self.current_y > 0.01:
+            messagebox.showwarning(t_title("Motor Constraint"), constraint_msg, parent=self.root)
+            return
+        if axis == 'Y' and self.current_x > 0.01:
+            messagebox.showwarning(t_title("Motor Constraint"), constraint_msg, parent=self.root)
+            return
+
         motor_name = "X Motor" if axis == 'X' else "Y Motor"
         if not self._check_execution_running_warning(
             motor_name,
@@ -1175,6 +1184,15 @@ class AdminToolGUI:
         try:
             x = float(self.x_entry.get())
             y = float(self.y_entry.get())
+
+            # Check if both axes would move simultaneously
+            if abs(x - self.current_x) > 0.01 and abs(y - self.current_y) > 0.01:
+                messagebox.showerror(
+                    t_title("Invalid Move"),
+                    t("Cannot move both axes simultaneously. Please move one axis at a time."),
+                    parent=self.root
+                )
+                return
 
             self.log("INFO", t("Moving to X={x:.2f}, Y={y:.2f}", x=x, y=y))
             if self.hardware.move_to(x, y):

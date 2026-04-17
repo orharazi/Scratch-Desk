@@ -26,8 +26,8 @@ SENSOR_VALUES = ["active", "not_active"]
 
 # Operation descriptions - Hebrew with motor names
 OPERATION_DESCRIPTIONS = {
-    "move_x": rtl("תנועת ציר X (מנוע עמודות)"),
-    "move_y": rtl("תנועת ציר Y (מנוע שורות)"),
+    "move_x": rtl("תנועת ציר X (סרגל עמודות)"),
+    "move_y": rtl("תנועת ציר Y (סרגל שורות)"),
     "move_position": rtl("תנועה למיקום מוחלט (שני צירים)"),
     "tool_action": rtl("פעולות כלים (בוכנות למעלה/למטה)"),
     "wait_sensor": rtl("המתנה לחיישן")
