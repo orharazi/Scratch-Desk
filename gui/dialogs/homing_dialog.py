@@ -36,7 +36,7 @@ class HomingProgressDialog:
 
     Displays an 8-step homing sequence with real-time status updates:
     1. Apply GRBL configuration
-    2. Check door is open
+    2. Check row motor piston is up
     3. Reset all pistons to default position
     4. Lift line motor pistons
     5. Move Y axis (pre-home clearance)
@@ -47,7 +47,7 @@ class HomingProgressDialog:
 
     STEPS_TEMPLATE = [
         "1. Apply GRBL configuration",
-        "2. Lift rows motor door piston",
+        "2. Check row motor piston is up",
         "3. Reset all pistons to default position",
         "4. Lift line motor pistons",
         "5. Move Y axis (pre-home clearance)",
@@ -144,7 +144,7 @@ class HomingProgressDialog:
             status_label.pack(side=tk.RIGHT)
             self.step_status_labels[i] = status_label
 
-        # Waiting message label (shows door wait, etc.)
+        # Waiting message label (shows row motor piston wait, etc.)
         self.waiting_label = ttk.Label(
             steps_frame,
             text="",

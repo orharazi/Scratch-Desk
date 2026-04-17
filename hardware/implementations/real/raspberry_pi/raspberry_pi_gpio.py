@@ -357,7 +357,7 @@ class RaspberryPiGPIO:
         'row_marker_piston': {'down': 'row_marker_down_sensor', 'up': 'row_marker_up_sensor'},
         'row_cutter_piston': {'down': 'row_cutter_down_sensor', 'up': 'row_cutter_up_sensor'},
         'line_motor_piston': {'down': 'line_motor_left_down_sensor', 'up': 'line_motor_left_up_sensor'},
-        'row_motor_door_piston': {'down': 'row_door_left_down_sensor', 'up': 'row_door_left_up_sensor'},
+        'row_motor_piston': {'down': 'row_motor_left_down_sensor', 'up': 'row_motor_left_up_sensor'},
     }
 
     def set_piston(self, piston_name: str, state: str) -> bool:
@@ -499,14 +499,15 @@ class RaspberryPiGPIO:
         return self.piston_down("line_marker_pressure_piston")
 
     def get_line_marker_pressure_piston_state(self) -> str:
-        """Get line marker pressure piston state based on GPIO pin state and sensors"""
+        """Get line marker pressure piston state based on sensors, falling back to GPIO pin state"""
         up = self.read_sensor("line_marker_pressure_up_sensor")
         down = self.read_sensor("line_marker_pressure_down_sensor")
         if down:
             return "down"
         elif up:
             return "up"
-        return "unknown"
+        # Sensors inconclusive - fall back to tracked GPIO pin state
+        return self.get_piston_pin_state("line_marker_pressure_piston")
 
     def get_line_marker_pressure_up_sensor(self) -> Optional[bool]:
         """Read line marker pressure UP sensor (hard mark mode)"""
@@ -516,23 +517,24 @@ class RaspberryPiGPIO:
         """Read line marker pressure DOWN sensor (soft mark mode)"""
         return self.read_sensor("line_marker_pressure_down_sensor")
 
-    def row_motor_door_piston_up(self) -> bool:
-        """Retract row motor door piston (both sides move together - single GPIO control)"""
-        return self.piston_up("row_motor_door_piston")
+    def row_motor_piston_up(self) -> bool:
+        """Retract row motor piston (both sides move together - single GPIO control)"""
+        return self.piston_up("row_motor_piston")
 
-    def row_motor_door_piston_down(self) -> bool:
-        """Extend row motor door piston (both sides move together - single GPIO control)"""
-        return self.piston_down("row_motor_door_piston")
+    def row_motor_piston_down(self) -> bool:
+        """Extend row motor piston (both sides move together - single GPIO control)"""
+        return self.piston_down("row_motor_piston")
 
-    def get_row_motor_door_piston_state(self) -> str:
-        """Get row motor door piston state based on GPIO pin state and sensors"""
-        up = self.read_sensor("row_door_left_up_sensor")
-        down = self.read_sensor("row_door_left_down_sensor")
+    def get_row_motor_piston_state(self) -> str:
+        """Get row motor piston state based on sensors, falling back to GPIO pin state"""
+        up = self.read_sensor("row_motor_left_up_sensor")
+        down = self.read_sensor("row_motor_left_down_sensor")
         if down:
             return "down"
         elif up:
             return "up"
-        return "unknown"
+        # Sensors inconclusive - fall back to tracked GPIO pin state
+        return self.get_piston_pin_state("row_motor_piston")
 
     # ========== AIR PRESSURE VALVE CONTROL ==========
 
@@ -694,22 +696,22 @@ class RaspberryPiGPIO:
         """Read line motor RIGHT piston DOWN sensor state"""
         return self.read_sensor("line_motor_right_down_sensor")
 
-    # Row Motor Door Piston Sensors
-    def get_row_door_left_up_sensor(self) -> Optional[bool]:
-        """Read row motor door LEFT piston UP sensor state"""
-        return self.read_sensor("row_door_left_up_sensor")
+    # Row Motor Piston Sensors
+    def get_row_motor_left_up_sensor(self) -> Optional[bool]:
+        """Read row motor LEFT piston UP sensor state"""
+        return self.read_sensor("row_motor_left_up_sensor")
 
-    def get_row_door_left_down_sensor(self) -> Optional[bool]:
-        """Read row motor door LEFT piston DOWN sensor state"""
-        return self.read_sensor("row_door_left_down_sensor")
+    def get_row_motor_left_down_sensor(self) -> Optional[bool]:
+        """Read row motor LEFT piston DOWN sensor state"""
+        return self.read_sensor("row_motor_left_down_sensor")
 
-    def get_row_door_right_up_sensor(self) -> Optional[bool]:
-        """Read row motor door RIGHT piston UP sensor state"""
-        return self.read_sensor("row_door_right_up_sensor")
+    def get_row_motor_right_up_sensor(self) -> Optional[bool]:
+        """Read row motor RIGHT piston UP sensor state"""
+        return self.read_sensor("row_motor_right_up_sensor")
 
-    def get_row_door_right_down_sensor(self) -> Optional[bool]:
-        """Read row motor door RIGHT piston DOWN sensor state"""
-        return self.read_sensor("row_door_right_down_sensor")
+    def get_row_motor_right_down_sensor(self) -> Optional[bool]:
+        """Read row motor RIGHT piston DOWN sensor state"""
+        return self.read_sensor("row_motor_right_down_sensor")
 
     # Row Marker Sensors
     def get_row_marker_up_sensor(self) -> Optional[bool]:
@@ -774,8 +776,8 @@ class RaspberryPiGPIO:
 
         return states
 
-    # Note: Row motor door is now a GPIO piston (row_motor_door_piston, pin 12)
-    # with 4 RS485 position sensors (bits 0-3). Use get_row_motor_door_piston_state() instead.
+    # Note: Row motor is now a GPIO piston (row_motor_piston, pin 12)
+    # with 4 RS485 position sensors (bits 0-3). Use get_row_motor_piston_state() instead.
 
     # ========== SENSOR INITIALIZATION ==========
 

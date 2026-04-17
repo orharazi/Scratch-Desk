@@ -167,10 +167,10 @@
     },
     {
       "id": "ROWS_DOOR_PISTON_SAFETY",
-      "name": "Rows Safety: Door Piston Must Be Down Before Left Movement",
-      "name_he": "בטיחות עמודות: בוכנת הדלת חייבת להיות למטה לפני תנועה שמאלה",
-      "description": "During rows operations, the row motor door piston must be DOWN (deployed) before any left movement. The door deploys automatically after the initial right move. Blocks leftward movement if door is not yet deployed.",
-      "description_he": "במהלך פעולות עמודות, בוכנת דלת מנוע העמודות חייבת להיות למטה (פרוסה) לפני כל תנועה שמאלה. הדלת נפרסת אוטומטית לאחר התנועה הראשונית ימינה. חוסם תנועה שמאלה אם הדלת עדיין לא פרוסה.",
+      "name": "Rows Safety: Motor Piston Must Be Down Before Left Movement",
+      "name_he": "בטיחות עמודות: בוכנת מנוע עמודות חייבת להיות למטה לפני תנועה שמאלה",
+      "description": "During rows operations, the row motor piston must be DOWN (deployed) before any left movement. The piston deploys automatically after the initial right move. Blocks leftward movement if piston is not yet deployed.",
+      "description_he": "במהלך פעולות עמודות, בוכנת מנוע העמודות חייבת להיות למטה (פרוסה) לפני כל תנועה שמאלה. הבוכנה נפרסת אוטומטית לאחר התנועה הראשונית ימינה. חוסם תנועה שמאלה אם הבוכנה עדיין לא פרוסה.",
       "enabled": true,
       "priority": 22,
       "severity": "critical",
@@ -182,13 +182,13 @@
         "items": [
           {
             "type": "piston",
-            "source": "row_motor_door",
+            "source": "row_motor",
             "operator": "equals",
             "value": "up"
           },
           {
             "type": "sensor",
-            "source": "row_door_left_up_sensor",
+            "source": "row_motor_left_up_sensor",
             "operator": "equals",
             "value": true
           }
@@ -202,8 +202,8 @@
           "direction": "left"
         }
       ],
-      "message": "Rows left movement blocked! Row motor door piston is UP (not deployed). Door deploys automatically after moving right to start position.",
-      "message_he": "תנועת עמודות שמאלה חסומה! בוכנת דלת מנוע העמודות למעלה (לא פרוסה). הדלת נפרסת אוטומטית לאחר תנועה ימינה למיקום ההתחלה.",
+      "message": "Rows left movement blocked! Row motor piston is UP (not deployed). Piston deploys automatically after moving right to start position.",
+      "message_he": "תנועת עמודות שמאלה חסומה! בוכנת מנוע העמודות למעלה (לא פרוסה). הבוכנה נפרסת אוטומטית לאחר תנועה ימינה למיקום ההתחלה.",
       "created_at": "2026-03-27T00:00:00Z",
       "created_by": "system"
     },
@@ -422,7 +422,7 @@
       "line_cutter",
       "line_marker_pressure",
       "line_motor",
-      "row_motor_door"
+      "row_motor"
     ],
     "sensors": [
       "row_marker_up_sensor",
@@ -443,10 +443,10 @@
       "x_right_edge_sensor",
       "y_top_edge_sensor",
       "y_bottom_edge_sensor",
-      "row_door_left_up_sensor",
-      "row_door_left_down_sensor",
-      "row_door_right_up_sensor",
-      "row_door_right_down_sensor"
+      "row_motor_left_up_sensor",
+      "row_motor_left_down_sensor",
+      "row_motor_right_up_sensor",
+      "row_motor_right_down_sensor"
     ],
     "positions": [
       "x_position",
@@ -486,7 +486,7 @@
     "line_motor",
     "row_marker",
     "row_cutter",
-    "row_motor_door"
+    "row_motor"
   ],
   "available_reasons": [
     "operational",

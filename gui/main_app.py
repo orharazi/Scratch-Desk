@@ -321,7 +321,7 @@ class ScratchDeskGUI:
               "The machine needs to be homed before operation.\n"
               "This will:\n"
               "1. Apply GRBL configuration\n"
-              "2. Check door is open\n"
+              "2. Check row motor piston is up\n"
               "3. Lift line motor pistons\n"
               "4. Run GRBL homing ($H)\n"
               "5. Reset work coordinates\n"

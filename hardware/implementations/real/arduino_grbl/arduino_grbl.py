@@ -1005,11 +1005,11 @@ class ArduinoGRBL:
 
     def perform_complete_homing_sequence(self, hardware_interface=None, progress_callback=None, safety_check=None) -> tuple[bool, str]:
         """
-        Perform complete homing sequence with door check and line motor management
+        Perform complete homing sequence with row motor piston check and line motor management
 
         Sequence:
         1. Apply GRBL configuration from settings.json
-        2. Lift rows motor door piston (auto-retract)
+        2. Check row motor piston is down (safety check)
         3. Reset all pistons to default position (all tools UP)
         4. Lift line motor pistons (both sides)
         5. Run GRBL homing ($H)
@@ -1080,19 +1080,43 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(1, "Apply GRBL configuration", "done")
 
-            # Step 2: Lift rows motor door piston (auto-retract)
+            # Step 2: Check row motor piston is down (wait for user to open if closed)
             if progress_callback:
-                progress_callback(2, "Lift rows motor door piston", "running")
-            self.logger.info("Step 2: Lifting rows motor door piston...", category="grbl")
+                progress_callback(2, "Check row motor piston is down", "running")
+            self.logger.info("Step 2: Checking motor sensor...", category="grbl")
             if hardware_interface:
-                hardware_interface.row_motor_door_piston_up()
-                self.logger.info("Waiting for rows motor door piston to retract...", category="grbl")
-                time.sleep(2.0)
-                self.logger.success("Rows motor door piston lifted", category="grbl")
+                motor_piston_state = hardware_interface.get_row_motor_piston_state() == "down"
+                if motor_piston_state:
+                    # Row motor piston is deployed - wait for it to retract
+                    self.logger.warning("Row motor piston is down! Waiting for piston to retract...", category="grbl")
+                    if progress_callback:
+                        progress_callback(2, "Check row motor piston is down", "waiting", "Row motor piston is deployed - waiting for retraction")
+
+                    # Poll row motor piston until it retracts (check every 0.5 seconds)
+                    max_wait = 300  # 5 minutes maximum wait
+                    wait_time = 0
+                    while motor_piston_state and wait_time < max_wait:
+                        time.sleep(0.5)
+                        wait_time += 0.5
+                        motor_piston_state = hardware_interface.get_row_motor_piston_state() == "down"
+                        if not motor_piston_state:
+                            break
+
+                    # Check if piston was retracted or timeout
+                    if motor_piston_state:
+                        error_msg = "Timeout waiting for row motor piston to retract (waited 5 minutes)"
+                        self.logger.error(error_msg, category="grbl")
+                        if progress_callback:
+                            progress_callback(2, "Check row motor piston is down", "error")
+                        return False, error_msg
+
+                    self.logger.success("Row motor piston retracted - safe to proceed", category="grbl")
+                else:
+                    self.logger.success("Row motor piston is up - safe to proceed", category="grbl")
             else:
-                self.logger.warning("No hardware interface - skipping rows motor door piston lift", category="grbl")
+                self.logger.warning("No hardware interface - skipping row motor piston check", category="grbl")
             if progress_callback:
-                progress_callback(2, "Lift rows motor door piston", "done")
+                progress_callback(2, "Check row motor piston is down", "done")
 
             # Step 3: Reset all pistons to default position (all tools UP)
             if progress_callback:

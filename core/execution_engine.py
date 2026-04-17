@@ -448,7 +448,7 @@ class ExecutionEngine:
 
                 # Handle transition from lines to rows operations IMMEDIATELY
                 if previous_operation == 'lines' and temp_operation_type == 'rows':
-                    self.logger.info("OPERATION TRANSITION: Lines → Rows detected (door auto-managed)", category="execution")
+                    self.logger.info("OPERATION TRANSITION: Lines → Rows detected (row motor piston auto-managed)", category="execution")
                     with self._transition_lock:
                         self.in_transition = True
                     self.in_transition = False
@@ -786,7 +786,7 @@ class ExecutionEngine:
                     'row_marker': {'down': self._row_marker_tool_down, 'up': self._row_marker_tool_up},
                     'row_cutter': {'down': self.hardware.row_cutter_down, 'up': self.hardware.row_cutter_up},
                     'line_motor_piston': {'down': self.hardware.line_motor_piston_down, 'up': self.hardware.line_motor_piston_up},
-                    'row_motor_door_piston': {'down': self.hardware.row_motor_door_piston_down, 'up': self.hardware.row_motor_door_piston_up}
+                    'row_motor_piston': {'down': self.hardware.row_motor_piston_down, 'up': self.hardware.row_motor_piston_up}
                 }
 
                 if tool in tool_functions and action in tool_functions[tool]:

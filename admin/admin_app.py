@@ -511,7 +511,7 @@ class AdminToolGUI:
             "line_marker_pressure": ("Line Marker Pressure", "line_marker_pressure_piston"),
             "row_marker": ("Row Marker", "row_marker_piston"),
             "row_cutter": ("Row Cutter", "row_cutter_piston"),
-            "row_motor_door": ("Row Motor Door (Both)", "row_motor_door_piston"),
+            "row_motor": ("Row Motor (Both)", "row_motor_piston"),
             "air_pressure": ("Air Pressure", "air_pressure_valve")
         }
 
@@ -587,11 +587,11 @@ class AdminToolGUI:
                 (t("UP Sensor"), "row_cutter_up_sensor"),
                 (t("DOWN Sensor"), "row_cutter_down_sensor")
             ]),
-            (t("Row Motor Door Piston"), [
-                (t("Left UP"), "row_door_left_up_sensor"),
-                (t("Left DOWN"), "row_door_left_down_sensor"),
-                (t("Right UP"), "row_door_right_up_sensor"),
-                (t("Right DOWN"), "row_door_right_down_sensor")
+            (t("Row Motor Piston"), [
+                (t("Left UP"), "row_motor_left_up_sensor"),
+                (t("Left DOWN"), "row_motor_left_down_sensor"),
+                (t("Right UP"), "row_motor_right_up_sensor"),
+                (t("Right DOWN"), "row_motor_right_down_sensor")
             ])
         ]
 
@@ -1352,8 +1352,8 @@ class AdminToolGUI:
             success = self.hardware.row_marker_piston_up()
         elif piston_key == "row_cutter":
             success = self.hardware.row_cutter_piston_up()
-        elif piston_key == "row_motor_door":
-            success = self.hardware.row_motor_door_piston_up()
+        elif piston_key == "row_motor":
+            success = self.hardware.row_motor_piston_up()
         elif piston_key == "air_pressure":
             success = self.hardware.air_pressure_valve_up()
 
@@ -1387,8 +1387,8 @@ class AdminToolGUI:
             success = self.hardware.row_marker_piston_down()
         elif piston_key == "row_cutter":
             success = self.hardware.row_cutter_piston_down()
-        elif piston_key == "row_motor_door":
-            success = self.hardware.row_motor_door_piston_down()
+        elif piston_key == "row_motor":
+            success = self.hardware.row_motor_piston_down()
         elif piston_key == "air_pressure":
             success = self.hardware.air_pressure_valve_down()
 

@@ -88,7 +88,7 @@ class SafetyRulesManager:
                 "line_marker": self.hardware.get_line_marker_state(),
                 "line_cutter": self.hardware.get_line_cutter_state(),
                 "line_motor": self.hardware.get_line_motor_piston_state(),
-                "row_motor_door": self.hardware.get_row_motor_door_piston_state(),
+                "row_motor": self.hardware.get_row_motor_piston_state(),
             },
             # Sensor states
             "sensors": {
@@ -106,10 +106,10 @@ class SafetyRulesManager:
                 "line_motor_left_down_sensor": self.hardware.get_line_motor_left_down_sensor(),
                 "line_motor_right_up_sensor": self.hardware.get_line_motor_right_up_sensor(),
                 "line_motor_right_down_sensor": self.hardware.get_line_motor_right_down_sensor(),
-                "row_door_left_up_sensor": self.hardware.get_row_door_left_up_sensor(),
-                "row_door_left_down_sensor": self.hardware.get_row_door_left_down_sensor(),
-                "row_door_right_up_sensor": self.hardware.get_row_door_right_up_sensor(),
-                "row_door_right_down_sensor": self.hardware.get_row_door_right_down_sensor(),
+                "row_motor_left_up_sensor": self.hardware.get_row_motor_left_up_sensor(),
+                "row_motor_left_down_sensor": self.hardware.get_row_motor_left_down_sensor(),
+                "row_motor_right_up_sensor": self.hardware.get_row_motor_right_up_sensor(),
+                "row_motor_right_down_sensor": self.hardware.get_row_motor_right_down_sensor(),
             },
             # Positions
             "positions": {
@@ -471,7 +471,7 @@ class SafetySystem:
         Determine if a movement is a setup operation that should bypass safety checks
 
         Setup movements are positioning operations that prepare motors for actual work.
-        These are allowed regardless of door position.
+        These are allowed regardless of row motor piston position.
         Keywords are loaded from settings.json safety.setup_movement_keywords.
         """
         description_lower = description.lower()
@@ -490,7 +490,7 @@ class SafetySystem:
 
         The rows start positioning move is the first LEFT movement after cutting
         the right paper edge, moving the motor to the scratching start position.
-        The door is allowed to be open for this move only.
+        The row motor piston is allowed to be up for this move only.
         Keywords are loaded from settings.json safety.rows_start_position_keywords.
         """
         description_lower = description.lower()
@@ -557,7 +557,7 @@ class SafetySystem:
             'rules_count': len(self.rules_manager.rules),
             'recent_violations': len(self.violations_log),
             'row_marker_programmed': self.hardware.get_row_marker_state(),
-            'row_motor_door_piston': self.hardware.get_row_motor_door_piston_state(),
+            'row_motor_piston': self.hardware.get_row_motor_piston_state(),
             'current_position': {'x': self.hardware.get_current_x(), 'y': self.hardware.get_current_y()}
         }
 

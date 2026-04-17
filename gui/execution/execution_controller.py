@@ -391,10 +391,10 @@ class ExecutionController:
                 self._show_transition_modal(info)
 
             elif status == 'transition_complete':
-                # Transition complete - door closed, resuming
+                # Transition complete - row motor piston down, resuming
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(
-                    text=t("{progress:.1f}% - Rows motor door CLOSED, resuming...", progress=current_progress),
+                    text=t("{progress:.1f}% - Row motor piston DOWN, resuming...", progress=current_progress),
                     fg='green'
                 )
                 # Auto-close transition modal
@@ -402,10 +402,10 @@ class ExecutionController:
                     self._destroy_dialog_and_refocus(self.transition_modal, 'transition_modal')
 
             elif status == 'transition_waiting':
-                # Still waiting for door - update progress
+                # Still waiting for row motor piston - update progress
                 current_progress = self.main_app.progress['value']
                 self.main_app.progress_text.config(
-                    text=t("{progress:.1f}% - Waiting for rows motor door CLOSED", progress=current_progress),
+                    text=t("{progress:.1f}% - Waiting for row motor piston DOWN", progress=current_progress),
                     fg='orange'
                 )
 

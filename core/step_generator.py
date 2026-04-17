@@ -153,11 +153,11 @@ def _translate_description_to_hebrew(description):
         'Cut LEFT paper edge: Wait for bottom rows sensor': 'חיתוך קצה שמאלי: המתן לחיישן עמודות תחתון',
         'Cut LEFT paper edge: Close row cutter': 'חיתוך קצה שמאלי: סגור חותך עמודות',
 
-        'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שסרגל שורות במיקום בית (Y=0)',
-        'Lines complete: Move lines motor to position 0': 'שורות הושלמו: הזז סרגל שורות למיקום 0',
-        'Rows complete: Move rows motor to position 0': 'עמודות הושלמו: הזז סרגל עמודות למיקום 0',
-        'Deploy row motor door piston DOWN (rows operation started, motor at rightmost position)': 'פרוס בוכנת דלת סרגל עמודות למטה (פעולת עמודות התחילה, הסרגל במיקום הימני ביותר)',
-        'Retract row motor door piston UP (rows complete, returning home)': 'החזר בוכנת דלת סרגל עמודות למעלה (פעולות עמודות הושלמו, חוזר הביתה)',
+        'Rows operation: Ensure lines motor is at home position (Y=0)': 'פעולת עמודות: ודא שמנוע שורות במיקום בית (Y=0)',
+        'Lines complete: Move lines motor to position 0': 'שורות הושלמו: הזז מנוע שורות למיקום 0',
+        'Rows complete: Move rows motor to position 0': 'עמודות הושלמו: הזז מנוע עמודות למיקום 0',
+        'Deploy row motor piston DOWN (rows operation started, motor at rightmost position)': 'פרוס בוכנת דלת מנוע עמודות למטה (פעולת עמודות התחילה, המנוע במיקום הימני ביותר)',
+        'Retract row motor piston UP (rows complete, returning home)': 'החזר בוכנת דלת מנוע עמודות למעלה (פעולות עמודות הושלמו, חוזר הביתה)',
     }
 
     # Check for exact match first
@@ -739,8 +739,8 @@ def generate_row_marking_steps(program):
 
     steps.append(create_step(
         'tool_action',
-        {'tool': 'row_motor_door_piston', 'action': 'down'},
-        "Deploy row motor door piston DOWN (rows operation started, motor at rightmost position)"
+        {'tool': 'row_motor_piston', 'action': 'down'},
+        "Deploy row motor piston DOWN (rows operation started, motor at rightmost position)"
     ))
 
     steps.append(create_step(
@@ -969,8 +969,8 @@ def generate_row_marking_steps(program):
 
     steps.append(create_step(
         'tool_action',
-        {'tool': 'row_motor_door_piston', 'action': 'up'},
-        "Retract row motor door piston UP (rows complete, returning home)"
+        {'tool': 'row_motor_piston', 'action': 'up'},
+        "Retract row motor piston UP (rows complete, returning home)"
     ))
 
     # Move rows motor back to position 0

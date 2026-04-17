@@ -663,9 +663,9 @@ class ControlsPanel:
         tk.Checkbutton(lines_pist_frame, text=t("Cutter"), variable=self.rows_cutter_var,
                       command=self.toggle_row_cutter, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=2, padx=2)
-        self.rows_door_var = tk.BooleanVar()
-        tk.Checkbutton(lines_pist_frame, text=t("Door Piston"), variable=self.rows_door_var,
-                      command=self.toggle_row_door_piston, bg='#F0F8FF', fg='black',
+        self.rows_motor_var = tk.BooleanVar()
+        tk.Checkbutton(lines_pist_frame, text=t("Motor Piston"), variable=self.rows_motor_var,
+                      command=self.toggle_row_motor_piston, bg='#F0F8FF', fg='black',
                       font=('Arial', 7), selectcolor='#27AE60').grid(row=1, column=3, padx=2)
 
         # System row (Air Pressure)
@@ -986,7 +986,7 @@ class ControlsPanel:
         # Step 3: Move motors to correct positions
         # skip_safety=True because all tools were raised in step 1, making it safe
         # to reposition motors. Rules like LINES_DOOR_SAFETY and ALL_TOOLS_UP_FOR_END_DIVISION
-        # would false-positive here (e.g. door closed is normal during rows context).
+        # would false-positive here (e.g. motor piston down is normal during rows context).
         if last_x is not None:
             self.logger.debug(f"RESTORE STATE: Moving X to {last_x}", category="gui")
             self._safe_move('x', last_x, f"Restore state: move X to {last_x}", is_setup=True, skip_safety=True)
@@ -1611,15 +1611,15 @@ class ControlsPanel:
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
-    def toggle_row_door_piston(self):
-        """Toggle row motor door piston"""
+    def toggle_row_motor_piston(self):
+        """Toggle row motor piston"""
         if self._is_execution_running():
-            self.rows_door_var.set(not self.rows_door_var.get())
+            self.rows_motor_var.set(not self.rows_motor_var.get())
             return
-        if self.rows_door_var.get():
-            self.hardware.row_motor_door_piston_down()
+        if self.rows_motor_var.get():
+            self.hardware.row_motor_piston_down()
         else:
-            self.hardware.row_motor_door_piston_up()
+            self.hardware.row_motor_piston_up()
         if hasattr(self.main_app, 'canvas_manager'):
             self.main_app.canvas_manager.update_position_display()
 
@@ -1663,11 +1663,11 @@ class ControlsPanel:
             # For line motor piston: checked = down (opposite of default UP)
             self.lines_motor_var.set(line_motor_piston_state == "down")
 
-            # For row marker, cutter, and door piston: checked = down
+            # For row marker, cutter, and motor piston: checked = down
             self.rows_marker_var.set(row_marker_state == "down")
             self.rows_cutter_var.set(row_cutter_state == "down")
-            row_door_piston_state = self.hardware.get_row_motor_door_piston_state()
-            self.rows_door_var.set(row_door_piston_state == "down")
+            row_motor_piston_state = self.hardware.get_row_motor_piston_state()
+            self.rows_motor_var.set(row_motor_piston_state == "down")
 
             # Line marker pressure piston: checked = down (soft/middle line mark)
             pressure_state = self.hardware.get_line_marker_pressure_piston_state()

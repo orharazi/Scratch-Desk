@@ -19,7 +19,7 @@ LIMIT SWITCHES (Safety sensors):
 - y_bottom: Bottom Y-axis limit switch (detects bottom boundary)
 - x_right: Right X-axis limit switch (detects right boundary)
 - x_left: Left X-axis limit switch (detects left boundary)
-- rows: Door safety limit switch (prevents operation when door open)
+- rows: Row motor piston safety (prevents operation when piston is down)
 
 LINES TOOLS (Y-axis operations - horizontal marking/cutting):
 - line_marker_piston: Pneumatic piston that lifts/lowers the X-axis marker assembly
@@ -130,12 +130,12 @@ row_cutter_down_sensor = False     # Sensor: True when piston is DOWN
 # Air pressure valve - controls airflow to all pneumatic pistons
 air_pressure_valve = "up"          # Valve control: "up" (closed/no air) or "down" (open/air flowing)
 
-# Row Motor Door Piston - Single piston control for both sides, but separate sensors
-row_motor_door_piston_state = "up"        # Piston control: "up" (default) or "down"
-row_door_left_up_sensor = True            # Left sensor: True when left side is UP (default)
-row_door_left_down_sensor = False         # Left sensor: True when left side is DOWN
-row_door_right_up_sensor = True           # Right sensor: True when right side is UP (default)
-row_door_right_down_sensor = False        # Right sensor: True when right side is DOWN
+# Row Motor Piston - Single piston control for both sides, but separate sensors
+row_motor_piston_state = "up"        # Piston control: "up" (default) or "down"
+row_motor_left_up_sensor = True            # Left sensor: True when left side is UP (default)
+row_motor_left_down_sensor = False         # Left sensor: True when left side is DOWN
+row_motor_right_up_sensor = True           # Right sensor: True when right side is UP (default)
+row_motor_right_down_sensor = False        # Right sensor: True when right side is DOWN
 
 # Sensor events for manual triggering
 sensor_events = {
@@ -191,8 +191,8 @@ def reset_hardware():
     global line_marker_pressure_piston_state, line_marker_pressure_up_sensor, line_marker_pressure_down_sensor
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     global row_cutter_piston, row_cutter_up_sensor, row_cutter_down_sensor
-    global row_motor_door_piston_state, row_door_left_up_sensor, row_door_left_down_sensor
-    global row_door_right_up_sensor, row_door_right_down_sensor
+    global row_motor_piston_state, row_motor_left_up_sensor, row_motor_left_down_sensor
+    global row_motor_right_up_sensor, row_motor_right_down_sensor
     global limit_switch_states
     global x_left_edge, x_right_edge, y_top_edge, y_bottom_edge
     global sensor_trigger_states, sensor_trigger_timers, execution_engine_reference
@@ -232,12 +232,12 @@ def reset_hardware():
         row_cutter_up_sensor = True
         row_cutter_down_sensor = False
 
-        # Row motor door piston - default UP
-        row_motor_door_piston_state = "up"
-        row_door_left_up_sensor = True
-        row_door_left_down_sensor = False
-        row_door_right_up_sensor = True
-        row_door_right_down_sensor = False
+        # Row motor piston - default UP
+        row_motor_piston_state = "up"
+        row_motor_left_up_sensor = True
+        row_motor_left_down_sensor = False
+        row_motor_right_up_sensor = True
+        row_motor_right_down_sensor = False
 
         # Air pressure valve - NOT reset here, managed at application lifecycle level
         # (turned on at app start, turned off at app exit)
@@ -433,7 +433,7 @@ def line_cutter_up():
 
 # Row tools (X-axis operations)
 def row_marker_down():
-    """Lower row marker to marking position (does NOT affect motor door limit switch)"""
+    """Lower row marker to marking position (does NOT affect motor piston)"""
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     logger = get_logger()
     logger.debug("row_marker_down()", category="hardware")
@@ -450,7 +450,7 @@ def row_marker_down():
             logger.debug("Row marker already down", category="hardware")
 
 def row_marker_up():
-    """Raise row marker from marking position (does NOT affect motor door limit switch)"""
+    """Raise row marker from marking position (does NOT affect motor piston)"""
     global row_marker_piston, row_marker_up_sensor, row_marker_down_sensor
     logger = get_logger()
     logger.debug("row_marker_up()", category="hardware")
@@ -1018,43 +1018,43 @@ def get_line_marker_pressure_up_sensor() -> bool:
 def get_line_marker_pressure_down_sensor() -> bool:
     return line_marker_pressure_down_sensor
 
-def row_motor_door_piston_up():
-    """Retract row motor door piston (raises both sides - default state for rows operations)"""
-    global row_motor_door_piston_state, row_door_left_up_sensor, row_door_left_down_sensor
-    global row_door_right_up_sensor, row_door_right_down_sensor
+def row_motor_piston_up():
+    """Retract row motor piston (raises both sides - default state for rows operations)"""
+    global row_motor_piston_state, row_motor_left_up_sensor, row_motor_left_down_sensor
+    global row_motor_right_up_sensor, row_motor_right_down_sensor
     logger = get_logger()
-    logger.debug("row_motor_door_piston_up()", category="hardware")
+    logger.debug("row_motor_piston_up()", category="hardware")
     with _state_lock:
-        if row_motor_door_piston_state != "up":
-            logger.info("Retracting row motor door piston UP - both sides", category="hardware")
+        if row_motor_piston_state != "up":
+            logger.info("Retracting row motor piston UP - both sides", category="hardware")
             time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            row_motor_door_piston_state = "up"
-            row_door_left_up_sensor = True
-            row_door_left_down_sensor = False
-            row_door_right_up_sensor = True
-            row_door_right_down_sensor = False
-            logger.success("Row motor door piston UP (left & right up_sensors=True, down_sensors=False)", category="hardware")
+            row_motor_piston_state = "up"
+            row_motor_left_up_sensor = True
+            row_motor_left_down_sensor = False
+            row_motor_right_up_sensor = True
+            row_motor_right_down_sensor = False
+            logger.success("Row motor piston UP (left & right up_sensors=True, down_sensors=False)", category="hardware")
         else:
-            logger.debug("Row motor door piston already UP", category="hardware")
+            logger.debug("Row motor piston already UP", category="hardware")
 
-def row_motor_door_piston_down():
-    """Deploy row motor door piston (lowers both sides - protects row motor during lines)"""
-    global row_motor_door_piston_state, row_door_left_up_sensor, row_door_left_down_sensor
-    global row_door_right_up_sensor, row_door_right_down_sensor
+def row_motor_piston_down():
+    """Deploy row motor piston (lowers both sides - protects row motor during lines)"""
+    global row_motor_piston_state, row_motor_left_up_sensor, row_motor_left_down_sensor
+    global row_motor_right_up_sensor, row_motor_right_down_sensor
     logger = get_logger()
-    logger.debug("row_motor_door_piston_down()", category="hardware")
+    logger.debug("row_motor_piston_down()", category="hardware")
     with _state_lock:
-        if row_motor_door_piston_state != "down":
-            logger.info("Deploying row motor door piston DOWN - both sides", category="hardware")
+        if row_motor_piston_state != "down":
+            logger.info("Deploying row motor piston DOWN - both sides", category="hardware")
             time.sleep(timing_settings.get("tool_action_delay", 0.1))
-            row_motor_door_piston_state = "down"
-            row_door_left_up_sensor = False
-            row_door_left_down_sensor = True
-            row_door_right_up_sensor = False
-            row_door_right_down_sensor = True
-            logger.success("Row motor door piston DOWN (left & right up_sensors=False, down_sensors=True)", category="hardware")
+            row_motor_piston_state = "down"
+            row_motor_left_up_sensor = False
+            row_motor_left_down_sensor = True
+            row_motor_right_up_sensor = False
+            row_motor_right_down_sensor = True
+            logger.success("Row motor piston DOWN (left & right up_sensors=False, down_sensors=True)", category="hardware")
         else:
-            logger.debug("Row motor door piston already DOWN", category="hardware")
+            logger.debug("Row motor piston already DOWN", category="hardware")
 
 # Row marker piston control functions
 def row_marker_piston_up():
@@ -1359,25 +1359,25 @@ def get_line_motor_right_down_sensor():
     """Get line motor right down sensor state"""
     return line_motor_right_down_sensor
 
-def get_row_motor_door_piston_state() -> str:
-    """Get current row motor door piston state"""
-    return row_motor_door_piston_state
+def get_row_motor_piston_state() -> str:
+    """Get current row motor piston state"""
+    return row_motor_piston_state
 
-def get_row_door_left_up_sensor():
-    """Get row door left up sensor state"""
-    return row_door_left_up_sensor
+def get_row_motor_left_up_sensor():
+    """Get row motor left up sensor state"""
+    return row_motor_left_up_sensor
 
-def get_row_door_left_down_sensor():
-    """Get row door left down sensor state"""
-    return row_door_left_down_sensor
+def get_row_motor_left_down_sensor():
+    """Get row motor left down sensor state"""
+    return row_motor_left_down_sensor
 
-def get_row_door_right_up_sensor():
-    """Get row door right up sensor state"""
-    return row_door_right_up_sensor
+def get_row_motor_right_up_sensor():
+    """Get row motor right up sensor state"""
+    return row_motor_right_up_sensor
 
-def get_row_door_right_down_sensor():
-    """Get row door right down sensor state"""
-    return row_door_right_down_sensor
+def get_row_motor_right_down_sensor():
+    """Get row motor right down sensor state"""
+    return row_motor_right_down_sensor
 
 # Row Marker getters
 def get_row_marker_piston_state():
@@ -1468,21 +1468,21 @@ def reset_sensor_trigger_state(sensor_name):
         sensor_trigger_states[sensor_name] = False
 
 def toggle_row_marker_limit_switch():
-    """Toggle row marker limit switch state (legacy - row motor door is now a piston)"""
+    """Toggle row marker limit switch state (legacy - row motor is now a piston)"""
     logger = get_logger()
-    logger.warning("toggle_row_marker_limit_switch() called - row motor door is now a piston, use row_motor_door_piston_up/down instead", category="hardware")
+    logger.warning("toggle_row_marker_limit_switch() called - row motor is now a piston, use row_motor_piston_up/down instead", category="hardware")
     return "up"
 
 # Limit switch control functions
 def toggle_limit_switch(switch_name):
-    """Toggle a limit switch state (motor door sensor - independent from marker piston)"""
+    """Toggle a limit switch state (motor sensor - independent from marker piston)"""
     global limit_switch_states
     logger = get_logger()
     if switch_name in limit_switch_states:
         limit_switch_states[switch_name] = not limit_switch_states[switch_name]
         state = "ON" if limit_switch_states[switch_name] else "OFF"
         logger.info(f"Limit switch {switch_name} toggled to: {state}", category="hardware")
-        # Note: This is motor door sensor, NOT marker piston position
+        # Note: This is motor sensor, NOT marker piston position
         return limit_switch_states[switch_name]
     return False
 
@@ -1567,14 +1567,13 @@ class MockHardware:
         if progress_callback:
             progress_callback(1, "Apply GRBL configuration", "done")
 
-        # Lift rows motor door piston
+        # Simulate row motor piston check
         if progress_callback:
-            progress_callback(2, "Lift rows motor door piston", "running")
-        self.logger.info("Step 2: (Simulated) Lifting rows motor door piston", category="hardware")
-        row_motor_door_piston_up()
-        time.sleep(0.2)
+            progress_callback(2, "Check row motor piston is up", "running")
+        self.logger.info("Step 2: (Simulated) Checking row motor piston - OK", category="hardware")
+        time.sleep(0.1)
         if progress_callback:
-            progress_callback(2, "Lift rows motor door piston", "done")
+            progress_callback(2, "Check row motor piston is up", "done")
 
         # Reset all pistons to default position
         if progress_callback:
@@ -1731,11 +1730,11 @@ class MockHardware:
     def get_line_marker_pressure_down_sensor(self) -> bool:
         return get_line_marker_pressure_down_sensor()
 
-    def row_motor_door_piston_down(self) -> bool:
-        return row_motor_door_piston_down()
+    def row_motor_piston_down(self) -> bool:
+        return row_motor_piston_down()
 
-    def row_motor_door_piston_up(self) -> bool:
-        return row_motor_door_piston_up()
+    def row_motor_piston_up(self) -> bool:
+        return row_motor_piston_up()
 
     def row_marker_piston_down(self) -> bool:
         return row_marker_piston_down()
@@ -1814,20 +1813,20 @@ class MockHardware:
     def get_line_motor_right_down_sensor(self) -> bool:
         return get_line_motor_right_down_sensor()
 
-    def get_row_motor_door_piston_state(self) -> str:
-        return get_row_motor_door_piston_state()
+    def get_row_motor_piston_state(self) -> str:
+        return get_row_motor_piston_state()
 
-    def get_row_door_left_up_sensor(self) -> bool:
-        return get_row_door_left_up_sensor()
+    def get_row_motor_left_up_sensor(self) -> bool:
+        return get_row_motor_left_up_sensor()
 
-    def get_row_door_left_down_sensor(self) -> bool:
-        return get_row_door_left_down_sensor()
+    def get_row_motor_left_down_sensor(self) -> bool:
+        return get_row_motor_left_down_sensor()
 
-    def get_row_door_right_up_sensor(self) -> bool:
-        return get_row_door_right_up_sensor()
+    def get_row_motor_right_up_sensor(self) -> bool:
+        return get_row_motor_right_up_sensor()
 
-    def get_row_door_right_down_sensor(self) -> bool:
-        return get_row_door_right_down_sensor()
+    def get_row_motor_right_down_sensor(self) -> bool:
+        return get_row_motor_right_down_sensor()
 
     def get_row_marker_up_sensor(self) -> bool:
         return get_row_marker_up_sensor()
@@ -1925,7 +1924,7 @@ class MockHardware:
         set_limit_switch_state(switch_name, state)
 
     def set_row_marker_limit_switch(self, state: bool):
-        pass  # Legacy: row motor door is now a piston, use row_motor_door_piston_up/down
+        pass  # Legacy: row motor is now a piston, use row_motor_piston_up/down
 
     def toggle_limit_switch(self, switch_name: str):
         return toggle_limit_switch(switch_name)

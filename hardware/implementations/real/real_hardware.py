@@ -209,7 +209,7 @@ class RealHardware:
 
         This is the comprehensive homing procedure that:
         1. Applies GRBL configuration from settings.json
-        2. Checks door is open
+        2. Checks row motor piston is up
         3. Lifts line motor pistons
         4. Runs GRBL homing ($H)
         5. Resets work coordinates to (0, 0)
@@ -227,7 +227,7 @@ class RealHardware:
             self.logger.error(error_msg, category="hardware")
             return False, error_msg
 
-        # Pass self as hardware_interface so GRBL can control pistons and check door
+        # Pass self as hardware_interface so GRBL can control pistons and check row motor piston
         return self.grbl.perform_complete_homing_sequence(hardware_interface=self, progress_callback=progress_callback, safety_check=safety_check)
 
     def apply_grbl_configuration(self) -> bool:
@@ -339,27 +339,27 @@ class RealHardware:
             return None
         return self.gpio.get_line_marker_pressure_down_sensor()
 
-    def row_motor_door_piston_down(self) -> bool:
-        """Deploy row motor door piston (both sides move together - single GPIO control)"""
+    def row_motor_piston_down(self) -> bool:
+        """Deploy row motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
             self.logger.error("Hardware not initialized", category="hardware")
             return False
 
-        return self.gpio.row_motor_door_piston_down()
+        return self.gpio.row_motor_piston_down()
 
-    def row_motor_door_piston_up(self) -> bool:
-        """Retract row motor door piston (both sides move together - single GPIO control)"""
+    def row_motor_piston_up(self) -> bool:
+        """Retract row motor piston (both sides move together - single GPIO control)"""
         if not self.is_initialized or not self.gpio:
             self.logger.error("Hardware not initialized", category="hardware")
             return False
 
-        return self.gpio.row_motor_door_piston_up()
+        return self.gpio.row_motor_piston_up()
 
-    def get_row_motor_door_piston_state(self) -> str:
-        """Get row motor door piston state"""
+    def get_row_motor_piston_state(self) -> str:
+        """Get row motor piston state"""
         if not self.is_initialized or not self.gpio:
             return "unknown"
-        return self.gpio.get_row_motor_door_piston_state()
+        return self.gpio.get_row_motor_piston_state()
 
     # ========== AIR PRESSURE VALVE CONTROL ==========
 
@@ -488,37 +488,37 @@ class RealHardware:
         state = self.gpio.get_line_motor_right_down_sensor()
         return state if state is not None else False
 
-    # Row Motor Door Piston Sensors
-    def get_row_door_left_up_sensor(self) -> bool:
-        """Read row motor door LEFT piston UP sensor state"""
+    # Row Motor Piston Sensors
+    def get_row_motor_left_up_sensor(self) -> bool:
+        """Read row motor LEFT piston UP sensor state"""
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.get_row_door_left_up_sensor()
+        state = self.gpio.get_row_motor_left_up_sensor()
         return state if state is not None else False
 
-    def get_row_door_left_down_sensor(self) -> bool:
-        """Read row motor door LEFT piston DOWN sensor state"""
+    def get_row_motor_left_down_sensor(self) -> bool:
+        """Read row motor LEFT piston DOWN sensor state"""
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.get_row_door_left_down_sensor()
+        state = self.gpio.get_row_motor_left_down_sensor()
         return state if state is not None else False
 
-    def get_row_door_right_up_sensor(self) -> bool:
-        """Read row motor door RIGHT piston UP sensor state"""
+    def get_row_motor_right_up_sensor(self) -> bool:
+        """Read row motor RIGHT piston UP sensor state"""
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.get_row_door_right_up_sensor()
+        state = self.gpio.get_row_motor_right_up_sensor()
         return state if state is not None else False
 
-    def get_row_door_right_down_sensor(self) -> bool:
-        """Read row motor door RIGHT piston DOWN sensor state"""
+    def get_row_motor_right_down_sensor(self) -> bool:
+        """Read row motor RIGHT piston DOWN sensor state"""
         if not self.is_initialized or not self.gpio:
             return False
 
-        state = self.gpio.get_row_door_right_down_sensor()
+        state = self.gpio.get_row_motor_right_down_sensor()
         return state if state is not None else False
 
     # Row Marker Sensors

@@ -438,8 +438,8 @@
               "default": 26,
               "category": "critical"
             },
-            "row_motor_door_piston": {
-              "description": "GPIO pin number for row motor door piston (controls 2 pistons from one port, GPIO 12)",
+            "row_motor_piston": {
+              "description": "GPIO pin number for row motor piston (controls 2 pistons from one port, GPIO 12)",
               "description_he": "מספר פין GPIO לבוכנת דלת מנוע עמודות (שולט בשתי בוכנות מיציאה אחת, GPIO 12)",
               "type": "int",
               "default": 12,
@@ -668,29 +668,29 @@
               "default": 31,
               "category": "important"
             },
-            "row_door_left_up_sensor": {
-              "description": "RS485 sensor bit index for row motor door left side UP position sensor",
+            "row_motor_left_up_sensor": {
+              "description": "RS485 sensor bit index for row motor left side UP position sensor",
               "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד שמאל של דלת מנוע עמודות",
               "type": "int",
               "default": 0,
               "category": "important"
             },
-            "row_door_left_down_sensor": {
-              "description": "RS485 sensor bit index for row motor door left side DOWN position sensor",
+            "row_motor_left_down_sensor": {
+              "description": "RS485 sensor bit index for row motor left side DOWN position sensor",
               "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד שמאל של דלת מנוע עמודות",
               "type": "int",
               "default": 1,
               "category": "important"
             },
-            "row_door_right_up_sensor": {
-              "description": "RS485 sensor bit index for row motor door right side UP position sensor",
+            "row_motor_right_up_sensor": {
+              "description": "RS485 sensor bit index for row motor right side UP position sensor",
               "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד ימין של דלת מנוע עמודות",
               "type": "int",
               "default": 2,
               "category": "important"
             },
-            "row_door_right_down_sensor": {
-              "description": "RS485 sensor bit index for row motor door right side DOWN position sensor",
+            "row_motor_right_down_sensor": {
+              "description": "RS485 sensor bit index for row motor right side DOWN position sensor",
               "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד ימין של דלת מנוע עמודות",
               "type": "int",
               "default": 3,
@@ -1140,8 +1140,8 @@
           "category": "critical"
         },
         "rows_start_position_keywords": {
-          "description": "Keywords identifying the initial rows start position move (door allowed open for this move only, excluded by exclude_rows_start safety rule flag)",
-          "description_he": "מילות מפתח המזהות את תנועת מיקום ההתחלה של העמודות (דלת מותרת פתוחה לתנועה זו בלבד, מוחרגת על ידי דגל exclude_rows_start בחוק בטיחות)",
+          "description": "Keywords identifying the initial rows start position move (row motor piston allowed up for this move only, excluded by exclude_rows_start safety rule flag)",
+          "description_he": "מילות מפתח המזהות את תנועת מיקום ההתחלה של העמודות (בוכנת מנוע עמודות מותרת למעלה לתנועה זו בלבד, מוחרגת על ידי דגל exclude_rows_start בחוק בטיחות)",
           "type": "list",
           "default": ["rows start:"],
           "category": "critical"
@@ -1178,9 +1178,9 @@
           "default": 0.2,
           "category": "performance"
         },
-        "door_check_delay": {
-          "description": "Delay for door state checks",
-          "description_he": "השהיה לבדיקות מצב דלת",
+        "row_motor_piston_check_delay": {
+          "description": "Delay for row motor piston state checks",
+          "description_he": "השהיה לבדיקות מצב בוכנת מנוע עמודות",
           "type": "float",
           "unit": "seconds",
           "default": 0.1,

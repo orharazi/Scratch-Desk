@@ -5,10 +5,10 @@
     "max_y_position": 80.0,
     "min_x_position": 0.0,
     "min_y_position": 0.0,
-    "paper_start_x": 0.0,
+    "paper_start_x": 6.5,
     "safe_movement_speed": 10.0,
     "max_acceleration": 5.0,
-    "paper_start_y": 20.0,
+    "paper_start_y": 19.0,
     "min_line_spacing": 0.3
   },
   "admin": {
@@ -194,7 +194,7 @@
     }
   },
   "hardware_config": {
-    "use_real_hardware": false,
+    "use_real_hardware": true,
     "start_with_grbl": true,
     "poc_mode": false,
     "skip_initial_sensor_tests": false,
@@ -205,11 +205,11 @@
         "line_marker_piston": 6,
         "line_cutter_piston": 16,
         "line_motor_piston": 13,
-        "line_marker_pressure_piston": 20,
+        "line_marker_pressure_piston": 21,
         "row_marker_piston": 5,
         "row_cutter_piston": 19,
         "air_pressure_valve": 26,
-        "row_motor_door_piston": 12
+        "row_motor_piston": 20
       },
       "rs485": {
         "enabled": true,
@@ -247,10 +247,10 @@
           "x_right_edge": 16,
           "y_top_edge": 13,
           "y_bottom_edge": 30,
-          "row_door_left_up_sensor": 0,
-          "row_door_left_down_sensor": 1,
-          "row_door_right_up_sensor": 2,
-          "row_door_right_down_sensor": 3
+          "row_motor_left_up_sensor": 12,
+          "row_motor_left_down_sensor": 1,
+          "row_motor_right_up_sensor": 10,
+          "row_motor_right_down_sensor": 9
         },
         "nc_sensors": [
           "x_left_edge",
@@ -262,7 +262,7 @@
       }
     },
     "arduino_grbl": {
-      "serial_port": "/dev/cu.debug-console",
+      "serial_port": "/dev/ttyUSB0",
       "baud_rate": 115200,
       "connection_timeout": 5.0,
       "command_timeout": 10.0,
@@ -334,7 +334,7 @@
   },
   "mock_hardware": {
     "homing_step_delay": 0.2,
-    "door_check_delay": 0.1,
+    "row_motor_piston_check_delay": 0.1,
     "piston_operation_delay": 0.5,
     "grbl_homing_delay": 1.0,
     "coordinate_reset_delay": 0.2
@@ -351,7 +351,7 @@
       "smtp_password": "egwinocrndmjlnsp",
       "sender_email": "uridesk35@gmail.com\n",
       "recipient_email": "orharazi@gmail.com",
-      "subject_prefix": "\u05e9\u05d5\u05dc\u05d7\u05df \u05e9\u05e8\u05d8\u05d5\u05d8 \u05d9\u05e9\u05d9\u05d1\u05d4 \u05e9\u05dc \u05d7\u05d9 - \u05d0\u05e0\u05dc\u05d9\u05d8\u05d9\u05e7\u05d5\u05ea",
+      "subject_prefix": "שולחן שרטוט ישיבה של חי - אנליטיקות",
       "schedule_enabled": true,
       "schedule_frequency": "monthly",
       "schedule_time": "08:00",

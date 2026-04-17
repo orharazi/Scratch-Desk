@@ -154,3 +154,16 @@ c087a717-9ce2-4834-b969-82c70ac4db6c,2026-03-27T01:29:28.015152,2026-03-27T01:29
 f7962385-6ecc-4c6a-82f0-1830e2acb06c,2026-03-27T01:40:50.759789,2026-03-27T01:45:55.977424,305.22,17,check,user_stop,41,19,19,0,,,,mock,1,1
 07439890-5a2e-4f9c-bdea-09b1cb9b04d0,2026-03-27T03:33:32.294276,2026-03-27T03:38:53.026204,320.73,11,מזוזה 20,user_stop,181,26,26,0,,,,mock,3,1
 4f64c2b4-84a2-4cd6-be62-21eec6ba528f,2026-03-27T04:14:11.578951,2026-03-27T04:19:38.896606,327.32,17,check,user_stop,154,59,59,0,,,,mock,1,1
+13d6df0b-94af-49e1-b7df-99bea88f5636,2026-04-15T07:10:50.624364,2026-04-15T07:13:17.619443,147.0,10,מזוזה 15,user_stop,326,6,6,0,,,,real,5,2
+5d99d8e3-ac7f-4bb4-b9bb-a154a5e44d78,2026-04-15T07:17:48.130156,2026-04-15T07:18:44.956095,56.83,10,מזוזה 15,user_stop,326,6,6,0,,,,real,5,2
+9f8c36d8-19f7-4b46-a1e7-111f29f2522f,2026-04-15T07:20:22.548510,2026-04-15T07:21:23.710854,61.16,10,מזוזה 15,user_stop,326,6,6,0,,,,real,5,2
+2706b35f-0a68-4c29-a0c3-ed41c5ffee4d,2026-04-15T07:22:33.255286,2026-04-15T07:24:00.165890,86.91,10,מזוזה 15,emergency_stop,326,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,5,2
+c6363d3c-943b-407b-a034-9e4d3104eb6d,2026-04-17T11:58:36.954728,2026-04-17T12:04:12.808887,335.85,10,מזוזה 15,user_stop,296,6,6,0,,,,real,3,2
+bb9adf59-1778-4b85-b0aa-449cf6d3f5ac,2026-04-17T12:25:10.173772,2026-04-17T12:30:45.822069,335.65,10,מזוזה 15,user_stop,296,6,6,0,,,,real,3,2
+a5f8146a-79e8-4889-a767-56e74de9f122,2026-04-17T12:33:35.927950,2026-04-17T12:34:41.044186,65.12,10,מזוזה 15,user_stop,296,11,11,0,,,,real,3,2
+49340dda-1d26-4b33-8079-3ece3047eb74,2026-04-17T12:39:14.491865,2026-04-17T12:40:24.528140,70.04,10,מזוזה 15,user_stop,296,11,11,0,,,,real,3,2
+8f6379ee-5357-449d-accc-406d72a9afcd,2026-04-17T13:07:04.251561,2026-04-17T13:10:34.825325,210.57,10,מזוזה 15,user_stop,296,26,26,0,,,,real,3,2
+32fac313-6a76-451a-9e8f-b585739783dd,2026-04-17T13:16:32.801304,2026-04-17T13:17:18.724155,45.92,10,מזוזה 15,emergency_stop,296,14,14,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,3,2
+3e883c08-222e-4533-88da-007354b4c553,2026-04-17T13:33:04.384481,2026-04-17T13:33:53.766768,49.38,10,מזוזה 15,emergency_stop,296,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,3,2
+67c98888-02a9-4369-8a90-b54f79bf240c,2026-04-17T13:35:07.233169,2026-04-17T13:35:50.901224,43.67,10,מזוזה 15,emergency_stop,296,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,3,2
+059f7199-8b40-4114-9c88-59358e195bd1,2026-04-17T13:44:57.577625,2026-04-17T13:45:49.610590,52.03,17,check,emergency_stop,91,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,1,1
