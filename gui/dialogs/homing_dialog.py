@@ -36,7 +36,7 @@ class HomingProgressDialog:
 
     Displays an 8-step homing sequence with real-time status updates:
     1. Apply GRBL configuration
-    2. Check row motor piston is up
+    2. Lift row motor piston and verify up
     3. Reset all pistons to default position
     4. Lift line motor pistons
     5. Move Y axis (pre-home clearance)
@@ -47,7 +47,7 @@ class HomingProgressDialog:
 
     STEPS_TEMPLATE = [
         "1. Apply GRBL configuration",
-        "2. Check row motor piston is up",
+        "2. Lift row motor piston and verify up",
         "3. Reset all pistons to default position",
         "4. Lift line motor pistons",
         "5. Move Y axis (pre-home clearance)",
@@ -371,7 +371,8 @@ class HomingProgressDialog:
             messagebox.showinfo(
                 t_title("Homing Complete"),
                 t("Homing sequence completed successfully!\n\n"
-                  "Machine is now at home position (0, 0).")
+                  "Machine is now at home position (0, 0)."),
+                parent=self.parent
             )
         else:
             logger.error(f"Homing failed: {self.error_message}", category="hardware")

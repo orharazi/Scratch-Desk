@@ -188,7 +188,7 @@
         },
         "homing_poll_interval": {
           "description": "Polling interval during homing operations",
-          "description_he": "מרווח דגימה במהלך פעולות ביות",
+          "description_he": "מרווח דגימה במהלך פעולות איפוס",
           "type": "float",
           "unit": "seconds",
           "default": 0.5,
@@ -220,7 +220,7 @@
         },
         "gpio_debounce_samples": {
           "description": "Number of consistent GPIO reads required for stable state",
-          "description_he": "מספר קריאות GPIO עקביות הנדרשות למצב יציב",
+          "description_he": "מספר קריאות GPIO עקאיפוס הנדרשות למצב יציב",
           "type": "int",
           "default": 3,
           "category": "critical"
@@ -384,7 +384,7 @@
             },
             "debounce_count": {
               "description": "Number of consistent reads for debouncing",
-              "description_he": "מספר קריאות עקביות לניפוי רעש",
+              "description_he": "מספר קריאות עקאיפוס לניפוי רעש",
               "type": "int",
               "default": 2,
               "category": "performance"
@@ -934,21 +934,21 @@
             },
             "$22": {
               "description": "GRBL $22: Homing cycle enable (0=off, 1=on)",
-              "description_he": "GRBL $22: אפשור מחזור ביות (0=כבוי, 1=פעיל)",
+              "description_he": "GRBL $22: אפשור מחזור איפוס (0=כבוי, 1=פעיל)",
               "type": "int",
               "default": 1,
               "category": "critical"
             },
             "$23": {
               "description": "GRBL $23: Homing direction invert bitmask",
-              "description_he": "GRBL $23: מסכת היפוך כיוון ביות",
+              "description_he": "GRBL $23: מסכת היפוך כיוון איפוס",
               "type": "int",
               "default": 3,
               "category": "important"
             },
             "$24": {
               "description": "GRBL $24: Homing locate feed rate (slow approach)",
-              "description_he": "GRBL $24: קצב הזנת איתור ביות (גישה איטית)",
+              "description_he": "GRBL $24: קצב הזנת איתור איפוס (גישה איטית)",
               "type": "float",
               "default": 25.0,
               "category": "important",
@@ -956,7 +956,7 @@
             },
             "$25": {
               "description": "GRBL $25: Homing search seek rate (fast approach)",
-              "description_he": "GRBL $25: קצב חיפוש ביות (גישה מהירה)",
+              "description_he": "GRBL $25: קצב חיפוש איפוס (גישה מהירה)",
               "type": "float",
               "default": 500.0,
               "category": "important",
@@ -964,7 +964,7 @@
             },
             "$26": {
               "description": "GRBL $26: Homing switch debounce delay",
-              "description_he": "GRBL $26: השהיית ניפוי רעש מתג ביות",
+              "description_he": "GRBL $26: השהיית ניפוי רעש מתג איפוס",
               "type": "int",
               "default": 100,
               "category": "important",
@@ -972,7 +972,7 @@
             },
             "$27": {
               "description": "GRBL $27: Homing pull-off distance after switch trigger",
-              "description_he": "GRBL $27: מרחק התנתקות ביות לאחר הפעלת מתג",
+              "description_he": "GRBL $27: מרחק התנתקות איפוס לאחר הפעלת מתג",
               "type": "float",
               "default": 10.0,
               "category": "important",
@@ -1069,7 +1069,7 @@
             },
             "homing_timeout": {
               "description": "Maximum time allowed for homing cycle completion",
-              "description_he": "זמן מקסימלי מותר להשלמת מחזור ביות",
+              "description_he": "זמן מקסימלי מותר להשלמת מחזור איפוס",
               "type": "float",
               "default": 300.0,
               "category": "important",
@@ -1161,6 +1161,41 @@
           "unit": "seconds",
           "default": 300,
           "category": "important"
+        },
+        "motor_lift_on_long_moves": {
+          "description": "Automatically lift motor piston before long moves to reduce mechanical wear",
+          "description_he": "הרמה אוטומטית של בוכנת מנוע לפני תנועות ארוכות למניעת בלאי מכני",
+          "type": "object",
+          "category": "important",
+          "settings": {
+            "enabled": {
+              "description": "Enable automatic motor piston lift on long moves",
+              "description_he": "הפעלת הרמה אוטומטית של בוכנת מנוע בתנועות ארוכות",
+              "type": "boolean",
+              "default": true,
+              "category": "important"
+            },
+            "x_axis_threshold_mm": {
+              "description": "Minimum X-axis move distance (mm) to trigger row motor piston lift",
+              "description_he": "מרחק תנועה מינימלי בציר X (מ\"מ) להפעלת הרמת בוכנת מנוע עמודות",
+              "type": "float",
+              "unit": "mm",
+              "min": 0,
+              "max": 1200,
+              "default": 50.0,
+              "category": "important"
+            },
+            "y_axis_threshold_mm": {
+              "description": "Minimum Y-axis move distance (mm) to trigger line motor piston lift",
+              "description_he": "מרחק תנועה מינימלי בציר Y (מ\"מ) להפעלת הרמת בוכנת מנוע שורות",
+              "type": "float",
+              "unit": "mm",
+              "min": 0,
+              "max": 800,
+              "default": 50.0,
+              "category": "important"
+            }
+          }
         }
       }
     },
@@ -1172,7 +1207,7 @@
       "settings": {
         "homing_step_delay": {
           "description": "Delay between homing sequence steps",
-          "description_he": "השהיה בין שלבי רצף ביות",
+          "description_he": "השהיה בין שלבי רצף איפוס",
           "type": "float",
           "unit": "seconds",
           "default": 0.2,
@@ -1196,7 +1231,7 @@
         },
         "grbl_homing_delay": {
           "description": "Delay for simulated GRBL homing",
-          "description_he": "השהיה לביות GRBL מדומה",
+          "description_he": "השהיה לאיפוס GRBL מדומה",
           "type": "float",
           "unit": "seconds",
           "default": 1.0,

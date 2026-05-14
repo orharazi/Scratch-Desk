@@ -409,18 +409,25 @@ class RaspberryPiGPIO:
             self.logger.error(f"Error setting piston {piston_name}: {e}", category="hardware")
             return False
 
-    def _verify_piston_position(self, piston_name: str, expected_state: str, timeout: float = 0.5) -> bool:
+    # Motor pistons are heavier and take longer to reach position than tool pistons
+    _MOTOR_PISTONS = {'line_motor_piston', 'row_motor_piston'}
+
+    def _verify_piston_position(self, piston_name: str, expected_state: str, timeout: float = None) -> bool:
         """
         Verify piston reached target position by reading the corresponding sensor.
 
         Args:
             piston_name: Name of piston
             expected_state: Expected state ('up' or 'down')
-            timeout: Maximum time to wait for sensor confirmation (seconds)
+            timeout: Maximum time to wait for sensor confirmation (seconds).
+                     Defaults to 2.0s for motor pistons, 0.5s for tool pistons.
 
         Returns:
             True if sensor confirms position, False if not
         """
+        if timeout is None:
+            timeout = 2.0 if piston_name in self._MOTOR_PISTONS else 0.5
+
         # Look up the sensor for this piston/state combination
         sensor_map = self._PISTON_SENSOR_MAP.get(piston_name)
         if not sensor_map:

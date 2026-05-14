@@ -1567,13 +1567,15 @@ class MockHardware:
         if progress_callback:
             progress_callback(1, "Apply GRBL configuration", "done")
 
-        # Simulate row motor piston check
+        # Lift row motor piston and verify
         if progress_callback:
-            progress_callback(2, "Check row motor piston is up", "running")
-        self.logger.info("Step 2: (Simulated) Checking row motor piston - OK", category="hardware")
-        time.sleep(0.1)
+            progress_callback(2, "Lift row motor piston and verify up", "running")
+        self.logger.info("Step 2: (Simulated) Lifting row motor piston and verifying...", category="hardware")
+        row_motor_piston_up()
+        time.sleep(0.3)
+        self.logger.info("Row motor piston verified UP", category="hardware")
         if progress_callback:
-            progress_callback(2, "Check row motor piston is up", "done")
+            progress_callback(2, "Lift row motor piston and verify up", "done")
 
         # Reset all pistons to default position
         if progress_callback:

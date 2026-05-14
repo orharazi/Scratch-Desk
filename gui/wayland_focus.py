@@ -180,7 +180,20 @@ def patch_wayland_focus(app_id='scratch-desk'):
                 self.lift()
                 self.focus_force()
                 if _HAS_WLRCTL:
-                    _wlrctl_focus_app(app_id)
+                    # Skip wlrctl for transient windows — on labwc they
+                    # can't be independently focused by wlrctl, and
+                    # _wlrctl_focus_app() would steal focus to the main
+                    # window instead of keeping it on this dialog.
+                    try:
+                        is_transient = bool(self.wm_transient())
+                    except Exception:
+                        is_transient = False
+                    if not is_transient:
+                        title = self.title()
+                        if title:
+                            _wlrctl_focus_title(title)
+                        else:
+                            _wlrctl_focus_app(app_id)
             except Exception:
                 pass
             try:
@@ -201,11 +214,17 @@ def patch_wayland_focus(app_id='scratch-desk'):
                 self.lift()
                 self.focus_force()
                 if _HAS_WLRCTL:
-                    title = self.title()
-                    if title:
-                        _wlrctl_focus_title(title)
-                    else:
-                        _wlrctl_focus_app(app_id)
+                    # Same transient check — don't steal focus from dialogs
+                    try:
+                        is_transient = bool(self.wm_transient())
+                    except Exception:
+                        is_transient = False
+                    if not is_transient:
+                        title = self.title()
+                        if title:
+                            _wlrctl_focus_title(title)
+                        else:
+                            _wlrctl_focus_app(app_id)
             except Exception:
                 pass
 
@@ -213,24 +232,50 @@ def patch_wayland_focus(app_id='scratch-desk'):
 
     tk.Toplevel.__init__ = _patched_init
 
-    # --- Patch tkinter.messagebox functions to re-focus after close ---
-    if _HAS_WLRCTL:
-        import tkinter.messagebox as mb
+    # --- Patch tkinter.messagebox functions for focus management ---
+    # Always wrap messageboxes: pre-focus the parent so the transient
+    # messagebox dialog inherits focus, and re-focus after close.
+    import tkinter.messagebox as mb
 
-        def _wrap_messagebox(original_func):
-            def wrapper(*args, **kwargs):
-                result = original_func(*args, **kwargs)
+    def _wrap_messagebox(original_func):
+        def wrapper(*args, **kwargs):
+            # Pre-focus: ensure the parent window has compositor focus
+            # so the transient messagebox dialog receives focus on labwc.
+            parent = kwargs.get('parent') or tk._default_root
+            if parent:
+                try:
+                    parent.lift()
+                    parent.focus_force()
+                except Exception:
+                    pass
+                if _HAS_WLRCTL:
+                    try:
+                        title = parent.title()
+                        if title:
+                            _wlrctl_focus_title(title)
+                        else:
+                            _wlrctl_focus_app(app_id)
+                    except Exception:
+                        try:
+                            _wlrctl_focus_app(app_id)
+                        except Exception:
+                            pass
+
+            result = original_func(*args, **kwargs)
+
+            # Post-focus: return focus to the app after dialog closes
+            if _HAS_WLRCTL:
                 _wlrctl_focus_app(app_id)
-                return result
-            wrapper.__name__ = original_func.__name__
-            wrapper.__doc__ = original_func.__doc__
-            return wrapper
+            return result
+        wrapper.__name__ = original_func.__name__
+        wrapper.__doc__ = original_func.__doc__
+        return wrapper
 
-        for name in ('showinfo', 'showwarning', 'showerror',
-                     'askquestion', 'askokcancel', 'askyesno',
-                     'askretrycancel', 'askyesnocancel'):
-            original = getattr(mb, name, None)
-            if original and not getattr(original, '_wayland_patched', False):
-                wrapped = _wrap_messagebox(original)
-                wrapped._wayland_patched = True
-                setattr(mb, name, wrapped)
+    for name in ('showinfo', 'showwarning', 'showerror',
+                 'askquestion', 'askokcancel', 'askyesno',
+                 'askretrycancel', 'askyesnocancel'):
+        original = getattr(mb, name, None)
+        if original and not getattr(original, '_wayland_patched', False):
+            wrapped = _wrap_messagebox(original)
+            wrapped._wayland_patched = True
+            setattr(mb, name, wrapped)

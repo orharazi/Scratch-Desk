@@ -157,7 +157,7 @@ class SafetyTab:
                 json.dump(self.rules_data, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
-            messagebox.showerror(t_title("Error"), t("Failed to save rules: {error}", error=str(e)))
+            messagebox.showerror(t_title("Error"), t("Failed to save rules: {error}", error=str(e)), parent=self.app.root)
             return False
 
     def create_ui(self):
@@ -165,10 +165,13 @@ class SafetyTab:
         # Configure grid
         self.frame.columnconfigure(0, weight=1)
         self.frame.columnconfigure(1, weight=1)
-        self.frame.rowconfigure(1, weight=1)
+        self.frame.rowconfigure(2, weight=1)
 
         # Top bar with global controls
         self.create_top_controls()
+
+        # Motor lift on long moves section
+        self.create_motor_lift_section()
 
         # Left side - Rules list
         self.create_rules_list()
@@ -207,10 +210,84 @@ class SafetyTab:
         ttk.Button(top_frame, text=t("Export"), command=self.export_rules).pack(side=tk.RIGHT, padx=2)
         ttk.Button(top_frame, text=t("Refresh"), command=self.refresh_rules).pack(side=tk.RIGHT, padx=2)
 
+    def _load_main_settings(self):
+        """Load main settings from config/settings.json"""
+        try:
+            settings_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'config', 'settings.json')
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _save_motor_lift_settings(self):
+        """Save motor lift on long moves settings to config/settings.json"""
+        try:
+            settings_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'config', 'settings.json')
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+
+            if 'safety' not in settings:
+                settings['safety'] = {}
+
+            settings['safety']['motor_lift_on_long_moves'] = {
+                'enabled': self.motor_lift_enabled_var.get(),
+                'x_axis_threshold_mm': float(self.motor_lift_x_threshold_var.get() or 50.0),
+                'y_axis_threshold_mm': float(self.motor_lift_y_threshold_var.get() or 50.0)
+            }
+
+            with open(settings_path, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+
+            if hasattr(self.app, 'log'):
+                self.app.log("INFO", "Motor lift on long moves settings saved")
+
+        except ValueError:
+            messagebox.showerror(t_title("Error"), rtl("ערכי סף חייבים להיות מספרים"), parent=self.app.root)
+        except Exception as e:
+            messagebox.showerror(t_title("Error"), t("Failed to save settings: {error}", error=str(e)), parent=self.app.root)
+
+    def create_motor_lift_section(self):
+        """Create the motor lift on long moves configuration section"""
+        # Load current settings
+        main_settings = self._load_main_settings()
+        lift_config = main_settings.get('safety', {}).get('motor_lift_on_long_moves', {})
+
+        lift_frame = ttk.LabelFrame(self.frame, text=rtl("הרמת מנוע בתנועות ארוכות"), padding="5")
+        lift_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=(0, 5))
+
+        # Enable/disable checkbox
+        self.motor_lift_enabled_var = tk.BooleanVar(value=lift_config.get('enabled', True))
+        ttk.Checkbutton(
+            lift_frame,
+            text=rtl("הפעלה"),
+            variable=self.motor_lift_enabled_var,
+            command=self._save_motor_lift_settings
+        ).pack(side=tk.RIGHT, padx=5)
+
+        # Separator
+        ttk.Separator(lift_frame, orient=tk.VERTICAL).pack(side=tk.RIGHT, fill=tk.Y, padx=5)
+
+        # X-axis threshold (rows motor)
+        ttk.Label(lift_frame, text=rtl("סף עמודות (מ\"מ):")).pack(side=tk.RIGHT, padx=(5, 2))
+        self.motor_lift_x_threshold_var = tk.StringVar(value=str(lift_config.get('x_axis_threshold_mm', 50.0)))
+        x_entry = ttk.Entry(lift_frame, textvariable=self.motor_lift_x_threshold_var, width=8, justify="center")
+        x_entry.pack(side=tk.RIGHT, padx=(0, 5))
+        x_entry.bind("<FocusOut>", lambda e: self._save_motor_lift_settings())
+
+        # Separator
+        ttk.Separator(lift_frame, orient=tk.VERTICAL).pack(side=tk.RIGHT, fill=tk.Y, padx=5)
+
+        # Y-axis threshold (lines motor)
+        ttk.Label(lift_frame, text=rtl("סף שורות (מ\"מ):")).pack(side=tk.RIGHT, padx=(5, 2))
+        self.motor_lift_y_threshold_var = tk.StringVar(value=str(lift_config.get('y_axis_threshold_mm', 50.0)))
+        y_entry = ttk.Entry(lift_frame, textvariable=self.motor_lift_y_threshold_var, width=8, justify="center")
+        y_entry.pack(side=tk.RIGHT, padx=(0, 5))
+        y_entry.bind("<FocusOut>", lambda e: self._save_motor_lift_settings())
+
     def create_rules_list(self):
         """Create rules list panel"""
         left_frame = ttk.LabelFrame(self.frame, text=t("Safety Rules"), padding="5")
-        left_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
+        left_frame.grid(row=2, column=1, sticky="nsew", padx=5, pady=5)
         left_frame.rowconfigure(0, weight=1)
         left_frame.columnconfigure(0, weight=1)
 
@@ -258,7 +335,7 @@ class SafetyTab:
     def create_details_panel(self):
         """Create rule details and violations panel"""
         right_frame = ttk.Frame(self.frame)
-        right_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        right_frame.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
         right_frame.rowconfigure(0, weight=1)
         right_frame.rowconfigure(1, weight=1)
         right_frame.columnconfigure(0, weight=1)
@@ -580,7 +657,8 @@ class SafetyTab:
         if not enabled:
             if not messagebox.askyesno(
                 t_title("Disable Safety"),
-                t("WARNING: Disabling the safety system can lead to hardware damage!\n\nAre you sure you want to disable safety checks?")
+                t("WARNING: Disabling the safety system can lead to hardware damage!\n\nAre you sure you want to disable safety checks?"),
+                parent=self.app.root
             ):
                 self.global_enabled_var.set(True)
                 self.rules_data["global_enabled"] = True
@@ -628,10 +706,10 @@ class SafetyTab:
             return
 
         if rule.get("is_system_rule", False):
-            messagebox.showwarning(t_title("Cannot Delete"), t("System rules cannot be deleted. You can only disable them."))
+            messagebox.showwarning(t_title("Cannot Delete"), t("System rules cannot be deleted. You can only disable them."), parent=self.app.root)
             return
 
-        if messagebox.askyesno(t_title("Delete Rule"), t("Delete rule '{name}'?", name=rule.get('name', self.selected_rule_id))):
+        if messagebox.askyesno(t_title("Delete Rule"), t("Delete rule '{name}'?", name=rule.get('name', self.selected_rule_id)), parent=self.app.root):
             self.rules_data["rules"] = [r for r in self.rules_data["rules"] if r["id"] != self.selected_rule_id]
             self.save_rules()
             self.populate_rules_list()
@@ -680,7 +758,7 @@ class SafetyTab:
 
                 if "rules" in imported:
                     # Merge or replace?
-                    if messagebox.askyesno(t_title("Import Rules"), t("Merge with existing rules? (No = Replace all)")):
+                    if messagebox.askyesno(t_title("Import Rules"), t("Merge with existing rules? (No = Replace all)"), parent=self.app.root):
                         # Merge
                         existing_ids = {r["id"] for r in self.rules_data["rules"]}
                         for rule in imported["rules"]:
@@ -692,11 +770,11 @@ class SafetyTab:
 
                     self.save_rules()
                     self.populate_rules_list()
-                    messagebox.showinfo(t_title("Success"), t("Rules imported successfully"))
+                    messagebox.showinfo(t_title("Success"), t("Rules imported successfully"), parent=self.app.root)
                 else:
-                    messagebox.showerror(t_title("Error"), t("Invalid rules file format"))
+                    messagebox.showerror(t_title("Error"), t("Invalid rules file format"), parent=self.app.root)
             except Exception as e:
-                messagebox.showerror(t_title("Error"), t("Failed to import rules: {error}", error=str(e)))
+                messagebox.showerror(t_title("Error"), t("Failed to import rules: {error}", error=str(e)), parent=self.app.root)
 
     def export_rules(self):
         """Export rules to file"""
@@ -717,9 +795,9 @@ class SafetyTab:
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     json.dump(self.rules_data, f, indent=2, ensure_ascii=False)
-                messagebox.showinfo(t_title("Success"), t("Rules exported to {filename}", filename=filename))
+                messagebox.showinfo(t_title("Success"), t("Rules exported to {filename}", filename=filename), parent=self.app.root)
             except Exception as e:
-                messagebox.showerror(t_title("Error"), t("Failed to export rules: {error}", error=str(e)))
+                messagebox.showerror(t_title("Error"), t("Failed to export rules: {error}", error=str(e)), parent=self.app.root)
 
     def clear_violations(self):
         """Clear violations log"""
@@ -1418,12 +1496,12 @@ class RuleEditorDialog:
         # Validate
         rule_id = self.id_entry.get().strip()
         if not rule_id:
-            messagebox.showerror(t_title("Error"), t("Rule ID is required"))
+            messagebox.showerror(t_title("Error"), t("Rule ID is required"), parent=self.dialog)
             return
 
         name = self.name_entry.get().strip()
         if not name:
-            messagebox.showerror(t_title("Error"), t("Rule name is required"))
+            messagebox.showerror(t_title("Error"), t("Rule name is required"), parent=self.dialog)
             return
 
         # Build conditions - convert display values back to internal

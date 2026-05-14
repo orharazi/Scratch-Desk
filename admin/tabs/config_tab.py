@@ -78,7 +78,7 @@ class ConfigTab:
             self.update_status()
             return True
         except Exception as e:
-            messagebox.showerror(t_title("Error"), t("Failed to save settings: {error}", error=str(e)))
+            messagebox.showerror(t_title("Error"), t("Failed to save settings: {error}", error=str(e)), parent=self.app.root)
             return False
 
     def create_ui(self):
@@ -752,7 +752,7 @@ class ConfigTab:
         if hasattr(self.app, 'can_change_settings') and self.app.can_change_settings:
             allowed, reason = self.app.can_change_settings()
             if not allowed:
-                messagebox.showwarning(t_title("Blocked"), reason)
+                messagebox.showwarning(t_title("Blocked"), reason, parent=self.app.root)
                 if hasattr(self.app, 'log'):
                     self.app.log("WARNING", reason)
                 return False
@@ -762,7 +762,7 @@ class ConfigTab:
             state = MachineStateManager().state
             if state in (MachineState.RUNNING, MachineState.PAUSED):
                 msg = t("Cannot change settings while a program is running or paused. Stop execution first.")
-                messagebox.showwarning(t_title("Blocked"), msg)
+                messagebox.showwarning(t_title("Blocked"), msg, parent=self.app.root)
                 if hasattr(self.app, 'log'):
                     self.app.log("WARNING", msg)
                 return False
@@ -924,7 +924,7 @@ class ConfigTab:
     def save_changes(self):
         """Save pending changes"""
         if not self.pending_changes:
-            messagebox.showinfo(t_title("No Changes"), t("There are no pending changes to save."))
+            messagebox.showinfo(t_title("No Changes"), t("There are no pending changes to save."), parent=self.app.root)
             return
 
         if not self._check_execution_allows_settings_change():
@@ -932,30 +932,30 @@ class ConfigTab:
 
         num_changes = len(self.pending_changes)
         if messagebox.askyesno(t_title("Save Changes"),
-                               t("Save {num_changes} pending change(s)?", num_changes=num_changes)):
+                               t("Save {num_changes} pending change(s)?", num_changes=num_changes), parent=self.app.root):
             if self.save_settings():
                 # Refresh the category tree to show updated values on the left side
                 self.populate_category_tree(self.search_var.get())
                 # Notify app and reload module caches
                 self._notify_settings_changed()
-                messagebox.showinfo(t_title("Success"), t("Settings saved successfully."))
+                messagebox.showinfo(t_title("Success"), t("Settings saved successfully."), parent=self.app.root)
                 if hasattr(self.app, 'log'):
                     self.app.log("SUCCESS", t("Saved {num_changes} configuration changes", num_changes=num_changes))
 
     def revert_changes(self):
         """Revert pending changes"""
         if not self.pending_changes:
-            messagebox.showinfo(t_title("No Changes"), t("There are no pending changes to revert."))
+            messagebox.showinfo(t_title("No Changes"), t("There are no pending changes to revert."), parent=self.app.root)
             return
 
         if messagebox.askyesno(t_title("Revert Changes"),
-                               t("Revert {num_changes} pending change(s)?", num_changes=len(self.pending_changes))):
+                               t("Revert {num_changes} pending change(s)?", num_changes=len(self.pending_changes)), parent=self.app.root):
             self.settings = json.loads(json.dumps(self.original_settings))
             self.pending_changes.clear()
             self.update_status()
             # Refresh the editor
             self.populate_category_tree()
-            messagebox.showinfo(t_title("Success"), t("Changes reverted."))
+            messagebox.showinfo(t_title("Success"), t("Changes reverted."), parent=self.app.root)
 
     def create_backup(self, reason="manual"):
         """Create a backup of current settings"""
@@ -976,9 +976,9 @@ class ConfigTab:
         """Create manual backup"""
         backup_file = self.create_backup("manual")
         if backup_file:
-            messagebox.showinfo(t_title("Backup Created"), t("Backup saved to:\n{backup_file}", backup_file=backup_file))
+            messagebox.showinfo(t_title("Backup Created"), t("Backup saved to:\n{backup_file}", backup_file=backup_file), parent=self.app.root)
         else:
-            messagebox.showerror(t_title("Error"), t("Failed to create backup"))
+            messagebox.showerror(t_title("Error"), t("Failed to create backup"), parent=self.app.root)
 
     def restore_backup(self):
         """Restore from backup"""
@@ -987,14 +987,14 @@ class ConfigTab:
 
         # Ensure backup directory exists
         if not os.path.exists(self.BACKUP_DIR):
-            messagebox.showinfo(t_title("No Backups"), t("No backup files found."))
+            messagebox.showinfo(t_title("No Backups"), t("No backup files found."), parent=self.app.root)
             return
 
         # List available backups
         backups = sorted([f for f in os.listdir(self.BACKUP_DIR) if f.endswith('.json')], reverse=True)
 
         if not backups:
-            messagebox.showinfo(t_title("No Backups"), t("No backup files found."))
+            messagebox.showinfo(t_title("No Backups"), t("No backup files found."), parent=self.app.root)
             return
 
         # Create selection dialog
@@ -1018,13 +1018,13 @@ class ConfigTab:
         def do_restore():
             selection = listbox.curselection()
             if not selection:
-                messagebox.showwarning(t_title("No Selection"), t("Please select a backup file."))
+                messagebox.showwarning(t_title("No Selection"), t("Please select a backup file."), parent=self.app.root)
                 return
 
             backup_file = os.path.join(self.BACKUP_DIR, backups[selection[0]])
 
             if messagebox.askyesno(t_title("Restore Backup"),
-                                   t("Restore settings from:\n{backup}\n\nCurrent settings will be backed up first.", backup=backups[selection[0]])):
+                                   t("Restore settings from:\n{backup}\n\nCurrent settings will be backed up first.", backup=backups[selection[0]]), parent=self.app.root):
                 # Backup current before restore
                 self.create_backup("pre_restore")
 
@@ -1038,7 +1038,7 @@ class ConfigTab:
                 self._notify_settings_changed()
 
                 dialog.destroy()
-                messagebox.showinfo(t_title("Success"), t("Settings restored successfully."))
+                messagebox.showinfo(t_title("Success"), t("Settings restored successfully."), parent=self.app.root)
 
         btn_frame = ttk.Frame(dialog)
         btn_frame.pack(pady=10)
@@ -1049,7 +1049,7 @@ class ConfigTab:
         """Reload settings from file"""
         if self.pending_changes:
             if not messagebox.askyesno(t_title("Unsaved Changes"),
-                                       t("You have unsaved changes. Refresh anyway?")):
+                                       t("You have unsaved changes. Refresh anyway?"), parent=self.app.root):
                 return
 
         self.refresh_ui()

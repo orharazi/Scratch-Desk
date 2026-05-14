@@ -52,7 +52,8 @@ class ControlsPanel:
             messagebox.showwarning(
                 t("Program Running"),
                 t("Cannot change {action} while a program is running.\nPause or stop the program first.",
-                  action=t(action_name) if action_name else "")
+                  action=t(action_name) if action_name else ""),
+                parent=self.main_app.root
             )
             return True
         return False
@@ -961,6 +962,7 @@ class ControlsPanel:
         hw.row_marker_up()
         hw.row_cutter_up()
         hw.line_motor_piston_up()
+        hw.row_motor_piston_up()
 
         # Step 2: Scan steps 0..current_index-1 to determine expected state
         # (these are steps that would have been completed before the current step)
@@ -1003,6 +1005,10 @@ class ControlsPanel:
             'line_motor_piston': {
                 'down': hw.line_motor_piston_down,
                 'up': hw.line_motor_piston_up
+            },
+            'row_motor_piston': {
+                'down': hw.row_motor_piston_down,
+                'up': hw.row_motor_piston_up
             },
         }
 
@@ -1196,7 +1202,8 @@ class ControlsPanel:
                     t_title("Homing Required"),
                     t("Cannot run program - machine has not been homed!\n\n"
                       "You must complete homing before running any program.\n"
-                      "Use the homing button to run homing.")
+                      "Use the homing button to run homing."),
+                    parent=self.main_app.root
                 )
                 return
 
@@ -1328,9 +1335,10 @@ class ControlsPanel:
 
         engine = self.main_app.execution_engine
         if engine.stop_execution():
-            # Engine conditionally raised line_motor_piston based on its state
+            # Engine conditionally raised line_motor_piston and row_motor_piston based on their state
             self._stopped_mid_execution = True
             self._motor_state_at_stop = getattr(engine, '_raised_motor_on_stop', False)
+            self._row_motor_state_at_stop = getattr(engine, '_raised_row_motor_on_stop', False)
 
             # Set up UI for continue (not reset)
             current_index = engine.current_step_index

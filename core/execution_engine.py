@@ -135,6 +135,18 @@ class ExecutionEngine:
 
         self.is_paused = True
         self.pause_event.clear()
+
+        # Raise row motor piston if it's currently down for safety
+        self._raised_row_motor_on_pause = False
+        try:
+            row_motor_state = self.hardware.get_row_motor_piston_state()
+            if row_motor_state == "down":
+                self.hardware.row_motor_piston_up()
+                self._raised_row_motor_on_pause = True
+                self.logger.info("Row motor piston raised for safety on pause (was down)", category="execution")
+        except Exception:
+            pass  # Best effort
+
         MachineStateManager().set_state(MachineState.PAUSED)
         self.logger.info("Execution paused", category="execution")
         self._update_status("paused")
@@ -148,6 +160,15 @@ class ExecutionEngine:
 
         # Flush all sensor buffers when manually resuming (in case paused due to safety)
         self.hardware.flush_all_sensor_buffers()
+
+        # Lower row motor piston back down if we raised it on pause
+        if getattr(self, '_raised_row_motor_on_pause', False):
+            try:
+                self.hardware.row_motor_piston_down()
+                self.logger.info("Row motor piston lowered on resume (was raised on pause)", category="execution")
+            except Exception:
+                pass  # Best effort
+            self._raised_row_motor_on_pause = False
 
         self.is_paused = False
         self.pause_event.set()
@@ -190,6 +211,19 @@ class ExecutionEngine:
                 self.logger.info("Line motor piston raised for safety after stop (was down)", category="execution")
             else:
                 self.logger.debug("Line motor piston already up - no raise needed", category="execution")
+        except Exception:
+            pass  # Best effort
+
+        # Raise row motor piston if it's currently down (rows operation)
+        self._raised_row_motor_on_stop = False
+        try:
+            row_motor_state = self.hardware.get_row_motor_piston_state()
+            if row_motor_state == "down":
+                self.hardware.row_motor_piston_up()
+                self._raised_row_motor_on_stop = True
+                self.logger.info("Row motor piston raised for safety after stop (was down)", category="execution")
+            else:
+                self.logger.debug("Row motor piston already up - no raise needed", category="execution")
         except Exception:
             pass  # Best effort
 
@@ -567,6 +601,23 @@ class ExecutionEngine:
             # Stop safety monitoring thread
             self.safety_monitor_stop.set()
 
+            # Raise pistons that are still down (cleanup after execution ends)
+            try:
+                row_motor_state = self.hardware.get_row_motor_piston_state()
+                if row_motor_state == "down":
+                    self.hardware.row_motor_piston_up()
+                    self.logger.info("Row motor piston raised after execution end (was down)", category="execution")
+            except Exception:
+                pass  # Best effort
+
+            try:
+                line_motor_state = self.hardware.get_line_motor_piston_state()
+                if line_motor_state == "down":
+                    self.hardware.line_motor_piston_up()
+                    self.logger.info("Line motor piston raised after execution end (was down)", category="execution")
+            except Exception:
+                pass  # Best effort
+
             if self.stop_event.is_set():
                 MachineStateManager().set_state(MachineState.IDLE)
                 self.logger.info("Execution stopped by user", category="execution")
@@ -659,8 +710,22 @@ class ExecutionEngine:
         try:
             if operation == 'move_x':
                 target_x = parameters['position']
+
+                # Check if motor piston should be lifted for long move
+                should_lift, move_dist = self._should_lift_motor_for_move('x', target_x)
+                if should_lift:
+                    self.logger.info(f"Long X move ({move_dist:.1f}cm) - lifting row motor piston", category="execution")
+                    self.hardware.row_motor_piston_up()
+                    self._engine_lowered_tools.discard('row_motor_piston')
+
                 # Execute movement and wait for completion
                 move_result = self.hardware.move_x(target_x)
+
+                # Lower motor piston back if we lifted it
+                if should_lift:
+                    self.logger.info(f"X move complete - lowering row motor piston", category="execution")
+                    self.hardware.row_motor_piston_down()
+                    self._engine_lowered_tools.add('row_motor_piston')
 
                 # Update GUI position display if available
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
@@ -674,8 +739,22 @@ class ExecutionEngine:
 
             elif operation == 'move_y':
                 target_y = parameters['position']
+
+                # Check if motor piston should be lifted for long move
+                should_lift, move_dist = self._should_lift_motor_for_move('y', target_y)
+                if should_lift:
+                    self.logger.info(f"Long Y move ({move_dist:.1f}cm) - lifting line motor piston", category="execution")
+                    self.hardware.line_motor_piston_up()
+                    self._engine_lowered_tools.discard('line_motor_piston')
+
                 # Execute movement and wait for completion
                 move_result = self.hardware.move_y(target_y)
+
+                # Lower motor piston back if we lifted it
+                if should_lift:
+                    self.logger.info(f"Y move complete - lowering line motor piston", category="execution")
+                    self.hardware.line_motor_piston_down()
+                    self._engine_lowered_tools.add('line_motor_piston')
 
                 # Update GUI position display if available
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
@@ -698,6 +777,20 @@ class ExecutionEngine:
                 target_x = current_x + x_offset
                 target_y = current_y + y_offset
 
+                # Check if motor pistons should be lifted for long moves
+                should_lift_x, move_dist_x = self._should_lift_motor_for_move('x', target_x)
+                should_lift_y, move_dist_y = self._should_lift_motor_for_move('y', target_y)
+
+                if should_lift_x:
+                    self.logger.info(f"Long X move ({move_dist_x:.1f}cm) in move_position - lifting row motor piston", category="execution")
+                    self.hardware.row_motor_piston_up()
+                    self._engine_lowered_tools.discard('row_motor_piston')
+
+                if should_lift_y:
+                    self.logger.info(f"Long Y move ({move_dist_y:.1f}cm) in move_position - lifting line motor piston", category="execution")
+                    self.hardware.line_motor_piston_up()
+                    self._engine_lowered_tools.discard('line_motor_piston')
+
                 # Execute movements and wait for completion
                 move_x_result = self.hardware.move_x(target_x)
                 if not move_x_result:
@@ -708,6 +801,17 @@ class ExecutionEngine:
                 if not move_y_result:
                     self.logger.error(f"move_y to {target_y} failed or did not complete", category="execution")
                     return {'success': False, 'error': f'Movement to Y={target_y} did not complete'}
+
+                # Lower motor pistons back if we lifted them
+                if should_lift_x:
+                    self.logger.info(f"X move complete - lowering row motor piston", category="execution")
+                    self.hardware.row_motor_piston_down()
+                    self._engine_lowered_tools.add('row_motor_piston')
+
+                if should_lift_y:
+                    self.logger.info(f"Y move complete - lowering line motor piston", category="execution")
+                    self.hardware.line_motor_piston_down()
+                    self._engine_lowered_tools.add('line_motor_piston')
 
                 # Update GUI position display if available
                 if hasattr(self, 'canvas_manager') and self.canvas_manager:
@@ -862,6 +966,48 @@ class ExecutionEngine:
         """Raise the row marker tool after marking"""
         self.logger.debug("Row marker tool: UP (raised position)", category="execution")
         self.hardware.row_marker_up()
+
+    def _should_lift_motor_for_move(self, axis, target_position):
+        """Check if motor piston should be lifted for a long move.
+
+        Args:
+            axis: 'x' or 'y'
+            target_position: target position in cm
+
+        Returns:
+            (should_lift: bool, move_distance_cm: float)
+        """
+        # Reload settings for live config
+        current_settings = load_settings()
+        lift_config = current_settings.get('safety', {}).get('motor_lift_on_long_moves', {})
+
+        if not lift_config.get('enabled', False):
+            return False, 0.0
+
+        # Get current position
+        if axis == 'x':
+            current_pos = self.hardware.get_current_x()
+            threshold_mm = lift_config.get('x_axis_threshold_mm', 50.0)
+        else:
+            current_pos = self.hardware.get_current_y()
+            threshold_mm = lift_config.get('y_axis_threshold_mm', 50.0)
+
+        move_distance_cm = abs(target_position - current_pos)
+        threshold_cm = threshold_mm / 10.0
+
+        if move_distance_cm < threshold_cm:
+            return False, move_distance_cm
+
+        # Check if the relevant motor piston is in working (down) state
+        if axis == 'x':
+            piston_state = self.hardware.get_row_motor_piston_state()
+        else:
+            piston_state = self.hardware.get_line_motor_piston_state()
+
+        if piston_state != "down":
+            return False, move_distance_cm
+
+        return True, move_distance_cm
 
     def _update_current_operation_type(self, step, allow_rows_transition=True):
         """Update the current operation type based on step description for safety monitoring"""

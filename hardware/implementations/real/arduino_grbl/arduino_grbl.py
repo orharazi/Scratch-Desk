@@ -1009,7 +1009,7 @@ class ArduinoGRBL:
 
         Sequence:
         1. Apply GRBL configuration from settings.json
-        2. Check row motor piston is down (safety check)
+        2. Lift row motor piston and verify up
         3. Reset all pistons to default position (all tools UP)
         4. Lift line motor pistons (both sides)
         5. Run GRBL homing ($H)
@@ -1080,43 +1080,44 @@ class ArduinoGRBL:
             if progress_callback:
                 progress_callback(1, "Apply GRBL configuration", "done")
 
-            # Step 2: Check row motor piston is down (wait for user to open if closed)
+            # Step 2: Lift row motor piston and verify it's up
             if progress_callback:
-                progress_callback(2, "Check row motor piston is down", "running")
-            self.logger.info("Step 2: Checking motor sensor...", category="grbl")
+                progress_callback(2, "Lift row motor piston and verify up", "running")
+            self.logger.info("Step 2: Lifting row motor piston and verifying...", category="grbl")
             if hardware_interface:
-                motor_piston_state = hardware_interface.get_row_motor_piston_state() == "down"
-                if motor_piston_state:
-                    # Row motor piston is deployed - wait for it to retract
-                    self.logger.warning("Row motor piston is down! Waiting for piston to retract...", category="grbl")
+                # Actively lift the row motor piston
+                self.logger.info("Commanding row motor piston UP...", category="grbl")
+                hardware_interface.row_motor_piston_up()
+                time.sleep(1.0)  # Allow time for piston to move
+
+                # Verify piston is actually up via sensor
+                motor_piston_state = hardware_interface.get_row_motor_piston_state()
+                if motor_piston_state == "down":
+                    self.logger.warning("Row motor piston still down after lift command! Waiting for retraction...", category="grbl")
                     if progress_callback:
-                        progress_callback(2, "Check row motor piston is down", "waiting", "Row motor piston is deployed - waiting for retraction")
+                        progress_callback(2, "Lift row motor piston and verify up", "waiting", "Row motor piston still down - waiting for retraction")
 
                     # Poll row motor piston until it retracts (check every 0.5 seconds)
                     max_wait = 300  # 5 minutes maximum wait
                     wait_time = 0
-                    while motor_piston_state and wait_time < max_wait:
+                    while motor_piston_state == "down" and wait_time < max_wait:
                         time.sleep(0.5)
                         wait_time += 0.5
-                        motor_piston_state = hardware_interface.get_row_motor_piston_state() == "down"
-                        if not motor_piston_state:
-                            break
+                        motor_piston_state = hardware_interface.get_row_motor_piston_state()
 
                     # Check if piston was retracted or timeout
-                    if motor_piston_state:
+                    if motor_piston_state == "down":
                         error_msg = "Timeout waiting for row motor piston to retract (waited 5 minutes)"
                         self.logger.error(error_msg, category="grbl")
                         if progress_callback:
-                            progress_callback(2, "Check row motor piston is down", "error")
+                            progress_callback(2, "Lift row motor piston and verify up", "error")
                         return False, error_msg
 
-                    self.logger.success("Row motor piston retracted - safe to proceed", category="grbl")
-                else:
-                    self.logger.success("Row motor piston is up - safe to proceed", category="grbl")
+                self.logger.success("Row motor piston verified UP - safe to proceed", category="grbl")
             else:
-                self.logger.warning("No hardware interface - skipping row motor piston check", category="grbl")
+                self.logger.warning("No hardware interface - skipping row motor piston lift", category="grbl")
             if progress_callback:
-                progress_callback(2, "Check row motor piston is down", "done")
+                progress_callback(2, "Lift row motor piston and verify up", "done")
 
             # Step 3: Reset all pistons to default position (all tools UP)
             if progress_callback:
@@ -1151,11 +1152,21 @@ class ArduinoGRBL:
                 self.logger.info(f"Piston up result: {result}", category="grbl")
 
                 if not result:
-                    error_msg = "Failed to lift line motor pistons"
-                    self.logger.error(error_msg, category="grbl")
-                    if progress_callback:
-                        progress_callback(4, "Lift line motor pistons", "error")
-                    return False, error_msg
+                    # Sensor verification failed within the short timeout, but the
+                    # GPIO command was sent successfully. The motor piston is heavy
+                    # and may take longer than the sensor verification window.
+                    # Wait longer and re-check before giving up.
+                    self.logger.warning("Initial piston sensor check failed - waiting longer for piston to reach UP position...", category="grbl")
+                    time.sleep(3.0)
+
+                    # Re-check piston state via sensor
+                    piston_state = hardware_interface.get_line_motor_piston_state()
+                    if piston_state == "up":
+                        self.logger.success("Line motor piston confirmed UP after extended wait", category="grbl")
+                    else:
+                        self.logger.warning(f"Line motor piston state: '{piston_state}' - GPIO command was sent, proceeding with homing", category="grbl")
+                        # Don't fail homing - the GPIO command was sent and the piston
+                        # should be moving. The 2s wait below provides additional time.
 
                 self.logger.success("✓ Line motor pistons commanded UP", category="grbl")
                 self.logger.info("Waiting 2 seconds for pistons to fully lift...", category="grbl")

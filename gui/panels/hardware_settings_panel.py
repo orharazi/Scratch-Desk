@@ -301,7 +301,8 @@ class HardwareSettingsPanel:
             messagebox.showinfo(
                 t_title("No Change"),
                 t("Hardware mode unchanged. Already in {mode} mode.",
-                  mode=t("Real Hardware") if use_real else t("Simulation"))
+                  mode=t("Real Hardware") if use_real else t("Simulation")),
+                parent=self.main_app.root
             )
             self.apply_btn.config(state=tk.DISABLED)
             return
@@ -309,7 +310,7 @@ class HardwareSettingsPanel:
         # Check if safe to switch
         can_switch, reason = self._can_switch_mode()
         if not can_switch:
-            messagebox.showwarning(t_title("Cannot Switch"), reason)
+            messagebox.showwarning(t_title("Cannot Switch"), reason, parent=self.main_app.root)
             return
 
         # Confirm the switch
@@ -321,14 +322,16 @@ class HardwareSettingsPanel:
                   "2. Connect to Arduino/GPIO\n"
                   "3. Run homing sequence\n\n"
                   "Make sure the machine is clear and ready.\n\n"
-                  "Continue?")
+                  "Continue?"),
+                parent=self.main_app.root
             ):
                 return
         else:
             if not messagebox.askyesno(
                 t_title("Switch to Simulation"),
                 t("Switch to simulation mode?\n\n"
-                  "This will disconnect from real hardware.")
+                  "This will disconnect from real hardware."),
+                parent=self.main_app.root
             ):
                 return
 
@@ -399,7 +402,8 @@ class HardwareSettingsPanel:
                 state_manager.set_state(MachineState.ERROR, error)
                 messagebox.showerror(
                     t_title("Hardware Switch Failed"),
-                    t("Failed to switch hardware:\n\n{error}", error=error)
+                    t("Failed to switch hardware:\n\n{error}", error=error),
+                    parent=self.main_app.root
                 )
                 self._set_ui_enabled(True)
                 self.update_ui_state()
@@ -432,13 +436,14 @@ class HardwareSettingsPanel:
             messagebox.showinfo(
                 t_title("Hardware Switched"),
                 t("Successfully switched to {mode} mode.",
-                  mode=t("Real Hardware") if use_real else t("Simulation"))
+                  mode=t("Real Hardware") if use_real else t("Simulation")),
+                parent=self.main_app.root
             )
 
         except Exception as e:
             state_manager.set_state(MachineState.ERROR, str(e))
             self.logger.error(f"Hardware switch error: {e}", category="gui")
-            messagebox.showerror(t_title("Error"), str(e))
+            messagebox.showerror(t_title("Error"), str(e), parent=self.main_app.root)
         finally:
             self._set_ui_enabled(True)
             self.apply_btn.config(state=tk.DISABLED)
@@ -526,7 +531,8 @@ class HardwareSettingsPanel:
                   "Use 'Apply Settings' to switch now,\n"
                   "or settings will be used on next app launch.",
                   mode=mode.upper(),
-                  port=selected_port)
+                  port=selected_port),
+                parent=self.main_app.root
             )
 
             # Keep apply enabled but disable save
@@ -536,7 +542,8 @@ class HardwareSettingsPanel:
             self.logger.error(f"Error saving settings: {e}", category="gui")
             messagebox.showerror(
                 t_title("Save Error"),
-                t("Failed to save settings:\n{error}", error=e)
+                t("Failed to save settings:\n{error}", error=e),
+                parent=self.main_app.root
             )
 
     def get_current_config(self):

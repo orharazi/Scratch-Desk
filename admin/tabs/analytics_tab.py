@@ -45,7 +45,7 @@ class AnalyticsTab:
             with open('config/settings.json', 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            messagebox.showerror(t_title("Error"), str(e))
+            messagebox.showerror(t_title("Error"), str(e), parent=self.admin_app.root)
 
     def _get_csv_path(self):
         """Get analytics CSV path"""
@@ -686,7 +686,7 @@ class AnalyticsTab:
     def export_csv(self):
         """Export filtered data to a new CSV file"""
         if not self.filtered_data:
-            messagebox.showinfo(t_title("No Data"), t("No data to export"))
+            messagebox.showinfo(t_title("No Data"), t("No data to export"), parent=self.admin_app.root)
             return
 
         filename = filedialog.asksaveasfilename(
@@ -707,14 +707,15 @@ class AnalyticsTab:
                     writer.writerow(row)
 
             self.admin_app.log("SUCCESS", t("Analytics exported to {filename}", filename=filename))
-            messagebox.showinfo(t_title("Success"), t("Data exported to {filename}", filename=filename))
+            messagebox.showinfo(t_title("Success"), t("Data exported to {filename}", filename=filename), parent=self.admin_app.root)
         except Exception as e:
-            messagebox.showerror(t_title("Error"), str(e))
+            messagebox.showerror(t_title("Error"), str(e), parent=self.admin_app.root)
 
     def clear_data(self):
         """Clear all analytics data"""
         if not messagebox.askyesno(t_title("Clear Data"),
-                                    t("Delete all analytics data? This cannot be undone.")):
+                                    t("Delete all analytics data? This cannot be undone."),
+                                    parent=self.admin_app.root):
             return
 
         csv_path = self._get_csv_path()
@@ -726,7 +727,7 @@ class AnalyticsTab:
                     writer.writerow(CSV_COLUMNS)
                 self.admin_app.log("INFO", t("Analytics data cleared"))
             except Exception as e:
-                messagebox.showerror(t_title("Error"), str(e))
+                messagebox.showerror(t_title("Error"), str(e), parent=self.admin_app.root)
                 return
 
         self.load_data()

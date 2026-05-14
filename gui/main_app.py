@@ -186,7 +186,8 @@ class ScratchDeskGUI:
                 if len(errors) > 5:
                     error_msg += f"\n" + t("... and {count} more errors", count=len(errors) - 5)
                 messagebox.showerror(t_title("CSV Validation Errors"),
-                                   t("Found {count} validation errors:\n{errors}", count=len(errors), errors=error_msg))
+                                   t("Found {count} validation errors:\n{errors}", count=len(errors), errors=error_msg),
+                                   parent=self.root)
 
             if programs:
                 self.programs = programs
@@ -195,7 +196,7 @@ class ScratchDeskGUI:
                 if programs:
                     self.program_panel.select_program(0)
             else:
-                messagebox.showerror(t_title("Error"), t("No valid programs found in {file}", file=file_path))
+                messagebox.showerror(t_title("Error"), t("No valid programs found in {file}", file=file_path), parent=self.root)
 
     def create_main_layout(self):
         """Create the main window layout - responsive RTL design"""
@@ -321,20 +322,22 @@ class ScratchDeskGUI:
               "The machine needs to be homed before operation.\n"
               "This will:\n"
               "1. Apply GRBL configuration\n"
-              "2. Check row motor piston is up\n"
+              "2. Lift row motor piston and verify up\n"
               "3. Lift line motor pistons\n"
               "4. Run GRBL homing ($H)\n"
               "5. Reset work coordinates\n"
               "6. Lower line motor pistons\n\n"
               "Make sure the machine is clear and ready.\n\n"
-              "Run homing now?")
+              "Run homing now?"),
+            parent=self.root
         ):
             self.logger.warning("User skipped startup homing - machine not homed", category="gui")
             messagebox.showwarning(
                 t_title("Warning"),
                 t("Machine was NOT homed.\n\n"
                   "You must run homing before running any program.\n"
-                  "Use the homing button to run homing.")
+                  "Use the homing button to run homing."),
+                parent=self.root
             )
             return
 
@@ -367,7 +370,8 @@ class ScratchDeskGUI:
             retry = messagebox.askyesno(
                 t_title("Homing Failed"),
                 t("Homing failed!\n\nError: {error}\n\n"
-                  "Try again?", error=homing_error)
+                  "Try again?", error=homing_error),
+                parent=self.root
             )
             if not retry:
                 return
@@ -378,7 +382,8 @@ class ScratchDeskGUI:
         if self.execution_engine.is_running:
             messagebox.showwarning(
                 t_title("Cannot Home"),
-                t("Cannot run homing while a program is executing.\nStop execution first.")
+                t("Cannot run homing while a program is executing.\nStop execution first."),
+                parent=self.root
             )
             return
 
@@ -387,7 +392,8 @@ class ScratchDeskGUI:
             t_title("Run Homing"),
             t("This will run the homing sequence.\n\n"
               "Make sure the machine is clear and ready.\n\n"
-              "Run homing now?")
+              "Run homing now?"),
+            parent=self.root
         ):
             return
 

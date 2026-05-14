@@ -167,3 +167,24 @@ a5f8146a-79e8-4889-a767-56e74de9f122,2026-04-17T12:33:35.927950,2026-04-17T12:34
 3e883c08-222e-4533-88da-007354b4c553,2026-04-17T13:33:04.384481,2026-04-17T13:33:53.766768,49.38,10,מזוזה 15,emergency_stop,296,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,3,2
 67c98888-02a9-4369-8a90-b54f79bf240c,2026-04-17T13:35:07.233169,2026-04-17T13:35:50.901224,43.67,10,מזוזה 15,emergency_stop,296,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,3,2
 059f7199-8b40-4114-9c88-59358e195bd1,2026-04-17T13:44:57.577625,2026-04-17T13:45:49.610590,52.03,17,check,emergency_stop,91,15,15,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,1,1
+32913931-4f33-44ab-97df-3916e27a86b3,2026-04-17T13:59:42.594249,2026-04-17T14:04:44.537323,301.94,10,מזוזה 15,emergency_stop,296,1,1,0,,ALL_TOOLS_UP_FOR_END_DIVISION,"🚨 SAFETY VIOLATION: End Division: All Tools Must Be Up
+   Operation: move_x
+   Description: Init: Move rows motor to home position (X=0)
+   Rule message: End division blocked! One or more tools are still down. Raise all tools (line cutter, line marker, row cutter, row marker) before returning to home position.",real,3,2
+f9964fcd-c0da-41e0-ac65-c60dfc18bb45,2026-05-10T14:28:45.334409,2026-05-10T14:29:46.438738,61.1,10,מזוזה 15,user_stop,166,6,6,0,,,,real,2,1
+544ee0b9-9d40-4646-99fb-5669d1bfd1cb,2026-05-10T14:31:25.051882,2026-05-10T14:32:34.726981,69.68,10,מזוזה 15,user_stop,166,6,6,0,,,,real,2,1
+9c161cfc-ef64-4e1e-8709-bda779001f12,2026-05-10T14:39:33.529683,2026-05-10T14:44:14.550745,281.02,10,מזוזה 15,success,166,166,166,0,,,,real,2,1
+c8a39718-5fde-497c-9908-ed896f457967,2026-05-10T15:12:35.943197,2026-05-10T15:16:41.283251,245.34,9,מזוזה 12,success,151,151,151,0,,,,real,1,1
+f042ad12-1e6b-4fa8-adde-acd0aae8184d,2026-05-10T16:59:17.472609,2026-05-10T17:04:53.677478,336.2,10,מזוזה 15,success,181,181,181,0,,,,real,3,1
+f5bb215f-cbf2-4ef1-bb67-859311e83775,2026-05-10T17:28:25.697428,2026-05-10T17:31:07.631256,161.93,9,מזוזה 12,user_stop,298,47,47,0,,,,real,1,1
+b0fcf6f8-ab07-45b9-8821-15efb177d02d,2026-05-11T17:46:32.696123,2026-05-11T17:47:44.661639,71.97,9,מזוזה 12,user_stop,341,23,23,0,,,,real,6,2
+e066e06f-b5a1-4186-a8e5-3e8e7c0c2f5f,2026-05-11T18:17:29.996837,2026-05-11T18:25:45.176999,495.18,9,מזוזה 12,success,341,341,341,0,,,,real,6,2
+c5541c24-30b6-4e45-ac52-e451d03721d1,2026-05-11T18:53:02.165074,2026-05-11T18:56:47.841715,225.68,10,מזוזה 15,success,166,166,166,0,,,,real,2,1
+26c38a8c-9279-4a23-a846-d9c3e5209596,2026-05-11T19:12:42.452564,2026-05-11T19:16:50.039444,247.59,10,מזוזה 15,success,181,181,181,0,,,,real,3,1
+800e2082-c7d8-4a7a-b0d5-5b6c0bfd3d28,2026-05-12T13:05:38.532345,2026-05-12T13:07:32.813306,114.28,9,מזוזה 12,emergency_stop,151,80,80,0,,LINE_TOOLS_UP_FOR_LINES,Tool manually lowered during lines execution: line_marker. Raise the tool to continue.,real,1,1
+1d3c4682-92b0-41b0-8cf7-51dfe5618912,2026-05-12T21:40:13.382715,2026-05-12T21:44:16.848947,243.47,9,מזוזה 12,success,181,181,181,0,,,,real,3,1
+98e20517-0cc7-4584-ad18-c979262a219c,2026-05-12T21:55:02.338611,2026-05-12T21:58:43.653661,221.32,10,מזוזה 15,success,151,151,151,0,,,,real,1,1
+aa2f605c-4803-4d33-b832-298a690fa74f,2026-05-14T17:39:15.293142,2026-05-14T17:44:01.951802,286.66,9,מזוזה 12,user_stop,211,194,194,0,,,,real,5,1
+07fa6a6b-d954-4b56-a74c-61a90b215530,2026-05-14T18:24:42.453083,2026-05-14T18:26:13.008503,90.56,1,ספר 60,user_stop,331,26,26,0,,,,real,1,1
+26aa99e0-a8f2-4da7-ae5a-05995d266e4a,2026-05-14T18:29:33.837317,2026-05-14T18:32:07.874993,154.04,17,check,user_stop,56,44,44,0,,,,real,1,1
+3ad49f41-2174-4b4e-a873-4581536f54c1,2026-05-14T18:46:36.692574,2026-05-14T18:49:07.047506,150.35,17,check,success,51,51,51,0,,,,real,1,1

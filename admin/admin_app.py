@@ -161,10 +161,27 @@ class AdminToolGUI:
             for name, address in rs485_sensors.items():
                 mappings[name] = {'type': 'RS485', 'port': f'RS485-ADDR{address}', 'pin': address}
 
-            # Limit switches
-            limit_switches = rpi_config.get('limit_switches', {})
-            for name, pin in limit_switches.items():
-                mappings[name] = {'type': 'GPIO', 'port': f'GPIO{pin}', 'pin': pin}
+            # Limit switches - map to corresponding RS485 edge sensors
+            limit_to_edge = {
+                'top_limit_switch': 'y_top_edge',
+                'bottom_limit_switch': 'y_bottom_edge',
+                'left_limit_switch': 'x_left_edge',
+                'right_limit_switch': 'x_right_edge'
+            }
+            for limit_name, edge_name in limit_to_edge.items():
+                if edge_name in mappings:
+                    mappings[limit_name] = mappings[edge_name]
+
+            # Edge sensor aliases (UI uses _sensor suffix, config does not)
+            edge_aliases = {
+                'x_left_edge_sensor': 'x_left_edge',
+                'x_right_edge_sensor': 'x_right_edge',
+                'y_top_edge_sensor': 'y_top_edge',
+                'y_bottom_edge_sensor': 'y_bottom_edge'
+            }
+            for alias, edge_name in edge_aliases.items():
+                if edge_name in mappings:
+                    mappings[alias] = mappings[edge_name]
 
             return mappings
         except Exception as e:
@@ -881,7 +898,8 @@ class AdminToolGUI:
             if self.is_connected:
                 self.log("WARNING", t("Please disconnect and reconnect to apply hardware mode change"))
                 messagebox.showinfo(t_title("Hardware Mode Changed"),
-                                   t("Please disconnect and reconnect to apply the new hardware mode."))
+                                   t("Please disconnect and reconnect to apply the new hardware mode."),
+                                   parent=self.root)
         except Exception as e:
             self.log("ERROR", t("Failed to update hardware mode: {error}", error=str(e)))
 
@@ -1132,7 +1150,7 @@ class AdminToolGUI:
     def jog(self, axis, direction):
         """Jog motor"""
         if not self.is_connected:
-            messagebox.showwarning(t_title("Not Connected"), t("Please connect hardware first"))
+            messagebox.showwarning(t_title("Not Connected"), t("Please connect hardware first"), parent=self.root)
             return
 
         # Check motor constraint - other motor must be at 0 position
@@ -1232,7 +1250,7 @@ class AdminToolGUI:
         ):
             return
 
-        if messagebox.askyesno(t_title("Home Motors"), t("Move all motors to home (0, 0)?")):
+        if messagebox.askyesno(t_title("Home Motors"), t("Move all motors to home (0, 0)?"), parent=self.root):
             self.log("INFO", t("Homing all motors..."))
             if self.hardware.home_motors():
                 self.log("SUCCESS", t("Motors homed"))
@@ -1243,7 +1261,7 @@ class AdminToolGUI:
         """Emergency stop"""
         self.log("WARNING", t("EMERGENCY STOP!"))
         if self.is_connected and self.hardware.emergency_stop():
-            messagebox.showwarning(t_title("Emergency Stop"), t("All motors stopped!"))
+            messagebox.showwarning(t_title("Emergency Stop"), t("All motors stopped!"), parent=self.root)
             self.hardware.resume_operation()
             self.log("INFO", t("Emergency stop cleared"))
 
@@ -1260,10 +1278,10 @@ class AdminToolGUI:
             return
 
         if not self.grbl_connected:
-            messagebox.showwarning(t_title("GRBL Not Connected"), t("GRBL is not connected."))
+            messagebox.showwarning(t_title("GRBL Not Connected"), t("GRBL is not connected."), parent=self.root)
             return
 
-        if not messagebox.askyesno(t_title("Start Homing"), t("Start complete homing sequence?")):
+        if not messagebox.askyesno(t_title("Start Homing"), t("Start complete homing sequence?"), parent=self.root):
             return
 
         self.log("INFO", t("Starting homing sequence..."))
@@ -1273,7 +1291,7 @@ class AdminToolGUI:
                 success, error_msg = self.hardware.perform_complete_homing_sequence()
                 if success:
                     self.log("SUCCESS", t("Homing complete"))
-                    self.root.after(0, lambda: messagebox.showinfo(t_title("Done"), t("Homing complete")))
+                    self.root.after(0, lambda: messagebox.showinfo(t_title("Done"), t("Homing complete"), parent=self.root))
                 else:
                     self.log("ERROR", t("Homing failed: {error}", error=error_msg))
             except Exception as e:
@@ -1309,7 +1327,8 @@ class AdminToolGUI:
                 running_msg = msg_running or "Cannot change {action} while execution is actively running. Pause or stop execution first."
                 messagebox.showwarning(
                     t_title("Blocked"),
-                    t(running_msg, action=action_display)
+                    t(running_msg, action=action_display),
+                    parent=self.root
                 )
                 return False
             elif state_manager.state == MachineState.PAUSED:
@@ -1318,7 +1337,8 @@ class AdminToolGUI:
                 result = messagebox.askokcancel(
                     t_title("Warning"),
                     t(paused_msg, action=action_display),
-                    icon='warning'
+                    icon='warning',
+                    parent=self.root
                 )
                 return result
         except Exception:
@@ -1430,7 +1450,7 @@ class AdminToolGUI:
         if not self.grbl_connected:
             return
 
-        if not messagebox.askyesno(t_title("Apply Settings"), t("Apply changes to GRBL?")):
+        if not messagebox.askyesno(t_title("Apply Settings"), t("Apply changes to GRBL?"), parent=self.root):
             return
 
         self.log("INFO", t("Applying GRBL settings..."))
@@ -1462,7 +1482,8 @@ class AdminToolGUI:
             return
 
         if not messagebox.askyesno(t_title("Save GRBL Settings"),
-                                   t("Save GRBL configuration to settings.json and apply to hardware?")):
+                                   t("Save GRBL configuration to settings.json and apply to hardware?"),
+                                   parent=self.root):
             return
 
         self.log("INFO", t("Saving GRBL settings to settings.json..."))
@@ -1529,7 +1550,7 @@ class AdminToolGUI:
         if not self.grbl_connected:
             return
 
-        if not messagebox.askyesno(t_title("Reset Settings"), t("Reset GRBL to factory defaults?")):
+        if not messagebox.askyesno(t_title("Reset Settings"), t("Reset GRBL to factory defaults?"), parent=self.root):
             return
 
         try:
@@ -1674,7 +1695,7 @@ class AdminToolGUI:
 
                 self.log("SUCCESS", t("Admin password changed"))
                 dialog.destroy()
-                messagebox.showinfo(t_title("Success"), t("Admin password changed successfully."))
+                messagebox.showinfo(t_title("Success"), t("Admin password changed successfully."), parent=self.root)
             except Exception as e:
                 self.log("ERROR", t("Failed to change password: {error}", error=str(e)))
                 error_label.config(text=str(e))
@@ -1693,7 +1714,7 @@ class AdminToolGUI:
             self.log_processor_running = False
             self.root.destroy()
         elif self.is_connected:
-            if messagebox.askokcancel(t_title("Quit"), t("Disconnect and quit?")):
+            if messagebox.askokcancel(t_title("Quit"), t("Disconnect and quit?"), parent=self.root):
                 self.log_processor_running = False
                 self.disconnect_hardware()
                 self.root.destroy()

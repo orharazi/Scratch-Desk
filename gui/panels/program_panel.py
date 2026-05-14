@@ -562,12 +562,12 @@ class ProgramPanel:
             # Persist to CSV file
             self._persist_programs_to_csv()
 
-            messagebox.showinfo(t_title("Success"), t("Program updated successfully!"))
+            messagebox.showinfo(t_title("Success"), t("Program updated successfully!"), parent=self.main_app.root)
 
         except ValueError as e:
-            messagebox.showerror(t_title("Error"), t("Invalid value entered: {error}", error=str(e)))
+            messagebox.showerror(t_title("Error"), t("Invalid value entered: {error}", error=str(e)), parent=self.main_app.root)
         except Exception as e:
-            messagebox.showerror(t_title("Error"), t("Failed to update program: {error}", error=str(e)))
+            messagebox.showerror(t_title("Error"), t("Failed to update program: {error}", error=str(e)), parent=self.main_app.root)
 
     def _persist_programs_to_csv(self):
         """Save current programs list back to the CSV file"""
@@ -590,12 +590,12 @@ class ProgramPanel:
             return
 
         if not self.main_app.programs or len(self.main_app.programs) <= 1:
-            messagebox.showwarning(t_title("Warning"), t("Cannot delete the last program"))
+            messagebox.showwarning(t_title("Warning"), t("Cannot delete the last program"), parent=self.main_app.root)
             return
 
         # Block if execution is running
         if hasattr(self.main_app, 'execution_engine') and self.main_app.execution_engine.is_running:
-            messagebox.showwarning(t_title("Warning"), t("Cannot delete program while execution is running"))
+            messagebox.showwarning(t_title("Warning"), t("Cannot delete program while execution is running"), parent=self.main_app.root)
             return
 
         program_name = self.main_app.current_program.program_name
@@ -604,7 +604,8 @@ class ProgramPanel:
         if not messagebox.askyesno(
             t_title("Delete Program"),
             t("Are you sure you want to delete program \"{name}\" (#{number})?",
-              name=program_name, number=program_number)
+              name=program_name, number=program_number),
+            parent=self.main_app.root
         ):
             return
 
@@ -631,7 +632,7 @@ class ProgramPanel:
         """Enter creation mode: clear fields, swap buttons, disable combo + Load CSV"""
         # Block if execution is running
         if hasattr(self.main_app, 'execution_engine') and self.main_app.execution_engine.is_running:
-            messagebox.showwarning(t_title("Warning"), t("Cannot add program while execution is running"))
+            messagebox.showwarning(t_title("Warning"), t("Cannot add program while execution is running"), parent=self.main_app.root)
             return
 
         self._creating_new_program = True
@@ -691,26 +692,26 @@ class ProgramPanel:
         # Check program name
         name = self._get_program_name()
         if not name:
-            messagebox.showerror(t_title("Error"), t("Program name cannot be empty"))
+            messagebox.showerror(t_title("Error"), t("Program name cannot be empty"), parent=self.main_app.root)
             return
 
         # Build program from fields
         new_program = self._build_program_from_fields()
         if new_program is None:
-            messagebox.showerror(t_title("Error"), t("Invalid value entered"))
+            messagebox.showerror(t_title("Error"), t("Invalid value entered"), parent=self.main_app.root)
             return
 
         # Check duplicate program number
         for p in self.main_app.programs:
             if p.program_number == new_program.program_number:
-                messagebox.showerror(t_title("Error"), t("Program number {number} already exists", number=new_program.program_number))
+                messagebox.showerror(t_title("Error"), t("Program number {number} already exists", number=new_program.program_number), parent=self.main_app.root)
                 return
 
         # Validate the program
         errors = new_program.validate()
         if errors:
             self._show_validation_result(errors)
-            messagebox.showerror(t_title("Error"), t("Program has validation errors"))
+            messagebox.showerror(t_title("Error"), t("Program has validation errors"), parent=self.main_app.root)
             return
 
         # Add to programs list
@@ -730,7 +731,7 @@ class ProgramPanel:
         self.program_combo.set(program_names[new_index])
         self.on_program_selected()
 
-        messagebox.showinfo(t_title("Success"), t("Program added successfully!"))
+        messagebox.showinfo(t_title("Success"), t("Program added successfully!"), parent=self.main_app.root)
         self.logger.info(f"New program created: {new_program.program_name} (#{new_program.program_number})", category="gui")
 
     def _cancel_new_program(self):
@@ -738,7 +739,7 @@ class ProgramPanel:
         # Check if user entered a name (non-default data)
         name = self._get_program_name()
         if name:
-            if not messagebox.askyesno(t_title("Warning"), t("Discard new program?")):
+            if not messagebox.askyesno(t_title("Warning"), t("Discard new program?"), parent=self.main_app.root):
                 return
 
         self._exit_creation_mode()
