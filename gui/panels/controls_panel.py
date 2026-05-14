@@ -776,7 +776,7 @@ class ControlsPanel:
 
             # Enable navigation if we have steps
             if self.main_app.steps:
-                self.next_btn.config(state=tk.NORMAL)
+                self.next_btn.config(state=tk.NORMAL if self.main_app.execution_engine.has_next_navigable_step() else tk.DISABLED)
                 self.run_btn.config(state=tk.NORMAL)
                 # Keep pointer at starting position (15, 15) - don't move to first line yet
             else:
@@ -865,8 +865,8 @@ class ControlsPanel:
         # Update navigation buttons (only when not in automatic execution)
         engine = self.main_app.execution_engine
         if not (engine.is_running and not engine.is_paused):
-            self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
-            self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+            self.prev_btn.config(state=tk.NORMAL if engine.has_prev_navigable_step() else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if engine.has_next_navigable_step() else tk.DISABLED)
         
         # Update current step info
         if self.main_app.steps and 0 <= current_index < len(self.main_app.steps):
@@ -1146,9 +1146,9 @@ class ControlsPanel:
             self.pause_btn.config(state=tk.DISABLED)
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)
-            # Re-enable next/prev based on step position
+            # Re-enable next/prev based on navigable steps
             self.prev_btn.config(state=tk.DISABLED)  # At step 0 after reset
-            self.next_btn.config(state=tk.NORMAL if self.main_app.steps else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if self.main_app.execution_engine.has_next_navigable_step() else tk.DISABLED)
 
             # Reset hardware state (no homing - motors stay where they are)
             self.hardware.reset_hardware()
@@ -1318,10 +1318,10 @@ class ControlsPanel:
         if self.main_app.execution_engine.pause_execution():
             self.run_btn.config(state=tk.NORMAL, text=t('\u25b6 RESUME'), bg='#006400')
             self.pause_btn.config(state=tk.DISABLED)
-            # Enable next/prev for stepping while paused
-            current_index = self.main_app.execution_engine.current_step_index
-            self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
-            self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+            # Enable next/prev for stepping while paused (only navigable steps)
+            engine = self.main_app.execution_engine
+            self.prev_btn.config(state=tk.NORMAL if engine.has_prev_navigable_step() else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if engine.has_next_navigable_step() else tk.DISABLED)
     
     def stop_execution(self):
         """Stop execution - preserves current step for continue"""
@@ -1345,9 +1345,9 @@ class ControlsPanel:
             self.run_btn.config(state=tk.NORMAL, text=t('\u25b6 CONTINUE'), bg='#006400')
             self.stop_btn.config(state=tk.DISABLED)
             self.reset_btn.config(state=tk.NORMAL)
-            # Enable navigation while stopped
-            self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
-            self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+            # Enable navigation while stopped (only navigable steps)
+            self.prev_btn.config(state=tk.NORMAL if engine.has_prev_navigable_step() else tk.DISABLED)
+            self.next_btn.config(state=tk.NORMAL if engine.has_next_navigable_step() else tk.DISABLED)
 
             # Unlock program panel
             if hasattr(self.main_app, 'program_panel'):
@@ -1814,12 +1814,11 @@ class ControlsPanel:
                 self.prev_btn.config(state=tk.DISABLED)
                 self.next_btn.config(state=tk.DISABLED)
             elif self.main_app.steps:
-                current_index = self.main_app.execution_engine.current_step_index
                 engine = self.main_app.execution_engine
                 # Only update nav buttons if not in active (non-paused) execution
                 if not (engine.is_running and not engine.is_paused):
-                    self.prev_btn.config(state=tk.NORMAL if current_index > 0 else tk.DISABLED)
-                    self.next_btn.config(state=tk.NORMAL if current_index < len(self.main_app.steps) - 1 else tk.DISABLED)
+                    self.prev_btn.config(state=tk.NORMAL if engine.has_prev_navigable_step() else tk.DISABLED)
+                    self.next_btn.config(state=tk.NORMAL if engine.has_next_navigable_step() else tk.DISABLED)
             else:
                 self.prev_btn.config(state=tk.DISABLED)
                 self.next_btn.config(state=tk.DISABLED)

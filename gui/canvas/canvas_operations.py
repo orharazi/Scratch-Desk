@@ -625,6 +625,8 @@ class CanvasOperations:
             self.main_app.operation_states['cuts'] = {}
         if 'mid_lines' not in self.main_app.operation_states:
             self.main_app.operation_states['mid_lines'] = {}
+        if 'pages' not in self.main_app.operation_states:
+            self.main_app.operation_states['pages'] = {}
 
         # Initialize line states (total lines across all repeats)
         total_lines = program.number_of_lines * program.repeat_lines
@@ -664,7 +666,12 @@ class CanvasOperations:
                 cut_name = f"row_section_{section_num + 1}_{section_num + 2}"
                 if cut_name not in self.main_app.operation_states['cuts']:
                     self.main_app.operation_states['cuts'][cut_name] = 'pending'
-    
+
+        # Initialize page states
+        for page_num in range(program.number_of_pages):
+            if page_num not in self.main_app.operation_states['pages']:
+                self.main_app.operation_states['pages'][page_num] = 'pending'
+
     def update_operation_state(self, operation_type, operation_id, new_state):
         """Update the state of a specific operation and refresh display"""
         if not hasattr(self.main_app, 'operation_states'):

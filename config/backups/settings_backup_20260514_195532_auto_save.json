@@ -9,11 +9,7 @@
     "safe_movement_speed": 10.0,
     "max_acceleration": 5.0,
     "paper_start_y": 19.0,
-    "min_line_spacing": 0.3,
-    "row_border_calibration": {
-      "right_border_offset_cm": 0.3,
-      "left_border_offset_cm": 0.35
-    }
+    "min_line_spacing": 0.3
   },
   "admin": {
     "password": "12345"
@@ -237,7 +233,7 @@
           "line_marker_down_sensor": 27,
           "line_cutter_up_sensor": 25,
           "line_cutter_down_sensor": 29,
-          "line_marker_pressure_up_sensor": 18,
+          "line_marker_pressure_up_sensor": 4,
           "line_marker_pressure_down_sensor": 18,
           "row_cutter_up_sensor": 24,
           "row_cutter_down_sensor": 26,

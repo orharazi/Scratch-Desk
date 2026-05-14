@@ -87,6 +87,30 @@
           "unit": "cm",
           "default": 0.3,
           "category": "important"
+        },
+        "row_border_calibration": {
+          "description": "Calibration offsets to compensate for physical tool displacement and marker width in row border operations",
+          "description_he": "היסטי כיול לפיצוי על הסטה פיזית של כלי וגודל סמן בפעולות גבולות עמודות",
+          "type": "object",
+          "category": "important",
+          "children": {
+            "right_border_offset_cm": {
+              "description": "Shifts right border marks inward (left) to increase measured right margin",
+              "description_he": "מזיז סימני גבול ימני פנימה (שמאלה) להגדלת השוליים הימניים הנמדדים",
+              "type": "float",
+              "unit": "cm",
+              "default": 0.0,
+              "category": "important"
+            },
+            "left_border_offset_cm": {
+              "description": "Shifts left border marks inward (right) to increase measured left margin",
+              "description_he": "מזיז סימני גבול שמאלי פנימה (ימינה) להגדלת השוליים השמאליים הנמדדים",
+              "type": "float",
+              "unit": "cm",
+              "default": 0.0,
+              "category": "important"
+            }
+          }
         }
       }
     },

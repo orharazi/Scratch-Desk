@@ -427,7 +427,7 @@ class ConfigTab:
             to_val = int(max_val) if max_val is not None else 999999
             widget = ttk.Spinbox(editor_frame, textvariable=var, from_=from_val, to=to_val, width=15)
             widget.pack(side=tk.LEFT)
-            var.trace_add("write", lambda *args, p=path, v=var: self.on_value_changed(p, v.get(), value_type="int"))
+            var.trace_add("write", lambda *args, p=path, v=var: self._safe_value_changed(p, v, "int"))
             self.setting_widgets[path] = {"type": "int", "var": var, "widget": widget}
 
             # Show range info
@@ -446,7 +446,7 @@ class ConfigTab:
             widget = ttk.Spinbox(editor_frame, textvariable=var, from_=from_val, to=to_val,
                                  increment=increment, width=15)
             widget.pack(side=tk.LEFT)
-            var.trace_add("write", lambda *args, p=path, v=var: self.on_value_changed(p, v.get(), value_type="float"))
+            var.trace_add("write", lambda *args, p=path, v=var: self._safe_value_changed(p, v, "float"))
             self.setting_widgets[path] = {"type": "float", "var": var, "widget": widget}
 
             # Show range info
@@ -621,6 +621,14 @@ class ConfigTab:
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text=t("Save"), command=save_list).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text=t("Cancel"), command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def _safe_value_changed(self, path, var, value_type):
+        """Safely handle value changes from IntVar/DoubleVar that may have empty intermediate values"""
+        try:
+            value = var.get()
+        except tk.TclError:
+            return  # Ignore empty/invalid intermediate values (e.g. user clearing the field)
+        self.on_value_changed(path, value, value_type=value_type)
 
     def on_value_changed(self, path, new_value, value_type=None):
         """Handle value change"""

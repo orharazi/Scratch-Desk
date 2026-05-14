@@ -363,32 +363,78 @@ class ExecutionEngine:
         self.logger.success("Execution fully reset - all state cleared, ready to start", category="execution")
         return True
 
+    def _is_navigable_step(self, step_index):
+        """Check if step is a valid navigation target (start of a line/row operation).
+
+        Only wait_sensor steps that are followed by a tool_action 'down' are navigable.
+        These represent the START of each line/row/cut operation — before the tool
+        goes down. Mid-operation wait_sensor steps (where a tool is already down)
+        are skipped to prevent landing in a dangerous state.
+        """
+        if 0 <= step_index < len(self.steps):
+            step = self.steps[step_index]
+            if step.get('operation') != 'wait_sensor':
+                return False
+            # Check that the next step lowers a tool (start of operation)
+            next_index = step_index + 1
+            if next_index < len(self.steps):
+                next_step = self.steps[next_index]
+                if (next_step.get('operation') == 'tool_action' and
+                        next_step.get('parameters', {}).get('action') == 'down'):
+                    return True
+            return False
+        return False
+
+    def _find_next_navigable_step(self, from_index):
+        """Find next wait_sensor step index after from_index, or None."""
+        for i in range(from_index + 1, len(self.steps)):
+            if self._is_navigable_step(i):
+                return i
+        return None
+
+    def _find_prev_navigable_step(self, from_index):
+        """Find previous wait_sensor step index before from_index, or None."""
+        for i in range(from_index - 1, -1, -1):
+            if self._is_navigable_step(i):
+                return i
+        return None
+
+    def has_next_navigable_step(self):
+        """Check if there is a navigable step ahead of current position."""
+        return self._find_next_navigable_step(self.current_step_index) is not None
+
+    def has_prev_navigable_step(self):
+        """Check if there is a navigable step behind current position."""
+        return self._find_prev_navigable_step(self.current_step_index) is not None
+
     def step_forward(self):
-        """Move to next step (manual navigation)"""
+        """Move to next navigable step (human action step only)"""
         if self.is_running and not self.is_paused:
             self.logger.warning("Cannot navigate manually while execution is running", category="execution")
             return False
 
-        if self.current_step_index < len(self.steps) - 1:
-            self.current_step_index += 1
+        next_index = self._find_next_navigable_step(self.current_step_index)
+        if next_index is not None:
+            self.current_step_index = next_index
             self.logger.debug(f"Moved to step {self.current_step_index}/{len(self.steps)}", category="execution")
             return True
         else:
-            self.logger.info("Already at last step", category="execution")
+            self.logger.info("No more navigable steps ahead", category="execution")
             return False
 
     def step_backward(self):
-        """Move to previous step (manual navigation)"""
+        """Move to previous navigable step (human action step only)"""
         if self.is_running and not self.is_paused:
             self.logger.warning("Cannot navigate manually while execution is running", category="execution")
             return False
 
-        if self.current_step_index > 0:
-            self.current_step_index -= 1
+        prev_index = self._find_prev_navigable_step(self.current_step_index)
+        if prev_index is not None:
+            self.current_step_index = prev_index
             self.logger.debug(f"Moved to step {self.current_step_index}/{len(self.steps)}", category="execution")
             return True
         else:
-            self.logger.info("Already at first step", category="execution")
+            self.logger.info("No more navigable steps behind", category="execution")
             return False
 
     def go_to_step(self, step_index):
