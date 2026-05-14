@@ -215,16 +215,6 @@
         "air_pressure_valve": 26,
         "row_motor_piston": 20
       },
-      "piston_valve_types": {
-        "line_marker_piston": "NO",
-        "line_cutter_piston": "NO",
-        "line_motor_piston": "NO",
-        "line_marker_pressure_piston": "NO",
-        "row_marker_piston": "NO",
-        "row_cutter_piston": "NO",
-        "row_motor_piston": "NO",
-        "air_pressure_valve": "NO"
-      },
       "rs485": {
         "enabled": true,
         "serial_port": "/dev/ttyUSB1",
@@ -247,7 +237,7 @@
           "line_marker_down_sensor": 27,
           "line_cutter_up_sensor": 25,
           "line_cutter_down_sensor": 29,
-          "line_marker_pressure_up_sensor": 4,
+          "line_marker_pressure_up_sensor": 18,
           "line_marker_pressure_down_sensor": 18,
           "row_cutter_up_sensor": 24,
           "row_cutter_down_sensor": 26,

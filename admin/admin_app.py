@@ -15,6 +15,7 @@ Comprehensive administrative interface for Scratch Desk CNC Control System:
 
 import sys
 import os
+import json
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import threading
@@ -94,6 +95,7 @@ class AdminToolGUI:
         self.sensor_connection_widgets = {}
         self.piston_widgets = {}
         self.piston_connection_widgets = {}
+        self.piston_valve_type_vars = {}
 
         # Create UI
         self.create_ui()
@@ -532,10 +534,19 @@ class AdminToolGUI:
             "air_pressure": ("Air Pressure", "air_pressure_valve")
         }
 
+        # Load current valve types from settings.json
+        valve_types = {}
+        try:
+            with open('config/settings.json', 'r') as f:
+                config = json.load(f)
+            valve_types = config.get('hardware_config', {}).get('raspberry_pi', {}).get('piston_valve_types', {})
+        except Exception:
+            pass
+
         for i, (key, (name, method_base)) in enumerate(self.piston_methods.items()):
-            # RTL: name on right (col=3), port/conn in middle, state/buttons on left
+            # RTL: name on right (col=4), valve toggle (col=3), port/conn in middle, state/buttons on left
             name_frame = ttk.Frame(piston_frame)
-            name_frame.grid(row=i, column=3, sticky="e", pady=5)
+            name_frame.grid(row=i, column=4, sticky="e", pady=5)
 
             port_info = self.port_mappings.get(method_base, {})
             if port_info:
@@ -543,6 +554,21 @@ class AdminToolGUI:
                 ttk.Label(name_frame, text=port_text, font=("Courier", 10, "bold"), foreground="#555555").pack(side=tk.RIGHT, padx=5)
 
             ttk.Label(name_frame, text=t(name), font=("Arial", 10, "bold")).pack(side=tk.RIGHT)
+
+            # NO/NC valve type toggle
+            valve_var = tk.StringVar(value=valve_types.get(method_base, "NC"))
+            self.piston_valve_type_vars[key] = valve_var
+
+            valve_frame = ttk.Frame(piston_frame)
+            valve_frame.grid(row=i, column=3, padx=5, pady=5)
+
+            valve_label = ttk.Label(valve_frame, textvariable=valve_var, width=3,
+                                    font=("Arial", 9, "bold"), anchor=tk.CENTER)
+            valve_label.pack(side=tk.LEFT)
+
+            valve_btn = ttk.Button(valve_frame, text="NC/NO", width=6,
+                                   command=lambda k=key: self.toggle_piston_valve_type(k))
+            valve_btn.pack(side=tk.LEFT, padx=2)
 
             conn_indicator = tk.Label(piston_frame, text="●", font=("Arial", 12), fg="#95A5A6")
             conn_indicator.grid(row=i, column=2, padx=5, pady=5)
@@ -1346,6 +1372,43 @@ class AdminToolGUI:
         return True
 
     # Piston control methods
+    def toggle_piston_valve_type(self, piston_key):
+        """Toggle NO/NC valve type for a piston, save to settings, apply to hardware immediately."""
+        name, method_base = self.piston_methods[piston_key]
+        var = self.piston_valve_type_vars[piston_key]
+        current = var.get()
+        new_type = "NO" if current == "NC" else "NC"
+        var.set(new_type)
+
+        # Save to settings.json
+        try:
+            with open('config/settings.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            if 'hardware_config' not in config:
+                config['hardware_config'] = {}
+            if 'raspberry_pi' not in config['hardware_config']:
+                config['hardware_config']['raspberry_pi'] = {}
+            if 'piston_valve_types' not in config['hardware_config']['raspberry_pi']:
+                config['hardware_config']['raspberry_pi']['piston_valve_types'] = {}
+
+            config['hardware_config']['raspberry_pi']['piston_valve_types'][method_base] = new_type
+
+            with open('config/settings.json', 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            self.log("SUCCESS", t("{name} valve type changed to {type}", name=t_raw(name), type=new_type))
+        except Exception as e:
+            self.log("ERROR", t("Failed to save valve type: {error}", error=str(e)))
+
+        # Apply to hardware immediately (no restart needed)
+        if self.is_connected and hasattr(self.hardware, 'set_piston_valve_type'):
+            self.hardware.set_piston_valve_type(method_base, new_type)
+
+        # Notify main app to reload settings
+        if self.on_settings_changed:
+            self.on_settings_changed()
+
     def piston_up(self, piston_key):
         """Raise piston"""
         if not self.is_connected:

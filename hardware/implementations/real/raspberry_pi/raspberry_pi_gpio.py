@@ -91,6 +91,7 @@ class RaspberryPiGPIO:
 
         # Pin mappings from settings
         self.piston_pins = self.gpio_config.get("pistons", {})
+        self.piston_valve_types = self.gpio_config.get("piston_valve_types", {})
         self.rs485_config = self.gpio_config.get("rs485", {})
         self.direct_sensor_pins = self.gpio_config.get("direct_sensors", {})
         self.limit_switch_pins = self.gpio_config.get("limit_switches", {})
@@ -207,24 +208,28 @@ class RaspberryPiGPIO:
                 raise RuntimeError(f"Failed to set GPIO mode: {str(e)}. Check GPIO permissions (run with sudo?)")
 
             # Setup piston pins as outputs
-            # Default: LOW = retracted/up for most pistons
-            # Exception: line_motor_piston defaults to HIGH = extended/down
+            # Default: HIGH = retracted/up for most pistons (NC valves)
+            # Exception: line_motor_piston defaults to LOW = extended/down
             self.logger.info(f"Initializing {len(self.piston_pins)} piston outputs...", category="hardware")
             failed_pistons = []
             for piston_name, pin in self.piston_pins.items():
                 try:
                     GPIO.setup(pin, GPIO.OUT)
                     # line_motor_piston defaults to DOWN, all others default to UP
+                    # Per-piston valve type: NC valves: LOW=down, HIGH=up; NO valves: HIGH=down, LOW=up
+                    valve_type = self.piston_valve_types.get(piston_name, "NC")
                     if piston_name == "line_motor_piston":
-                        GPIO.output(pin, GPIO.HIGH)
+                        default_state = GPIO.LOW if valve_type == "NC" else GPIO.HIGH
+                        GPIO.output(pin, default_state)
                         with self._piston_state_lock:
                             self._piston_pin_states[piston_name] = "down"
-                        self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: DOWN)", category="hardware")
+                        self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: DOWN, valve: {valve_type})", category="hardware")
                     else:
-                        GPIO.output(pin, GPIO.LOW)
+                        default_state = GPIO.HIGH if valve_type == "NC" else GPIO.LOW
+                        GPIO.output(pin, default_state)
                         with self._piston_state_lock:
                             self._piston_pin_states[piston_name] = "up"
-                        self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: UP)", category="hardware")
+                        self.logger.debug(f"Piston '{piston_name}' on GPIO {pin} (default: UP, valve: {valve_type})", category="hardware")
                 except Exception as e:
                     raise RuntimeError(f"Failed to setup piston '{piston_name}' on GPIO {pin}: {str(e)}")
 
@@ -386,8 +391,12 @@ class RaspberryPiGPIO:
 
         try:
             pin = self.piston_pins[piston_name]
-            # HIGH = extended/down, LOW = retracted/up
-            gpio_state = GPIO.HIGH if state == "down" else GPIO.LOW
+            # Per-piston valve type: NC: LOW=down, HIGH=up; NO: HIGH=down, LOW=up
+            valve_type = self.piston_valve_types.get(piston_name, "NC")
+            if valve_type == "NC":
+                gpio_state = GPIO.LOW if state == "down" else GPIO.HIGH
+            else:  # NO
+                gpio_state = GPIO.HIGH if state == "down" else GPIO.LOW
             GPIO.output(pin, gpio_state)
 
             # Track the actual GPIO pin state
@@ -486,6 +495,16 @@ class RaspberryPiGPIO:
         # Return the tracked state (what we last set the GPIO pin to)
         with self._piston_state_lock:
             return self._piston_pin_states.get(piston_name, "unknown")
+
+    def set_piston_valve_type(self, piston_name: str, valve_type: str):
+        """Update valve type for a piston at runtime. Applies immediately without restart.
+
+        Args:
+            piston_name: Name of piston (e.g., 'line_marker_piston')
+            valve_type: 'NC' (Normally Closed) or 'NO' (Normally Open)
+        """
+        self.piston_valve_types[piston_name] = valve_type
+        self.logger.info(f"Piston '{piston_name}' valve type set to {valve_type}", category="hardware")
 
     # ========== LINE MOTOR PISTON CONTROL (Single GPIO for both sides) ==========
 

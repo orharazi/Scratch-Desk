@@ -386,6 +386,11 @@ class RealHardware:
 
         return self.gpio.get_air_pressure_valve_state()
 
+    def set_piston_valve_type(self, piston_name: str, valve_type: str):
+        """Update piston valve type at runtime (NC or NO). Applies immediately."""
+        if self.gpio:
+            self.gpio.set_piston_valve_type(piston_name, valve_type)
+
     def row_marker_piston_down(self) -> bool:
         """Lower row marker piston"""
         if not self.is_initialized or not self.gpio:
