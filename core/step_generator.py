@@ -843,10 +843,45 @@ def generate_row_marking_steps(program):
             is_leftmost_page = (physical_page_in_section == 0)
             skip_right_mark = is_rightmost_page and program.right_margin == 0
             skip_left_mark = is_leftmost_page and program.left_margin == 0
+            double_margin = getattr(program, 'rows_double_margin', 0.0)
+            should_add_double_right = is_rightmost_page and double_margin > 0
+            should_add_double_left = is_leftmost_page and double_margin > 0
 
-            if skip_right_mark and skip_left_mark:
+            if skip_right_mark and skip_left_mark and not should_add_double_right and not should_add_double_left:
                 logger.debug(f"      Skipping {page_description}: both edges coincide with cuts", category="execution")
                 continue
+
+            # Extra RIGHT double-margin mark (before normal right mark, at section_right - double_margin)
+            if should_add_double_right:
+                double_right_pos = (section_start_x + program.width) - double_margin
+                description_prefix = "Rows start: " if not rows_start_move_done else ""
+                rows_start_move_done = True
+                logger.debug(f"      Double margin right: {double_right_pos:.2f}cm (section_right - {double_margin}cm)", category="execution")
+                steps.append(create_step(
+                    'move_x',
+                    {'position': double_right_pos},
+                    f"{description_prefix}Move to {page_description} double margin RIGHT: {double_right_pos:.2f}cm"
+                ))
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} double margin right'},
+                    f"{page_description}: Wait top rows sensor (double margin RIGHT)"
+                ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'down'},
+                    f"{page_description}: Open row marker (double margin RIGHT)"
+                ))
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} double margin right'},
+                    f"{page_description}: Wait bottom rows sensor (double margin RIGHT)"
+                ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'up'},
+                    f"{page_description}: Close row marker (double margin RIGHT)"
+                ))
 
             if not skip_right_mark:
                 # Move to this page's RIGHT edge and mark it
@@ -926,6 +961,38 @@ def generate_row_marking_steps(program):
                     'tool_action',
                     {'tool': 'row_marker', 'action': 'up'},
                     f"{page_description}: Close row marker (LEFT edge)"
+                ))
+
+            # Extra LEFT double-margin mark (after normal left mark, at section_left + double_margin)
+            if should_add_double_left:
+                double_left_pos = section_start_x + double_margin
+                description_prefix = "Rows start: " if not rows_start_move_done else ""
+                rows_start_move_done = True
+                logger.debug(f"      Double margin left: {double_left_pos:.2f}cm (section_left + {double_margin}cm)", category="execution")
+                steps.append(create_step(
+                    'move_x',
+                    {'position': double_left_pos},
+                    f"{description_prefix}Move to {page_description} double margin LEFT: {double_left_pos:.2f}cm"
+                ))
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_top', 'description': f'top rows sensor for {page_description} double margin left'},
+                    f"{page_description}: Wait top rows sensor (double margin LEFT)"
+                ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'down'},
+                    f"{page_description}: Open row marker (double margin LEFT)"
+                ))
+                steps.append(create_step(
+                    'wait_sensor',
+                    {'sensor': 'y_bottom', 'description': f'bottom rows sensor for {page_description} double margin left'},
+                    f"{page_description}: Wait bottom rows sensor (double margin LEFT)"
+                ))
+                steps.append(create_step(
+                    'tool_action',
+                    {'tool': 'row_marker', 'action': 'up'},
+                    f"{page_description}: Close row marker (double margin LEFT)"
                 ))
 
         # AFTER finishing all pages in this section, cut between this section and the next (if not the last section)

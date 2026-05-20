@@ -35,7 +35,8 @@ class ScratchDeskProgram:
                  width=0.0, left_margin=0.0, right_margin=0.0,
                  page_width=0.0, number_of_pages=1, buffer_between_pages=0.0,
                  # Generate Settings
-                 repeat_rows=1, repeat_lines=1, multi_line=False):
+                 repeat_rows=1, repeat_lines=1, multi_line=False,
+                 rows_double_margin=0.0):
         
         # General Program Information
         self.program_number = int(program_number)
@@ -59,6 +60,7 @@ class ScratchDeskProgram:
         self.repeat_rows = int(repeat_rows)
         self.repeat_lines = int(repeat_lines)
         self.multi_line = bool(multi_line)
+        self.rows_double_margin = float(rows_double_margin)
     
     def validate(self):
         """

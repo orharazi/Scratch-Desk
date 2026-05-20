@@ -467,9 +467,24 @@ class ScratchDeskGUI:
         admin_window = tk.Toplevel(self.root)
         # NOTE: no transient() — on labwc, transient child Toplevels can't be
         # independently focused by the compositor via wlrctl.
-        AdminToolGUI(admin_window, hardware=self.hardware, launched_from_app=True,
+        admin_gui = AdminToolGUI(admin_window, hardware=self.hardware, launched_from_app=True,
                      on_settings_changed=self._on_settings_changed,
                      can_change_settings=self._can_change_settings)
+
+        # Size and position: fit within screen, centered, with margin for
+        # taskbar/panel so the top of the window is always visible.
+        admin_window.update_idletasks()
+        screen_w = admin_window.winfo_screenwidth()
+        screen_h = admin_window.winfo_screenheight()
+        win_w = min(1400, screen_w - 20)
+        win_h = min(900, screen_h - 60)
+        x = max(0, (screen_w - win_w) // 2)
+        y = max(0, (screen_h - win_h) // 2)
+        admin_window.geometry(f"{win_w}x{win_h}+{x}+{y}")
+        admin_window.minsize(min(1200, screen_w - 20), min(700, screen_h - 60))
+
+        # Make admin window modal — prevents clicks from reaching main window
+        admin_window.grab_set()
 
         # Aggressive focus: -topmost temporarily + wlrctl title matching.
         # The patched Toplevel.__init__ already schedules app_id focus at <Map>
@@ -492,12 +507,20 @@ class ScratchDeskGUI:
                 admin_window.attributes('-topmost', False)
         admin_window.after(800, _settle)
 
-        # Wrap close handler to return focus to main window
+        # Wrap close handler to clean up and return focus to main window
         def _on_admin_close():
             try:
-                admin_window.destroy()
+                admin_window.grab_release()
             except Exception:
                 pass
+            # Use AdminToolGUI's own cleanup (stops threads, then destroys)
+            try:
+                admin_gui.on_closing()
+            except Exception:
+                try:
+                    admin_window.destroy()
+                except Exception:
+                    pass
             force_focus_return(self.root)
 
         admin_window.protocol("WM_DELETE_WINDOW", _on_admin_close)

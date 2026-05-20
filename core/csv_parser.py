@@ -33,15 +33,19 @@ class CSVParser:
         errors = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                csv_reader = csv.DictReader(file)
-                
+            with open(file_path, 'r', encoding='utf-8-sig') as file:
+                csv_reader = csv.DictReader(file, restval='')
+
+                # Strip whitespace from headers (common issue with spreadsheet editors)
+                if csv_reader.fieldnames:
+                    csv_reader.fieldnames = [h.strip() for h in csv_reader.fieldnames]
+
                 # Check if all required headers are present
                 missing_headers = set(self.required_headers) - set(csv_reader.fieldnames or [])
                 if missing_headers:
                     errors.append(f"Missing required headers: {', '.join(missing_headers)}")
                     return programs, errors
-                
+
                 # Check for extra headers (informational)
                 extra_headers = set(csv_reader.fieldnames or []) - set(self.required_headers)
                 if extra_headers:
@@ -51,16 +55,17 @@ class CSVParser:
                     try:
                         program = self._create_program_from_row(row)
                         validation_errors = program.validate()
-                        
+
+                        # Always add the program - never silently drop it
+                        programs.append(program)
+
                         if validation_errors:
                             for error in validation_errors:
-                                errors.append(f"Row {row_num}: {error}")
-                        else:
-                            programs.append(program)
-                    
+                                errors.append(f"Row {row_num} ({program.program_name}): {error}")
+
                     except (ValueError, TypeError) as e:
                         errors.append(f"Row {row_num}: Error parsing data - {str(e)}")
-                    
+
                     except Exception as e:
                         errors.append(f"Row {row_num}: Unexpected error - {str(e)}")
         
@@ -91,24 +96,34 @@ class CSVParser:
 
         # Handle integer conversions
         for field in integer_fields:
-            value = row.get(field, '0').strip()
+            value = (row.get(field) or '').strip()
             if not value:
                 value = '0'
-            program_data[field] = int(float(value))  # Handle cases like "5.0"
+            try:
+                program_data[field] = int(float(value))  # Handle cases like "5.0"
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid integer value for '{field}': '{value}'")
 
         # Handle float conversions
         for field in float_fields:
-            value = row.get(field, '0.0').strip()
+            value = (row.get(field) or '').strip()
             if not value:
                 value = '0.0'
-            program_data[field] = float(value)
+            try:
+                program_data[field] = float(value)
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid numeric value for '{field}': '{value}'")
 
         # Handle string field
-        program_data['program_name'] = row.get('program_name', '').strip()
+        program_data['program_name'] = (row.get('program_name') or '').strip()
 
         # Handle optional multi_line field (optional, defaults to False)
-        multi_line_value = row.get('multi_line', '').strip().lower()
+        multi_line_value = (row.get('multi_line') or '').strip().lower()
         program_data['multi_line'] = multi_line_value in ('1', 'true', 'yes', 't', 'y')
+
+        # Handle optional rows_double_margin field (optional, defaults to 0.0)
+        rows_double_margin_value = (row.get('rows_double_margin') or '').strip()
+        program_data['rows_double_margin'] = float(rows_double_margin_value) if rows_double_margin_value else 0.0
 
         return ScratchDeskProgram(**program_data)
     

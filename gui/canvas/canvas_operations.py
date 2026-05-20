@@ -470,7 +470,38 @@ class CanvasOperations:
                 'dash_in_progress': line_style['dash_in_progress'],
                 'dash_completed': line_style['dash_completed']
             }
-        
+
+        # Draw double-margin lines for each section (if rows_double_margin > 0)
+        double_margin = getattr(program, 'rows_double_margin', 0.0)
+        if double_margin > 0:
+            double_margin_dash = (3, 6)  # sparse dashes to distinguish from page-edge marks
+            double_margin_color = mark_colors['pending']
+            dm_y1_canvas = self.main_app.offset_y + (max_y_cm - (paper_y + actual_paper_height)) * self.main_app.scale_y
+            dm_y2_canvas = self.main_app.offset_y + (max_y_cm - paper_y) * self.main_app.scale_y
+            for section_idx in range(program.repeat_rows):
+                section_start_x = paper_x + section_idx * program.width
+                section_end_x = section_start_x + program.width
+
+                # Right double-margin line: section_right - double_margin
+                double_right_x = section_end_x - double_margin
+                double_right_canvas = self.main_app.offset_x + double_right_x * self.main_app.scale_x
+                self.main_app.canvas.create_line(
+                    double_right_canvas, dm_y1_canvas,
+                    double_right_canvas, dm_y2_canvas,
+                    fill=double_margin_color, width=row_style['line_width'],
+                    dash=double_margin_dash, tags="work_lines"
+                )
+
+                # Left double-margin line: section_left + double_margin
+                double_left_x = section_start_x + double_margin
+                double_left_canvas = self.main_app.offset_x + double_left_x * self.main_app.scale_x
+                self.main_app.canvas.create_line(
+                    double_left_canvas, dm_y1_canvas,
+                    double_left_canvas, dm_y2_canvas,
+                    fill=double_margin_color, width=row_style['line_width'],
+                    dash=double_margin_dash, tags="work_lines"
+                )
+
         # Draw cut edges - horizontal cuts (top and bottom) using ACTUAL dimensions with repeats
         cuts = ['top', 'bottom', 'left', 'right']
         cut_positions = [

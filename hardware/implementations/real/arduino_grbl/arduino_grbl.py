@@ -97,6 +97,16 @@ class ArduinoGRBL:
         self.movement_timeout = self.grbl_config.get("movement_timeout", 60.0)  # seconds
         self.movement_poll_interval = self.grbl_config.get("movement_poll_interval", 0.1)  # seconds
 
+        # Anti-backlash settings
+        self._anti_backlash_enabled = self.grbl_config.get("anti_backlash_enabled", False)
+        self._backlash_y = self.grbl_config.get("backlash_compensation_y_cm", 0.0)
+        self._backlash_x = self.grbl_config.get("backlash_compensation_x_cm", 0.0)
+        self._last_y_dir = 0  # +1 = last Y move was increasing, -1 = decreasing, 0 = unknown
+        self._last_x_dir = 0
+
+        # Stop event for interruptible movement (set by execution_engine on stop)
+        self._stop_movement_event = Event()
+
         # Safety feed hold mechanism - allows safety monitor to pause/resume GRBL mid-movement
         self._safety_hold_event = Event()  # Set when safety hold is active
         self._safety_hold_lock = Lock()
@@ -448,6 +458,39 @@ class ArduinoGRBL:
         y_mm = y * 10.0
 
         try:
+            # Compute movement direction for anti-backlash tracking
+            new_y_dir = 1 if y > self.current_y else (-1 if y < self.current_y else 0)
+            new_x_dir = 1 if x > self.current_x else (-1 if x < self.current_x else 0)
+
+            # --- Anti-backlash overshoot ---
+            if self._anti_backlash_enabled:
+                y_reversed = (self._last_y_dir != 0 and new_y_dir != 0 and new_y_dir != self._last_y_dir)
+                x_reversed = (self._last_x_dir != 0 and new_x_dir != 0 and new_x_dir != self._last_x_dir)
+
+                if y_reversed or x_reversed:
+                    ov_y = y - new_y_dir * self._backlash_y if y_reversed else y
+                    ov_x = x - new_x_dir * self._backlash_x if x_reversed else x
+                    ov_y = max(0.0, min(self._max_y, ov_y))
+                    ov_x = max(0.0, min(self._max_x, ov_x))
+
+                    ov_y_mm = ov_y * 10.0
+                    ov_x_mm = ov_x * 10.0
+                    ov_cmd = f"G0 X{ov_x_mm:.3f} Y{ov_y_mm:.3f}"
+
+                    self.logger.info(
+                        f"Anti-backlash overshoot: X{ov_x:.2f}, Y{ov_y:.2f} "
+                        f"(dir reversed: X={x_reversed}, Y={y_reversed})",
+                        category="grbl"
+                    )
+                    self._send_command(ov_cmd)
+                    self.wait_for_movement_complete(ov_x, ov_y)
+                    # Overshoot direction is opposite to the final move direction
+                    if y_reversed:
+                        self._last_y_dir = -new_y_dir
+                    if x_reversed:
+                        self._last_x_dir = -new_x_dir
+            # --- End anti-backlash ---
+
             # Choose movement command
             if rapid:
                 # G0 = rapid positioning (no feed rate)
@@ -467,8 +510,18 @@ class ArduinoGRBL:
                     # Wait for actual movement to complete
                     self.logger.debug(f"Waiting for motor to reach position...", category="grbl")
                     if self.wait_for_movement_complete(x, y):
-                        self.current_x = x
-                        self.current_y = y
+                        # Use GRBL status as the source of truth after every successful move
+                        status = self.get_status(log_changes_only=False)
+                        if status:
+                            self.current_x = status.get('x', x)
+                            self.current_y = status.get('y', y)
+                        else:
+                            self.current_x = x
+                            self.current_y = y
+                        if new_y_dir != 0:
+                            self._last_y_dir = new_y_dir
+                        if new_x_dir != 0:
+                            self._last_x_dir = new_x_dir
                         self.logger.success(f"✓ Movement complete: X={x:.2f}cm, Y={y:.2f}cm", category="grbl")
                         return True
                     else:
@@ -693,6 +746,15 @@ class ArduinoGRBL:
         time.sleep(0.05)
 
         while (time.time() - start_time) < timeout:
+            # Check if stop was externally requested
+            if self._stop_movement_event.is_set():
+                status = self.get_status(log_changes_only=False)
+                if status:
+                    self.current_x = status.get('x', self.current_x)
+                    self.current_y = status.get('y', self.current_y)
+                self.logger.info("Movement interrupted by stop request – position synced from GRBL", category="grbl")
+                return False
+
             # Check for safety feed hold - if active, wait until cleared
             if self._safety_hold_event.is_set():
                 # Safety hold is active - GRBL should already be stopped via '!'
@@ -780,7 +842,14 @@ class ArduinoGRBL:
                 x_close = abs(current_x - target_x) <= self.position_tolerance * 2
                 y_close = abs(current_y - target_y) <= self.position_tolerance * 2
                 if x_close and y_close:
-                    self.logger.warning("Position within 2x tolerance - accepting as complete", category="grbl")
+                    # Accept but record ACTUAL position (not assumed target) to keep model accurate
+                    self.current_x = current_x
+                    self.current_y = current_y
+                    self.logger.warning(
+                        f"Position within 2x tolerance – accepted but storing actual position "
+                        f"(err X={abs(current_x-target_x):.3f}cm, Y={abs(current_y-target_y):.3f}cm)",
+                        category="grbl"
+                    )
                     return True
 
                 # Position is too far off - movement failed

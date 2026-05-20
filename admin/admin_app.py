@@ -50,8 +50,9 @@ class AdminToolGUI:
         # Callback to check if settings can be changed (returns (allowed, reason))
         self.can_change_settings = can_change_settings
 
-        # Make window resizable
-        self.root.rowconfigure(0, weight=1)
+        # Make window resizable — row 1 (notebook) gets the expansion weight
+        self.root.rowconfigure(0, weight=0)  # Top bar: fixed height
+        self.root.rowconfigure(1, weight=1)  # Notebook: expand to fill
         self.root.columnconfigure(0, weight=1)
 
         # Initialize variables

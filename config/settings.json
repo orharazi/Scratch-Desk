@@ -216,14 +216,14 @@
         "row_motor_piston": 20
       },
       "piston_valve_types": {
-        "line_marker_piston": "NO",
-        "line_cutter_piston": "NO",
-        "line_motor_piston": "NO",
-        "line_marker_pressure_piston": "NO",
-        "row_marker_piston": "NO",
-        "row_cutter_piston": "NO",
-        "row_motor_piston": "NO",
-        "air_pressure_valve": "NO"
+        "line_marker_piston": "NC",
+        "line_cutter_piston": "NC",
+        "line_motor_piston": "NC",
+        "line_marker_pressure_piston": "NC",
+        "row_marker_piston": "NC",
+        "row_cutter_piston": "NC",
+        "row_motor_piston": "NC",
+        "air_pressure_valve": "NC"
       },
       "rs485": {
         "enabled": true,
@@ -282,7 +282,10 @@
       "command_timeout": 10.0,
       "homing_timeout": 300.0,
       "y_pre_home_move_mm": 5.0,
-      "position_tolerance_cm": 0.1,
+      "position_tolerance_cm": 0.05,
+      "anti_backlash_enabled": true,
+      "backlash_compensation_y_cm": 0.2,
+      "backlash_compensation_x_cm": 0.2,
       "movement_timeout": 60.0,
       "movement_poll_interval": 0.1,
       "grbl_settings": {
