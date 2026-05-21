@@ -121,15 +121,20 @@ class CSVParser:
         multi_line_value = (row.get('multi_line') or '').strip().lower()
         program_data['multi_line'] = multi_line_value in ('1', 'true', 'yes', 't', 'y')
 
-        # Handle optional rows_double_margin field (optional, defaults to 0.0)
-        rows_double_margin_value = (row.get('rows_double_margin') or '').strip()
-        program_data['rows_double_margin'] = float(rows_double_margin_value) if rows_double_margin_value else 0.0
+        # Handle optional rows_double_margin_left / rows_double_margin_right fields (defaults to 0.0)
+        # Also accept legacy 'rows_double_margin' as fallback for both sides
+        legacy_val = (row.get('rows_double_margin') or '').strip()
+        legacy = float(legacy_val) if legacy_val else 0.0
+        rdm_left = (row.get('rows_double_margin_left') or '').strip()
+        rdm_right = (row.get('rows_double_margin_right') or '').strip()
+        program_data['rows_double_margin_left'] = float(rdm_left) if rdm_left else legacy
+        program_data['rows_double_margin_right'] = float(rdm_right) if rdm_right else legacy
 
         return ScratchDeskProgram(**program_data)
     
     def save_programs_to_csv(self, programs, file_path):
         """Save programs to CSV file with new structure"""
-        save_headers = self.required_headers + ['multi_line', 'rows_double_margin']
+        save_headers = self.required_headers + ['multi_line', 'rows_double_margin_left', 'rows_double_margin_right']
         try:
             with open(file_path, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.DictWriter(file, fieldnames=save_headers)
@@ -157,7 +162,8 @@ class CSVParser:
                         'repeat_lines': program.repeat_lines,
                         # Optional fields
                         'multi_line': 1 if getattr(program, 'multi_line', False) else 0,
-                        'rows_double_margin': getattr(program, 'rows_double_margin', 0.0),
+                        'rows_double_margin_left': getattr(program, 'rows_double_margin_left', 0.0),
+                        'rows_double_margin_right': getattr(program, 'rows_double_margin_right', 0.0),
                     })
             return True, []
         

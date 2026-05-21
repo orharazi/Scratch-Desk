@@ -843,20 +843,21 @@ def generate_row_marking_steps(program):
             is_leftmost_page = (physical_page_in_section == 0)
             skip_right_mark = is_rightmost_page and program.right_margin == 0
             skip_left_mark = is_leftmost_page and program.left_margin == 0
-            double_margin = getattr(program, 'rows_double_margin', 0.0)
-            should_add_double_right = is_rightmost_page and double_margin > 0
-            should_add_double_left = is_leftmost_page and double_margin > 0
+            double_margin_right = getattr(program, 'rows_double_margin_right', 0.0)
+            double_margin_left = getattr(program, 'rows_double_margin_left', 0.0)
+            should_add_double_right = is_rightmost_page and double_margin_right > 0
+            should_add_double_left = is_leftmost_page and double_margin_left > 0
 
             if skip_right_mark and skip_left_mark and not should_add_double_right and not should_add_double_left:
                 logger.debug(f"      Skipping {page_description}: both edges coincide with cuts", category="execution")
                 continue
 
-            # Extra RIGHT double-margin mark (before normal right mark, at section_right - double_margin)
+            # Extra RIGHT double-margin mark (before normal right mark, at section_right - double_margin_right)
             if should_add_double_right:
-                double_right_pos = (section_start_x + program.width) - double_margin
+                double_right_pos = (section_start_x + program.width) - double_margin_right
                 description_prefix = "Rows start: " if not rows_start_move_done else ""
                 rows_start_move_done = True
-                logger.debug(f"      Double margin right: {double_right_pos:.2f}cm (section_right - {double_margin}cm)", category="execution")
+                logger.debug(f"      Double margin right: {double_right_pos:.2f}cm (section_right - {double_margin_right}cm)", category="execution")
                 steps.append(create_step(
                     'move_x',
                     {'position': double_right_pos},
@@ -963,12 +964,12 @@ def generate_row_marking_steps(program):
                     f"{page_description}: Close row marker (LEFT edge)"
                 ))
 
-            # Extra LEFT double-margin mark (after normal left mark, at section_left + double_margin)
+            # Extra LEFT double-margin mark (after normal left mark, at section_left + double_margin_left)
             if should_add_double_left:
-                double_left_pos = section_start_x + double_margin
+                double_left_pos = section_start_x + double_margin_left
                 description_prefix = "Rows start: " if not rows_start_move_done else ""
                 rows_start_move_done = True
-                logger.debug(f"      Double margin left: {double_left_pos:.2f}cm (section_left + {double_margin}cm)", category="execution")
+                logger.debug(f"      Double margin left: {double_left_pos:.2f}cm (section_left + {double_margin_left}cm)", category="execution")
                 steps.append(create_step(
                     'move_x',
                     {'position': double_left_pos},

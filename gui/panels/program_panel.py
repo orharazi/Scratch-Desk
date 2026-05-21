@@ -186,13 +186,22 @@ class ProgramPanel:
                 bg='lightgray', fg='black', anchor='e').grid(row=row, column=1, sticky="e", pady=2)
         row += 1
 
-        # Rows Double Margin entry (float field, 0 = disabled)
-        rdm_entry = tk.Entry(self.input_frame, width=8, font=('Arial', 9), justify='right')
-        rdm_entry.grid(row=row, column=0, sticky="ew", pady=2, padx=(0,5))
-        rdm_entry.bind('<KeyRelease>', self.on_field_change)
-        tk.Label(self.input_frame, text=t("Double Margin (cm):"), font=('Arial', 9),
+        # Rows Double Margin RIGHT entry (float field, 0 = disabled)
+        rdm_right_entry = tk.Entry(self.input_frame, width=8, font=('Arial', 9), justify='right')
+        rdm_right_entry.grid(row=row, column=0, sticky="ew", pady=2, padx=(0,5))
+        rdm_right_entry.bind('<KeyRelease>', self.on_field_change)
+        tk.Label(self.input_frame, text=t("Double Margin Right (cm):"), font=('Arial', 9),
                 bg='lightgray', fg='black', anchor='e').grid(row=row, column=1, sticky="e", pady=2)
-        self.program_fields['rows_double_margin'] = rdm_entry
+        self.program_fields['rows_double_margin_right'] = rdm_right_entry
+        row += 1
+
+        # Rows Double Margin LEFT entry (float field, 0 = disabled)
+        rdm_left_entry = tk.Entry(self.input_frame, width=8, font=('Arial', 9), justify='right')
+        rdm_left_entry.grid(row=row, column=0, sticky="ew", pady=2, padx=(0,5))
+        rdm_left_entry.bind('<KeyRelease>', self.on_field_change)
+        tk.Label(self.input_frame, text=t("Double Margin Left (cm):"), font=('Arial', 9),
+                bg='lightgray', fg='black', anchor='e').grid(row=row, column=1, sticky="e", pady=2)
+        self.program_fields['rows_double_margin_left'] = rdm_left_entry
         row += 1
 
         # Configure grid weights - labels column expands to push content right
@@ -428,9 +437,12 @@ class ProgramPanel:
 
         self.multi_line_var.set(getattr(p, 'multi_line', False))
 
-        if 'rows_double_margin' in self.program_fields:
-            self.program_fields['rows_double_margin'].delete(0, tk.END)
-            self.program_fields['rows_double_margin'].insert(0, str(getattr(p, 'rows_double_margin', 0.0)))
+        if 'rows_double_margin_right' in self.program_fields:
+            self.program_fields['rows_double_margin_right'].delete(0, tk.END)
+            self.program_fields['rows_double_margin_right'].insert(0, str(getattr(p, 'rows_double_margin_right', 0.0)))
+        if 'rows_double_margin_left' in self.program_fields:
+            self.program_fields['rows_double_margin_left'].delete(0, tk.END)
+            self.program_fields['rows_double_margin_left'].insert(0, str(getattr(p, 'rows_double_margin_left', 0.0)))
 
         self.validate_program()
         self.update_paper_size_display()
@@ -504,7 +516,8 @@ class ProgramPanel:
                 repeat_rows=int(self.program_fields['repeat_rows'].get() or 1),
                 repeat_lines=int(self.program_fields['repeat_lines'].get() or 1),
                 multi_line=self.multi_line_var.get(),
-                rows_double_margin=float(self.program_fields['rows_double_margin'].get() or 0),
+                rows_double_margin_right=float(self.program_fields['rows_double_margin_right'].get() or 0),
+                rows_double_margin_left=float(self.program_fields['rows_double_margin_left'].get() or 0),
             )
         except (ValueError, TypeError):
             return None
@@ -545,7 +558,8 @@ class ProgramPanel:
             p.repeat_rows = int(self.program_fields['repeat_rows'].get())
             p.repeat_lines = int(self.program_fields['repeat_lines'].get())
             p.multi_line = self.multi_line_var.get()
-            p.rows_double_margin = float(self.program_fields['rows_double_margin'].get() or 0)
+            p.rows_double_margin_right = float(self.program_fields['rows_double_margin_right'].get() or 0)
+            p.rows_double_margin_left = float(self.program_fields['rows_double_margin_left'].get() or 0)
 
             # Update combo box label for the current program (without re-selecting)
             current_index = self.program_combo.current()
