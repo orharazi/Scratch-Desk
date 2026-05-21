@@ -186,6 +186,15 @@ class ProgramPanel:
                 bg='lightgray', fg='black', anchor='e').grid(row=row, column=1, sticky="e", pady=2)
         row += 1
 
+        # Rows Double Margin entry (float field, 0 = disabled)
+        rdm_entry = tk.Entry(self.input_frame, width=8, font=('Arial', 9), justify='right')
+        rdm_entry.grid(row=row, column=0, sticky="ew", pady=2, padx=(0,5))
+        rdm_entry.bind('<KeyRelease>', self.on_field_change)
+        tk.Label(self.input_frame, text=t("Double Margin (cm):"), font=('Arial', 9),
+                bg='lightgray', fg='black', anchor='e').grid(row=row, column=1, sticky="e", pady=2)
+        self.program_fields['rows_double_margin'] = rdm_entry
+        row += 1
+
         # Configure grid weights - labels column expands to push content right
         self.input_frame.grid_columnconfigure(0, weight=0)
         self.input_frame.grid_columnconfigure(1, weight=1)
@@ -419,6 +428,10 @@ class ProgramPanel:
 
         self.multi_line_var.set(getattr(p, 'multi_line', False))
 
+        if 'rows_double_margin' in self.program_fields:
+            self.program_fields['rows_double_margin'].delete(0, tk.END)
+            self.program_fields['rows_double_margin'].insert(0, str(getattr(p, 'rows_double_margin', 0.0)))
+
         self.validate_program()
         self.update_paper_size_display()
 
@@ -491,6 +504,7 @@ class ProgramPanel:
                 repeat_rows=int(self.program_fields['repeat_rows'].get() or 1),
                 repeat_lines=int(self.program_fields['repeat_lines'].get() or 1),
                 multi_line=self.multi_line_var.get(),
+                rows_double_margin=float(self.program_fields['rows_double_margin'].get() or 0),
             )
         except (ValueError, TypeError):
             return None
@@ -531,6 +545,7 @@ class ProgramPanel:
             p.repeat_rows = int(self.program_fields['repeat_rows'].get())
             p.repeat_lines = int(self.program_fields['repeat_lines'].get())
             p.multi_line = self.multi_line_var.get()
+            p.rows_double_margin = float(self.program_fields['rows_double_margin'].get() or 0)
 
             # Update combo box label for the current program (without re-selecting)
             current_index = self.program_combo.current()

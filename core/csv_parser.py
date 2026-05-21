@@ -129,11 +129,12 @@ class CSVParser:
     
     def save_programs_to_csv(self, programs, file_path):
         """Save programs to CSV file with new structure"""
+        save_headers = self.required_headers + ['multi_line', 'rows_double_margin']
         try:
             with open(file_path, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.DictWriter(file, fieldnames=self.required_headers)
+                writer = csv.DictWriter(file, fieldnames=save_headers)
                 writer.writeheader()
-                
+
                 for program in programs:
                     writer.writerow({
                         # General Program Information
@@ -153,7 +154,10 @@ class CSVParser:
                         'buffer_between_pages': program.buffer_between_pages,
                         # Generate Settings
                         'repeat_rows': program.repeat_rows,
-                        'repeat_lines': program.repeat_lines
+                        'repeat_lines': program.repeat_lines,
+                        # Optional fields
+                        'multi_line': 1 if getattr(program, 'multi_line', False) else 0,
+                        'rows_double_margin': getattr(program, 'rows_double_margin', 0.0),
                     })
             return True, []
         
