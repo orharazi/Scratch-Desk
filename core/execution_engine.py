@@ -108,6 +108,10 @@ class ExecutionEngine:
         self.step_results = []
         self.start_time = time.time()
 
+        # Clear stop movement event so GRBL movements are not interrupted from a previous stop
+        if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+            self.hardware.grbl._stop_movement_event.clear()
+
         # Pass execution engine reference to mock hardware for sensor waiting functions
         self.hardware.set_execution_engine_reference(self)
 
@@ -187,6 +191,15 @@ class ExecutionEngine:
         self.stop_event.set()
         self.pause_event.set()  # Ensure thread can proceed to check stop event
 
+        # Immediately interrupt any in-progress GRBL movement
+        if hasattr(self.hardware, 'grbl') and self.hardware.grbl and self.hardware.grbl.is_connected:
+            self.hardware.grbl._stop_movement_event.set()
+            try:
+                self.hardware.grbl.serial_connection.write(b"!")  # GRBL feed hold
+                self.logger.info("GRBL feed hold sent on stop", category="execution")
+            except Exception:
+                pass
+
         # Signal all sensor events to unblock any waiting threads
         if hasattr(self.hardware, 'signal_all_sensor_events'):
             self.hardware.signal_all_sensor_events()
@@ -227,19 +240,26 @@ class ExecutionEngine:
         except Exception:
             pass  # Best effort
 
-        # Sync position with actual hardware (best-effort)
-        try:
-            status = self.hardware.get_grbl_status() if hasattr(self.hardware, 'get_grbl_status') else None
-            if status:
-                if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
-                    self.hardware.grbl.current_x = status.get('x', self.hardware.grbl.current_x)
-                    self.hardware.grbl.current_y = status.get('y', self.hardware.grbl.current_y)
-                    self.logger.debug(
-                        f"Position synced after stop: X={self.hardware.grbl.current_x:.2f}, Y={self.hardware.grbl.current_y:.2f}",
-                        category="execution"
-                    )
-        except Exception:
-            pass  # Best effort - don't fail stop on position query error
+        # Sync position with actual hardware (best-effort, 3 retries)
+        max_position_sync_retries = 3
+        for attempt in range(max_position_sync_retries):
+            try:
+                status = self.hardware.get_grbl_status() if hasattr(self.hardware, 'get_grbl_status') else None
+                if status:
+                    if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                        self.hardware.grbl.current_x = status.get('x', self.hardware.grbl.current_x)
+                        self.hardware.grbl.current_y = status.get('y', self.hardware.grbl.current_y)
+                        self.logger.debug(
+                            f"Position synced after stop: X={self.hardware.grbl.current_x:.3f}, "
+                            f"Y={self.hardware.grbl.current_y:.3f} (attempt {attempt+1})",
+                            category="execution"
+                        )
+                    break
+                time.sleep(0.2)
+            except Exception:
+                if attempt == max_position_sync_retries - 1:
+                    self.logger.warning("Position sync after stop failed after all retries", category="execution")
+                time.sleep(0.2)
 
         self.is_running = False
         self.is_paused = False
@@ -295,6 +315,10 @@ class ExecutionEngine:
             f"from step history",
             category="execution"
         )
+
+        # Clear stop movement event so GRBL movements are not interrupted from a previous stop
+        if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+            self.hardware.grbl._stop_movement_event.clear()
 
         # Pass execution engine reference to hardware
         self.hardware.set_execution_engine_reference(self)
