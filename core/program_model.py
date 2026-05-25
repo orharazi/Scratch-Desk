@@ -72,10 +72,13 @@ class ScratchDeskProgram:
         errors = []
         
         # Row Pattern Validation Formula
-        expected_width = (self.left_margin + self.right_margin + 
-                         (self.page_width * self.number_of_pages) + 
+        # Total left zone = rows_double_margin_left + left_margin
+        # Total right zone = rows_double_margin_right + right_margin
+        expected_width = (self.rows_double_margin_left + self.left_margin +
+                         self.rows_double_margin_right + self.right_margin +
+                         (self.page_width * self.number_of_pages) +
                          (self.buffer_between_pages * (self.number_of_pages - 1)))
-        
+
         if abs(self.width - expected_width) > 0.001:  # Allow small floating point differences
             errors.append(f"Row pattern validation failed: width ({self.width}) != expected ({expected_width:.3f})")
 
@@ -117,7 +120,16 @@ class ScratchDeskProgram:
             
         if any([self.left_margin < 0, self.right_margin < 0]):
             errors.append("Margin values cannot be negative")
-            
+
+        if self.rows_double_margin_left < 0 or self.rows_double_margin_right < 0:
+            errors.append("Double margin values cannot be negative")
+
+        if self.rows_double_margin_left > 0 and self.rows_double_margin_left >= self.left_margin:
+            errors.append(f"Double margin left ({self.rows_double_margin_left}) must be less than left margin ({self.left_margin})")
+
+        if self.rows_double_margin_right > 0 and self.rows_double_margin_right >= self.right_margin:
+            errors.append(f"Double margin right ({self.rows_double_margin_right}) must be less than right margin ({self.right_margin})")
+
         if self.buffer_between_pages < 0:
             errors.append("Buffer between pages cannot be negative")
 

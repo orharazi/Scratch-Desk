@@ -829,9 +829,10 @@ def generate_row_marking_steps(program):
             section_start_x = PAPER_OFFSET_X + (section_index * program.width)
 
             # Calculate page edges using LTR physical position (to match canvas)
-            # Physical page 0 (leftmost) at section_start + left_margin
-            # Physical page N-1 (rightmost) at section_start + left_margin + (N-1) * (width + buffer)
-            page_left_edge = section_start_x + program.left_margin + (physical_page_in_section * (program.page_width + program.buffer_between_pages))
+            # Total left zone = rows_double_margin_left + left_margin
+            # Physical page 0 (leftmost) at section_start + rdm_left + left_margin
+            dm_left = getattr(program, 'rows_double_margin_left', 0.0)
+            page_left_edge = section_start_x + dm_left + program.left_margin + (physical_page_in_section * (program.page_width + program.buffer_between_pages))
             page_right_edge = page_left_edge + program.page_width
 
             page_description = f"Page {rtl_page_number}/{total_pages} (Section {section_num}, Page {rtl_page_in_section + 1}/{program.number_of_pages})"

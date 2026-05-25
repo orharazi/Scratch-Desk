@@ -368,8 +368,9 @@ class CanvasOperations:
             section_start_x = paper_x + (section_index * program.width)
 
             # Within each section, pages follow the same layout as a single section
-            # First page starts at section_start + left_margin
-            page_start_x = section_start_x + program.left_margin + page_in_section * (program.page_width + program.buffer_between_pages)
+            # First page starts at section_start + rows_double_margin_left + left_margin
+            _rdm_left = getattr(program, 'rows_double_margin_left', 0.0)
+            page_start_x = section_start_x + _rdm_left + program.left_margin + page_in_section * (program.page_width + program.buffer_between_pages)
 
             # Calculate page end position
             page_end_x = page_start_x + program.page_width
