@@ -528,10 +528,24 @@ def generate_lines_marking_steps(program):
         
         # Move to first line of this section (skip if margin is 0 - coincides with edge cut)
         if section_num == 0 and program.top_padding != 0:
+            # Explicit piston control: raise before repositioning move, lower after.
+            # This matches the init sequence behavior and ensures the execution loop
+            # delay between piston switching and the GRBL move command, preventing
+            # electrical interference on the serial line in real hardware.
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'line_motor_piston', 'action': 'up'},
+                f"Lift line motor piston (reposition from top cut to first mark position)"
+            ))
             steps.append(create_step(
                 'move_y',
                 {'position': first_line_y_section},
                 f"Move to first line of section {section_num + 1}: {first_line_y_section}cm"
+            ))
+            steps.append(create_step(
+                'tool_action',
+                {'tool': 'line_motor_piston', 'action': 'down'},
+                f"Lower line motor piston at first mark position"
             ))
 
         # Mark all lines in this section
@@ -668,11 +682,22 @@ def generate_lines_marking_steps(program):
             ))
     
     # Cut bottom edge: Move to bottom position (paper starting position)
+    # Explicit piston control to prevent electrical interference on GRBL serial line.
     bottom_position = PAPER_OFFSET_Y
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'line_motor_piston', 'action': 'up'},
+        "Lift line motor piston (reposition to bottom cut position)"
+    ))
     steps.append(create_step(
         'move_y',
         {'position': bottom_position},
         f"Move to bottom cut position: {bottom_position}cm (paper starting position)"
+    ))
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'line_motor_piston', 'action': 'down'},
+        "Lower line motor piston at bottom cut position"
     ))
     
     steps.append(create_step(
@@ -699,11 +724,21 @@ def generate_lines_marking_steps(program):
         "Cut bottom edge: Close line cutter"
     ))
 
-    # Move lines motor back to position 0
+    # Move lines motor back to position 0 with explicit piston control
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'line_motor_piston', 'action': 'up'},
+        "Lift line motor piston (returning to home position)"
+    ))
     steps.append(create_step(
         'move_y',
         {'position': 0.0},
         "Lines complete: Move lines motor to position 0"
+    ))
+    steps.append(create_step(
+        'tool_action',
+        {'tool': 'line_motor_piston', 'action': 'down'},
+        "Lower line motor piston at home position"
     ))
 
     return steps

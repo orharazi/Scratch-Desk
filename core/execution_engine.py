@@ -555,7 +555,9 @@ class ExecutionEngine:
                     self.logger.info("OPERATION TRANSITION: Lines → Rows detected (row motor piston auto-managed)", category="execution")
                     with self._transition_lock:
                         self.in_transition = True
-                    self.in_transition = False
+                    # NOTE: do NOT clear in_transition here — it must remain True so the
+                    # safety check inside _execute_step is skipped for this first rows step.
+                    # It will be cleared immediately after _execute_step returns below.
                     self.current_operation_type = 'rows'
                     self._update_transition_canvas()
                     self.logger.success("TRANSITION COMPLETED - Operation type updated to ROWS", category="execution")
@@ -575,6 +577,12 @@ class ExecutionEngine:
                 })
 
                 step_result = self._execute_step(step)
+
+                # Clear transition flag after the first rows step has been executed
+                with self._transition_lock:
+                    if self.in_transition:
+                        self.in_transition = False
+                        self.logger.debug("TRANSITION: Cleared in_transition flag after first rows step executed", category="execution")
 
                 # CRITICAL: Check if stop was requested during step execution.
                 # If so, break immediately - don't treat step interruption as an error.

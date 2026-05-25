@@ -949,6 +949,13 @@ class ControlsPanel:
         steps = self.main_app.steps
         hw = engine.hardware
 
+        # Clear GRBL stop-movement event so motor repositioning moves succeed.
+        # stop_execution() sets this event to abort in-progress movement; it must
+        # be cleared here (just as start_execution / continue_execution do) so
+        # that the move_x / move_y calls below are not immediately aborted.
+        if hasattr(hw, 'grbl') and hw.grbl:
+            hw.grbl._stop_movement_event.clear()
+
         self.logger.info(
             f"RESTORE STATE: Restoring full machine state to step "
             f"{current_index + 1}/{len(steps)}",

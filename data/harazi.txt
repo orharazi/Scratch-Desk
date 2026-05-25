@@ -1,0 +1,17 @@
+on rows operation we have an issue, i just did sefer 60 program (you can find it on     
+   hebrew) and i saw major differnce between the values i set to the values acually      
+  on canvas (on real card on real hardware) - for exaple - the distance should be for     
+   the double margin right and left are 1 cm and in real machine got 0.4 cm, on thew      
+  regular margin i set 2 cm and got2.4cm, the buffer between p[ages set to 4 but got      
+  4.4 cm, page size it set to 14 and got 13.9 (whice is ok but if we can do better -      
+  do better) - identify the issues genericlly and fix it so we wont have size             
+  differences! this is critical         
+
+
+  there is a problem on some programs that i cant go forward/back insteps, another    
+  issue is when i stopn the program and then press continue notjhing happends, the    
+  motor remain up and it should went down after i prewss continue. help me identify   
+  the issue - i can tell that it happends on sefer 60 program (as i remeber it worked 
+   on mezoza) - maybe its related to some recent changes we made with the double      
+  margin on rows idk but i want you to identify and fix it so user can move back and  
+  forward the steps and stop andd continue perfect 
