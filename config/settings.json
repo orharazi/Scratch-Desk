@@ -9,11 +9,7 @@
     "safe_movement_speed": 10.0,
     "max_acceleration": 5.0,
     "paper_start_y": 19.0,
-    "min_line_spacing": 0.3,
-    "row_border_calibration": {
-      "right_border_offset_cm": 0.3,
-      "left_border_offset_cm": 0.35
-    }
+    "min_line_spacing": 0.3
   },
   "admin": {
     "password": "12345"
@@ -77,6 +73,7 @@
     "tool_action_delay": 0.02,
     "sensor_poll_timeout": 0.01,
     "row_marker_stable_delay": 0.05,
+    "row_move_settle_delay_s": 0.1,
     "safety_check_interval": 0.02,
     "execution_loop_delay": 0.01,
     "transition_monitor_interval": 0.1,

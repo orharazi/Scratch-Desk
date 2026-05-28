@@ -24,32 +24,8 @@ def _load_paper_offsets():
         return 15.0, 15.0  # Defaults
 
 
-def _load_row_border_calibration():
-    """Load row border calibration offsets from settings.json.
-
-    These offsets compensate for the physical displacement between
-    the row cutter and row marker tools, plus the marker tip width.
-    They shift mark positions inward (toward page center) so the
-    measured border distance matches the programmed value.
-    """
-    try:
-        settings_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'settings.json')
-        with open(settings_path, 'r', encoding='utf-8') as f:
-            settings = json.load(f)
-        calibration = settings.get('hardware_limits', {}).get('row_border_calibration', {})
-        return (
-            calibration.get('right_border_offset_cm', 0.0),
-            calibration.get('left_border_offset_cm', 0.0)
-        )
-    except Exception:
-        return 0.0, 0.0
-
-
 # Load paper offsets from config
 PAPER_OFFSET_X, PAPER_OFFSET_Y = _load_paper_offsets()
-
-# Load row border calibration offsets
-ROW_BORDER_RIGHT_OFFSET, ROW_BORDER_LEFT_OFFSET = _load_row_border_calibration()
 
 # Hebrew translations for step UI display
 HEBREW_TRANSLATIONS = {
@@ -922,17 +898,12 @@ def generate_row_marking_steps(program):
 
             if not skip_right_mark:
                 # Move to this page's RIGHT edge and mark it
-                # Apply calibration: shift mark LEFT (inward) to compensate for
-                # physical tool offset and marker width
-                adjusted_right_edge = page_right_edge - ROW_BORDER_RIGHT_OFFSET
                 description_prefix = "Rows start: " if not rows_start_move_done else ""
                 rows_start_move_done = True
-                if ROW_BORDER_RIGHT_OFFSET != 0:
-                    logger.debug(f"      Right border calibration: {page_right_edge:.2f} → {adjusted_right_edge:.2f}cm (offset: -{ROW_BORDER_RIGHT_OFFSET}cm)", category="execution")
                 steps.append(create_step(
                     'move_x',
-                    {'position': adjusted_right_edge},
-                    f"{description_prefix}Move to {page_description} RIGHT edge: {adjusted_right_edge:.2f}cm"
+                    {'position': page_right_edge},
+                    f"{description_prefix}Move to {page_description} RIGHT edge: {page_right_edge:.2f}cm"
                 ))
 
                 # Mark RIGHT edge of page
@@ -962,17 +933,12 @@ def generate_row_marking_steps(program):
 
             if not skip_left_mark:
                 # Move to this page's LEFT edge and mark it
-                # Apply calibration: shift mark RIGHT (inward) to compensate for
-                # physical tool offset and marker width
-                adjusted_left_edge = page_left_edge + ROW_BORDER_LEFT_OFFSET
                 description_prefix = "Rows start: " if not rows_start_move_done else ""
                 rows_start_move_done = True
-                if ROW_BORDER_LEFT_OFFSET != 0:
-                    logger.debug(f"      Left border calibration: {page_left_edge:.2f} → {adjusted_left_edge:.2f}cm (offset: +{ROW_BORDER_LEFT_OFFSET}cm)", category="execution")
                 steps.append(create_step(
                     'move_x',
-                    {'position': adjusted_left_edge},
-                    f"{description_prefix}Move to {page_description} LEFT edge: {adjusted_left_edge:.2f}cm"
+                    {'position': page_left_edge},
+                    f"{description_prefix}Move to {page_description} LEFT edge: {page_left_edge:.2f}cm"
                 ))
 
                 # Mark LEFT edge of page

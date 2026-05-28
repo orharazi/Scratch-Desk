@@ -29,6 +29,10 @@ class ControlsPanel:
         # Snapshot of program state when steps were last generated (for stale detection)
         self._steps_program_snapshot = None
 
+        # Re-entrancy guard for step navigation (next/prev)
+        # Prevents overlapping restore operations when user clicks rapidly
+        self._is_navigating = False
+
         # Responsive font sizing based on window width
         self.update_font_sizes()
 
@@ -955,6 +959,17 @@ class ControlsPanel:
         # that the move_x / move_y calls below are not immediately aborted.
         if hasattr(hw, 'grbl') and hw.grbl:
             hw.grbl._stop_movement_event.clear()
+            # Safety net: also clear GRBL Hold state if stop_execution didn't
+            # fully clear it (e.g. due to timing or error).
+            if hw.grbl.is_connected:
+                try:
+                    grbl_status = hw.grbl.get_status(log_changes_only=False)
+                    if grbl_status and 'Hold' in str(grbl_status.get('state', '')):
+                        self.logger.info("RESTORE STATE: Clearing stale GRBL Hold state", category="gui")
+                        hw.grbl.reset()
+                        hw.grbl.unlock_alarm()
+                except Exception:
+                    pass
 
         self.logger.info(
             f"RESTORE STATE: Restoring full machine state to step "
@@ -1021,10 +1036,11 @@ class ControlsPanel:
 
         for tool, action in tool_states.items():
             if tool in tool_hw_map and action in tool_hw_map[tool]:
-                # When navigating while stopped, keep line_motor_piston UP
-                if keep_line_motor_up and tool == 'line_motor_piston' and action == 'down':
+                # When navigating while stopped, keep motor pistons UP for safety.
+                # Only lower them when the user presses Continue (keep_line_motor_up=False).
+                if keep_line_motor_up and tool in ('line_motor_piston', 'row_motor_piston') and action == 'down':
                     self.logger.debug(
-                        "RESTORE STATE: Skipping line_motor_piston down (stopped navigation)",
+                        f"RESTORE STATE: Skipping {tool} down (stopped navigation)",
                         category="gui"
                     )
                     continue
@@ -1111,27 +1127,59 @@ class ControlsPanel:
 
     def prev_step(self):
         """Go to previous step - safely restore machine state (back in time)"""
-        if self.main_app.execution_engine.step_backward():
-            # While stopped mid-execution, keep lines motor up - only lower on Continue
-            keep_up = self._stopped_mid_execution
-            self._restore_full_machine_state_to_current(keep_line_motor_up=keep_up)
-            # Revert canvas state: reset all operations to pending, then replay up to current step
-            self._replay_canvas_state_to_current()
-            # Force immediate canvas motor position update
-            self._force_canvas_position_update()
-            self.update_step_display()
+        # Re-entrancy guard: _safe_move calls root.update() which can process
+        # queued button clicks, causing overlapping restore operations.
+        if self._is_navigating:
+            return
+        self._is_navigating = True
+        # Disable buttons immediately to prevent queuing more clicks
+        self.next_btn.config(state=tk.DISABLED)
+        self.prev_btn.config(state=tk.DISABLED)
+        try:
+            if self.main_app.execution_engine.step_backward():
+                # While stopped mid-execution, keep lines motor up - only lower on Continue
+                keep_up = self._stopped_mid_execution
+                self._restore_full_machine_state_to_current(keep_line_motor_up=keep_up)
+                # Revert canvas state: reset all operations to pending, then replay up to current step
+                self._replay_canvas_state_to_current()
+                # Force immediate canvas motor position update
+                self._force_canvas_position_update()
+                self.update_step_display()
+        finally:
+            self._is_navigating = False
+            # Re-enable buttons based on available navigable steps
+            engine = self.main_app.execution_engine
+            if not engine.is_running or engine.is_paused:
+                self.prev_btn.config(state=tk.NORMAL if engine.has_prev_navigable_step() else tk.DISABLED)
+                self.next_btn.config(state=tk.NORMAL if engine.has_next_navigable_step() else tk.DISABLED)
 
     def next_step(self):
         """Go to next step - safely restore machine state (back in time)"""
-        if self.main_app.execution_engine.step_forward():
-            # While stopped mid-execution, keep lines motor up - only lower on Continue
-            keep_up = self._stopped_mid_execution
-            self._restore_full_machine_state_to_current(keep_line_motor_up=keep_up)
-            # Replay canvas state from beginning to reflect correct visual state
-            self._replay_canvas_state_to_current()
-            # Force immediate canvas motor position update
-            self._force_canvas_position_update()
-            self.update_step_display()
+        # Re-entrancy guard: _safe_move calls root.update() which can process
+        # queued button clicks, causing overlapping restore operations.
+        if self._is_navigating:
+            return
+        self._is_navigating = True
+        # Disable buttons immediately to prevent queuing more clicks
+        self.next_btn.config(state=tk.DISABLED)
+        self.prev_btn.config(state=tk.DISABLED)
+        try:
+            if self.main_app.execution_engine.step_forward():
+                # While stopped mid-execution, keep lines motor up - only lower on Continue
+                keep_up = self._stopped_mid_execution
+                self._restore_full_machine_state_to_current(keep_line_motor_up=keep_up)
+                # Replay canvas state from beginning to reflect correct visual state
+                self._replay_canvas_state_to_current()
+                # Force immediate canvas motor position update
+                self._force_canvas_position_update()
+                self.update_step_display()
+        finally:
+            self._is_navigating = False
+            # Re-enable buttons based on available navigable steps
+            engine = self.main_app.execution_engine
+            if not engine.is_running or engine.is_paused:
+                self.prev_btn.config(state=tk.NORMAL if engine.has_prev_navigable_step() else tk.DISABLED)
+                self.next_btn.config(state=tk.NORMAL if engine.has_next_navigable_step() else tk.DISABLED)
     
     def _prepare_for_new_run(self):
         """Reset engine and UI to be ready for a fresh run.

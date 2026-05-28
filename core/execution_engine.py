@@ -261,6 +261,20 @@ class ExecutionEngine:
                     self.logger.warning("Position sync after stop failed after all retries", category="execution")
                 time.sleep(0.2)
 
+        # Clear GRBL Hold state left by feed hold '!' sent above.
+        # Without this, GRBL stays in Hold and all subsequent movements
+        # (navigation restore, continue execution) would time out.
+        if hasattr(self.hardware, 'grbl') and self.hardware.grbl and self.hardware.grbl.is_connected:
+            try:
+                status = self.hardware.grbl.get_status(log_changes_only=False)
+                if status and 'Hold' in str(status.get('state', '')):
+                    self.logger.info("Clearing GRBL Hold state via soft reset after stop", category="execution")
+                    self.hardware.grbl.reset()  # Soft reset (\x18) clears Hold + queue
+                    self.hardware.grbl.unlock_alarm()  # $X to clear alarm after reset
+                    self.logger.info("GRBL state cleared - ready for new movements", category="execution")
+            except Exception as e:
+                self.logger.warning(f"Failed to clear GRBL Hold state: {e}", category="execution")
+
         self.is_running = False
         self.is_paused = False
         MachineStateManager().set_state(MachineState.IDLE)
@@ -319,6 +333,16 @@ class ExecutionEngine:
         # Clear stop movement event so GRBL movements are not interrupted from a previous stop
         if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
             self.hardware.grbl._stop_movement_event.clear()
+            # Safety net: clear GRBL Hold state if still lingering
+            if self.hardware.grbl.is_connected:
+                try:
+                    status = self.hardware.grbl.get_status(log_changes_only=False)
+                    if status and 'Hold' in str(status.get('state', '')):
+                        self.logger.info("Continue: Clearing stale GRBL Hold state", category="execution")
+                        self.hardware.grbl.reset()
+                        self.hardware.grbl.unlock_alarm()
+                except Exception:
+                    pass
 
         # Pass execution engine reference to hardware
         self.hardware.set_execution_engine_reference(self)
@@ -812,6 +836,15 @@ class ExecutionEngine:
                 if not move_result:
                     self.logger.error(f"move_x to {target_x} failed or did not complete", category="execution")
                     return {'success': False, 'error': f'Movement to X={target_x} did not complete'}
+
+                # Allow carriage to settle before piston fires.
+                # Long moves build momentum; GRBL reports Idle before the
+                # physical carriage stops oscillating. Without this delay the
+                # mark lands where the carriage still is — slightly past the
+                # commanded position.
+                settle_delay = timing_settings.get('row_move_settle_delay_s', 0.0)
+                if settle_delay > 0:
+                    time.sleep(settle_delay)
 
                 return {'success': True, 'position': target_x}
 
