@@ -3,6 +3,8 @@
 import threading
 import time
 import json
+import os
+from datetime import datetime
 from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.safety_system import SafetyViolation, check_step_safety
 from core.logger import get_logger
@@ -67,6 +69,87 @@ class ExecutionEngine:
         # Set pause event initially (not paused)
         self.pause_event.set()
 
+        # GRBL run log — one file per execution, written in real-time
+        self._run_log_file = None
+        self._run_log_step_num = 0
+
+    # ── Run log helpers ───────────────────────────────────────────────────────
+
+    def _open_run_log(self, program_name=""):
+        """Open a new timestamped run log file in data/grbl_run_logs/."""
+        try:
+            log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'grbl_run_logs')
+            os.makedirs(log_dir, exist_ok=True)
+            ts = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            path = os.path.join(log_dir, f'run_{ts}.txt')
+            self._run_log_file = open(path, 'w', encoding='utf-8', buffering=1)  # line-buffered = real-time
+            self._run_log_step_num = 0
+
+            # Header
+            cfg = load_settings()
+            paper_x = cfg.get('hardware_limits', {}).get('paper_start_x', '?')
+            paper_y = cfg.get('hardware_limits', {}).get('paper_start_y', '?')
+            feed    = cfg.get('hardware_config', {}).get('arduino_grbl', {}).get('grbl_settings', {}).get('feed_rate', '?')
+
+            self._run_log_file.write('=' * 100 + '\n')
+            self._run_log_file.write(f'GRBL RUN LOG  —  {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')
+            self._run_log_file.write(f'Program: {program_name}\n')
+            self._run_log_file.write(f'paper_start_x={paper_x}cm  paper_start_y={paper_y}cm  feed_rate={feed}mm/min\n')
+            self._run_log_file.write(f'Log file: {path}\n')
+            self._run_log_file.write('=' * 100 + '\n')
+            self._run_log_file.write(
+                f'{"#":>4}  {"GRBL COMMAND":45}  {"CMD(cm)":>9}  {"CMD(mm)":>9}'
+                f'  {"ACTUAL(cm)":>11}  {"ERROR(cm)":>10}  DESCRIPTION\n'
+            )
+            self._run_log_file.write('-' * 100 + '\n')
+            self.logger.info(f"Run log opened: {path}", category="execution")
+        except Exception as e:
+            self.logger.warning(f"Could not open run log: {e}", category="execution")
+            self._run_log_file = None
+
+    def _close_run_log(self):
+        """Flush and close the run log file."""
+        if self._run_log_file:
+            try:
+                self._run_log_file.write('=' * 100 + '\n')
+                self._run_log_file.write(f'Run ended: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n')
+                self._run_log_file.close()
+            except Exception:
+                pass
+            self._run_log_file = None
+
+    def _log_grbl_move(self, cmd_type, x_cm, y_cm, feed_rate,
+                       actual_x_cm, description, is_overshoot=False):
+        """Write one GRBL command line to the run log."""
+        if not self._run_log_file:
+            return
+        try:
+            x_mm = x_cm * 10.0
+            if cmd_type == 'G0':
+                cmd_str = f'G0 X{x_mm:.3f} Y{y_cm*10:.3f}'
+            else:
+                cmd_str = f'G1 X{x_mm:.3f} Y{y_cm*10:.3f} F{feed_rate}'
+
+            if is_overshoot:
+                cmd_str += '  [AB]'
+
+            if actual_x_cm is not None:
+                err = actual_x_cm - x_cm
+                actual_s = f'{actual_x_cm:>11.3f}'
+                error_s  = f'{err:>+10.3f}'
+            else:
+                actual_s = f'{"—":>11}'
+                error_s  = f'{"—":>10}'
+
+            self._run_log_step_num += 1
+            tag = '◄ overshoot' if is_overshoot else ''
+            self._run_log_file.write(
+                f'{self._run_log_step_num:>4}  {cmd_str:45}  {x_cm:>9.3f}  {x_mm:>9.3f}'
+                f'  {actual_s}  {error_s}  {description[:50]}{tag}\n'
+            )
+        except Exception:
+            pass
+
     def set_status_callback(self, callback):
         """Set callback function for status updates"""
         self.status_callback = callback
@@ -107,6 +190,15 @@ class ExecutionEngine:
         self.current_step_index = 0
         self.step_results = []
         self.start_time = time.time()
+
+        # Open a fresh run log for this execution
+        program_name = ""
+        if self.steps:
+            for s in self.steps[:5]:
+                if 'program' in s.get('description', '').lower():
+                    program_name = s.get('description', '')
+                    break
+        self._open_run_log(program_name)
 
         # Clear stop movement event so GRBL movements are not interrupted from a previous stop
         if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
@@ -277,6 +369,7 @@ class ExecutionEngine:
 
         self.is_running = False
         self.is_paused = False
+        self._close_run_log()
         MachineStateManager().set_state(MachineState.IDLE)
         self.logger.info("Execution stopped - safety monitoring disabled", category="execution")
         self._update_status("stopped")
@@ -699,6 +792,7 @@ class ExecutionEngine:
             self.end_time = time.time()
             self.is_running = False
             self.is_paused = False
+            self._close_run_log()
 
             # Stop safety monitoring thread
             self.safety_monitor_stop.set()
@@ -813,6 +907,11 @@ class ExecutionEngine:
             if operation == 'move_x':
                 target_x = parameters['position']
 
+                # Determine GRBL feed rate for logging
+                _feed = 1000
+                if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                    _feed = getattr(self.hardware.grbl, 'feed_rate', 1000)
+
                 # Check if motor piston should be lifted for long move
                 should_lift, move_dist = self._should_lift_motor_for_move('x', target_x)
                 if should_lift:
@@ -838,13 +937,29 @@ class ExecutionEngine:
                     return {'success': False, 'error': f'Movement to X={target_x} did not complete'}
 
                 # Allow carriage to settle before piston fires.
-                # Long moves build momentum; GRBL reports Idle before the
-                # physical carriage stops oscillating. Without this delay the
-                # mark lands where the carriage still is — slightly past the
-                # commanded position.
                 settle_delay = timing_settings.get('row_move_settle_delay_s', 0.0)
                 if settle_delay > 0:
                     time.sleep(settle_delay)
+
+                # Read actual GRBL position after settling and write to run log
+                actual_x_cm = None
+                if hasattr(self.hardware, 'grbl') and self.hardware.grbl and self.hardware.grbl.is_connected:
+                    try:
+                        actual_status = self.hardware.grbl.get_status(log_changes_only=False)
+                        if actual_status:
+                            actual_x_cm = actual_status.get('x', target_x)
+                            error_cm = actual_x_cm - target_x
+                            self.logger.info(
+                                f"ROW POSITION: commanded={target_x:.3f}cm  actual={actual_x_cm:.3f}cm  "
+                                f"error={error_cm:+.3f}cm  ({description[:40]})",
+                                category="execution"
+                            )
+                    except Exception:
+                        pass
+
+                # Write to run log file (real-time, line-buffered)
+                _cur_y = getattr(self.hardware.grbl, 'current_y', 0.0) if hasattr(self.hardware, 'grbl') and self.hardware.grbl else 0.0
+                self._log_grbl_move('G1', target_x, _cur_y, _feed, actual_x_cm, description)
 
                 return {'success': True, 'position': target_x}
 
@@ -874,6 +989,13 @@ class ExecutionEngine:
                 if not move_result:
                     self.logger.error(f"move_y to {target_y} failed or did not complete", category="execution")
                     return {'success': False, 'error': f'Movement to Y={target_y} did not complete'}
+
+                # Log Y move in run log
+                _feed_y = 1000
+                if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                    _feed_y = getattr(self.hardware.grbl, 'feed_rate', 1000)
+                _cur_x = getattr(self.hardware.grbl, 'current_x', 0.0) if hasattr(self.hardware, 'grbl') and self.hardware.grbl else 0.0
+                self._log_grbl_move('G1', _cur_x, target_y, _feed_y, None, description)
 
                 return {'success': True, 'position': target_y}
 

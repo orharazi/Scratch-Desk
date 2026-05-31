@@ -1,0 +1,28 @@
+====================================================================================================
+ספר 60  -  GRBL COMMAND LOG  (all X moves that go to the machine)
+====================================================================================================
+paper_start_x = 6.5 cm   (X65 in GRBL mm)
+paper width   = 74.0 cm   right edge at X805
+dm_left=1.0 cm  left_margin=2.0 cm  dm_right=1.0 cm  right_margin=2.0 cm
+pages=4 x 14.0cm  buffer=4.0cm  feed=1000mm/min  anti-backlash=True(0.2cm)
+
+  NOTE: GRBL mm = position_cm x 10   |   distance_from_paper = position_cm - 6.5
+
+ STEP  GRBL COMMAND                                     pos (cm)   GRBL (mm)   from paper  WHAT IS THIS
+----------------------------------------------------------------------------------------------------
+    0  G1 X0.000 Y0.000 F1000                         Y=   0.000       0.000               Rows operation: Ensure lines motor is at home
+    1  G1 X805.000 Y0.000 F1000                           80.500     805.000      +74.000  Cut RIGHT paper edge: 80.5cm (ACTUAL width)
+    2  G0 X 797.000 Y0.000  [AB OVERSHOOT]        79.700     797.000      +73.200  anti-backlash overshoot (temp)
+    2  G1 X795.000 Y0.000 F1000                           79.500     795.000      +73.000  Page 1/4 (Section 1, Page 1/4) double margin 
+    3  G1 X775.000 Y0.000 F1000                           77.500     775.000      +71.000  Page 1/4 (Section 1, Page 1/4) RIGHT edge: 77
+    4  G1 X635.000 Y0.000 F1000                           63.500     635.000      +57.000  Page 1/4 (Section 1, Page 1/4) LEFT edge: 63.
+    5  G1 X595.000 Y0.000 F1000                           59.500     595.000      +53.000  Page 2/4 (Section 1, Page 2/4) RIGHT edge: 59
+    6  G1 X455.000 Y0.000 F1000                           45.500     455.000      +39.000  Page 2/4 (Section 1, Page 2/4) LEFT edge: 45.
+    7  G1 X415.000 Y0.000 F1000                           41.500     415.000      +35.000  Page 3/4 (Section 1, Page 3/4) RIGHT edge: 41
+    8  G1 X275.000 Y0.000 F1000                           27.500     275.000      +21.000  Page 3/4 (Section 1, Page 3/4) LEFT edge: 27.
+    9  G1 X235.000 Y0.000 F1000                           23.500     235.000      +17.000  Page 4/4 (Section 1, Page 4/4) RIGHT edge: 23
+   10  G1 X95.000 Y0.000 F1000                             9.500      95.000       +3.000  Page 4/4 (Section 1, Page 4/4) LEFT edge: 9.5
+   11  G1 X75.000 Y0.000 F1000                             7.500      75.000       +1.000  Page 4/4 (Section 1, Page 4/4) double margin 
+   12  G1 X65.000 Y0.000 F1000                             6.500      65.000       +0.000  Cut LEFT paper edge: 6.5cm (ACTUAL paper boun
+   13  G1 X0.000 Y0.000 F1000                              0.000       0.000       -6.500  Rows complete: Move rows motor to position 0
+====================================================================================================
