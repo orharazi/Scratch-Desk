@@ -119,23 +119,33 @@ class ExecutionEngine:
             self._run_log_file = None
 
     def _log_grbl_move(self, cmd_type, x_cm, y_cm, feed_rate,
-                       actual_x_cm, description, is_overshoot=False):
-        """Write one GRBL command line to the run log."""
+                       actual_cm, description, is_overshoot=False, axis='x'):
+        """Write one GRBL command line to the run log.
+
+        axis='x'  → commanded/actual column shows X value
+        axis='y'  → commanded/actual column shows Y value
+        """
         if not self._run_log_file:
             return
         try:
             x_mm = x_cm * 10.0
+            y_mm = y_cm * 10.0
+
             if cmd_type == 'G0':
-                cmd_str = f'G0 X{x_mm:.3f} Y{y_cm*10:.3f}'
+                cmd_str = f'G0 X{x_mm:.3f} Y{y_mm:.3f}'
             else:
-                cmd_str = f'G1 X{x_mm:.3f} Y{y_cm*10:.3f} F{feed_rate}'
+                cmd_str = f'G1 X{x_mm:.3f} Y{y_mm:.3f} F{feed_rate}'
 
             if is_overshoot:
                 cmd_str += '  [AB]'
 
-            if actual_x_cm is not None:
-                err = actual_x_cm - x_cm
-                actual_s = f'{actual_x_cm:>11.3f}'
+            # Commanded value for the moving axis
+            cmd_val = y_cm if axis == 'y' else x_cm
+            cmd_mm  = y_mm if axis == 'y' else x_mm
+
+            if actual_cm is not None:
+                err      = actual_cm - cmd_val
+                actual_s = f'{actual_cm:>11.3f}'
                 error_s  = f'{err:>+10.3f}'
             else:
                 actual_s = f'{"—":>11}'
@@ -143,9 +153,10 @@ class ExecutionEngine:
 
             self._run_log_step_num += 1
             tag = '◄ overshoot' if is_overshoot else ''
+            axis_label = f'[{axis.upper()}]'
             self._run_log_file.write(
-                f'{self._run_log_step_num:>4}  {cmd_str:45}  {x_cm:>9.3f}  {x_mm:>9.3f}'
-                f'  {actual_s}  {error_s}  {description[:50]}{tag}\n'
+                f'{self._run_log_step_num:>4}  {cmd_str:45}  {cmd_val:>9.3f}  {cmd_mm:>9.3f}'
+                f'  {actual_s}  {error_s}  {axis_label} {description[:48]}{tag}\n'
             )
         except Exception:
             pass
@@ -959,7 +970,7 @@ class ExecutionEngine:
 
                 # Write to run log file (real-time, line-buffered)
                 _cur_y = getattr(self.hardware.grbl, 'current_y', 0.0) if hasattr(self.hardware, 'grbl') and self.hardware.grbl else 0.0
-                self._log_grbl_move('G1', target_x, _cur_y, _feed, actual_x_cm, description)
+                self._log_grbl_move('G1', target_x, _cur_y, _feed, actual_x_cm, description, axis='x')
 
                 return {'success': True, 'position': target_x}
 
@@ -990,12 +1001,29 @@ class ExecutionEngine:
                     self.logger.error(f"move_y to {target_y} failed or did not complete", category="execution")
                     return {'success': False, 'error': f'Movement to Y={target_y} did not complete'}
 
-                # Log Y move in run log
+                # Read actual GRBL Y position and write to run log
                 _feed_y = 1000
+                _cur_x  = 0.0
+                actual_y_cm = None
                 if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
                     _feed_y = getattr(self.hardware.grbl, 'feed_rate', 1000)
-                _cur_x = getattr(self.hardware.grbl, 'current_x', 0.0) if hasattr(self.hardware, 'grbl') and self.hardware.grbl else 0.0
-                self._log_grbl_move('G1', _cur_x, target_y, _feed_y, None, description)
+                    _cur_x  = getattr(self.hardware.grbl, 'current_x', 0.0)
+                    if self.hardware.grbl.is_connected:
+                        try:
+                            st = self.hardware.grbl.get_status(log_changes_only=False)
+                            if st:
+                                actual_y_cm = st.get('y', target_y)
+                                err = actual_y_cm - target_y
+                                self.logger.info(
+                                    f"LINE POSITION: commanded={target_y:.3f}cm  actual={actual_y_cm:.3f}cm  "
+                                    f"error={err:+.3f}cm  ({description[:40]})",
+                                    category="execution"
+                                )
+                        except Exception:
+                            pass
+
+                self._log_grbl_move('G1', _cur_x, target_y, _feed_y,
+                                    actual_y_cm, description, axis='y')
 
                 return {'success': True, 'position': target_y}
 
