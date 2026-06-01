@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import tkinter as tk
 import sys
 import os
@@ -41,6 +42,15 @@ def _signal_handler(signum, frame):
 def main():
     """Main entry point for the Scratch Desk Control System"""
     global _hardware
+
+    parser = argparse.ArgumentParser(description="Scratch Desk CNC Control System")
+    parser.add_argument("--grbl-debug", action="store_true",
+                        help="Show only GRBL commands in terminal output")
+    args = parser.parse_args()
+
+    if args.grbl_debug:
+        from core.logger import get_logger
+        get_logger().set_grbl_only_mode()
 
     root = tk.Tk()
     app = ScratchDeskGUI(root)

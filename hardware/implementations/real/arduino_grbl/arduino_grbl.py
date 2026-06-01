@@ -98,11 +98,6 @@ class ArduinoGRBL:
         self.movement_poll_interval = self.grbl_config.get("movement_poll_interval", 0.1)  # seconds
 
         # Anti-backlash settings
-        self._anti_backlash_enabled = self.grbl_config.get("anti_backlash_enabled", False)
-        self._backlash_y = self.grbl_config.get("backlash_compensation_y_cm", 0.0)
-        self._backlash_x = self.grbl_config.get("backlash_compensation_x_cm", 0.0)
-        self._last_y_dir = 0  # +1 = last Y move was increasing, -1 = decreasing, 0 = unknown
-        self._last_x_dir = 0
 
         # Stop event for interruptible movement (set by execution_engine on stop)
         self._stop_movement_event = Event()
@@ -458,43 +453,10 @@ class ArduinoGRBL:
         y_mm = y * 10.0
 
         try:
-            # Compute movement direction for anti-backlash tracking
-            new_y_dir = 1 if y > self.current_y else (-1 if y < self.current_y else 0)
-            new_x_dir = 1 if x > self.current_x else (-1 if x < self.current_x else 0)
-
-            # --- Anti-backlash overshoot ---
-            if self._anti_backlash_enabled:
-                y_reversed = (self._last_y_dir != 0 and new_y_dir != 0 and new_y_dir != self._last_y_dir)
-                x_reversed = (self._last_x_dir != 0 and new_x_dir != 0 and new_x_dir != self._last_x_dir)
-
-                if y_reversed or x_reversed:
-                    ov_y = y - new_y_dir * self._backlash_y if y_reversed else y
-                    ov_x = x - new_x_dir * self._backlash_x if x_reversed else x
-                    ov_y = max(0.0, min(self._max_y, ov_y))
-                    ov_x = max(0.0, min(self._max_x, ov_x))
-
-                    ov_y_mm = ov_y * 10.0
-                    ov_x_mm = ov_x * 10.0
-                    ov_cmd = f"G0 X{ov_x_mm:.3f} Y{ov_y_mm:.3f}"
-
-                    self.logger.info(
-                        f"Anti-backlash overshoot: X{ov_x:.2f}, Y{ov_y:.2f} "
-                        f"(dir reversed: X={x_reversed}, Y={y_reversed})",
-                        category="grbl"
-                    )
-                    self._send_command(ov_cmd)
-                    self.wait_for_movement_complete(ov_x, ov_y)
-                    # Overshoot direction is opposite to the final move direction
-                    if y_reversed:
-                        self._last_y_dir = -new_y_dir
-                    if x_reversed:
-                        self._last_x_dir = -new_x_dir
-            # --- End anti-backlash ---
-
             # Choose movement command
             if rapid:
-                # G0 = rapid positioning (no feed rate)
-                command = f"G0 X{x_mm:.3f} Y{y_mm:.3f}"
+                # Use G1 with rapid_rate for fast positioning
+                command = f"G1 X{x_mm:.3f} Y{y_mm:.3f} F{self.rapid_rate}"
             else:
                 # G1 = linear interpolation with feed rate
                 command = f"G1 X{x_mm:.3f} Y{y_mm:.3f} F{self.feed_rate}"
@@ -518,10 +480,6 @@ class ArduinoGRBL:
                         else:
                             self.current_x = x
                             self.current_y = y
-                        if new_y_dir != 0:
-                            self._last_y_dir = new_y_dir
-                        if new_x_dir != 0:
-                            self._last_x_dir = new_x_dir
                         self.logger.success(f"✓ Movement complete: X={x:.2f}cm, Y={y:.2f}cm", category="grbl")
                         return True
                     else:
@@ -1255,7 +1213,7 @@ class ArduinoGRBL:
             y_pre_home_mm = self.grbl_config.get("y_pre_home_move_mm", 5.0)
             self.logger.info(f"Step 5: Moving Y axis {y_pre_home_mm}mm (pre-home clearance)...", category="grbl")
             self._send_command("G91")  # Relative positioning
-            move_response = self._send_command(f"G0 Y{y_pre_home_mm}")
+            move_response = self._send_command(f"G1 Y{y_pre_home_mm} F{self.rapid_rate}")
             if move_response and "ok" in move_response.lower():
                 self.logger.info(f"Y axis move command accepted, waiting for completion...", category="grbl")
                 # Wait for movement to actually finish before switching back to absolute
@@ -1460,8 +1418,23 @@ class ArduinoGRBL:
                 self.current_y = 0.0
                 self.logger.success("✓ Work coordinates reset to (0, 0) - machine is now at origin", category="grbl")
 
-                # Verify the new position
+                # Force-sync WCO cache: after G10 L20 P1 X0 Y0, WPos is (0,0),
+                # so WCO = MPos - WPos = MPos. Query MPos and set cache directly.
                 time.sleep(0.2)  # Brief delay for GRBL to update
+                sync_response = self._send_command("?", timeout=1.0)
+                if sync_response:
+                    mpos_sync = re.search(r'MPos:([\d.-]+),([\d.-]+)', sync_response)
+                    if mpos_sync:
+                        self._cached_wco_x = float(mpos_sync.group(1))
+                        self._cached_wco_y = float(mpos_sync.group(2))
+                        self.logger.info(
+                            f"WCO cache synced from MPos after G10 reset: "
+                            f"WCO=({self._cached_wco_x}, {self._cached_wco_y})mm "
+                            f"→ WPos should be (0, 0)",
+                            category="grbl"
+                        )
+
+                # Verify the new position
                 verify_status = self.get_status()
                 if verify_status:
                     self.logger.info(f"Verified position: X={verify_status.get('x', 0):.2f}cm, Y={verify_status.get('y', 0):.2f}cm", category="grbl")

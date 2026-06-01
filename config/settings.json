@@ -280,9 +280,6 @@
       "homing_timeout": 300.0,
       "y_pre_home_move_mm": 5.0,
       "position_tolerance_cm": 0.05,
-      "anti_backlash_enabled": true,
-      "backlash_compensation_y_cm": 0.2,
-      "backlash_compensation_x_cm": 0.2,
       "movement_timeout": 60.0,
       "movement_poll_interval": 0.1,
       "grbl_settings": {
@@ -376,7 +373,7 @@
       "schedule_time": "08:00",
       "schedule_day_of_week": 0,
       "schedule_day_of_month": 1,
-      "last_sent": "2026-03-01T23:19:33.672308"
+      "last_sent": "2026-06-01T13:35:29.469282"
     }
   }
 }

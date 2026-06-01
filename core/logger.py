@@ -108,6 +108,9 @@ class ScratchDeskLogger:
         self.use_colors = self.config.get("use_colors", True)
         self.use_icons = self.config.get("use_icons", True)
 
+        # GRBL-only mode (raw commands, no formatting)
+        self.grbl_only_mode = False
+
         # Queue configuration
         self.queue_timeout = self.config.get("queue_timeout_seconds", 0.1)
 
@@ -230,6 +233,15 @@ class ScratchDeskLogger:
 
     def _format_message(self, timestamp: datetime, level: int, category: str, message: str) -> Dict[str, str]:
         """Format log message for different outputs"""
+        # In grbl-only mode, print just the raw command/response
+        if self.grbl_only_mode:
+            raw = message
+            if raw.startswith("GRBL >> "):
+                raw = ">> " + raw[8:]
+            elif raw.startswith("GRBL << "):
+                raw = "<< " + raw[8:]
+            return {"console": raw, "file": raw}
+
         level_name = LogLevel.NAMES[level]
         level_icon = LogLevel.ICONS[level] if self.use_icons else ""
 
@@ -346,6 +358,16 @@ class ScratchDeskLogger:
     def set_category_level(self, category: str, level: str):
         """Set log level for specific category"""
         self.category_levels[category] = level
+
+    def set_grbl_only_mode(self):
+        """Configure logger to only show GRBL commands.
+
+        Shows only raw GRBL commands (>> / <<) with no timestamps,
+        icons, level names, or category tags. Silences all other output.
+        """
+        self.grbl_only_mode = True
+        self.global_level = LogLevel.SUCCESS + 1
+        self.category_levels = {"grbl": "DEBUG"}
 
 
 # Singleton instance

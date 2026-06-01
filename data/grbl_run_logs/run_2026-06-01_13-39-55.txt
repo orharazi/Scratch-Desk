@@ -1,0 +1,31 @@
+====================================================================================================
+GRBL RUN LOG  —  2026-06-01 13:39:55
+Program: === Starting Program 1: ספר 60 (ACTUAL SIZE: 74.0×60.0cm) ===
+paper_start_x=6.5cm  paper_start_y=19.0cm  feed_rate=1000mm/min
+Log file: /home/orharazi/Scratch-Desk/data/grbl_run_logs/run_2026-06-01_13-39-55.txt
+====================================================================================================
+   #  GRBL COMMAND                                     CMD(cm)    CMD(mm)   ACTUAL(cm)   ERROR(cm)  DESCRIPTION
+----------------------------------------------------------------------------------------------------
+   1  G1 X0.000 Y0.000 F1000                             0.000      0.000        0.000      +0.000  [X] Init: Move rows motor to home position (X=0)
+   2  G1 X0.000 Y0.000 F1000                             0.000      0.000        0.000      +0.000  [Y] Init: Move lines motor to home position (Y=0)
+   3  G1 X0.000 Y790.000 F1000                          79.000    790.000       79.000      +0.000  [Y] Init: Move Y motor to 79.0cm (paper + 60.0cm ACT
+   4  G1 X0.000 Y709.500 F1000                          70.950    709.500       70.952      +0.002  [Y] Move to first line of section 1: 70.95cm
+   5  G1 X0.000 Y700.500 F1000                          70.050    700.500       70.048      -0.002  [Y] Move to line position: 70.0cm
+   6  G1 X0.000 Y691.500 F1000                          69.150    691.500       69.152      +0.002  [Y] Move to line position: 69.2cm
+   7  G1 X0.000 Y682.500 F1000                          68.250    682.500       68.248      -0.002  [Y] Move to line position: 68.2cm
+   8  G1 X0.000 Y673.500 F1000                          67.350    673.500       67.352      +0.002  [Y] Move to line position: 67.4cm
+   9  G1 X0.000 Y664.500 F1000                          66.450    664.500       66.448      -0.002  [Y] Move to line position: 66.5cm
+  10  G1 X0.000 Y655.500 F1000                          65.550    655.500       65.552      +0.002  [Y] Move to line position: 65.5cm
+  11  G1 X0.000 Y646.500 F1000                          64.650    646.500       64.648      -0.002  [Y] Move to line position: 64.7cm
+  12  G1 X0.000 Y637.500 F1000                          63.750    637.500       63.752      +0.002  [Y] Move to line position: 63.8cm
+  13  G1 X0.000 Y628.500 F1000                          62.850    628.500       62.848      -0.002  [Y] Move to line position: 62.9cm
+  14  G1 X0.000 Y619.500 F1000                          61.950    619.500       61.952      +0.002  [Y] Move to line position: 62.0cm
+  15  G1 X0.000 Y610.500 F1000                          61.050    610.500       61.048      -0.002  [Y] Move to line position: 61.0cm
+  16  G1 X0.000 Y601.500 F1000                          60.150    601.500       60.152      +0.002  [Y] Move to line position: 60.2cm
+  17  G1 X0.000 Y592.500 F1000                          59.250    592.500       59.248      -0.002  [Y] Move to line position: 59.2cm
+  18  G1 X0.000 Y583.500 F1000                          58.350    583.500       58.352      +0.002  [Y] Move to line position: 58.4cm
+  19  G1 X0.000 Y574.500 F1000                          57.450    574.500       57.448      -0.002  [Y] Move to line position: 57.5cm
+  20  G1 X0.000 Y565.500 F1000                          56.550    565.500       56.552      +0.002  [Y] Move to line position: 56.5cm
+  21  G1 X0.000 Y556.500 F1000                          55.650    556.500       55.648      -0.002  [Y] Move to line position: 55.6cm
+====================================================================================================
+Run ended: 2026-06-01 13:44:49

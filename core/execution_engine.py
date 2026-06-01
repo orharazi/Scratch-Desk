@@ -131,10 +131,7 @@ class ExecutionEngine:
             x_mm = x_cm * 10.0
             y_mm = y_cm * 10.0
 
-            if cmd_type == 'G0':
-                cmd_str = f'G0 X{x_mm:.3f} Y{y_mm:.3f}'
-            else:
-                cmd_str = f'G1 X{x_mm:.3f} Y{y_mm:.3f} F{feed_rate}'
+            cmd_str = f'G1 X{x_mm:.3f} Y{y_mm:.3f} F{feed_rate}'
 
             if is_overshoot:
                 cmd_str += '  [AB]'
