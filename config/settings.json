@@ -324,6 +324,10 @@
         "$130": 1000.0,
         "$131": 1000.0,
         "$132": 0.0
+      },
+      "motion_compensation": {
+        "x": { "enabled": false, "offset_cm": 0.0, "scale": 1.0, "backlash_cm": 0.0, "approach_direction": 1 },
+        "y": { "enabled": false, "offset_cm": 0.0, "scale": 1.0, "backlash_cm": 0.0, "approach_direction": 1 }
       }
     }
   },

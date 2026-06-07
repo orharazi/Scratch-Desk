@@ -1122,6 +1122,108 @@
               "default": 0.1,
               "category": "important",
               "unit": "cm"
+            },
+            "motion_compensation": {
+              "title": "Motion Compensation",
+              "title_he": "פיצוי תנועה",
+              "description": "Compensation parameters for tool-up motion systematic errors (offset, scale, backlash). No-op defaults until enabled.",
+              "description_he": "פרמטרי פיצוי על שגיאות תנועה שיטתיות (היסט, קנה מידה, תשול הפוך). ברירות מחדל ללא פעולה עד להפעלה.",
+              "type": "object",
+              "category": "advanced",
+              "children": {
+                "x": {
+                  "title": "X-axis compensation",
+                  "title_he": "פיצוי ציר X",
+                  "description": "Compensation settings for X-axis tool-up motion",
+                  "description_he": "הגדרות פיצוי לתנועת כלי למעלה בציר X",
+                  "type": "object",
+                  "children": {
+                    "enabled": {
+                      "description": "Enable X-axis motion compensation",
+                      "description_he": "הפעל פיצוי תנועה לציר X",
+                      "type": "bool",
+                      "default": false,
+                      "category": "advanced"
+                    },
+                    "offset_cm": {
+                      "description": "Constant offset to add to all X-axis moves (cm)",
+                      "description_he": "היסט קבוע להוסיף לכל תנועות ציר X (ס״מ)",
+                      "type": "float",
+                      "unit": "cm",
+                      "default": 0.0,
+                      "category": "advanced"
+                    },
+                    "scale": {
+                      "description": "Scale factor to multiply X-axis distances (1.0 = no change)",
+                      "description_he": "מקדם קנה מידה להכפלת מרחקי ציר X (1.0 = ללא שינוי)",
+                      "type": "float",
+                      "default": 1.0,
+                      "category": "advanced"
+                    },
+                    "backlash_cm": {
+                      "description": "Backlash compensation distance for X-axis (cm)",
+                      "description_he": "מרחק פיצוי תשול הפוך לציר X (ס״מ)",
+                      "type": "float",
+                      "unit": "cm",
+                      "default": 0.0,
+                      "category": "advanced"
+                    },
+                    "approach_direction": {
+                      "description": "Direction to approach target from (1=positive, -1=negative)",
+                      "description_he": "כיוון הגישה למטרה (1=חיובי, -1=שלילי)",
+                      "type": "int",
+                      "default": 1,
+                      "category": "advanced"
+                    }
+                  }
+                },
+                "y": {
+                  "title": "Y-axis compensation",
+                  "title_he": "פיצוי ציר Y",
+                  "description": "Compensation settings for Y-axis tool-up motion",
+                  "description_he": "הגדרות פיצוי לתנועת כלי למעלה בציר Y",
+                  "type": "object",
+                  "children": {
+                    "enabled": {
+                      "description": "Enable Y-axis motion compensation",
+                      "description_he": "הפעל פיצוי תנועה לציר Y",
+                      "type": "bool",
+                      "default": false,
+                      "category": "advanced"
+                    },
+                    "offset_cm": {
+                      "description": "Constant offset to add to all Y-axis moves (cm)",
+                      "description_he": "היסט קבוע להוסיף לכל תנועות ציר Y (ס״מ)",
+                      "type": "float",
+                      "unit": "cm",
+                      "default": 0.0,
+                      "category": "advanced"
+                    },
+                    "scale": {
+                      "description": "Scale factor to multiply Y-axis distances (1.0 = no change)",
+                      "description_he": "מקדם קנה מידה להכפלת מרחקי ציר Y (1.0 = ללא שינוי)",
+                      "type": "float",
+                      "default": 1.0,
+                      "category": "advanced"
+                    },
+                    "backlash_cm": {
+                      "description": "Backlash compensation distance for Y-axis (cm)",
+                      "description_he": "מרחק פיצוי תשול הפוך לציר Y (ס״מ)",
+                      "type": "float",
+                      "unit": "cm",
+                      "default": 0.0,
+                      "category": "advanced"
+                    },
+                    "approach_direction": {
+                      "description": "Direction to approach target from (1=positive, -1=negative)",
+                      "description_he": "כיוון הגישה למטרה (1=חיובי, -1=שלילי)",
+                      "type": "int",
+                      "default": 1,
+                      "category": "advanced"
+                    }
+                  }
+                }
+              }
             }
           }
         }
