@@ -51,3 +51,4 @@ plan.md
 
 # Runtime data
 data/analytics/runs.csv
+data/grbl_run_logs/
