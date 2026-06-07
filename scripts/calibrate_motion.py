@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Interactive calibration for tool-up motion compensation.
 
-Drives a known move pattern with the motor piston LIFTED, collects measured
-positions through a MeasurementProvider, fits compensation parameters, prints
-recommendations, and offers to write them to config/settings.json.
+Drives a known move pattern the same way production does — each move runs with
+the motor piston LIFTED, then the piston is LOWERED at the destination before
+the measurement is taken. This makes the calibration reflect the real resting
+position the mark lands on (including any shift caused by lowering), not the
+tool-up position. Measurements are collected through a MeasurementProvider, the
+script fits compensation parameters, prints recommendations, and offers to write
+them to config/settings.json.
+
+Per-stop sequence (mirrors execution_engine long moves):
+    lift -> move (tool up) -> lower -> measure -> lift (for next move)
 
 Usage:
     python3 scripts/calibrate_motion.py --axis x
@@ -54,27 +61,30 @@ def run(axis):
     provider = ManualMeasurementProvider()
     hw = get_hardware_interface()
 
-    print(f"\n=== Calibrating axis {axis.upper()} (tool UP) ===")
+    print(f"\n=== Calibrating axis {axis.upper()} (tool UP move, measured DOWN) ===")
     print("Make sure the machine is homed and the work area is clear.")
-    input("Press Enter to lift the motor piston and begin...")
-
-    _lift(hw, axis)
+    print("At each stop the piston lowers before you measure (matches marking).")
+    input("Press Enter to begin...")
 
     # Forward pass (ascending) — fit scale + offset.
+    # Each stop mirrors production: move with tool up, lower, measure, lift.
     commanded, measured = [], []
     for t in FORWARD_TARGETS:
-        _move(hw, axis, t)
-        m = provider.measure(axis=axis, commanded_cm=t)
+        _lift(hw, axis)                 # tool up for the move
+        _move(hw, axis, t)              # long move (tool up) — the inaccurate part
+        _lower(hw, axis)               # lower at destination, as when marking
+        m = provider.measure(axis=axis, commanded_cm=t)  # measure resting position
         commanded.append(t)
         measured.append(m)
     forward_at_common = measured[FORWARD_TARGETS.index(COMMON_TARGET)]
 
-    # Reverse pass — approach COMMON_TARGET from above to expose backlash.
+    # Reverse pass — approach COMMON_TARGET from above to expose backlash,
+    # then lower and measure (same as the forward stops).
+    _lift(hw, axis)
     _move(hw, axis, max(FORWARD_TARGETS) + 10.0)
     _move(hw, axis, REVERSE_TARGET)
-    reverse_at_common = provider.measure(axis=axis, commanded_cm=REVERSE_TARGET)
-
     _lower(hw, axis)
+    reverse_at_common = provider.measure(axis=axis, commanded_cm=REVERSE_TARGET)
 
     scale, offset = fit_scale_offset(commanded, measured)
     backlash = fit_backlash(forward_at_common, reverse_at_common)
