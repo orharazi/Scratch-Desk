@@ -194,3 +194,16 @@ The fitting math is pure and unit-testable independent of hardware.
 - Separate, slower feed/accel for tool-up moves (and/or `$120`/`$110` tuning) to
   eliminate lost steps if calibration shows non-repeatable drift.
 - Admin-tool button to launch calibration from the GUI.
+
+### Deferred from final code review (2026-06-07)
+
+- **Raise the motor piston after a failed mid-sequence waypoint.** Today, if a
+  move in a multi-waypoint (anti-backlash) sequence fails, the engine logs the
+  error and still lowers the piston, leaving the tool at an uncertain position.
+  This is a pre-existing execution-safety concern (broader than this feature)
+  and should be addressed in the engine's failure handling, not the compensator.
+- **Workspace vs GRBL travel-limit mismatch.** `hardware_limits` declares
+  120×80 cm but GRBL `$130`/`$131` are 1000 mm (100 cm) each and soft limits are
+  disabled (`$20=0`). Software waypoint clamping (implemented) guards tool-up
+  moves, but the `$130`/`$131`/`$20` config should be reconciled with the real
+  machine travel for defense in depth.
