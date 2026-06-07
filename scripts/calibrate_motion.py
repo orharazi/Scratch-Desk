@@ -89,20 +89,37 @@ def run(axis):
         print("\n  Residual is tiny — error may be non-repeatable (lost steps).")
         print("  Consider slower tool-up feed/accel instead of static compensation.")
 
+    # Sanity check for unusually large values
+    if abs(scale - 1.0) > 0.05 or abs(offset) > 0.5 or backlash > 1.0:
+        print("\n  ⚠️  WARNING: Fitted values look unusually large!")
+        print("      scale offset/deviation > 0.05  or  offset > 0.5cm  or  backlash > 1.0cm")
+        print("      This may indicate a measurement error or deeper mechanical problem.")
+        print("      Please double-check your measurements before applying these values.")
+
     if input("\nWrite these into config/settings.json? [y/N] ").strip().lower() == "y":
-        with open(SETTINGS_PATH) as f:
-            settings = json.load(f)
-        mc = settings["hardware_config"]["arduino_grbl"].setdefault("motion_compensation", {})
-        mc[axis] = {
-            "enabled": True,
-            "offset_cm": round(offset, 3),
-            "scale": round(scale, 5),
-            "backlash_cm": round(backlash, 3),
-            "approach_direction": 1,
-        }
-        with open(SETTINGS_PATH, "w") as f:
-            json.dump(settings, f, indent=2, ensure_ascii=False)
-        print(f"  Wrote motion_compensation.{axis} to {SETTINGS_PATH}")
+        try:
+            with open(SETTINGS_PATH) as f:
+                settings = json.load(f)
+        except Exception as e:
+            print(f"ERROR: could not read {SETTINGS_PATH}: {e}")
+            print("  Not written. Check the file and try again.")
+            return
+
+        try:
+            mc = settings["hardware_config"]["arduino_grbl"].setdefault("motion_compensation", {})
+            mc[axis] = {
+                "enabled": True,
+                "offset_cm": round(offset, 3),
+                "scale": round(scale, 5),
+                "backlash_cm": round(backlash, 3),
+                "approach_direction": 1,
+            }
+            with open(SETTINGS_PATH, "w") as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+            print(f"✓ Wrote motion_compensation.{axis} to {SETTINGS_PATH}")
+        except Exception as e:
+            print(f"ERROR: could not write {SETTINGS_PATH}: {e}")
+            print("  Changes were not saved. Check file permissions and try again.")
     else:
         print("  Not written. Copy the values manually if you want them.")
 

@@ -1303,18 +1303,50 @@ class ExecutionEngine:
 
         Reads live settings each call (same pattern as _should_lift_motor_for_move).
         Falls back to [target] if anything is unavailable.
+
+        Applies limits clamping to prevent out-of-bounds waypoints (GRBL soft limits disabled).
+        Logs a warning if clamping occurs.
         """
         try:
-            cfg = (load_settings()
+            settings = load_settings()
+            cfg = (settings
                    .get('hardware_config', {})
                    .get('arduino_grbl', {})
                    .get('motion_compensation', {}))
-            comp = MotionCompensator(cfg)
+
+            # Build limits dict from hardware_limits in settings
+            hl = settings.get('hardware_limits', {})
+            limits = {
+                'x': {
+                    'min': hl.get('min_x_position', 0.0),
+                    'max': hl.get('max_x_position', 120.0)
+                },
+                'y': {
+                    'min': hl.get('min_y_position', 0.0),
+                    'max': hl.get('max_y_position', 80.0)
+                }
+            }
+
+            comp = MotionCompensator(cfg, limits=limits)
             if axis == 'x':
                 current = self.hardware.get_current_x()
             else:
                 current = self.hardware.get_current_y()
-            return comp.compensate(axis, current, target)
+
+            waypoints = comp.compensate(axis, current, target)
+
+            # Check if any waypoint was clamped by comparing with unclamped version
+            comp_unclamped = MotionCompensator(cfg, limits=None)
+            unclamped_waypoints = comp_unclamped.compensate(axis, current, target)
+            if unclamped_waypoints != waypoints:
+                # At least one waypoint was clamped
+                self.logger.warning(
+                    f"Motion compensation waypoint clamped to travel limits: {axis.upper()} "
+                    f"unclamped={unclamped_waypoints} clamped={waypoints}",
+                    category="execution"
+                )
+
+            return waypoints
         except Exception as e:
             self.logger.warning(f"Compensation failed, using raw target: {e}", category="execution")
             return [target]

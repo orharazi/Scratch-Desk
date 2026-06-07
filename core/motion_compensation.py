@@ -23,9 +23,11 @@ def _sign(value: float) -> int:
 class MotionCompensator:
     """Computes corrected waypoints for tool-up positioning moves."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, limits: dict = None):
         # config is the `motion_compensation` block: {"x": {...}, "y": {...}}
+        # limits is optional: {"x": {"min": 0.0, "max": 120.0}, "y": {"min": 0.0, "max": 80.0}}
         self._config = config or {}
+        self._limits = limits or {}
 
     def _axis_cfg(self, axis: str) -> dict:
         return self._config.get(axis, {}) or {}
@@ -38,6 +40,8 @@ class MotionCompensator:
         target_cm: commanded absolute target
 
         Returns [target_cm] unchanged when the axis is disabled.
+
+        If limits are provided for the axis, clamps all waypoints to [min, max].
         """
         cfg = self._axis_cfg(axis)
         if not cfg.get("enabled", False):
@@ -54,6 +58,17 @@ class MotionCompensator:
             # Overshoot only when natural travel opposes the preferred approach.
             if travel_dir != 0 and travel_dir != approach_dir:
                 overshoot = corrected - approach_dir * backlash_cm
-                return [overshoot, corrected]
+                waypoints = [overshoot, corrected]
+            else:
+                waypoints = [corrected]
+        else:
+            waypoints = [corrected]
 
-        return [corrected]
+        # Apply clamping if limits are available for this axis
+        if axis in self._limits and self._limits[axis]:
+            axis_limits = self._limits[axis]
+            min_val = axis_limits.get("min", 0.0)
+            max_val = axis_limits.get("max", float('inf'))
+            waypoints = [max(min_val, min(max_val, wp)) for wp in waypoints]
+
+        return waypoints
