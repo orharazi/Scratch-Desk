@@ -40,6 +40,10 @@ python3 scripts/verify_config_alignment.py --fix  # Auto-fix missing description
 # RS485 sensor diagnostics
 python3 quick_rs485_test.py
 python3 comprehensive_rs485_test.py
+
+# Calibrate tool-up motion compensation (run on the real machine)
+python3 scripts/calibrate_motion.py --axis x   # rows
+python3 scripts/calibrate_motion.py --axis y   # lines
 ```
 
 ### Configuration
