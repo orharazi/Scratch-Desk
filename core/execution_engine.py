@@ -9,6 +9,7 @@ from hardware.interfaces.hardware_factory import get_hardware_interface
 from core.safety_system import SafetyViolation, check_step_safety
 from core.logger import get_logger
 from core.machine_state import MachineState, MachineStateManager
+from core.motion_compensation import MotionCompensator
 
 # Load settings
 def load_settings():
@@ -926,9 +927,20 @@ class ExecutionEngine:
                     self.logger.info(f"Long X move ({move_dist:.1f}cm) - lifting row motor piston", category="execution")
                     self.hardware.row_motor_piston_up()
                     self._engine_lowered_tools.discard('row_motor_piston')
+                    waypoints = self._compensated_waypoints('x', target_x)
+                else:
+                    waypoints = [target_x]
 
-                # Execute movement and wait for completion
-                move_result = self.hardware.move_x(target_x)
+                # Execute movement(s) and wait for completion. Last waypoint is the
+                # real target; any earlier ones are anti-backlash overshoots.
+                move_result = True
+                for idx, wp in enumerate(waypoints):
+                    is_overshoot = idx < len(waypoints) - 1
+                    move_result = self.hardware.move_x(wp)
+                    _cur_y_wp = getattr(self.hardware.grbl, 'current_y', 0.0) if hasattr(self.hardware, 'grbl') and self.hardware.grbl else 0.0
+                    self._log_grbl_move('G1', wp, _cur_y_wp, _feed, None, description, is_overshoot=is_overshoot, axis='x')
+                    if not move_result:
+                        break
 
                 # Lower motor piston back if we lifted it
                 if should_lift:
@@ -980,11 +992,20 @@ class ExecutionEngine:
                     self.logger.info(f"Long Y move ({move_dist:.1f}cm) - lifting line motor piston", category="execution")
                     self.hardware.line_motor_piston_up()
                     self._engine_lowered_tools.discard('line_motor_piston')
+                    waypoints = self._compensated_waypoints('y', target_y)
+                else:
+                    waypoints = [target_y]
 
-                # Execute movement and wait for completion
-                move_result = self.hardware.move_y(target_y)
+                # Execute movement(s); last waypoint is the real target.
+                move_result = True
+                for idx, wp in enumerate(waypoints):
+                    is_overshoot = idx < len(waypoints) - 1
+                    move_result = self.hardware.move_y(wp)
+                    _cur_x_wp = getattr(self.hardware.grbl, 'current_x', 0.0) if hasattr(self.hardware, 'grbl') and self.hardware.grbl else 0.0
+                    self._log_grbl_move('G1', _cur_x_wp, wp, 1000, None, description, is_overshoot=is_overshoot, axis='y')
+                    if not move_result:
+                        break
 
-                # Lower motor piston back if we lifted it
                 if should_lift:
                     self.logger.info(f"Y move complete - lowering line motor piston", category="execution")
                     self.hardware.line_motor_piston_down()
@@ -1050,12 +1071,22 @@ class ExecutionEngine:
                     self._engine_lowered_tools.discard('line_motor_piston')
 
                 # Execute movements and wait for completion
-                move_x_result = self.hardware.move_x(target_x)
+                x_waypoints = self._compensated_waypoints('x', target_x) if should_lift_x else [target_x]
+                move_x_result = True
+                for wp in x_waypoints:
+                    move_x_result = self.hardware.move_x(wp)
+                    if not move_x_result:
+                        break
                 if not move_x_result:
                     self.logger.error(f"move_x to {target_x} failed or did not complete", category="execution")
                     return {'success': False, 'error': f'Movement to X={target_x} did not complete'}
 
-                move_y_result = self.hardware.move_y(target_y)
+                y_waypoints = self._compensated_waypoints('y', target_y) if should_lift_y else [target_y]
+                move_y_result = True
+                for wp in y_waypoints:
+                    move_y_result = self.hardware.move_y(wp)
+                    if not move_y_result:
+                        break
                 if not move_y_result:
                     self.logger.error(f"move_y to {target_y} failed or did not complete", category="execution")
                     return {'success': False, 'error': f'Movement to Y={target_y} did not complete'}
@@ -1266,6 +1297,27 @@ class ExecutionEngine:
             return False, move_distance_cm
 
         return True, move_distance_cm
+
+    def _compensated_waypoints(self, axis, target):
+        """Return ordered waypoints (cm) for a tool-up move, applying compensation.
+
+        Reads live settings each call (same pattern as _should_lift_motor_for_move).
+        Falls back to [target] if anything is unavailable.
+        """
+        try:
+            cfg = (load_settings()
+                   .get('hardware_config', {})
+                   .get('arduino_grbl', {})
+                   .get('motion_compensation', {}))
+            comp = MotionCompensator(cfg)
+            if axis == 'x':
+                current = self.hardware.get_current_x()
+            else:
+                current = self.hardware.get_current_y()
+            return comp.compensate(axis, current, target)
+        except Exception as e:
+            self.logger.warning(f"Compensation failed, using raw target: {e}", category="execution")
+            return [target]
 
     def _update_current_operation_type(self, step, allow_rows_transition=True):
         """Update the current operation type based on step description for safety monitoring"""
