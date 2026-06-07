@@ -57,14 +57,36 @@ def _move(hw, axis, pos):
     return hw.move_y(pos)
 
 
+def _print_homing_progress(step_number, step_name, status, message=None):
+    """Console progress callback for the homing sequence."""
+    line = f"  [home] step {step_number}: {step_name} — {status}"
+    if message:
+        line += f" ({message})"
+    print(line)
+
+
 def run(axis):
     provider = ManualMeasurementProvider()
     hw = get_hardware_interface()
 
     print(f"\n=== Calibrating axis {axis.upper()} (tool UP move, measured DOWN) ===")
-    print("Make sure the machine is homed and the work area is clear.")
+    print("This runs the FULL homing sequence (it moves the machine and cycles")
+    print("the pistons), then drives a calibration pattern. Clear the work area.")
     print("At each stop the piston lowers before you measure (matches marking).")
-    input("Press Enter to begin...")
+    input("Press Enter to home and begin...")
+
+    # Run the SAME comprehensive homing sequence the main software uses:
+    # applies GRBL config, checks/lifts pistons, runs $H, resets work coords
+    # to (0,0), and lowers the line-motor pistons back down.
+    print("\nRunning complete homing sequence (pistons + $H)...")
+    homed, home_msg = hw.perform_complete_homing_sequence(
+        progress_callback=_print_homing_progress
+    )
+    if not homed:
+        print(f"\nERROR: homing failed: {home_msg}")
+        print("  Aborting calibration — fix homing before continuing.")
+        return
+    print("✓ Homing complete.\n")
 
     # Forward pass (ascending) — fit scale + offset.
     # Each stop mirrors production: move with tool up, lower, measure, lift.

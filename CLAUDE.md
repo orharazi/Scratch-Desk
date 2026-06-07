@@ -339,6 +339,7 @@ Enable detailed logging in `settings.json`:
 | Document | Purpose |
 |----------|---------|
 | `docs/SYSTEM_ARCHITECTURE.md` | Complete architecture guide |
+| `docs/MOTION_CALIBRATION_GUIDE.md` | Tool-up motion calibration (run & apply) |
 | `docs/CONFIGURATION_GUIDE.md` | Settings reference |
 | `docs/GRBL_COMMANDS_REFERENCE.md` | G-code reference |
 | `hardware/README.md` | Hardware integration guide |
