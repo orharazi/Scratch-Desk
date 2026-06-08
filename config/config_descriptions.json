@@ -429,7 +429,7 @@
             },
             "line_motor_piston": {
               "description": "GPIO pin number for line motor piston control",
-              "description_he": "מספר פין GPIO לבקרת בוכנת מנוע שורות",
+              "description_he": "מספר פין GPIO לבקרת בוכנת סרגל שורות",
               "type": "int",
               "default": 13,
               "category": "critical"
@@ -464,7 +464,7 @@
             },
             "row_motor_piston": {
               "description": "GPIO pin number for row motor piston (controls 2 pistons from one port, GPIO 12)",
-              "description_he": "מספר פין GPIO לבוכנת דלת מנוע עמודות (שולט בשתי בוכנות מיציאה אחת, GPIO 12)",
+              "description_he": "מספר פין GPIO לבוכנת דלת סרגל עמודות (שולט בשתי בוכנות מיציאה אחת, GPIO 12)",
               "type": "int",
               "default": 12,
               "category": "critical"
@@ -610,28 +610,28 @@
             },
             "line_motor_left_down_sensor": {
               "description": "RS485 sensor bit index for line motor left-side down position",
-              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות שמאל למטה",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סרגל שורות שמאל למטה",
               "type": "int",
               "default": 19,
               "category": "important"
             },
             "line_motor_left_up_sensor": {
               "description": "RS485 sensor bit index for line motor left-side up position",
-              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות שמאל למעלה",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סרגל שורות שמאל למעלה",
               "type": "int",
               "default": 21,
               "category": "important"
             },
             "line_motor_right_down_sensor": {
               "description": "RS485 sensor bit index for line motor right-side down position",
-              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות ימין למטה",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סרגל שורות ימין למטה",
               "type": "int",
               "default": 20,
               "category": "important"
             },
             "line_motor_right_up_sensor": {
               "description": "RS485 sensor bit index for line motor right-side up position",
-              "description_he": "אינדקס סיבית חיישן RS485 למצב מנוע שורות ימין למעלה",
+              "description_he": "אינדקס סיבית חיישן RS485 למצב סרגל שורות ימין למעלה",
               "type": "int",
               "default": 18,
               "category": "important"
@@ -694,28 +694,28 @@
             },
             "row_motor_left_up_sensor": {
               "description": "RS485 sensor bit index for row motor left side UP position sensor",
-              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד שמאל של דלת מנוע עמודות",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד שמאל של דלת סרגל עמודות",
               "type": "int",
               "default": 0,
               "category": "important"
             },
             "row_motor_left_down_sensor": {
               "description": "RS485 sensor bit index for row motor left side DOWN position sensor",
-              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד שמאל של דלת מנוע עמודות",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד שמאל של דלת סרגל עמודות",
               "type": "int",
               "default": 1,
               "category": "important"
             },
             "row_motor_right_up_sensor": {
               "description": "RS485 sensor bit index for row motor right side UP position sensor",
-              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד ימין של דלת מנוע עמודות",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למעלה של צד ימין של דלת סרגל עמודות",
               "type": "int",
               "default": 2,
               "category": "important"
             },
             "row_motor_right_down_sensor": {
               "description": "RS485 sensor bit index for row motor right side DOWN position sensor",
-              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד ימין של דלת מנוע עמודות",
+              "description_he": "אינדקס סיבית חיישן RS485 לחיישן מצב למטה של צד ימין של דלת סרגל עמודות",
               "type": "int",
               "default": 3,
               "category": "important"
@@ -1267,7 +1267,7 @@
         },
         "rows_start_position_keywords": {
           "description": "Keywords identifying the initial rows start position move (row motor piston allowed up for this move only, excluded by exclude_rows_start safety rule flag)",
-          "description_he": "מילות מפתח המזהות את תנועת מיקום ההתחלה של העמודות (בוכנת מנוע עמודות מותרת למעלה לתנועה זו בלבד, מוחרגת על ידי דגל exclude_rows_start בחוק בטיחות)",
+          "description_he": "מילות מפתח המזהות את תנועת מיקום ההתחלה של העמודות (בוכנת סרגל עמודות מותרת למעלה לתנועה זו בלבד, מוחרגת על ידי דגל exclude_rows_start בחוק בטיחות)",
           "type": "list",
           "default": ["rows start:"],
           "category": "critical"
@@ -1303,7 +1303,7 @@
             },
             "x_axis_threshold_mm": {
               "description": "Minimum X-axis move distance (mm) to trigger row motor piston lift",
-              "description_he": "מרחק תנועה מינימלי בציר X (מ\"מ) להפעלת הרמת בוכנת מנוע עמודות",
+              "description_he": "מרחק תנועה מינימלי בציר X (מ\"מ) להפעלת הרמת בוכנת סרגל עמודות",
               "type": "float",
               "unit": "mm",
               "min": 0,
@@ -1313,7 +1313,7 @@
             },
             "y_axis_threshold_mm": {
               "description": "Minimum Y-axis move distance (mm) to trigger line motor piston lift",
-              "description_he": "מרחק תנועה מינימלי בציר Y (מ\"מ) להפעלת הרמת בוכנת מנוע שורות",
+              "description_he": "מרחק תנועה מינימלי בציר Y (מ\"מ) להפעלת הרמת בוכנת סרגל שורות",
               "type": "float",
               "unit": "mm",
               "min": 0,
@@ -1341,7 +1341,7 @@
         },
         "row_motor_piston_check_delay": {
           "description": "Delay for row motor piston state checks",
-          "description_he": "השהיה לבדיקות מצב בוכנת מנוע עמודות",
+          "description_he": "השהיה לבדיקות מצב בוכנת סרגל עמודות",
           "type": "float",
           "unit": "seconds",
           "default": 0.1,

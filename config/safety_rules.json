@@ -8,7 +8,7 @@
       "name": "Lines Safety: Line Tools Must Be Up",
       "name_he": "בטיחות שורות: כלי שורות חייבים להיות למעלה",
       "description": "Line cutter and line marker must be 100% UP before the lines motor can move. A tool is safe only when: down sensor NOT triggered AND up sensor IS triggered. Moving with a tool not fully up would drag and damage it.",
-      "description_he": "סכין שורות וסמן שורות חייבים להיות 100% למעלה לפני שמנוע השורות יכול לנוע. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. תנועה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
+      "description_he": "סכין שורות וסמן שורות חייבים להיות 100% למעלה לפני שסרגל השורות יכול לנוע. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. תנועה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
       "enabled": true,
       "priority": 15,
       "severity": "critical",
@@ -63,7 +63,7 @@
         }
       ],
       "message": "Lines motor blocked! Line cutter or line marker is down. Raise all line tools before moving the lines motor.",
-      "message_he": "מנוע שורות חסום! סכין שורות או סמן שורות למטה. הרם את כל כלי השורות לפני הזזת מנוע השורות.",
+      "message_he": "סרגל שורות חסום! סכין שורות או סמן שורות למטה. הרם את כל כלי השורות לפני הזזת סרגל השורות.",
       "created_at": "2026-03-02T00:00:00Z",
       "created_by": "system"
     },
@@ -72,7 +72,7 @@
       "name": "Rows Safety: Row Tools Must Be Up",
       "name_he": "בטיחות עמודות: כלי עמודות חייבים להיות למעלה",
       "description": "Row cutter and row marker must be 100% UP before the rows motor can move. A tool is safe only when: down sensor NOT triggered AND up sensor IS triggered. Moving with a tool not fully up would drag and damage it.",
-      "description_he": "סכין עמודות וסמן עמודות חייבים להיות 100% למעלה לפני שמנוע העמודות יכול לנוע. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. תנועה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
+      "description_he": "סכין עמודות וסמן עמודות חייבים להיות 100% למעלה לפני שסרגל העמודות יכול לנוע. כלי בטוח רק כאשר: חיישן למטה לא מופעל וחיישן למעלה מופעל. תנועה עם כלי שאינו למעלה לגמרי תגרור ותגרום נזק.",
       "enabled": true,
       "priority": 25,
       "severity": "critical",
@@ -127,16 +127,16 @@
         }
       ],
       "message": "Rows motor blocked! Row cutter or row marker is down. Raise all row tools before moving the rows motor.",
-      "message_he": "מנוע עמודות חסום! סכין עמודות או סמן עמודות למטה. הרם את כל כלי העמודות לפני הזזת מנוע העמודות.",
+      "message_he": "סרגל עמודות חסום! סכין עמודות או סמן עמודות למטה. הרם את כל כלי העמודות לפני הזזת סרגל העמודות.",
       "created_at": "2026-03-02T00:00:00Z",
       "created_by": "system"
     },
     {
       "id": "ROWS_MOTOR_HOME_FOR_LINES",
       "name": "Lines Safety: Rows Motor Must Be at Home",
-      "name_he": "בטיחות שורות: מנוע עמודות חייב להיות בבית",
+      "name_he": "בטיחות שורות: סרגל עמודות חייב להיות בבית",
       "description": "Rows motor (X axis) must be at position 0 before the lines motor can move. If the rows bar is in the workspace, moving the lines bar would cause a collision.",
-      "description_he": "מנוע העמודות (ציר X) חייב להיות במיקום 0 לפני שמנוע השורות יכול לנוע. אם סרגל העמודות בתוך שטח העבודה, הזזת סרגל השורות תגרום להתנגשות.",
+      "description_he": "סרגל העמודות (ציר X) חייב להיות במיקום 0 לפני שסרגל השורות יכול לנוע. אם סרגל העמודות בתוך שטח העבודה, הזזת סרגל השורות תגרום להתנגשות.",
       "enabled": true,
       "priority": 20,
       "severity": "critical",
@@ -161,16 +161,16 @@
         }
       ],
       "message": "Lines motor blocked! Rows motor (X axis) is not at home position (0). Move the rows motor to position 0 before moving the lines motor.",
-      "message_he": "מנוע שורות חסום! מנוע העמודות (ציר X) לא במיקום בית (0). הזז את מנוע העמודות למיקום 0 לפני הזזת מנוע השורות.",
+      "message_he": "סרגל שורות חסום! סרגל העמודות (ציר X) לא במיקום בית (0). הזז את סרגל העמודות למיקום 0 לפני הזזת סרגל השורות.",
       "created_at": "2026-03-02T00:00:00Z",
       "created_by": "system"
     },
     {
       "id": "ROWS_DOOR_PISTON_SAFETY",
       "name": "Rows Safety: Motor Piston Must Be Down Before Left Movement",
-      "name_he": "בטיחות עמודות: בוכנת מנוע עמודות חייבת להיות למטה לפני תנועה שמאלה",
+      "name_he": "בטיחות עמודות: בוכנת סרגל עמודות חייבת להיות למטה לפני תנועה שמאלה",
       "description": "During rows operations, the row motor piston must be DOWN (deployed) before any left movement. The piston deploys automatically after the initial right move. Blocks leftward movement if piston is not yet deployed.",
-      "description_he": "במהלך פעולות עמודות, בוכנת מנוע העמודות חייבת להיות למטה (פרוסה) לפני כל תנועה שמאלה. הבוכנה נפרסת אוטומטית לאחר התנועה הראשונית ימינה. חוסם תנועה שמאלה אם הבוכנה עדיין לא פרוסה.",
+      "description_he": "במהלך פעולות עמודות, בוכנת סרגל העמודות חייבת להיות למטה (פרוסה) לפני כל תנועה שמאלה. הבוכנה נפרסת אוטומטית לאחר התנועה הראשונית ימינה. חוסם תנועה שמאלה אם הבוכנה עדיין לא פרוסה.",
       "enabled": true,
       "priority": 22,
       "severity": "critical",
@@ -203,16 +203,16 @@
         }
       ],
       "message": "Rows left movement blocked! Row motor piston is UP (not deployed). Piston deploys automatically after moving right to start position.",
-      "message_he": "תנועת עמודות שמאלה חסומה! בוכנת מנוע העמודות למעלה (לא פרוסה). הבוכנה נפרסת אוטומטית לאחר תנועה ימינה למיקום ההתחלה.",
+      "message_he": "תנועת עמודות שמאלה חסומה! בוכנת סרגל העמודות למעלה (לא פרוסה). הבוכנה נפרסת אוטומטית לאחר תנועה ימינה למיקום ההתחלה.",
       "created_at": "2026-03-27T00:00:00Z",
       "created_by": "system"
     },
     {
       "id": "LINES_MOTOR_HOME_FOR_ROWS",
       "name": "Rows Safety: Lines Motor Must Be at Home",
-      "name_he": "בטיחות עמודות: מנוע שורות חייב להיות בבית",
+      "name_he": "בטיחות עמודות: סרגל שורות חייב להיות בבית",
       "description": "Lines motor (Y axis) must be at position 0 before the rows motor can move. If the lines bar is not at home, moving the rows bar could cause a collision.",
-      "description_he": "מנוע השורות (ציר Y) חייב להיות במיקום 0 לפני שמנוע העמודות יכול לנוע. אם סרגל השורות לא בבית, הזזת סרגל העמודות עלולה לגרום להתנגשות.",
+      "description_he": "סרגל השורות (ציר Y) חייב להיות במיקום 0 לפני שסרגל העמודות יכול לנוע. אם סרגל השורות לא בבית, הזזת סרגל העמודות עלולה לגרום להתנגשות.",
       "enabled": true,
       "priority": 30,
       "severity": "critical",
@@ -245,7 +245,7 @@
         }
       ],
       "message": "Rows motor blocked! Lines motor (Y axis) is not at home position (0). Move the lines motor to position 0 before moving the rows motor.",
-      "message_he": "מנוע עמודות חסום! מנוע השורות (ציר Y) לא במיקום בית (0). הזז את מנוע השורות למיקום 0 לפני הזזת מנוע העמודות.",
+      "message_he": "סרגל עמודות חסום! סרגל השורות (ציר Y) לא במיקום בית (0). הזז את סרגל השורות למיקום 0 לפני הזזת סרגל העמודות.",
       "created_at": "2026-03-02T00:00:00Z",
       "created_by": "system"
     },
@@ -356,9 +356,9 @@
     {
       "id": "ROWS_MONITOR_PISTON_UP",
       "name": "Rows Monitor: Line Motor Piston Up",
-      "name_he": "ניטור עמודות: בוכנת מנוע שורות למעלה",
+      "name_he": "ניטור עמודות: בוכנת סרגל שורות למעלה",
       "description": "Real-time monitor: Line motor piston is UP during rows operations. Piston blocks row motor movement path.",
-      "description_he": "ניטור זמן-אמת: בוכנת מנוע השורות למעלה במהלך פעולות עמודות. הבוכנה חוסמת את נתיב תנועת מנוע העמודות.",
+      "description_he": "ניטור זמן-אמת: בוכנת סרגל השורות למעלה במהלך פעולות עמודות. הבוכנה חוסמת את נתיב תנועת סרגל העמודות.",
       "enabled": true,
       "priority": 140,
       "severity": "critical",
@@ -409,7 +409,7 @@
         "recovery_action": "auto_resume"
       },
       "message": "LINE MOTOR PISTON SAFETY VIOLATION!\n   Line motor piston is UP during rows operation (not at home position)\n   RULE VIOLATED: Line motor piston must be DOWN during operations when Y > 0\n   IMMEDIATE ACTION: Lower line motor piston OR move lines motor to home (Y=0)",
-      "message_he": "הפרת בטיחות בוכנת מנוע שורות!\n   בוכנת מנוע השורות למעלה במהלך פעולת עמודות (לא במיקום בית)\n   כלל שהופר: בוכנת מנוע השורות חייבת להיות למטה כש-Y > 0\n   פעולה מיידית: הורד את בוכנת מנוע השורות או הזז את מנוע השורות לבית (Y=0)",
+      "message_he": "הפרת בטיחות בוכנת סרגל שורות!\n   בוכנת סרגל השורות למעלה במהלך פעולת עמודות (לא במיקום בית)\n   כלל שהופר: בוכנת סרגל השורות חייבת להיות למטה כש-Y > 0\n   פעולה מיידית: הורד את בוכנת סרגל השורות או הזז את סרגל השורות לבית (Y=0)",
       "created_at": "2026-02-14T23:00:00Z",
       "created_by": "system_migration"
     }

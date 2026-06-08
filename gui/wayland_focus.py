@@ -68,6 +68,55 @@ def _wlrctl_maximize_app(app_id):
         pass
 
 
+def focus_via_toggle(window, app_id='scratch-desk', delay=0):
+    """Give a freshly-mapped standalone window real input focus on labwc.
+
+    labwc only re-routes keyboard/pointer focus when the focused window
+    actually CHANGES. Repeatedly asking it to focus a window it already
+    considers focused is a no-op — which is the bug where a new Toplevel
+    appears on top yet receives no clicks until the user manually clicks the
+    main window and then clicks back. This reproduces that workaround
+    programmatically: focus the parent (main) window first, then focus the
+    target a moment later, forcing a genuine focus transition.
+
+    Only meaningful with wlrctl on Wayland; on X11 a plain focus_force works.
+    """
+    def _do_toggle():
+        if not window.winfo_exists():
+            return
+        title = window.title()
+        if not _HAS_WLRCTL:
+            try:
+                window.lift()
+                window.focus_force()
+            except Exception:
+                pass
+            return
+        # Step 1: focus the main window (a DIFFERENT window) so labwc's
+        # current-focus actually changes.
+        _wlrctl_focus_app(app_id)
+
+        # Step 2: shortly after, focus the target window -> real transition.
+        def _back():
+            if not window.winfo_exists():
+                return
+            try:
+                window.lift()
+                window.focus_force()
+            except Exception:
+                pass
+            if title:
+                _wlrctl_focus_title(title)
+            else:
+                _wlrctl_focus_app(app_id)
+        window.after(150, _back)
+
+    if delay > 0:
+        window.after(delay, _do_toggle)
+    else:
+        _do_toggle()
+
+
 def force_focus(window, app_id='scratch-desk'):
     """Request compositor focus for a Tk window.
 
@@ -220,11 +269,11 @@ def patch_wayland_focus(app_id='scratch-desk'):
                     except Exception:
                         is_transient = False
                     if not is_transient:
-                        title = self.title()
-                        if title:
-                            _wlrctl_focus_title(title)
-                        else:
-                            _wlrctl_focus_app(app_id)
+                        # Standalone window (e.g. the admin/management tool):
+                        # labwc won't route input to it unless focus actually
+                        # changes, so toggle main -> this window instead of a
+                        # plain (no-op) title focus.
+                        focus_via_toggle(self, app_id)
             except Exception:
                 pass
 

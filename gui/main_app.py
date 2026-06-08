@@ -462,7 +462,7 @@ class ScratchDeskGUI:
     def _launch_admin_tool(self):
         """Launch admin tool window with shared hardware"""
         from admin.admin_app import AdminToolGUI
-        from gui.wayland_focus import force_focus, force_focus_return, _HAS_WLRCTL, _wlrctl_focus_title
+        from gui.wayland_focus import force_focus_return, focus_via_toggle
 
         admin_window = tk.Toplevel(self.root)
         # NOTE: no transient() — on labwc, transient child Toplevels can't be
@@ -486,25 +486,23 @@ class ScratchDeskGUI:
         # Make admin window modal — prevents clicks from reaching main window
         admin_window.grab_set()
 
-        # Aggressive focus: -topmost temporarily + wlrctl title matching.
-        # The patched Toplevel.__init__ already schedules app_id focus at <Map>
-        # and title focus at +250ms. We add extra attempts here because the
-        # admin window competes with VS Code for compositor focus.
+        # Focus on labwc requires a real focus TRANSITION (main -> admin),
+        # not just repeated "focus admin" requests, which labwc treats as
+        # no-ops (the symptom: window is on top but clicks don't register
+        # until you click the main window and back). focus_via_toggle()
+        # reproduces that main->admin toggle. The patched Toplevel.__init__
+        # already runs one toggle at +250ms; we add a final one AFTER the
+        # -topmost removal below so no later restack can drop focus.
         admin_window.attributes('-topmost', True)
         admin_window.lift()
         admin_window.focus_force()
 
-        admin_title = admin_window.title()
-
-        if _HAS_WLRCTL and admin_title:
-            # Multiple wlrctl title-focus attempts at staggered intervals
-            for delay in (150, 400, 700):
-                admin_window.after(delay, lambda t=admin_title: _wlrctl_focus_title(t))
-
-        # Remove -topmost once focus is established
+        # Remove -topmost once raised, then do the decisive focus toggle last
+        # so it isn't undone by the restack that removing -topmost can cause.
         def _settle():
             if admin_window.winfo_exists():
                 admin_window.attributes('-topmost', False)
+                focus_via_toggle(admin_window, app_id='scratch-desk', delay=50)
         admin_window.after(800, _settle)
 
         # Wrap close handler to clean up and return focus to main window

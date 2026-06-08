@@ -52,7 +52,11 @@ def main():
         from core.logger import get_logger
         get_logger().set_grbl_only_mode()
 
-    root = tk.Tk()
+    # className sets the XWayland WM_CLASS, which becomes the wlroots app_id.
+    # The focus code (gui/wayland_focus.py) targets app_id 'scratch-desk' to
+    # refocus the main window; without this, the root window's app_id is the
+    # default 'tk' and every app_id-based wlrctl focus call matches nothing.
+    root = tk.Tk(className='scratch-desk')
     app = ScratchDeskGUI(root)
     _hardware = app.hardware
 
