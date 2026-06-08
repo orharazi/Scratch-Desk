@@ -313,7 +313,7 @@
         "$31": 0,
         "$32": 0,
         "$100": 14.55,
-        "$101": 14.5,
+        "$101": 14.55,
         "$102": 250.0,
         "$110": 3000.0,
         "$111": 3000.0,
@@ -326,8 +326,20 @@
         "$132": 0.0
       },
       "motion_compensation": {
-        "x": { "enabled": false, "offset_cm": 0.0, "scale": 1.0, "backlash_cm": 0.0, "approach_direction": 1 },
-        "y": { "enabled": false, "offset_cm": 0.0, "scale": 1.0, "backlash_cm": 0.0, "approach_direction": 1 }
+        "x": {
+          "enabled": false,
+          "offset_cm": 0.0,
+          "scale": 1.0,
+          "backlash_cm": 0.0,
+          "approach_direction": 1
+        },
+        "y": {
+          "enabled": false,
+          "offset_cm": 0.0,
+          "scale": 1.0,
+          "backlash_cm": 0.0,
+          "approach_direction": 1
+        }
       }
     }
   },
@@ -348,8 +360,8 @@
     "pre_step_wait_timeout": 300,
     "motor_lift_on_long_moves": {
       "enabled": true,
-      "x_axis_threshold_mm": 50.0,
-      "y_axis_threshold_mm": 50.0
+      "x_axis_threshold_mm": 0.0,
+      "y_axis_threshold_mm": 0.0
     }
   },
   "mock_hardware": {

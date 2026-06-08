@@ -75,9 +75,25 @@ def run(axis):
     print("At each stop the piston lowers before you measure (matches marking).")
     input("Press Enter to home and begin...")
 
+    # Open the air pressure valve before any piston motion. The main app does
+    # this on startup (index.py); without it the pistons have no air supply and
+    # the homing sequence's line-motor lift does nothing. Keep it open for the
+    # whole calibration (every stop cycles the motor piston) and close it on exit.
+    print("\nOpening air pressure valve...")
+    hw.air_pressure_valve_down()
+
+    try:
+        _run_calibration(hw, axis, provider)
+    finally:
+        print("\nClosing air pressure valve...")
+        hw.air_pressure_valve_up()
+
+
+def _run_calibration(hw, axis, provider):
     # Run the SAME comprehensive homing sequence the main software uses:
     # applies GRBL config, checks/lifts pistons, runs $H, resets work coords
-    # to (0,0), and lowers the line-motor pistons back down.
+    # to (0,0), and lowers the line-motor pistons back down. With air pressure
+    # now on, step 4 actually lifts the line motor and step 8 lowers it again.
     print("\nRunning complete homing sequence (pistons + $H)...")
     homed, home_msg = hw.perform_complete_homing_sequence(
         progress_callback=_print_homing_progress

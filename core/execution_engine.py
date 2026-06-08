@@ -495,6 +495,14 @@ class ExecutionEngine:
         self.pause_event.set()  # Not paused initially
         self.safety_monitor_stop.set()  # Stop any lingering safety monitor
 
+        # Clear stop movement event so the reset homing moves are not interrupted
+        # from a previous stop. Without this, the first reset move (move_x to 0)
+        # returns immediately with a stale position, and the second move (move_y to 0)
+        # rebuilds its command from that stale X cache - driving the motor back to its
+        # last position instead of staying at home.
+        if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+            self.hardware.grbl._stop_movement_event.clear()
+
         # Reset operation tracking
         self.current_operation_type = None
         self.in_transition = False
