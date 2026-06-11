@@ -723,6 +723,12 @@ class ControlsPanel:
             program.buffer_between_pages,
             program.repeat_rows,
             program.repeat_lines,
+            # Parameters below also change step generation; without them, toggling
+            # them leaves stale steps that silently run without the new operations
+            # (e.g. multi_line draws middle lines on the canvas but skips them on hardware).
+            getattr(program, 'multi_line', False),
+            getattr(program, 'rows_double_margin_left', 0.0),
+            getattr(program, 'rows_double_margin_right', 0.0),
         )
 
     def generate_steps(self):
