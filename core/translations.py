@@ -1136,8 +1136,6 @@ HEBREW_TRANSLATIONS = {
     "min_y_position": "מיקום Y מינימלי",
     "paper_start_x": "התחלת נייר X",
     "paper_start_y": "התחלת נייר Y",
-    "safe_movement_speed": "מהירות תנועה בטוחה",
-    "max_acceleration": "תאוצה מקסימלית",
     "min_line_spacing": "מרווח שורות מינימלי",
 
     # --- admin ---

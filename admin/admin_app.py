@@ -457,10 +457,13 @@ class AdminToolGUI:
         speed_frame = ttk.LabelFrame(right_frame, text=t("Movement Speed"), padding="10")
         speed_frame.pack(fill="x", pady=5)
 
-        self.speed_var = tk.StringVar(value="normal")
-        ttk.Radiobutton(speed_frame, text=t("Slow"), variable=self.speed_var, value="slow").pack(side=tk.RIGHT, padx=5)
-        ttk.Radiobutton(speed_frame, text=t("Normal"), variable=self.speed_var, value="normal").pack(side=tk.RIGHT, padx=5)
-        ttk.Radiobutton(speed_frame, text=t("Fast"), variable=self.speed_var, value="fast").pack(side=tk.RIGHT, padx=5)
+        self.speed_var = tk.StringVar(value=self._load_active_speed_mode())
+        ttk.Radiobutton(speed_frame, text=t("Slow"), variable=self.speed_var, value="slow",
+                        command=self.on_speed_change).pack(side=tk.RIGHT, padx=5)
+        ttk.Radiobutton(speed_frame, text=t("Normal"), variable=self.speed_var, value="normal",
+                        command=self.on_speed_change).pack(side=tk.RIGHT, padx=5)
+        ttk.Radiobutton(speed_frame, text=t("Fast"), variable=self.speed_var, value="fast",
+                        command=self.on_speed_change).pack(side=tk.RIGHT, padx=5)
 
         # Paper Starting Point
         start_pos_frame = ttk.LabelFrame(right_frame, text=t("Paper Starting Point"), padding="10")
@@ -1174,6 +1177,70 @@ class AdminToolGUI:
                 time.sleep(1)
 
     # Motor control methods
+    def _load_active_speed_mode(self):
+        """Read the persisted movement-speed mode from settings.json (default 'normal')."""
+        try:
+            with open('config/settings.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            return config['hardware_config']['arduino_grbl'].get('active_speed_mode', 'normal')
+        except Exception:
+            return 'normal'
+
+    def on_speed_change(self):
+        """Apply the selected movement speed (Slow/Normal/Fast) to ALL motor movements.
+
+        Updates the live GRBL driver feed/rapid rates, pushes the firmware
+        max-rate ($110/$111) and acceleration ($120/$121) values, and persists
+        everything to settings.json so the main app uses the same speed.
+        """
+        mode = self.speed_var.get()
+        try:
+            with open('config/settings.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            grbl = config['hardware_config']['arduino_grbl']
+            presets = grbl.get('speed_presets', {})
+            if mode not in presets:
+                self.log("ERROR", t("Unknown speed preset: {mode}", mode=mode))
+                return
+            preset = presets[mode]
+
+            feed_rate = preset['feed_rate']
+            rapid_rate = preset['rapid_rate']
+            max_rate = preset['max_rate']
+            acceleration = preset['acceleration']
+
+            # 1. Persist to settings.json (so the main app picks up the same speed)
+            grbl['grbl_settings']['feed_rate'] = feed_rate
+            grbl['grbl_settings']['rapid_rate'] = rapid_rate
+            grbl['grbl_configuration']['$110'] = max_rate
+            grbl['grbl_configuration']['$111'] = max_rate
+            grbl['grbl_configuration']['$120'] = acceleration
+            grbl['grbl_configuration']['$121'] = acceleration
+            grbl['active_speed_mode'] = mode
+            with open('config/settings.json', 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            # 2. Update the live GRBL driver so this admin session uses it immediately
+            if hasattr(self.hardware, 'grbl') and self.hardware.grbl:
+                self.hardware.grbl.feed_rate = feed_rate
+                self.hardware.grbl.rapid_rate = rapid_rate
+
+            # 3. Push firmware max-rate + acceleration to GRBL (takes effect now)
+            if self.grbl_connected and hasattr(self.hardware, 'grbl') \
+                    and hasattr(self.hardware.grbl, '_send_command'):
+                for param, value in (("$110", max_rate), ("$111", max_rate),
+                                     ("$120", acceleration), ("$121", acceleration)):
+                    self.hardware.grbl._send_command(f"{param}={value}")
+                # Refresh the GRBL tab entries to reflect the new firmware values
+                self.root.after(300, self.read_grbl_settings)
+
+            self.log("SUCCESS", t(
+                "Speed set to {mode}: feed={feed} rapid={rapid} max_rate={maxr} accel={accel}",
+                mode=mode, feed=feed_rate, rapid=rapid_rate, maxr=max_rate, accel=acceleration))
+        except Exception as e:
+            self.log("ERROR", t("Error applying speed: {error}", error=str(e)))
+
     def jog(self, axis, direction):
         """Jog motor"""
         if not self.is_connected:

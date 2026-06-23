@@ -6,6 +6,8 @@
     "min_x_position": 0.0,
     "min_y_position": 0.0,
     "paper_start_x": 6.5,
+    "safe_movement_speed": 10.0,
+    "max_acceleration": 5.0,
     "paper_start_y": 19.0,
     "min_line_spacing": 0.3
   },
@@ -283,14 +285,9 @@
       "grbl_settings": {
         "units": "mm",
         "positioning_mode": "G90",
-        "feed_rate": 4000,
-        "rapid_rate": 9000
-      },
-      "active_speed_mode": "fast",
-      "speed_presets": {
-        "slow":   { "feed_rate": 1000, "rapid_rate": 3000, "max_rate": 3000.0, "acceleration": 50.0 },
-        "normal": { "feed_rate": 2500, "rapid_rate": 6000, "max_rate": 6000.0, "acceleration": 100.0 },
-        "fast":   { "feed_rate": 4000, "rapid_rate": 9000, "max_rate": 9000.0, "acceleration": 150.0 }
+        "feed_rate": 1000,
+        "rapid_rate": 3000,
+        "acceleration": 50
       },
       "grbl_configuration": {
         "$0": 10,
@@ -315,14 +312,14 @@
         "$30": 1000,
         "$31": 0,
         "$32": 0,
-        "$100": 14.54,
-        "$101": 14.53,
+        "$100": 14.55,
+        "$101": 14.55,
         "$102": 250.0,
-        "$110": 9000.0,
-        "$111": 9000.0,
+        "$110": 3000.0,
+        "$111": 3000.0,
         "$112": 500.0,
-        "$120": 150.0,
-        "$121": 150.0,
+        "$120": 50.0,
+        "$121": 50.0,
         "$122": 10.0,
         "$130": 1000.0,
         "$131": 1000.0,

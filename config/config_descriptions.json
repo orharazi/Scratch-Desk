@@ -64,22 +64,6 @@
           "default": 15.0,
           "category": "important"
         },
-        "safe_movement_speed": {
-          "description": "Maximum safe movement speed for motors",
-          "description_he": "מהירות תנועה בטוחה מקסימלית למנועים",
-          "type": "float",
-          "unit": "cm/s",
-          "default": 10.0,
-          "category": "important"
-        },
-        "max_acceleration": {
-          "description": "Maximum motor acceleration rate",
-          "description_he": "קצב תאוצה מקסימלי למנועים",
-          "type": "float",
-          "unit": "cm/s²",
-          "default": 5.0,
-          "category": "important"
-        },
         "min_line_spacing": {
           "description": "Minimum allowed spacing between lines",
           "description_he": "מרווח מינימלי מותר בין שורות",
