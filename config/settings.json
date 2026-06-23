@@ -288,9 +288,24 @@
       },
       "active_speed_mode": "fast",
       "speed_presets": {
-        "slow":   { "feed_rate": 1000, "rapid_rate": 3000, "max_rate": 3000.0, "acceleration": 50.0 },
-        "normal": { "feed_rate": 2500, "rapid_rate": 6000, "max_rate": 6000.0, "acceleration": 100.0 },
-        "fast":   { "feed_rate": 4000, "rapid_rate": 9000, "max_rate": 9000.0, "acceleration": 150.0 }
+        "slow": {
+          "feed_rate": 1000,
+          "rapid_rate": 3000,
+          "max_rate": 3000.0,
+          "acceleration": 50.0
+        },
+        "normal": {
+          "feed_rate": 2500,
+          "rapid_rate": 6000,
+          "max_rate": 6000.0,
+          "acceleration": 100.0
+        },
+        "fast": {
+          "feed_rate": 4000,
+          "rapid_rate": 9000,
+          "max_rate": 9000.0,
+          "acceleration": 150.0
+        }
       },
       "grbl_configuration": {
         "$0": 10,
